@@ -52,47 +52,99 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
     );
 };
 
-const AudioPulse: React.FC = () => (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
-        {[...Array(3)].map((_, i) => (
+const DecodingText: React.FC<{ text: string }> = ({ text }) => {
+    const [displayText, setDisplayText] = React.useState('');
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?@#$%&";
+
+    React.useEffect(() => {
+        let iteration = 0;
+        const interval = setInterval(() => {
+            setDisplayText(text.split("").map((char, index) => {
+                if (index < iteration) return text[index];
+                return chars[Math.floor(Math.random() * chars.length)];
+            }).join(""));
+            
+            if (iteration >= text.length) clearInterval(interval);
+            iteration += 1/3;
+        }, 30);
+        return () => clearInterval(interval);
+    }, [text]);
+
+    return <span className="font-sans font-medium">{displayText}</span>;
+};
+
+const LiveGauge: React.FC<{ value: number, color?: string }> = ({ value, color = "rgba(var(--brand-red-rgb), 0.8)" }) => (
+    <div className="flex gap-0.5 items-center h-1.5 w-16">
+        {[...Array(10)].map((_, i) => (
             <motion.div
                 key={i}
-                initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ 
-                    scale: [0.8, 1.5], 
-                    opacity: [0, 0.4, 0] 
+                    backgroundColor: i / 10 < value ? color : "rgba(255,255,255,0.05)",
+                    opacity: i / 10 < value ? [0.4, 1, 0.4] : 1
                 }}
-                transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    delay: i * 1,
-                    ease: "easeOut"
-                }}
-                className="absolute w-[400px] h-[400px] border border-brand/40 rounded-full"
+                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
+                className="h-full w-1 rounded-full"
             />
         ))}
     </div>
 );
 
-const SoraniLabel: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br', rtl?: boolean }> = ({ label, value, corner, rtl = true }) => {
+const ProfessionalHUD: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br', gaugeValue?: number }> = ({ label, value, corner, gaugeValue }) => {
     const positions = {
-        tl: 'top-10 left-10 text-left',
-        tr: 'top-10 right-10 text-right',
-        bl: 'bottom-10 left-10 text-left',
-        br: 'bottom-10 right-10 text-right'
+        tl: 'top-8 left-8',
+        tr: 'top-8 right-8 text-right flex-row-reverse',
+        bl: 'bottom-8 left-8',
+        br: 'bottom-8 right-8 text-right flex-row-reverse'
     };
+    
     return (
-        <div className={`absolute ${positions[corner]} font-sans text-[10px] tracking-wider text-white/30 uppercase`} dir={rtl ? "rtl" : "ltr"}>
-            <div className="font-medium mb-1 opacity-60">{label}</div>
-            <div className="text-brand font-bold text-xs tracking-widest">{value}</div>
+        <div className={`absolute ${positions[corner]} flex flex-col gap-2 p-4 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-xl min-w-[140px]`}>
+            <div className="flex flex-col gap-1" dir="rtl">
+                <span className="text-[9px] font-sans font-bold text-white/20 tracking-widest uppercase">{label}</span>
+                <span className="text-brand font-black text-[11px] tracking-wider">{value}</span>
+            </div>
+            {gaugeValue !== undefined && <LiveGauge value={gaugeValue} />}
         </div>
     );
 };
 
+const AudioPulse: React.FC = () => (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
+        {[...Array(4)].map((_, i) => (
+            <motion.div
+                key={i}
+                animate={{ 
+                    scale: [0.8, 2.5], 
+                    opacity: [0, 0.2, 0],
+                    borderWidth: ["1px", "0px"]
+                }}
+                transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    delay: i * 1,
+                    ease: "easeOut"
+                }}
+                className="absolute w-[300px] h-[300px] border-brand/20 rounded-full"
+            />
+        ))}
+    </div>
+);
+
 const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
     const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی سێرڤەر...");
+    const [systemMetrics, setSystemMetrics] = React.useState({ throughput: 0.2, buffer: 0.1, clarity: 0.4 });
     
-    // Natural Sorani Mappings for typical loading phases
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setSystemMetrics({
+                throughput: Math.random() * 0.8 + 0.2,
+                buffer: Math.random() * 0.6 + 0.4,
+                clarity: Math.random() * 0.5 + 0.5
+            });
+        }, 2000);
+        return () => clearInterval(interval);
+    }, []);
+
     React.useEffect(() => {
         if (status.toLowerCase().includes('initial')) setDisplayStatus("ئەرشیفی فەرمی FLKRD");
         else if (status.toLowerCase().includes('sync')) setDisplayStatus("هاوکاتکردنی داتاکان...");
@@ -104,97 +156,103 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
     return (
         <motion.div
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05, filter: 'blur(40px)' }}
+            exit={{ opacity: 0, scale: 1.05, filter: 'blur(50px)' }}
             transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
         >
             <AudioPulse />
             
-            {/* Artistic Glow Top/Bottom */}
-            <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none" />
-            <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-brand/5 to-transparent pointer-events-none" />
+            {/* HUD Panels - Master's Console Style */}
+            <ProfessionalHUD label="بانکی زانیاری" value="ئەرشیفی سەرەکی" corner="tl" gaugeValue={systemMetrics.throughput} />
+            <ProfessionalHUD label="کوالیتی پەخش" value="1080p Ultra" corner="tr" gaugeValue={systemMetrics.clarity} />
+            <ProfessionalHUD label="پاراستنی داتا" value="SSL_SECURE" corner="bl" gaugeValue={systemMetrics.buffer} />
+            <ProfessionalHUD label="وەشان" value="FLKRD.v2026" corner="br" />
 
-            {/* Natural Kurdish Labels */}
-            <SoraniLabel label="ناوەندی زانیاری" value="ئەرشیفی فەرمی" corner="tl" />
-            <SoraniLabel label="کوالیتی پەخش" value="Super HD" corner="tr" />
-            <SoraniLabel label="دیزاین و گەشەپێدان" value="Zana Barzani" corner="bl" />
-            <SoraniLabel label="وەشان" value="٢٠٢٦" corner="br" />
-
-            <div className="relative z-10 flex flex-col items-center gap-16 max-w-sm w-full px-8">
+            <div className="relative z-10 flex flex-col items-center gap-20 max-w-sm w-full px-8">
                 {/* Brand Identity Focus */}
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     className="relative"
                 >
-                    <div className="w-32 h-32 bg-black border border-brand/20 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_100px_rgba(var(--brand-red-rgb),0.15)]">
+                    <div className="w-36 h-36 bg-black border border-white/5 rounded-[3rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_120px_rgba(var(--brand-red-rgb),0.1)]">
                         <motion.div 
-                            animate={{ opacity: [0.3, 0.6, 0.3] }}
-                            transition={{ duration: 4, repeat: Infinity }}
-                            className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-brand/5"
+                            animate={{ opacity: [0.2, 0.4, 0.2] }}
+                            transition={{ duration: 5, repeat: Infinity }}
+                            className="absolute inset-0 bg-gradient-to-tr from-brand/20 via-transparent to-brand/10"
                         />
-                        <span className="text-8xl font-black italic text-brand leading-none drop-shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.6)]">F</span>
+                        <span className="text-9xl font-black italic text-brand leading-none drop-shadow-[0_0_30px_rgba(var(--brand-red-rgb),0.7)] select-none">F</span>
                     </div>
 
-                    {/* Elegant Halo Rings */}
                     <motion.div
-                        animate={{ rotate: 360, scale: [1, 1.05, 1] }}
-                        transition={{ 
-                            rotate: { duration: 15, repeat: Infinity, ease: "linear" },
-                            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
-                        }}
-                        className="absolute -inset-6 border border-brand/10 border-t-brand/30 rounded-[3rem]"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="absolute -inset-8 border border-white/5 border-t-white/20 rounded-[3.5rem]"
                     />
                     
                     <motion.div
-                        animate={{ opacity: [0.1, 0.3, 0.1] }}
-                        transition={{ duration: 5, repeat: Infinity }}
-                        className="absolute -inset-12 bg-brand/5 blur-3xl rounded-full"
+                        animate={{ opacity: [0.05, 0.15, 0.05], scale: [1, 1.1, 1] }}
+                        transition={{ duration: 6, repeat: Infinity }}
+                        className="absolute -inset-16 bg-brand/10 blur-[80px] rounded-full"
                     />
                 </motion.div>
 
-                <div className="w-full space-y-8 flex flex-col items-center">
-                    <div className="flex flex-col items-center text-center">
-                        <motion.p
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-[12px] font-sans font-bold text-brand tracking-[0.3em] mb-4 opacity-80"
-                        >
-                            بە کوردی کردنی چیرۆکەکانی جیهان
-                        </motion.p>
+                <div className="w-full space-y-10 flex flex-col items-center">
+                    <div className="flex flex-col items-center text-center gap-4">
+                        <div className="flex flex-col gap-1 items-center">
+                            <span className="text-[10px] font-sans font-bold text-brand/50 tracking-[0.6em] uppercase">SYSTEM_ACTIVATED</span>
+                            <p className="text-[13px] font-sans font-black text-brand tracking-[0.2em] opacity-90" dir="rtl">
+                                بە کوردی کردنی چیرۆکەکانی جیهان
+                            </p>
+                        </div>
                         
-                        <div className="h-6 flex items-center justify-center">
+                        <div className="h-8 flex items-center justify-center bg-white/[0.03] px-6 py-2 rounded-full border border-white/5 backdrop-blur-sm">
                             <AnimatePresence mode="wait">
-                                <motion.span
+                                <motion.div
                                     key={displayStatus}
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -5 }}
-                                    className="text-sm font-sans font-medium text-white/80 tracking-wide"
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    className="text-[15px] font-sans text-white/90"
+                                    dir="rtl"
                                 >
-                                    {displayStatus}
-                                </motion.span>
+                                    <DecodingText text={displayStatus} />
+                                </motion.div>
                             </AnimatePresence>
                         </div>
                     </div>
 
-                    {/* Minimalist Progress Line */}
-                    <div className="w-48 h-[1px] bg-white/10 relative overflow-hidden">
+                    {/* Enhanced Metadata Stream */}
+                    <div className="flex gap-4 opacity-20 font-mono text-[8px] tracking-[0.3em] overflow-hidden whitespace-nowrap mask-linear-fade">
                         <motion.div
-                            animate={{ x: ["-100%", "100%"] }}
-                            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-brand to-transparent"
-                        />
+                            animate={{ x: [0, -100] }}
+                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                            className="flex gap-8"
+                        >
+                            <span>CODEC: H.265_UHD</span>
+                            <span>BITRATE: 8500KBPS</span>
+                            <span>AUDIO: 5.1_SURROUND</span>
+                            <span>ENCRYPTION: AES_256</span>
+                            <span>SERVER: GLOBAL_CDN</span>
+                        </motion.div>
                     </div>
 
-                    <div className="flex flex-col items-center">
-                         <span className="text-[10px] text-white/20 font-sans tracking-[0.5em] font-bold">FLKRD STUDIO</span>
+                    <div className="flex flex-col items-center gap-2">
+                         <div className="w-40 h-[2px] bg-white/5 rounded-full overflow-hidden">
+                             <motion.div
+                                animate={{ x: ["-100%", "200%"] }}
+                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                className="absolute inset-0 bg-brand w-1/3"
+                             />
+                         </div>
+                         <span className="text-[9px] text-white/20 font-sans tracking-[0.4em] font-bold mt-2">FLKRD MASTER CONSOLE</span>
                     </div>
                 </div>
             </div>
         </motion.div>
     );
 };
+
 
 
 
