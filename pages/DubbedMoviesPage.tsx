@@ -76,6 +76,56 @@ const NeuralGrid: React.FC = () => (
     </div>
 );
 
+const DigitalRain: React.FC = () => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.05] flex justify-around font-mono text-[8px] text-brand">
+        {[...Array(20)].map((_, i) => (
+            <motion.div
+                key={i}
+                initial={{ y: -100 }}
+                animate={{ y: 1000 }}
+                transition={{
+                    duration: Math.random() * 5 + 5,
+                    repeat: Infinity,
+                    ease: "linear",
+                    delay: Math.random() * 5
+                }}
+                className="writing-mode-vertical"
+            >
+                {Math.random().toString(2).substring(2, 20)}
+            </motion.div>
+        ))}
+    </div>
+);
+
+const NeuralHub: React.FC = () => (
+    <div className="absolute inset-0 pointer-events-none opacity-30">
+        <svg className="w-full h-full">
+            {[...Array(12)].map((_, i) => (
+                <React.Fragment key={i}>
+                    <motion.circle
+                        cx={`${20 + Math.random() * 60}%`}
+                        cy={`${20 + Math.random() * 60}%`}
+                        r="1"
+                        fill="rgba(255,0,0,0.5)"
+                        animate={{ opacity: [0.1, 0.8, 0.1], scale: [1, 2, 1] }}
+                        transition={{ duration: 3 + Math.random() * 2, repeat: Infinity }}
+                    />
+                    <motion.line
+                        x1={`${Math.random() * 100}%`}
+                        y1={`${Math.random() * 100}%`}
+                        x2={`${Math.random() * 100}%`}
+                        y2={`${Math.random() * 100}%`}
+                        stroke="rgba(255,0,0,0.05)"
+                        strokeWidth="0.5"
+                        animate={{ opacity: [0, 0.2, 0] }}
+                        transition={{ duration: 5, repeat: Infinity, delay: Math.random() * 5 }}
+                    />
+                </React.Fragment>
+            ))}
+        </svg>
+    </div>
+);
+
 const DataMetric: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br' }> = ({ label, value, corner }) => {
     const positions = {
         tl: 'top-8 left-8',
@@ -92,16 +142,17 @@ const DataMetric: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' |
 };
 
 const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
-    const [metrics, setMetrics] = React.useState({ latency: '2ms', packets: '1024', load: '0.4%' });
+    const [metrics, setMetrics] = React.useState({ latency: '2ms', packets: '1024', load: '0.4%', integrity: 0 });
     
     React.useEffect(() => {
         const interval = setInterval(() => {
-            setMetrics({
+            setMetrics(prev => ({
                 latency: `${Math.floor(Math.random() * 5 + 1)}ms`,
                 packets: `${Math.floor(Math.random() * 5000 + 1000)}`,
-                load: `${(Math.random() * 2).toFixed(2)}%`
-            });
-        }, 2000);
+                load: `${(Math.random() * 2).toFixed(2)}%`,
+                integrity: Math.min(prev.integrity + Math.floor(Math.random() * 5), 100)
+            }));
+        }, 1500);
         return () => clearInterval(interval);
     }, []);
 
@@ -113,10 +164,22 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
             className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
         >
             <NeuralGrid />
+            <DigitalRain />
+            <NeuralHub />
             
+            {/* Biometric Scan Sweep */}
+            <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                    background: 'conic-gradient(from 0deg, brand, transparent 60deg, transparent)'
+                }}
+            />
+
             {/* HUD Elements */}
             <DataMetric label="NODE_LATENCY" value={metrics.latency} corner="tl" />
-            <DataMetric label="SYNC_PROTOCOL" value="V.26.4" corner="tr" />
+            <DataMetric label="INTEGRITY_CHECK" value={`${metrics.integrity}%`} corner="tr" />
             <DataMetric label="PACKET_STREAM" value={metrics.packets} corner="bl" />
             <DataMetric label="CORE_LOAD" value={metrics.load} corner="br" />
 
@@ -128,7 +191,11 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                     className="relative group"
                 >
                     <div className="w-28 h-28 bg-black border border-brand/30 rounded-[2rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_80px_rgba(var(--brand-red-rgb),0.2)]">
-                        {/* Internal Scanning Light */}
+                        <motion.div 
+                            animate={{ opacity: [0.2, 0.5, 0.2] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="absolute inset-0 bg-brand/5"
+                        />
                         <motion.div 
                             animate={{ y: ["-100%", "200%"] }}
                             transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -137,7 +204,6 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                         <span className="text-7xl font-black italic text-brand leading-none drop-shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]">F</span>
                     </div>
 
-                    {/* Exterior Dynamic Border Layers */}
                     <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
@@ -149,7 +215,6 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                         className="absolute -inset-6 border border-white/5 border-b-white/20 rounded-[3rem]"
                     />
 
-                    {/* Temporal Pulse */}
                     <motion.div
                         animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.1, 0.4] }}
                         transition={{ duration: 4, repeat: Infinity }}
@@ -164,16 +229,16 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                             transition={{ duration: 2, repeat: Infinity }}
                             className="text-[10px] font-mono font-black italic text-brand tracking-[0.5em] uppercase mb-3"
                         >
-                            SYSTEM_ACTIVITY_LOG
+                            NEURAL_CORE_ESTABLISHED
                         </motion.span>
                         
                         <div className="h-4 flex items-center justify-center">
                             <AnimatePresence mode="wait">
                                 <motion.span
                                     key={status}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 10 }}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.1 }}
                                     className="text-[10px] font-mono font-bold text-white/90 uppercase tracking-[0.2em] max-w-full truncate px-4"
                                 >
                                     {status}<span className="animate-pulse">_</span>
@@ -182,7 +247,6 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                         </div>
                     </div>
 
-                    {/* Progress Conduit - Modern Tech version */}
                     <div className="relative group" style={{ filter: 'drop-shadow(0 0 10px rgba(var(--brand-red-rgb), 0.3))' }}>
                         <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden border-x border-white/10">
                             <motion.div
@@ -191,18 +255,12 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                                 className="absolute inset-y-0 w-1/4 bg-brand shadow-[0_0_20px_rgba(var(--brand-red-rgb),1)]"
                             />
                         </div>
-                        {/* Data Packet Visuals */}
-                        <motion.div 
-                            animate={{ opacity: [0, 1, 0], x: [0, 200] }}
-                            transition={{ duration: 1.2, repeat: Infinity, delay: 0.5 }}
-                            className="absolute -top-1 left-0 w-1 h-1 bg-white rounded-full blur-[1px]"
-                        />
                     </div>
                 </div>
 
                 <div className="flex flex-col items-center gap-2">
                     <p className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-[0.4em] text-center max-w-[220px] leading-relaxed opacity-60">
-                        ESTABLISHING SECURE CONNECTION
+                        ZANA_PROTOCOL_V.3.1
                     </p>
                     <div className="flex gap-1">
                         {[0, 1, 2].map(i => (
@@ -210,7 +268,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
                                 key={i}
                                 animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
                                 transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.2 }}
-                                className="w-1 h-1 bg-brand rounded-full"
+                                className="w-1.5 h-1.5 bg-brand rounded-full"
                             />
                         ))}
                     </div>
@@ -219,6 +277,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
         </motion.div>
     );
 };
+
 
 
 
