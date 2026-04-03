@@ -150,18 +150,20 @@ const DubbedDetailPage: React.FC = () => {
                     }
                 }
 
-                // 2. Fetch TMDB Enrichment
-                const apiLang = 'en-US';
-                const cleanId = idStr.replace('custom_', '');
+                // 2. Fetch TMDB Enrichment ONLY if it's a real TMDB movie (not a custom Supabase upload)
+                if (!idStr.startsWith('custom_')) {
+                    const apiLang = 'en-US';
+                    const cleanId = idStr.replace('custom_', '');
 
-                if (!isNaN(Number(cleanId))) {
-                    const numericTMDBId = Number(cleanId);
-                    const endpoint = `/movie/${numericTMDBId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
-                    try {
-                        let data = await fetchData(endpoint, language);
-                        if (data && isMounted) setContent(data);
-                    } catch (err) {
-                        console.log("TMDB metadata error, using local/supabase data.");
+                    if (!isNaN(Number(cleanId))) {
+                        const numericTMDBId = Number(cleanId);
+                        const endpoint = `/movie/${numericTMDBId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
+                        try {
+                            let data = await fetchData(endpoint, language);
+                            if (data && isMounted) setContent(data);
+                        } catch (err) {
+                            console.log("TMDB metadata error, using local/supabase data.");
+                        }
                     }
                 }
             } catch (err) {

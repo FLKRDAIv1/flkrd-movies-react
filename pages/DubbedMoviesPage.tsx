@@ -578,11 +578,21 @@ const DubbedMoviesPage: React.FC = () => {
             }
         } catch (e: any) {
             console.error("Force sync failed", e);
-            addNotification({ 
-                type: 'error', 
-                title: e.message.includes('timeout') ? 'Latency Detected' : 'Network Outage', 
-                message: e.message.includes('timeout') ? 'The data stream is slow. Local nodes preserved.' : `Operation failed. ${e?.message || 'Database connection error.'}` 
-            });
+            // Check if we have cached data before showing a hard error
+            const cached = await db.getMovies();
+            if (cached && cached.length > 0) {
+                addNotification({
+                    type: 'info',
+                    title: 'Offline Archive Loaded',
+                    message: 'Main connection delayed. Viewing local archive.'
+                });
+            } else {
+                addNotification({ 
+                    type: 'error', 
+                    title: 'Sync Interrupted', 
+                    message: 'Could not reach Zana Servers. Please check your connection.' 
+                });
+            }
         } finally {
             setIsForceSyncing(false);
         }
