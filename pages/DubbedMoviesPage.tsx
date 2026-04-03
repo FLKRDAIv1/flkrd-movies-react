@@ -1095,51 +1095,6 @@ const DubbedMoviesPage: React.FC = () => {
                             {t('dubbedMovies')}
                         </h2>
                     </div>
-
-                    {/* Search & Intelligence Hub */}
-                    <div className="w-full md:max-w-md lg:max-w-lg mb-4 md:mb-0 relative order-first md:order-none">
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            whileInView={{ scale: 1, opacity: 1 }}
-                            className="relative group bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-1.5 pr-6 flex items-center gap-4 focus-within:border-brand/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
-                        >
-                            <div className="w-12 h-12 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center shadow-2xl shrink-0 group-focus-within:bg-brand transition-colors">
-                                <Search size={20} className="text-brand group-focus-within:text-white transition-colors" />
-                            </div>
-                            <input 
-                                type="text"
-                                placeholder={language === 'ku' ? "گەڕان بەدوای فیلمەکاندا..." : "Search for dubbed cinema..."}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="bg-transparent border-none outline-none w-full text-sm md:text-base font-bold placeholder:text-gray-500 text-white italic tracking-tighter"
-                            />
-                            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
-                                <span className="text-[10px] font-black uppercase text-gray-600">ID</span>
-                                <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
-                            </div>
-                        </motion.div>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                        <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={forceSync}
-                            disabled={isForceSyncing}
-                            className={`bg-white/5 backdrop-blur-3xl border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-2xl transition-all ${isForceSyncing ? 'text-brand pointer-events-none' : 'text-gray-400 hover:text-white hover:bg-white/10'}`}
-                        >
-                            <RefreshCw size={18} className={isForceSyncing ? "animate-spin fast-spin" : "animate-spin-slow"} />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{isForceSyncing ? 'Syncing...' : 'Force Sync'}</span>
-                        </motion.button>
-
-                        <div className="bg-white/5 backdrop-blur-3xl border border-white/10 px-8 py-5 rounded-[2rem] flex items-center gap-5 shadow-2xl">
-                            <div className="relative">
-                                <Activity size={20} className="text-brand" />
-                                <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-brand/50 rounded-full blur-sm" />
-                            </div>
-                            <span className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em]">{dubbedContent.length} UPLOADED MOVIES</span>
-                        </div>
-                    </div>
                 </div>
 
                 {/* --- User Manual Filtering Array --- */}

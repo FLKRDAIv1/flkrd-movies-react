@@ -194,10 +194,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     <Zap size={18} className="text-gray-400" />
                     <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{t('performanceTurbo')}</h3>
                   </div>
-                  <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 flex items-center justify-between group hover:border-brand/30 transition-all">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black text-white uppercase italic tracking-tight">{t('performanceTurbo')}</span>
-                      <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{t('performanceDescription')}</span>
+                  <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 pr-8 flex items-center justify-between group hover:border-brand/30 transition-all">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-sm font-[1000] text-white uppercase italic tracking-tight">{t('performanceTurbo')}</span>
+                      <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('performanceDescription')}</span>
                     </div>
                     <button 
                       onClick={() => {
@@ -209,16 +209,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           message: next ? (language === 'ku' ? "دۆخی خێرا چالاک کرا" : "Performance Turbo Activated") : (language === 'ku' ? "دۆخی ئاسایی گەڕێندرایەوە" : "Standard Experience Restored")
                         });
                       }}
-                      className={`w-12 h-6 rounded-full relative transition-all duration-500 ${isPerformanceMode ? 'bg-brand shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.4)]' : 'bg-white/10'}`}
+                      className={`w-14 h-7 rounded-full relative transition-all duration-500 ${isPerformanceMode ? 'bg-[#e50914] shadow-[0_0_20px_rgba(229,9,20,0.4)]' : 'bg-white/10'}`}
                     >
                       <motion.div 
-                        animate={{ x: isPerformanceMode ? 24 : 4 }}
-                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-xl"
+                        initial={false}
+                        animate={{ 
+                          x: isPerformanceMode ? 32 : 4,
+                        }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                        className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-xl"
                       />
                     </button>
                   </div>
-                  <div className="p-4 bg-brand/5 border border-brand/10 rounded-2xl flex items-start gap-3">
-                    <Info size={14} className="text-brand shrink-0 mt-0.5" />
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-start gap-3">
+                    <Info size={14} className="text-gray-500 shrink-0 mt-0.5" />
                     <p className="text-[9px] text-gray-400 font-medium leading-relaxed italic">
                       {t('performanceInfo')}
                     </p>
