@@ -665,43 +665,51 @@ const DubbedMoviesPage: React.FC = () => {
         setIsUpdating(true);
 
         try {
-            const isSupabaseMovie = typeof nodeToEdit.id === 'string' && nodeToEdit.id.startsWith('custom_');
+            // 1. Robust ID Extraction Logic
+            const rawIdString = nodeToEdit.id.startsWith('custom_') 
+                ? nodeToEdit.id.replace('custom_', '') 
+                : nodeToEdit.id;
 
-            if (isSupabaseMovie) {
-                const dbId = nodeToEdit.id.startsWith('custom_') ? nodeToEdit.id.replace('custom_', '') : nodeToEdit.id;
-                // Update in Supabase
-                const { error } = await supabase
-                    .from('dubbed_movies')
-                    .update({
-                        title: editData.title,
-                        description: editData.description,
-                        videoUrl: editData.videoUrl,
-                        imageBase64: editData.imageBase64,
-                        bannerBase64: editData.bannerBase64,
-                        level: editData.level
-                    })
-                    .eq('id', dbId);
+            // Ensure numeric integrity for Supabase BigInts
+            const numericId = !isNaN(Number(rawIdString)) ? Number(rawIdString) : rawIdString;
 
-                if (error) throw error;
+            console.log(`[ZANA PROTOCOL] Initiating Node Modification: ${numericId}`);
 
-                // Sync Upstash Redis Cache
-                try {
-                    const cacheStr = await redis.get('custom_dubbed_movies');
-                    if (cacheStr) {
-                        let cachedMovies = JSON.parse(cacheStr);
-                        cachedMovies = cachedMovies.map((m: any) =>
-                            m.id === dbId
-                                ? { ...m, ...editData, customStream: editData.videoUrl, poster_path: editData.imageBase64, backdrop_path: editData.bannerBase64 }
-                                : m
-                        );
-                        await redis.set('custom_dubbed_movies', JSON.stringify(cachedMovies));
-                    }
-                } catch (cacheErr) {
-                    console.error("Cache sync failed:", cacheErr);
-                }
+            // 2. Perform Supabase Update
+            const { error } = await supabase
+                .from('dubbed_movies')
+                .update({
+                    title: editData.title,
+                    description: editData.description,
+                    videoUrl: editData.videoUrl,
+                    imageBase64: editData.imageBase64,
+                    bannerBase64: editData.bannerBase64,
+                    level: editData.level
+                })
+                .eq('id', numericId);
+
+            if (error) {
+                console.error('[DATABASE UPDATE ERROR]', error);
+                throw error;
             }
 
-            // Sync Local State IMMEDIATELY
+            // --- Synchronization Protocols ---
+
+            // 3. Refresh Global Redis Cache (Fetch latest to ensure 100% accuracy)
+            try {
+                const { data: freshList } = await supabase
+                    .from('dubbed_movies')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (freshList) {
+                    await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 });
+                }
+            } catch (cacheErr) {
+                console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB record updated.', cacheErr);
+            }
+
+            // 4. Sync Local UI State and IndexedDB Persistence
             setDubbedContent((prev) => {
                 const next = prev.map(item => {
                     if (item.id === nodeToEdit.id) {
@@ -721,15 +729,26 @@ const DubbedMoviesPage: React.FC = () => {
                     }
                     return item;
                 });
-                db.saveMovies(next).catch(console.error);
+                db.saveMovies(next).catch(err => console.error('[DB PERSISTENCE FAIL]', err));
                 return next;
             });
-            addNotification({ type: 'success', title: 'Update Complete', message: 'Movie details have been updated.' });
+
+            addNotification({ 
+                type: 'success', 
+                title: 'Data Stream Updated', 
+                message: 'Movie records have been successfully synchronized.' 
+            });
+
             setIsEditModalOpen(false);
             setNodeToEdit(null);
+
         } catch (error: any) {
-            console.error('Update error:', error);
-            addNotification({ type: 'error', title: 'Update Failed', message: error.message || 'Failed to update movie.' });
+            console.error('[CRITICAL MODIFICATION FAILURE]', error);
+            addNotification({ 
+                type: 'error', 
+                title: 'Operation Failed', 
+                message: error.message || 'The data stream refused to update.' 
+            });
         } finally {
             setIsUpdating(false);
         }
