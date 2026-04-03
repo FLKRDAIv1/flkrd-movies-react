@@ -31,7 +31,10 @@ const DubbedDetailPage: React.FC = () => {
     const dubbedData = useMemo(() => {
         if (location.state?.customData) return location.state.customData;
         if (supabaseData) return supabaseData;
-        return CUSTOM_DUBBED_ARCHIVE.find(movie => String(movie.id) === String(id));
+        
+        // Normalize searching in the local archive by stripping 'custom_' prefix if needed
+        const cleanId = id?.replace('custom_', '');
+        return CUSTOM_DUBBED_ARCHIVE.find(movie => String(movie.id) === String(cleanId) || String(movie.id) === String(id));
     }, [id, location.state, supabaseData]);
 
     // Smart iFrame Parser Engine
@@ -137,7 +140,8 @@ const DubbedDetailPage: React.FC = () => {
             const cleanId = idStr.replace('custom_', '');
 
             if (!isNaN(Number(cleanId))) {
-                const endpoint = `/movie/${cleanId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
+                const numericId = Number(cleanId);
+                const endpoint = `/movie/${numericId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
                 try {
                     let data = await fetchData(endpoint, language);
                     if (data) setContent(data);

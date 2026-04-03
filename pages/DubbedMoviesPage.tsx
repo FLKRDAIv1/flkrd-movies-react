@@ -361,14 +361,17 @@ const DubbedMoviesPage: React.FC = () => {
                         // Sort NEW movies to appear first, then KING, then BEST, then SPECIAL, then Standard
                         formattedCustom.sort((a, b) => {
                             const priority: { [key: string]: number } = {
-                                'NEW': 0,
-                                'KING': 1,
-                                'BEST': 2,
-                                'SPECIAL': 3
+                                'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
                             };
                             const pA = priority[a.level] ?? 99;
                             const pB = priority[b.level] ?? 99;
-                            return pA - pB;
+                            
+                            if (pA !== pB) return pA - pB;
+                            
+                            // Secondary sort: created_at descending
+                            const dateA = new Date(a.created_at || 0).getTime();
+                            const dateB = new Date(b.created_at || 0).getTime();
+                            return dateB - dateA;
                         });
 
                         const finalMerge = [...formattedCustom];
@@ -539,12 +542,18 @@ const DubbedMoviesPage: React.FC = () => {
                     level: movie.level || 'KING'
                 }));
 
-                // Priority Sorting Alignment
+                // Priority Sorting Alignment (NEW first, then date-desc)
                 formattedCustom.sort((a, b) => {
                     const priority: { [key: string]: number } = {
                         'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
                     };
-                    return (priority[a.level] ?? 99) - (priority[b.level] ?? 99);
+                    const pA = priority[a.level] ?? 99;
+                    const pB = priority[b.level] ?? 99;
+                    if (pA !== pB) return pA - pB;
+                    
+                    const dateA = new Date(a.created_at || 0).getTime();
+                    const dateB = new Date(b.created_at || 0).getTime();
+                    return dateB - dateA;
                 });
 
                 setDubbedContent([...formattedCustom]);
@@ -1128,6 +1137,17 @@ const DubbedMoviesPage: React.FC = () => {
                         className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'SPECIAL' ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-purple-500 hover:text-white'}`}
                     >
                         <Zap size={14} /> Special Event
+                    </button>
+
+                    <div className="flex-1" />
+
+                    <button
+                        onClick={forceSync}
+                        className={`shrink-0 snap-start p-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border bg-white/5 text-gray-400 border-white/10 hover:border-brand hover:text-brand hover:bg-brand/10 group ${isForceSyncing ? 'animate-pulse' : ''}`}
+                        title="Premium Synchronization"
+                    >
+                        <RefreshCw size={14} className={`${isForceSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+                        <span className="hidden md:inline">Sync Node</span>
                     </button>
                 </div>
 
