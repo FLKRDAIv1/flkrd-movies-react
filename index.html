@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FLKRD MOVIES</title>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+        "react/": "https://aistudiocdn.com/react@^19.1.1/",
+        "react": "https://aistudiocdn.com/react@^19.1.1",
+        "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.3",
+        "framer-motion": "https://aistudiocdn.com/framer-motion@^11.3.19",
+        "lucide-react": "https://aistudiocdn.com/lucide-react@^0.418.0",
+        "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
+        "@novu/react": "https://esm.sh/@novu/react@^3.12.0"
+      }
+    }
+  </script>
+
+  <!-- Primary Branding -->
+  <link rel="icon" href="/flkrd-icon.png" type="image/png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+  <!-- Open Graph / Facebook / WhatsApp Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://flkrdmovies.com/">
+  <meta property="og:title" content="FLKRD MOVIES | Stream Kurdish Dubbed & International Movies">
+  <meta property="og:description"
+    content="Watch the latest Kurdish dubbed movies, international series, and animated classics on FLKRD MOVIES. High-quality streaming with instant access.">
+  <meta property="og:image" content="/flkrd-icon.png">
+
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FLKRD MOVIES" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: 'var(--brand-red)',
+            'main-bg': 'var(--bg-primary)',
+            'main-text': 'var(--text-primary)',
+            'sec-text': 'var(--text-secondary)',
+            'card-bg': 'var(--card-bg)',
+            'box-bg': 'var(--box-bg)',
+            'border-color': 'var(--border-color)',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js" type="module"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap');
+  </style>
+  <style>
+    :root {
+      --brand-red: #e50914;
+      --brand-red-rgb: 229, 9, 20;
+      --bg-primary: #000000;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+      --box-bg: rgba(255, 255, 255, 0.03);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --card-bg: #0c0c0c;
+      --nav-bg: rgba(0, 0, 0, 0.4);
+      --glow: rgba(var(--brand-red-rgb), 0.2);
+      --input-bg: rgba(255, 255, 255, 0.05);
+    }
+
+    .light-mode {
+      --bg-primary: #f8fafc;
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --box-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --card-bg: #ffffff;
+      --nav-bg: rgba(255, 255, 255, 0.7);
+      --glow: rgba(var(--brand-red-rgb), 0.1);
+      --input-bg: #ffffff;
+    }
+
+    .premium-theme-active {
+      --bg-primary: rgba(0, 0, 0, 0.2);
+      --card-bg: rgba(12, 12, 12, 0.4);
+      --box-bg: rgba(255, 255, 255, 0.02);
+      --nav-bg: rgba(0, 0, 0, 0.3);
+      --border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Moonlight Theme Specific Overrides */
+    .theme-premium-particles-moon {
+      --bg-primary: #020617;
+      /* Deep Midnight */
+      --text-primary: #f8fafc;
+      /* Silver Slate */
+      --text-secondary: #94a3b8;
+      /* Cool Gray */
+      --card-bg: rgba(15, 23, 42, 0.6);
+      --box-bg: rgba(30, 41, 59, 0.3);
+      --border-color: rgba(148, 163, 184, 0.1);
+      --brand-red: #94a3b8;
+      /* Shift brand color to Silver in Moonlight mode? Maybe just subtle blue */
+      --glow: rgba(148, 163, 184, 0.15);
+    }
+
+    .theme-premium-particles-moon .text-brand {
+      color: #cbd5e1;
+    }
+
+    .theme-premium-particles-moon .bg-brand {
+      background-color: #475569;
+    }
+
+    body {
+      font-family: 'Zain', sans-serif;
+      font-weight: 700;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow-x: hidden;
+    }
+
+    /* Scrollbar */
+    .scrollbar-hide::-webkit-scrollbar {
+      display: none;
+    }
+
+    .scrollbar-hide {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Special Enhanced Shimmer Text Effect */
+    .shimmer-text {
+      background: linear-gradient(to right,
+          var(--text-primary) 20%,
+          var(--brand-red) 40%,
+          #ff4d4d 50%,
+          var(--brand-red) 60%,
+          var(--text-primary) 80%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer-special 3s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes shimmer-special {
+      to {
+        background-position: 200% center;
+      }
+    }
+
+    .dark-gradient-mask {
+      mask-image: linear-gradient(to top, black 20%, transparent 100%);
+    }
+
+    /* Native shadows based on accent color */
+    .accent-shadow {
+      box-shadow: 0 10px 30px -10px rgba(var(--brand-red-rgb), 0.5);
+    }
+
+    .accent-glow {
+      filter: drop-shadow(0 0 15px rgba(var(--brand-red-rgb), 0.3));
+    }
+
+    /* Zain Typography Utility Classes */
+    .zain-extralight {
+      font-family: "Zain", sans-serif;
+      font-weight: 200;
+      font-style: normal;
+    }
+
+    .zain-light {
+      font-family: "Zain", sans-serif;
+      font-weight: 300;
+      font-style: normal;
+    }
+
+    .zain-regular {
+      font-family: "Zain", sans-serif;
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    .zain-bold {
+      font-family: "Zain", sans-serif;
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    .zain-extrabold {
+      font-family: "Zain", sans-serif;
+      font-weight: 800;
+      font-style: normal;
+    }
+
+    .zain-black {
+      font-family: "Zain", sans-serif;
+      font-weight: 900;
+      font-style: normal;
+    }
+
+    .zain-light-italic {
+      font-family: "Zain", sans-serif;
+      font-weight: 300;
+      font-style: italic;
+    }
+
+    .zain-regular-italic {
+      font-family: "Zain", sans-serif;
+      font-weight: 400;
+      font-style: italic;
+    }
+  </style>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

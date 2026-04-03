@@ -1,0 +1,8 @@
+{
+  "name": "FLKRD MOVIES ",
+  "description": "High-fidelity cinematic streaming experience built with Flutter.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
