@@ -7,7 +7,7 @@ import {
     Link as LinkIcon, ArrowLeft, Sparkles,
 
     Activity, Info, Star, ChevronRight, Share, Copy,
-    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp
+    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -230,6 +230,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [loading, setLoading] = useState(!sessionStorage.getItem('zana_protocol_established'));
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingStatus, setLoadingStatus] = useState('Initializing Source');
+    const [searchQuery, setSearchQuery] = useState('');
     const [shareTarget, setShareTarget] = useState<any>(null);
 
     const [scrollPosition, setScrollPosition] = useState(0);
@@ -254,6 +255,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
     const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive'>('upload');
+    const [adminSearchQuery, setAdminSearchQuery] = useState('');
     const [movieToDelete, setMovieToDelete] = useState<string | null>(null);
 
     // Edit State Handlers
@@ -510,7 +512,9 @@ const DubbedMoviesPage: React.FC = () => {
     };
 
     // Auto-play the Hero Banner Carousel
-    const heroMovies = dubbedContent.slice(0, 5);
+    const heroMovies = dubbedContent.filter(m => m.level === 'KING').length > 0
+        ? dubbedContent.filter(m => m.level === 'KING').slice(0, 5)
+        : dubbedContent.slice(0, 5);
     useEffect(() => {
         if (heroMovies.length <= 1) return;
         const timer = setInterval(() => {
@@ -828,7 +832,21 @@ const DubbedMoviesPage: React.FC = () => {
         }
     };
 
-    const filteredContent = dubbedContent; // Removed search filtering for now to focus on stability.
+    const filteredContent = dubbedContent.filter(movie => {
+        const query = searchQuery.toLowerCase().trim();
+        if (!query) return true;
+        const title = (movie.title || movie.kurdishTitle || '').toLowerCase();
+        const overview = (movie.overview || movie.kurdishOverview || '').toLowerCase();
+        return title.includes(query) || overview.includes(query);
+    });
+
+    const adminFilteredContent = dubbedContent.filter(movie => {
+        const query = adminSearchQuery.toLowerCase().trim();
+        if (!query) return true;
+        const title = (movie.title || movie.kurdishTitle || '').toLowerCase();
+        const overview = (movie.overview || movie.kurdishOverview || '').toLowerCase();
+        return title.includes(query) || overview.includes(query);
+    });
 
     const featuredMovie = dubbedContent[0];
 
@@ -1013,6 +1031,30 @@ const DubbedMoviesPage: React.FC = () => {
                         </h2>
                     </div>
 
+                    {/* Search & Intelligence Hub */}
+                    <div className="w-full md:max-w-md lg:max-w-lg mb-4 md:mb-0 relative order-first md:order-none">
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            whileInView={{ scale: 1, opacity: 1 }}
+                            className="relative group bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-1.5 pr-6 flex items-center gap-4 focus-within:border-brand/40 transition-all shadow-[0_30px_60px_rgba(0,0,0,0.5)]"
+                        >
+                            <div className="w-12 h-12 bg-brand/10 border border-brand/20 rounded-2xl flex items-center justify-center shadow-2xl shrink-0 group-focus-within:bg-brand transition-colors">
+                                <Search size={20} className="text-brand group-focus-within:text-white transition-colors" />
+                            </div>
+                            <input 
+                                type="text"
+                                placeholder={language === 'ku' ? "گەڕان بەدوای فیلمەکاندا..." : "Search for dubbed cinema..."}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="bg-transparent border-none outline-none w-full text-sm md:text-base font-bold placeholder:text-gray-500 text-white italic tracking-tighter"
+                            />
+                            <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+                                <span className="text-[10px] font-black uppercase text-gray-600">ID</span>
+                                <div className="w-1.5 h-1.5 bg-brand rounded-full animate-pulse" />
+                            </div>
+                        </motion.div>
+                    </div>
+
                     <div className="flex items-center gap-4">
                         <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -1093,7 +1135,7 @@ const DubbedMoviesPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
-                        {dubbedContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).slice(0, visibleCount).map((movie, index) => (
+                        {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).slice(0, visibleCount).map((movie, index) => (
 
                             <motion.div
                                 key={movie.id}
@@ -1105,7 +1147,7 @@ const DubbedMoviesPage: React.FC = () => {
                             >
                                 <div className="relative aspect-[2/3] rounded-[2.5rem] md:rounded-[4rem] overflow-hidden border border-white/10 shadow-2xl transition-all duration-700 group-hover:scale-[1.05] group-hover:border-brand/50 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
                                     <LazyBase64Image
-                                        src={movie.imageBase64 || (movie.poster_path?.startsWith('data:') || movie.poster_path?.startsWith('http') ? movie.poster_path : `${IMAGE_BASE_URL}${movie.poster_path}`)}
+                                        src={movie.imageBase64 || (movie.poster_path?.startsWith('data:') || movie.poster_path?.startsWith('http') ? movie.poster_path : (movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'))}
                                         className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                                         alt={movie.title}
                                     />
@@ -1364,14 +1406,37 @@ const DubbedMoviesPage: React.FC = () => {
                                             </form>
                                         ) : (
                                             <div className="space-y-4 pb-4">
-                                                {dubbedContent.filter(m => m.customStream && m.imageBase64).length === 0 ? (
+                                                {/* Admin Search Bar */}
+                                                <div className="relative group">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-brand transition-colors">
+                                                        <Search size={18} />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Sᴇᴀʀᴄʜ Aʀᴄʜɪᴠᴇ Nᴏᴅᴇs..."
+                                                        value={adminSearchQuery}
+                                                        onChange={(e) => setAdminSearchQuery(e.target.value)}
+                                                        className="w-full bg-black/60 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:border-brand outline-none transition-all placeholder:text-gray-600 font-bold uppercase tracking-widest text-xs"
+                                                    />
+                                                </div>
+
+                                                {adminFilteredContent.length === 0 ? (
                                                     <div className="text-center py-10 text-gray-500 text-sm font-bold uppercase tracking-widest bg-black/50 rounded-2xl border border-white/5">
-                                                        No Movies Found
+                                                        No Match Found
                                                     </div>
                                                 ) : (
-                                                    dubbedContent.filter(m => m.customStream && (m.imageBase64 || m.poster_path)).map((movie, idx) => (
+                                                    adminFilteredContent.map((movie, idx) => (
                                                         <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-black/40 border border-white/10 p-4 rounded-2xl group hover:border-brand/30 transition-colors relative">
-                                                            <img src={movie.poster_path || movie.imageBase64} alt="" className="w-full sm:w-16 h-32 sm:h-24 object-cover rounded-xl shadow-lg border border-white/5" />
+                                                            <div className="w-full sm:w-16 h-32 sm:h-24 rounded-xl shadow-lg border border-white/5 overflow-hidden bg-white/5 flex items-center justify-center">
+                                                                <img
+                                                                    src={movie.poster_path || movie.imageBase64 || 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                                                                    }}
+                                                                />
+                                                            </div>
                                                             <div className="flex-1 min-w-0 pr-10 sm:pr-0">
                                                                 <h3 className="text-white font-bold truncate">{movie.title || movie.kurdishTitle}</h3>
                                                                 <p className="text-xs text-gray-400 line-clamp-2 mt-1">{movie.overview || movie.kurdishOverview}</p>
