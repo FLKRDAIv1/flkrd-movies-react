@@ -339,8 +339,14 @@ const DubbedMoviesPage: React.FC = () => {
                         }
                     }
                 } catch (e) {
-                    const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
-                    if (data) customMovies = data;
+                    console.error("NETWORK SIGNAL INTERRUPTED:", e);
+                    // CRITICAL FALLBACK: Load from local Quantum Core if Supabase is unreachable
+                    const cached = await db.getMovies();
+                    if (cached && cached.length > 0) {
+                        setDubbedContent(cached);
+                        await setDynamicStatus('OFFLINE ARCHIVE RECOVERED. SIGNAL TUNING...', 400);
+                        return; // Exit early since we have cached data
+                    }
                 } finally {
                     if (customMovies.length > 0) {
                         await setDynamicStatus('APPLYING TAG PRIORITY SORTING ALGORITHMS...', 500);
@@ -398,6 +404,11 @@ const DubbedMoviesPage: React.FC = () => {
                 setLoading(false);
             }
         };
+
+        const mainTimeoutId = setTimeout(() => {
+            setLoading(false);
+            setLoadingStatus('PROTOCOL READY (FALLBACK)');
+        }, 15000); // 15s absolute fallback
 
         loadDubbedArchive();
 
@@ -931,7 +942,22 @@ const DubbedMoviesPage: React.FC = () => {
                 >
                     {language === 'ku' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
                 </button>
-                <div className={`transition-all duration-500 flex flex-col items-center ${scrollPosition > 150 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
+                <div className={`transition-all duration-700 flex items-center gap-6 ${scrollPosition > 50 ? 'opacity-100 translate-y-0 translate-x-0' : 'opacity-100 translate-y-0 translate-x-0'}`}>
+                    {/* Search Field Restoration */}
+                    <div className="relative group/search pointer-events-auto flex">
+                        <div className="absolute inset-0 bg-brand/5 blur-xl group-hover/search:bg-brand/20 transition-all rounded-full" />
+                        <div className="relative flex items-center bg-black/60 backdrop-blur-3xl border border-white/10 rounded-2xl px-6 py-3 transition-all focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 w-80">
+                            <Search size={18} className="text-gray-500 mr-3 group-focus-within/search:text-brand transition-colors" />
+                            <input
+                                type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search Archives..."
+                                className="bg-transparent border-none outline-none text-sm font-bold placeholder:text-gray-600 w-full text-white"
+                            />
+                        </div>
+                    </div>
+
                     <div className="bg-brand/10 backdrop-blur-2xl border border-brand/20 px-6 py-2 rounded-full flex items-center gap-2">
                         <Activity size={12} className={isLive ? "text-green-500 animate-pulse" : "text-brand animate-pulse"} />
                         <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isLive ? "text-green-500" : "text-brand"}`}>
@@ -940,6 +966,13 @@ const DubbedMoviesPage: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-4 pointer-events-auto">
+                    <button
+                        onClick={forceSync}
+                        className={`bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95 ${isForceSyncing ? 'animate-pulse' : ''}`}
+                        title="Force Transmission Synchronize"
+                    >
+                        <RefreshCw size={20} className={`${isForceSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
+                    </button>
                     <button
                         onClick={() => navigate('/settings')}
                         className="bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95"
@@ -1174,22 +1207,29 @@ const DubbedMoviesPage: React.FC = () => {
                         ))}
                     </div>
                 ) : filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-40 gap-8">
-                        <div className="w-32 h-32 bg-white/5 rounded-[3rem] flex items-center justify-center border border-white/10 relative overflow-hidden group">
-                            <div className="absolute inset-0 bg-brand/5 group-hover:bg-brand/10 transition-colors" />
-                            <Search size={48} className="text-gray-600 group-hover:text-brand transition-all group-hover:scale-110 duration-700" />
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center py-40 gap-8 w-full"
+                    >
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-brand/20 blur-[100px]" />
+                            <div className="relative text-5xl md:text-[10rem] font-[1000] uppercase italic tracking-tighter text-white/5 select-none text-center">NO NODES DETECTED</div>
                         </div>
-                        <div className="text-center space-y-4">
-                            <h3 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white shimmer-text">No Nodes Detected</h3>
-                            <p className="text-xs font-black text-gray-500 uppercase tracking-[0.4em] italic mb-10">Searching Other Frequencies...</p>
+                        
+                        <div className="flex flex-col items-center gap-6">
+                            <p className="text-gray-500 font-black uppercase tracking-[0.4em] text-[10px] max-w-xs text-center border-t border-white/5 pt-6">Archive Transmission Interrupted. The Zana Engine is waiting for a manual handshake.</p>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={forceSync}
+                                className="bg-white text-black px-12 py-5 rounded-[2rem] font-black uppercase italic tracking-widest text-xs flex items-center gap-3 shadow-2xl hover:bg-brand hover:text-white transition-all group"
+                            >
+                                <RefreshCw size={16} className={isForceSyncing ? "animate-spin" : "group-hover:rotate-180 transition-transform duration-700"} />
+                                <span>RE-ESTABLISH CONNECTION</span>
+                            </motion.button>
                         </div>
-                        <button 
-                            onClick={() => { setSearchQuery(''); setActiveFilter('ALL'); }}
-                            className="bg-brand/10 hover:bg-brand/20 border border-brand/30 px-10 py-5 rounded-2xl text-brand text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.05] active:scale-95"
-                        >
-                            Reset Registry
-                        </button>
-                    </div>
+                    </motion.div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
                         {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).slice(0, visibleCount).map((movie, index) => (

@@ -12,6 +12,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 
 const DubbedDetailPage: React.FC = () => {
@@ -109,51 +110,77 @@ const DubbedDetailPage: React.FC = () => {
     }, [updateProgress]);
 
     useEffect(() => {
+        let isMounted = true;
+        const timeoutId = setTimeout(() => {
+            if (isMounted) setLoading(false);
+        }, 10000); // 10s absolute fallback for the spinner
+
         const loadContent = async () => {
             if (!id) return;
             setLoading(true);
 
-            // 1. Check if it's a Supabase movie
-            const idStr = id.toString();
-            if (idStr.startsWith('custom_')) {
-                const dbId = idStr.replace('custom_', '');
-                try {
-                    const { data, error } = await supabase.from('dubbed_movies').select('*').eq('id', dbId).single();
-                    if (data && !error) {
-                        setSupabaseData({
-                            ...data,
-                            id: `custom_${data.id}`,
-                            poster_path: data.imageBase64,
-                            backdrop_path: data.bannerBase64 || data.imageBase64,
-                            customStream: data.videoUrl,
-                            kurdishTitle: data.title,
-                            kurdishOverview: data.description
-                        });
+            try {
+                // 1. Check if it's a Supabase movie
+                const idStr = id.toString();
+                if (idStr.startsWith('custom_')) {
+                    const dbId = idStr.replace('custom_', '');
+                    try {
+                        const numericId = !isNaN(Number(dbId)) ? Number(dbId) : dbId;
+                        const { data, error } = await supabase.from('dubbed_movies').select('*').eq('id', numericId).single();
+                        if (data && !error) {
+                            setSupabaseData({
+                                ...data,
+                                id: `custom_${data.id}`,
+                                poster_path: data.imageBase64,
+                                backdrop_path: data.bannerBase64 || data.imageBase64,
+                                customStream: data.videoUrl,
+                                kurdishTitle: data.title,
+                                kurdishOverview: data.description
+                            });
+                        } else {
+                            // FALLBACK to IndexedDB
+                            const cached = await db.getMovies();
+                            const match = cached.find(m => m.id === idStr || m.id === numericId || `custom_${m.id}` === idStr);
+                            if (match) setSupabaseData(match);
+                        }
+                    } catch (e) {
+                        const cached = await db.getMovies();
+                        const match = cached.find(m => m.id === idStr || `custom_${m.id}` === idStr);
+                        if (match) setSupabaseData(match);
                     }
-                } catch (e) {
-                    console.error("Supabase load error:", e);
+                }
+
+                // 2. Fetch TMDB Enrichment
+                const apiLang = 'en-US';
+                const cleanId = idStr.replace('custom_', '');
+
+                if (!isNaN(Number(cleanId))) {
+                    const numericTMDBId = Number(cleanId);
+                    const endpoint = `/movie/${numericTMDBId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
+                    try {
+                        let data = await fetchData(endpoint, language);
+                        if (data && isMounted) setContent(data);
+                    } catch (err) {
+                        console.log("TMDB metadata error, using local/supabase data.");
+                    }
+                }
+            } catch (err) {
+                console.error("Critical loader crash:", err);
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                    clearTimeout(timeoutId);
                 }
             }
-
-            // 2. Fetch TMDB Enrichment
-            const apiLang = 'en-US';
-            const cleanId = idStr.replace('custom_', '');
-
-            if (!isNaN(Number(cleanId))) {
-                const numericId = Number(cleanId);
-                const endpoint = `/movie/${numericId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
-                try {
-                    let data = await fetchData(endpoint, language);
-                    if (data) setContent(data);
-                } catch (err) {
-                    console.log("TMDB metadata error, using local/supabase data.");
-                }
-            }
-
-            setLoading(false);
         };
+
         loadContent();
         window.scrollTo(0, 0);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+        };
     }, [id, language]);
 
     const handlePlayerLoad = useCallback(() => {
