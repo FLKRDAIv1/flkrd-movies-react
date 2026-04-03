@@ -52,206 +52,158 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
     );
 };
 
-const DecodingText: React.FC<{ text: string }> = ({ text }) => {
-    const [displayText, setDisplayText] = React.useState('');
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!?@#$%&";
-
-    React.useEffect(() => {
-        let iteration = 0;
-        const interval = setInterval(() => {
-            setDisplayText(text.split("").map((char, index) => {
-                if (index < iteration) return text[index];
-                return chars[Math.floor(Math.random() * chars.length)];
-            }).join(""));
-            
-            if (iteration >= text.length) clearInterval(interval);
-            iteration += 1/3;
-        }, 30);
-        return () => clearInterval(interval);
-    }, [text]);
-
-    return <span className="font-sans font-medium">{displayText}</span>;
-};
-
-const LiveGauge: React.FC<{ value: number, color?: string }> = ({ value, color = "rgba(var(--brand-red-rgb), 0.8)" }) => (
-    <div className="flex gap-0.5 items-center h-1.5 w-16">
-        {[...Array(10)].map((_, i) => (
+const AtmosphereParticles: React.FC = () => (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {[...Array(20)].map((_, i) => (
             <motion.div
                 key={i}
-                animate={{ 
-                    backgroundColor: i / 10 < value ? color : "rgba(255,255,255,0.05)",
-                    opacity: i / 10 < value ? [0.4, 1, 0.4] : 1
+                initial={{ 
+                    x: Math.random() * 100 + "%", 
+                    y: Math.random() * 100 + "%",
+                    opacity: 0 
                 }}
-                transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
-                className="h-full w-1 rounded-full"
+                animate={{ 
+                    y: [null, Math.random() * 100 + "%"],
+                    opacity: [0, 0.4, 0]
+                }}
+                transition={{
+                    duration: Math.random() * 20 + 20,
+                    repeat: Infinity,
+                    ease: "linear"
+                }}
+                className="absolute w-1 h-1 bg-white/20 rounded-full blur-[1px]"
             />
         ))}
     </div>
 );
 
-const ProfessionalHUD: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br', gaugeValue?: number }> = ({ label, value, corner, gaugeValue }) => {
-    const positions = {
-        tl: 'top-8 left-8',
-        tr: 'top-8 right-8 text-right flex-row-reverse',
-        bl: 'bottom-8 left-8',
-        br: 'bottom-8 right-8 text-right flex-row-reverse'
-    };
-    
-    return (
-        <div className={`absolute ${positions[corner]} flex flex-col gap-2 p-4 bg-white/[0.02] backdrop-blur-md border border-white/5 rounded-xl min-w-[140px]`}>
-            <div className="flex flex-col gap-1" dir="rtl">
-                <span className="text-[9px] font-sans font-bold text-white/20 tracking-widest uppercase">{label}</span>
-                <span className="text-brand font-black text-[11px] tracking-wider">{value}</span>
-            </div>
-            {gaugeValue !== undefined && <LiveGauge value={gaugeValue} />}
-        </div>
-    );
-};
-
-const AudioPulse: React.FC = () => (
-    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-        {[...Array(4)].map((_, i) => (
-            <motion.div
-                key={i}
-                animate={{ 
-                    scale: [0.8, 2.5], 
-                    opacity: [0, 0.2, 0],
-                    borderWidth: ["1px", "0px"]
-                }}
-                transition={{
-                    duration: 4,
-                    repeat: Infinity,
-                    delay: i * 1,
-                    ease: "easeOut"
-                }}
-                className="absolute w-[300px] h-[300px] border-brand/20 rounded-full"
+const BreathingLogo: React.FC = () => (
+    <div className="relative">
+        <motion.div
+            animate={{ 
+                scale: [1, 1.05, 1],
+                opacity: [0.8, 1, 0.8]
+            }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            className="w-40 h-40 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[3.5rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_150px_rgba(var(--brand-red-rgb),0.1)]"
+        >
+            <motion.div 
+                animate={{ opacity: [0.1, 0.3, 0.1] }}
+                transition={{ duration: 8, repeat: Infinity }}
+                className="absolute inset-0 bg-gradient-to-tr from-brand/20 via-transparent to-brand/10"
             />
-        ))}
+            <span className="text-[10rem] font-black italic text-brand leading-none drop-shadow-[0_0_40px_rgba(var(--brand-red-rgb),0.8)] select-none">F</span>
+        </motion.div>
+
+        {/* Cinematic Aura Glows */}
+        <motion.div
+            animate={{ opacity: [0.05, 0.15, 0.05], scale: [1, 1.2, 1] }}
+            transition={{ duration: 10, repeat: Infinity }}
+            className="absolute -inset-24 bg-brand/10 blur-[100px] rounded-full -z-10"
+        />
+        <motion.div
+            animate={{ opacity: [0.1, 0.2, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute -inset-4 border border-white/5 rounded-[4rem]"
+        />
     </div>
 );
 
 const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
-    const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی سێرڤەر...");
-    const [systemMetrics, setSystemMetrics] = React.useState({ throughput: 0.2, buffer: 0.1, clarity: 0.4 });
+    const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی باشترین کوالیتی...");
     
     React.useEffect(() => {
-        const interval = setInterval(() => {
-            setSystemMetrics({
-                throughput: Math.random() * 0.8 + 0.2,
-                buffer: Math.random() * 0.6 + 0.4,
-                clarity: Math.random() * 0.5 + 0.5
-            });
-        }, 2000);
-        return () => clearInterval(interval);
-    }, []);
-
-    React.useEffect(() => {
-        if (status.toLowerCase().includes('initial')) setDisplayStatus("ئەرشیفی فەرمی FLKRD");
-        else if (status.toLowerCase().includes('sync')) setDisplayStatus("هاوکاتکردنی داتاکان...");
-        else if (status.toLowerCase().includes('query') || status.toLowerCase().includes('fetch')) setDisplayStatus("گەڕان بەدوای فیلمەکاندا...");
-        else if (status.toLowerCase().includes('load')) setDisplayStatus("کۆتا قۆناغی بارکردن...");
+        if (status.toLowerCase().includes('initial')) setDisplayStatus("بەخێربێن بۆ جیهانی FLKRD");
+        else if (status.toLowerCase().includes('sync')) setDisplayStatus("هاوکاتکردنی چیرۆکەکان...");
+        else if (status.toLowerCase().includes('query') || status.toLowerCase().includes('fetch')) setDisplayStatus("گەڕان بەدوای فیلمە دڵخوازەکانتدا...");
+        else if (status.toLowerCase().includes('load')) setDisplayStatus("ئامادەکاری کۆتایی...");
         else setDisplayStatus(status);
     }, [status]);
 
     return (
         <motion.div
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05, filter: 'blur(50px)' }}
-            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
+            exit={{ opacity: 0, scale: 1.02, filter: 'blur(60px)' }}
+            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[1000] bg-[#030303] flex flex-col items-center justify-center overflow-hidden"
         >
-            <AudioPulse />
+            <AtmosphereParticles />
             
-            {/* HUD Panels - Master's Console Style */}
-            <ProfessionalHUD label="بانکی زانیاری" value="ئەرشیفی سەرەکی" corner="tl" gaugeValue={systemMetrics.throughput} />
-            <ProfessionalHUD label="کوالیتی پەخش" value="1080p Ultra" corner="tr" gaugeValue={systemMetrics.clarity} />
-            <ProfessionalHUD label="پاراستنی داتا" value="SSL_SECURE" corner="bl" gaugeValue={systemMetrics.buffer} />
-            <ProfessionalHUD label="وەشان" value="FLKRD.v2026" corner="br" />
+            {/* Soft Ambient Glows */}
+            <div className="absolute top-0 inset-x-0 h-full bg-gradient-to-b from-brand/[0.03] to-transparent pointer-events-none" />
 
-            <div className="relative z-10 flex flex-col items-center gap-20 max-w-sm w-full px-8">
-                {/* Brand Identity Focus */}
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative"
-                >
-                    <div className="w-36 h-36 bg-black border border-white/5 rounded-[3rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_120px_rgba(var(--brand-red-rgb),0.1)]">
-                        <motion.div 
-                            animate={{ opacity: [0.2, 0.4, 0.2] }}
-                            transition={{ duration: 5, repeat: Infinity }}
-                            className="absolute inset-0 bg-gradient-to-tr from-brand/20 via-transparent to-brand/10"
-                        />
-                        <span className="text-9xl font-black italic text-brand leading-none drop-shadow-[0_0_30px_rgba(var(--brand-red-rgb),0.7)] select-none">F</span>
-                    </div>
+            <div className="relative z-10 flex flex-col items-center gap-24 max-w-md w-full px-12">
+                <BreathingLogo />
 
-                    <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                        className="absolute -inset-8 border border-white/5 border-t-white/20 rounded-[3.5rem]"
-                    />
-                    
-                    <motion.div
-                        animate={{ opacity: [0.05, 0.15, 0.05], scale: [1, 1.1, 1] }}
-                        transition={{ duration: 6, repeat: Infinity }}
-                        className="absolute -inset-16 bg-brand/10 blur-[80px] rounded-full"
-                    />
-                </motion.div>
-
-                <div className="w-full space-y-10 flex flex-col items-center">
-                    <div className="flex flex-col items-center text-center gap-4">
-                        <div className="flex flex-col gap-1 items-center">
-                            <span className="text-[10px] font-sans font-bold text-brand/50 tracking-[0.6em] uppercase">SYSTEM_ACTIVATED</span>
-                            <p className="text-[13px] font-sans font-black text-brand tracking-[0.2em] opacity-90" dir="rtl">
+                <div className="w-full flex flex-col items-center gap-12">
+                    <div className="flex flex-col items-center text-center gap-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 2 }}
+                            className="flex flex-col gap-2 items-center"
+                        >
+                            <span className="text-[10px] font-sans font-black text-brand/40 tracking-[0.8em] uppercase select-none">
+                                PREMIERE EXPERIENCE
+                            </span>
+                            <p className="text-sm font-sans font-black text-white/90 tracking-[0.1em] opacity-80" dir="rtl">
                                 بە کوردی کردنی چیرۆکەکانی جیهان
                             </p>
-                        </div>
+                        </motion.div>
                         
-                        <div className="h-8 flex items-center justify-center bg-white/[0.03] px-6 py-2 rounded-full border border-white/5 backdrop-blur-sm">
+                        <div className="h-10 flex items-center justify-center">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={displayStatus}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: 10 }}
-                                    className="text-[15px] font-sans text-white/90"
+                                    initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
+                                    animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+                                    exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+                                    transition={{ duration: 1.2, ease: "easeOut" }}
+                                    className="text-lg font-sans text-white/60 font-medium"
                                     dir="rtl"
                                 >
-                                    <DecodingText text={displayStatus} />
+                                    {displayStatus}
                                 </motion.div>
                             </AnimatePresence>
                         </div>
                     </div>
 
-                    {/* Enhanced Metadata Stream */}
-                    <div className="flex gap-4 opacity-20 font-mono text-[8px] tracking-[0.3em] overflow-hidden whitespace-nowrap mask-linear-fade">
-                        <motion.div
-                            animate={{ x: [0, -100] }}
-                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                            className="flex gap-8"
+                    {/* The Silk Line - Elegant Progress */}
+                    <div className="flex flex-col items-center gap-4 w-full">
+                        <div className="w-48 h-[1px] bg-white/[0.03] relative overflow-hidden rounded-full">
+                            <motion.div
+                                animate={{ 
+                                    x: ["-100%", "200%"],
+                                    opacity: [0, 1, 0]
+                                }}
+                                transition={{ 
+                                    duration: 4, 
+                                    repeat: Infinity, 
+                                    ease: "easeInOut" 
+                                }}
+                                className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-brand/40 to-transparent shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.3)]"
+                            />
+                        </div>
+                        <motion.span 
+                            animate={{ opacity: [0.1, 0.3, 0.1] }}
+                            transition={{ duration: 3, repeat: Infinity }}
+                            className="text-[9px] text-white/20 font-sans tracking-[0.5em] font-black uppercase select-none"
                         >
-                            <span>CODEC: H.265_UHD</span>
-                            <span>BITRATE: 8500KBPS</span>
-                            <span>AUDIO: 5.1_SURROUND</span>
-                            <span>ENCRYPTION: AES_256</span>
-                            <span>SERVER: GLOBAL_CDN</span>
-                        </motion.div>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2">
-                         <div className="w-40 h-[2px] bg-white/5 rounded-full overflow-hidden">
-                             <motion.div
-                                animate={{ x: ["-100%", "200%"] }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                className="absolute inset-0 bg-brand w-1/3"
-                             />
-                         </div>
-                         <span className="text-[9px] text-white/20 font-sans tracking-[0.4em] font-bold mt-2">FLKRD MASTER CONSOLE</span>
+                            FLKRD CINEMATIC
+                        </motion.span>
                     </div>
                 </div>
+            </div>
+            
+            {/* Minimalist Studio Credit */}
+            <div className="absolute bottom-12 flex flex-col items-center opacity-10">
+                <span className="text-[8px] font-sans font-black tracking-[1em] text-white uppercase mb-2">PRODUCED BY</span>
+                <span className="text-[10px] font-sans font-black tracking-[0.3em] text-white uppercase">ZANA BARZANI</span>
             </div>
         </motion.div>
     );
 };
+
 
 
 
