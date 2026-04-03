@@ -52,231 +52,150 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
     );
 };
 
-const NeuralGrid: React.FC = () => (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-        <div 
-            className="absolute inset-0"
-            style={{
-                backgroundImage: `linear-gradient(to right, rgba(255,0,0,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,0,0,0.1) 1px, transparent 1px)`,
-                backgroundSize: '40px 40px',
-                transform: 'perspective(500px) rotateX(60deg) translateY(-100px) translateZ(0)',
-                maskImage: 'linear-gradient(to bottom, transparent, black, transparent)',
-            }}
-        />
-        <motion.div 
-            animate={{ y: [0, 40] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0"
-            style={{
-                backgroundImage: `linear-gradient(to bottom, rgba(255,0,0,0.2) 2px, transparent 2px)`,
-                backgroundSize: '100% 40px',
-                transform: 'perspective(500px) rotateX(60deg) translateY(-100px) translateZ(0)',
-            }}
-        />
-    </div>
-);
-
-const DigitalRain: React.FC = () => (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-[0.05] flex justify-around font-mono text-[8px] text-brand">
-        {[...Array(20)].map((_, i) => (
+const AudioPulse: React.FC = () => (
+    <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
+        {[...Array(3)].map((_, i) => (
             <motion.div
                 key={i}
-                initial={{ y: -100 }}
-                animate={{ y: 1000 }}
-                transition={{
-                    duration: Math.random() * 5 + 5,
-                    repeat: Infinity,
-                    ease: "linear",
-                    delay: Math.random() * 5
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ 
+                    scale: [0.8, 1.5], 
+                    opacity: [0, 0.4, 0] 
                 }}
-                className="writing-mode-vertical"
-            >
-                {Math.random().toString(2).substring(2, 20)}
-            </motion.div>
+                transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    delay: i * 1,
+                    ease: "easeOut"
+                }}
+                className="absolute w-[400px] h-[400px] border border-brand/40 rounded-full"
+            />
         ))}
     </div>
 );
 
-const NeuralHub: React.FC = () => (
-    <div className="absolute inset-0 pointer-events-none opacity-30">
-        <svg className="w-full h-full">
-            {[...Array(12)].map((_, i) => (
-                <React.Fragment key={i}>
-                    <motion.circle
-                        cx={`${20 + Math.random() * 60}%`}
-                        cy={`${20 + Math.random() * 60}%`}
-                        r="1"
-                        fill="rgba(255,0,0,0.5)"
-                        animate={{ opacity: [0.1, 0.8, 0.1], scale: [1, 2, 1] }}
-                        transition={{ duration: 3 + Math.random() * 2, repeat: Infinity }}
-                    />
-                    <motion.line
-                        x1={`${Math.random() * 100}%`}
-                        y1={`${Math.random() * 100}%`}
-                        x2={`${Math.random() * 100}%`}
-                        y2={`${Math.random() * 100}%`}
-                        stroke="rgba(255,0,0,0.05)"
-                        strokeWidth="0.5"
-                        animate={{ opacity: [0, 0.2, 0] }}
-                        transition={{ duration: 5, repeat: Infinity, delay: Math.random() * 5 }}
-                    />
-                </React.Fragment>
-            ))}
-        </svg>
-    </div>
-);
-
-const DataMetric: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br' }> = ({ label, value, corner }) => {
+const SoraniLabel: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br', rtl?: boolean }> = ({ label, value, corner, rtl = true }) => {
     const positions = {
-        tl: 'top-8 left-8',
-        tr: 'top-8 right-8 text-right',
-        bl: 'bottom-8 left-8',
-        br: 'bottom-8 right-8 text-right'
+        tl: 'top-10 left-10 text-left',
+        tr: 'top-10 right-10 text-right',
+        bl: 'bottom-10 left-10 text-left',
+        br: 'bottom-10 right-10 text-right'
     };
     return (
-        <div className={`absolute ${positions[corner]} font-mono text-[8px] tracking-[0.2em] text-white/20 uppercase`}>
-            <div>{label}</div>
-            <div className="text-brand/40 font-bold">{value}</div>
+        <div className={`absolute ${positions[corner]} font-sans text-[10px] tracking-wider text-white/30 uppercase`} dir={rtl ? "rtl" : "ltr"}>
+            <div className="font-medium mb-1 opacity-60">{label}</div>
+            <div className="text-brand font-bold text-xs tracking-widest">{value}</div>
         </div>
     );
 };
 
 const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
-    const [metrics, setMetrics] = React.useState({ latency: '2ms', packets: '1024', load: '0.4%', integrity: 0 });
+    const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی سێرڤەر...");
     
+    // Natural Sorani Mappings for typical loading phases
     React.useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics(prev => ({
-                latency: `${Math.floor(Math.random() * 5 + 1)}ms`,
-                packets: `${Math.floor(Math.random() * 5000 + 1000)}`,
-                load: `${(Math.random() * 2).toFixed(2)}%`,
-                integrity: Math.min(prev.integrity + Math.floor(Math.random() * 5), 100)
-            }));
-        }, 1500);
-        return () => clearInterval(interval);
-    }, []);
+        if (status.toLowerCase().includes('initial')) setDisplayStatus("ئەرشیفی فەرمی FLKRD");
+        else if (status.toLowerCase().includes('sync')) setDisplayStatus("هاوکاتکردنی داتاکان...");
+        else if (status.toLowerCase().includes('query') || status.toLowerCase().includes('fetch')) setDisplayStatus("گەڕان بەدوای فیلمەکاندا...");
+        else if (status.toLowerCase().includes('load')) setDisplayStatus("کۆتا قۆناغی بارکردن...");
+        else setDisplayStatus(status);
+    }, [status]);
 
     return (
         <motion.div
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05, filter: 'blur(30px)' }}
+            exit={{ opacity: 0, scale: 1.05, filter: 'blur(40px)' }}
             transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
         >
-            <NeuralGrid />
-            <DigitalRain />
-            <NeuralHub />
+            <AudioPulse />
             
-            {/* Biometric Scan Sweep */}
-            <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{
-                    background: 'conic-gradient(from 0deg, brand, transparent 60deg, transparent)'
-                }}
-            />
+            {/* Artistic Glow Top/Bottom */}
+            <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-brand/5 to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-64 bg-gradient-to-t from-brand/5 to-transparent pointer-events-none" />
 
-            {/* HUD Elements */}
-            <DataMetric label="NODE_LATENCY" value={metrics.latency} corner="tl" />
-            <DataMetric label="INTEGRITY_CHECK" value={`${metrics.integrity}%`} corner="tr" />
-            <DataMetric label="PACKET_STREAM" value={metrics.packets} corner="bl" />
-            <DataMetric label="CORE_LOAD" value={metrics.load} corner="br" />
+            {/* Natural Kurdish Labels */}
+            <SoraniLabel label="ناوەندی زانیاری" value="ئەرشیفی فەرمی" corner="tl" />
+            <SoraniLabel label="کوالیتی پەخش" value="Super HD" corner="tr" />
+            <SoraniLabel label="دیزاین و گەشەپێدان" value="Zana Barzani" corner="bl" />
+            <SoraniLabel label="وەشان" value="٢٠٢٦" corner="br" />
 
             <div className="relative z-10 flex flex-col items-center gap-16 max-w-sm w-full px-8">
-                {/* Enhanced Logo Container */}
+                {/* Brand Identity Focus */}
                 <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
+                    initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="relative group"
+                    className="relative"
                 >
-                    <div className="w-28 h-28 bg-black border border-brand/30 rounded-[2rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_80px_rgba(var(--brand-red-rgb),0.2)]">
+                    <div className="w-32 h-32 bg-black border border-brand/20 rounded-[2.5rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_100px_rgba(var(--brand-red-rgb),0.15)]">
                         <motion.div 
-                            animate={{ opacity: [0.2, 0.5, 0.2] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="absolute inset-0 bg-brand/5"
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 4, repeat: Infinity }}
+                            className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-brand/5"
                         />
-                        <motion.div 
-                            animate={{ y: ["-100%", "200%"] }}
-                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                            className="absolute inset-x-0 h-1/2 bg-gradient-to-b from-transparent via-brand/10 to-transparent pointer-events-none"
-                        />
-                        <span className="text-7xl font-black italic text-brand leading-none drop-shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]">F</span>
+                        <span className="text-8xl font-black italic text-brand leading-none drop-shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.6)]">F</span>
                     </div>
 
+                    {/* Elegant Halo Rings */}
                     <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                        className="absolute -inset-4 border border-brand/10 border-t-brand/40 rounded-[2.5rem]"
+                        animate={{ rotate: 360, scale: [1, 1.05, 1] }}
+                        transition={{ 
+                            rotate: { duration: 15, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                        }}
+                        className="absolute -inset-6 border border-brand/10 border-t-brand/30 rounded-[3rem]"
                     />
+                    
                     <motion.div
-                        animate={{ rotate: -360 }}
-                        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-                        className="absolute -inset-6 border border-white/5 border-b-white/20 rounded-[3rem]"
-                    />
-
-                    <motion.div
-                        animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.1, 0.4] }}
-                        transition={{ duration: 4, repeat: Infinity }}
-                        className="absolute inset-0 bg-brand/20 blur-3xl rounded-full"
+                        animate={{ opacity: [0.1, 0.3, 0.1] }}
+                        transition={{ duration: 5, repeat: Infinity }}
+                        className="absolute -inset-12 bg-brand/5 blur-3xl rounded-full"
                     />
                 </motion.div>
 
-                <div className="w-full space-y-6">
+                <div className="w-full space-y-8 flex flex-col items-center">
                     <div className="flex flex-col items-center text-center">
-                        <motion.span 
-                            animate={{ opacity: [1, 0.5, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="text-[10px] font-mono font-black italic text-brand tracking-[0.5em] uppercase mb-3"
+                        <motion.p
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-[12px] font-sans font-bold text-brand tracking-[0.3em] mb-4 opacity-80"
                         >
-                            NEURAL_CORE_ESTABLISHED
-                        </motion.span>
+                            بە کوردی کردنی چیرۆکەکانی جیهان
+                        </motion.p>
                         
-                        <div className="h-4 flex items-center justify-center">
+                        <div className="h-6 flex items-center justify-center">
                             <AnimatePresence mode="wait">
                                 <motion.span
-                                    key={status}
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 1.1 }}
-                                    className="text-[10px] font-mono font-bold text-white/90 uppercase tracking-[0.2em] max-w-full truncate px-4"
+                                    key={displayStatus}
+                                    initial={{ opacity: 0, y: 5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -5 }}
+                                    className="text-sm font-sans font-medium text-white/80 tracking-wide"
                                 >
-                                    {status}<span className="animate-pulse">_</span>
+                                    {displayStatus}
                                 </motion.span>
                             </AnimatePresence>
                         </div>
                     </div>
 
-                    <div className="relative group" style={{ filter: 'drop-shadow(0 0 10px rgba(var(--brand-red-rgb), 0.3))' }}>
-                        <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden border-x border-white/10">
-                            <motion.div
-                                animate={{ x: ["-100%", "200%"] }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                className="absolute inset-y-0 w-1/4 bg-brand shadow-[0_0_20px_rgba(var(--brand-red-rgb),1)]"
-                            />
-                        </div>
+                    {/* Minimalist Progress Line */}
+                    <div className="w-48 h-[1px] bg-white/10 relative overflow-hidden">
+                        <motion.div
+                            animate={{ x: ["-100%", "100%"] }}
+                            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-brand to-transparent"
+                        />
                     </div>
-                </div>
 
-                <div className="flex flex-col items-center gap-2">
-                    <p className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-[0.4em] text-center max-w-[220px] leading-relaxed opacity-60">
-                        ZANA_PROTOCOL_V.3.1
-                    </p>
-                    <div className="flex gap-1">
-                        {[0, 1, 2].map(i => (
-                            <motion.div 
-                                key={i}
-                                animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
-                                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.2 }}
-                                className="w-1.5 h-1.5 bg-brand rounded-full"
-                            />
-                        ))}
+                    <div className="flex flex-col items-center">
+                         <span className="text-[10px] text-white/20 font-sans tracking-[0.5em] font-bold">FLKRD STUDIO</span>
                     </div>
                 </div>
             </div>
         </motion.div>
     );
 };
+
 
 
 
