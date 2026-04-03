@@ -742,37 +742,68 @@ const DubbedMoviesPage: React.FC = () => {
     const confirmDelete = async () => {
         if (!movieToDelete) return;
         try {
-            const rawId = movieToDelete.startsWith('custom_') ? movieToDelete.replace('custom_', '') : movieToDelete;
-            const { error } = await supabase.from('dubbed_movies').delete().eq('id', rawId);
-            if (error) throw error;
+            // 1. Robust ID Extraction
+            const rawIdString = movieToDelete.startsWith('custom_') 
+                ? movieToDelete.replace('custom_', '') 
+                : movieToDelete;
 
-            // 2. Pre-warm Redis and Local Cache
-            const { data: freshList } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
-            if (freshList) {
-                await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 }).catch(() => { });
+            // Handle potential type mismatch (Supabase BIGINT expects number or string of number)
+            const numericId = !isNaN(Number(rawIdString)) ? Number(rawIdString) : rawIdString;
 
-                // Instantly update from local UI State
-                setDubbedContent(prev => {
-                    const next = prev.filter(m => String(m.id) !== String(movieToDelete));
-                    db.saveMovies(next).catch(console.error);
-                    return next;
-                });
-            } else {
-                await redis.del('custom_dubbed_movies');
-                setDubbedContent(prev => {
-                    const next = prev.filter(m => String(m.id) !== String(movieToDelete));
-                    db.saveMovies(next).catch(console.error);
-                    return next;
-                });
+            console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${numericId}`);
+
+            // 2. Database Execution with count: 'exact' to check if rows were affected
+            const { error, status } = await supabase
+                .from('dubbed_movies')
+                .delete()
+                .eq('id', numericId);
+
+            if (error) {
+                console.error('[SUPABASE ERROR]', error);
+                throw error;
             }
 
-            // Force the Premium Hero Banner to reset to 0 so it doesn't try to load an out-of-bounds index
+            // --- Synchronization Protocols ---
+            
+            // 3. Update Upstash Redis Global Cache
+            try {
+                const { data: freshList } = await supabase
+                    .from('dubbed_movies')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (freshList) {
+                    await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 });
+                } else {
+                    await redis.del('custom_dubbed_movies');
+                }
+            } catch (cacheErr) {
+                console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB delete succeeded.', cacheErr);
+            }
+
+            // 4. Update Local UI State and IndexedDB
+            setDubbedContent(prev => {
+                const next = prev.filter(m => String(m.id) !== String(movieToDelete));
+                db.saveMovies(next).catch(err => console.error('[DB RECOVERY ERROR]', err));
+                return next;
+            });
+
+            // Reset Hero Index if necessary
             setCurrentHeroIndex(0);
 
-            addNotification({ type: 'success', title: 'Movie Deleted', message: 'Movie has been successfully deleted.' });
+            addNotification({ 
+                type: 'success', 
+                title: 'Node Terminated', 
+                message: 'Movie data purged successfully from central registers.' 
+            });
+
         } catch (err: any) {
-            console.error(err);
-            addNotification({ type: 'error', title: 'Termination Failed', message: err.message || 'Could not delete the movie.' });
+            console.error('[CRITICAL FAILURE]', err);
+            addNotification({ 
+                type: 'error', 
+                title: 'Termination Failed', 
+                message: err.message || 'The data stream refused to close.' 
+            });
         } finally {
             setMovieToDelete(null);
         }
