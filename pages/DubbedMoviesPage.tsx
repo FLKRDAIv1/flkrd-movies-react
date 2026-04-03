@@ -52,81 +52,174 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
     );
 };
 
-const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => (
-    <motion.div
-        initial={{ opacity: 1 }}
-        exit={{ opacity: 0, scale: 1.1, filter: 'blur(20px)' }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
-    >
-        {/* Animated Background Gradients */}
-        <motion.div
-            animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.6, 0.3]
+const NeuralGrid: React.FC = () => (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+        <div 
+            className="absolute inset-0"
+            style={{
+                backgroundImage: `linear-gradient(to right, rgba(255,0,0,0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,0,0,0.1) 1px, transparent 1px)`,
+                backgroundSize: '40px 40px',
+                transform: 'perspective(500px) rotateX(60deg) translateY(-100px) translateZ(0)',
+                maskImage: 'linear-gradient(to bottom, transparent, black, transparent)',
             }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 bg-gradient-to-br from-brand/20 via-black to-black"
         />
+        <motion.div 
+            animate={{ y: [0, 40] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0"
+            style={{
+                backgroundImage: `linear-gradient(to bottom, rgba(255,0,0,0.2) 2px, transparent 2px)`,
+                backgroundSize: '100% 40px',
+                transform: 'perspective(500px) rotateX(60deg) translateY(-100px) translateZ(0)',
+            }}
+        />
+    </div>
+);
 
-        <div className="relative z-10 flex flex-col items-center gap-12 max-w-sm w-full px-8">
-            <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative"
-            >
-                <div className="w-24 h-24 bg-brand/10 border border-brand/20 rounded-3xl flex items-center justify-center shadow-[0_0_50px_rgba(var(--brand-red-rgb),0.3)]">
-                    <span className="text-6xl font-black italic text-brand leading-none">F</span>
-                </div>
+const DataMetric: React.FC<{ label: string, value: string, corner: 'tl' | 'tr' | 'bl' | 'br' }> = ({ label, value, corner }) => {
+    const positions = {
+        tl: 'top-8 left-8',
+        tr: 'top-8 right-8 text-right',
+        bl: 'bottom-8 left-8',
+        br: 'bottom-8 right-8 text-right'
+    };
+    return (
+        <div className={`absolute ${positions[corner]} font-mono text-[8px] tracking-[0.2em] text-white/20 uppercase`}>
+            <div>{label}</div>
+            <div className="text-brand/40 font-bold">{value}</div>
+        </div>
+    );
+};
+
+const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
+    const [metrics, setMetrics] = React.useState({ latency: '2ms', packets: '1024', load: '0.4%' });
+    
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setMetrics({
+                latency: `${Math.floor(Math.random() * 5 + 1)}ms`,
+                packets: `${Math.floor(Math.random() * 5000 + 1000)}`,
+                load: `${(Math.random() * 2).toFixed(2)}%`
+            });
+        }, 2000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.05, filter: 'blur(30px)' }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center overflow-hidden"
+        >
+            <NeuralGrid />
+            
+            {/* HUD Elements */}
+            <DataMetric label="NODE_LATENCY" value={metrics.latency} corner="tl" />
+            <DataMetric label="SYNC_PROTOCOL" value="V.26.4" corner="tr" />
+            <DataMetric label="PACKET_STREAM" value={metrics.packets} corner="bl" />
+            <DataMetric label="CORE_LOAD" value={metrics.load} corner="br" />
+
+            <div className="relative z-10 flex flex-col items-center gap-16 max-w-sm w-full px-8">
+                {/* Enhanced Logo Container */}
                 <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                    className="absolute inset-0 border-2 border-brand/40 border-t-transparent rounded-3xl"
-                />
-
-                {/* Data Activity Pulses */}
-                <motion.div
-                    animate={{ scale: [1, 2, 1], opacity: [0.8, 0, 0.8] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="absolute top-0 right-0 w-3 h-3 bg-white rounded-full shadow-[0_0_10px_white]"
-                />
-            </motion.div>
-
-            <div className="w-full space-y-4">
-                <div className="flex justify-between items-end mb-2">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black italic text-brand tracking-[0.4em] uppercase leading-none">SYSTEM ACTIVITY LOG</span>
-                        <AnimatePresence mode="wait">
-                            <motion.span
-                                key={status}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="text-xs font-bold text-white/80 mt-1 uppercase tracking-widest break-all"
-                            >
-                                {status}
-                            </motion.span>
-                        </AnimatePresence>
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="relative group"
+                >
+                    <div className="w-28 h-28 bg-black border border-brand/30 rounded-[2rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_80px_rgba(var(--brand-red-rgb),0.2)]">
+                        {/* Internal Scanning Light */}
+                        <motion.div 
+                            animate={{ y: ["-100%", "200%"] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                            className="absolute inset-x-0 h-1/2 bg-gradient-to-b from-transparent via-brand/10 to-transparent pointer-events-none"
+                        />
+                        <span className="text-7xl font-black italic text-brand leading-none drop-shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]">F</span>
                     </div>
-                    {progress > 0 && <span className="text-xl font-black italic text-white/50 tracking-tighter leading-none">SYNCING</span>}
+
+                    {/* Exterior Dynamic Border Layers */}
+                    <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                        className="absolute -inset-4 border border-brand/10 border-t-brand/40 rounded-[2.5rem]"
+                    />
+                    <motion.div
+                        animate={{ rotate: -360 }}
+                        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+                        className="absolute -inset-6 border border-white/5 border-b-white/20 rounded-[3rem]"
+                    />
+
+                    {/* Temporal Pulse */}
+                    <motion.div
+                        animate={{ scale: [1, 1.1, 1], opacity: [0.4, 0.1, 0.4] }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="absolute inset-0 bg-brand/20 blur-3xl rounded-full"
+                    />
+                </motion.div>
+
+                <div className="w-full space-y-6">
+                    <div className="flex flex-col items-center text-center">
+                        <motion.span 
+                            animate={{ opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="text-[10px] font-mono font-black italic text-brand tracking-[0.5em] uppercase mb-3"
+                        >
+                            SYSTEM_ACTIVITY_LOG
+                        </motion.span>
+                        
+                        <div className="h-4 flex items-center justify-center">
+                            <AnimatePresence mode="wait">
+                                <motion.span
+                                    key={status}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 10 }}
+                                    className="text-[10px] font-mono font-bold text-white/90 uppercase tracking-[0.2em] max-w-full truncate px-4"
+                                >
+                                    {status}<span className="animate-pulse">_</span>
+                                </motion.span>
+                            </AnimatePresence>
+                        </div>
+                    </div>
+
+                    {/* Progress Conduit - Modern Tech version */}
+                    <div className="relative group" style={{ filter: 'drop-shadow(0 0 10px rgba(var(--brand-red-rgb), 0.3))' }}>
+                        <div className="h-[2px] w-full bg-white/5 rounded-full overflow-hidden border-x border-white/10">
+                            <motion.div
+                                animate={{ x: ["-100%", "200%"] }}
+                                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                className="absolute inset-y-0 w-1/4 bg-brand shadow-[0_0_20px_rgba(var(--brand-red-rgb),1)]"
+                            />
+                        </div>
+                        {/* Data Packet Visuals */}
+                        <motion.div 
+                            animate={{ opacity: [0, 1, 0], x: [0, 200] }}
+                            transition={{ duration: 1.2, repeat: Infinity, delay: 0.5 }}
+                            className="absolute -top-1 left-0 w-1 h-1 bg-white rounded-full blur-[1px]"
+                        />
+                    </div>
                 </div>
 
-                {/* Progress Visualizer (Not actual bounded percentage) */}
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/10 relative">
-                    <motion.div
-                        animate={{ x: ["-100%", "200%"] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-brand to-transparent shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.8)]"
-                    />
+                <div className="flex flex-col items-center gap-2">
+                    <p className="text-[9px] text-gray-500 font-mono font-bold uppercase tracking-[0.4em] text-center max-w-[220px] leading-relaxed opacity-60">
+                        ESTABLISHING SECURE CONNECTION
+                    </p>
+                    <div className="flex gap-1">
+                        {[0, 1, 2].map(i => (
+                            <motion.div 
+                                key={i}
+                                animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
+                                transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.2 }}
+                                className="w-1 h-1 bg-brand rounded-full"
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
+        </motion.div>
+    );
+};
 
-            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-[0.3em] text-center max-w-[200px] leading-relaxed">
-                ESTABLISHING SECURE CONNECTION TO ZANA DATA LAKES
-            </p>
-        </div>
-    </motion.div>
-);
 
 
 const DubbedMoviesPage: React.FC = () => {
