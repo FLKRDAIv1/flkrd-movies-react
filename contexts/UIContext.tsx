@@ -9,6 +9,8 @@ interface UIContextType {
   setTheme: (theme: Theme) => void;
   setAccentColor: (color: string) => void;
   setScale: (scale: number) => void;
+  isPerformanceMode: boolean;
+  setIsPerformanceMode: (isPerformanceMode: boolean) => void;
   toggleTheme: () => void;
 }
 
@@ -23,6 +25,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
   const [scale, setScaleState] = useState(() =>
     Number(localStorage.getItem('flkrd_scale')) || 1
+  );
+  const [isPerformanceMode, setIsPerformanceModeState] = useState(() =>
+    localStorage.getItem('flkrd_performance_turbo') === 'true'
   );
 
   useEffect(() => {
@@ -62,13 +67,23 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     document.documentElement.style.setProperty('--global-scale', scale.toString());
   }, [scale]);
 
+  useEffect(() => {
+    localStorage.setItem('flkrd_performance_turbo', isPerformanceMode.toString());
+    if (isPerformanceMode) {
+      document.documentElement.classList.add('performance-mode');
+    } else {
+      document.documentElement.classList.remove('performance-mode');
+    }
+  }, [isPerformanceMode]);
+
   const toggleTheme = () => setThemeState(prev => prev === 'light' ? 'dark' : 'light');
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
   const setScale = (s: number) => setScaleState(s);
+  const setIsPerformanceMode = (p: boolean) => setIsPerformanceModeState(p);
 
   return (
-    <UIContext.Provider value={{ theme, accentColor, scale, setTheme, setAccentColor, setScale, toggleTheme }}>
+    <UIContext.Provider value={{ theme, accentColor, scale, isPerformanceMode, setTheme, setAccentColor, setScale, setIsPerformanceMode, toggleTheme }}>
       {children}
     </UIContext.Provider>
   );

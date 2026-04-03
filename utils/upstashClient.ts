@@ -11,9 +11,12 @@ const upstashToken = import.meta.env.VITE_UPSTASH_REDIS_REST_TOKEN || 'AZK0AAInc
 
 export const redis = {
     get: async (key: string) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
             const res = await fetch(`${upstashUrl}/get/${key}`, {
-                headers: { Authorization: `Bearer ${upstashToken}` }
+                headers: { Authorization: `Bearer ${upstashToken}` },
+                signal: controller.signal
             });
             const data = await res.json();
             if (data.result) {
@@ -21,10 +24,14 @@ export const redis = {
             }
         } catch (e) {
             console.error("Upstash Get Error:", e);
+        } finally {
+            clearTimeout(timeout);
         }
         return null;
     },
     set: async (key: string, value: any, options?: { ex?: number }) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
             const body = ["SET", key, typeof value === 'string' ? value : JSON.stringify(value)];
             if (options?.ex) {
@@ -36,17 +43,27 @@ export const redis = {
                     Authorization: `Bearer ${upstashToken}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
+                signal: controller.signal
             });
         } catch (e) {
             console.error("Upstash Set Error:", e);
+        } finally {
+            clearTimeout(timeout);
         }
     },
     del: async (key: string) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
         try {
-            await fetch(`${upstashUrl}/del/${key}`, { headers: { Authorization: `Bearer ${upstashToken}` } });
+            await fetch(`${upstashUrl}/del/${key}`, { 
+                headers: { Authorization: `Bearer ${upstashToken}` },
+                signal: controller.signal
+            });
         } catch (e) {
             console.error("Upstash Del Error:", e);
+        } finally {
+            clearTimeout(timeout);
         }
     },
     /**

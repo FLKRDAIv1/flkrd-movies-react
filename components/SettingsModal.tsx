@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Languages, Bell, Check, Palette, Sparkles, Moon, Sun, Maximize2, Minimize2, Type } from 'lucide-react';
+import { X, Languages, Bell, Check, Palette, Sparkles, Moon, Sun, Maximize2, Minimize2, Type, Zap, Info } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -93,7 +93,7 @@ const ColorPicker: React.FC<{ activeColor: string; onSelect: (color: string) => 
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { t, language, setLanguage } = useTranslation();
-  const { theme, setTheme, accentColor, setAccentColor, scale, setScale } = useUI();
+  const { theme, setTheme, accentColor, setAccentColor, scale, setScale, isPerformanceMode, setIsPerformanceMode } = useUI();
   const { addNotification } = useNotification();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isEnableNotificationsModalOpen, setIsEnableNotificationsModalOpen] = useState(false);
@@ -189,29 +189,39 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 </div>
 
-                {/* Interface Scaling Tool */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 px-1">
-                    <Type size={18} className="text-gray-400" />
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{t('interfaceScale')}</h3>
+                    <Zap size={18} className="text-gray-400" />
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{t('performanceTurbo')}</h3>
                   </div>
-                  <div className="bg-black/20 rounded-2xl p-6 border border-white/5 space-y-6">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-gray-500">
-                      <div className="flex items-center gap-2"><Minimize2 size={14} /> 50%</div>
-                      <div className="text-white font-black text-xs bg-white/5 px-3 py-1 rounded-full border border-white/5">{Math.round(scale * 100)}%</div>
-                      <div className="flex items-center gap-2">130% <Maximize2 size={14} /></div>
+                  <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 flex items-center justify-between group hover:border-brand/30 transition-all">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-black text-white uppercase italic tracking-tight">{t('performanceTurbo')}</span>
+                      <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{t('performanceDescription')}</span>
                     </div>
-                    <input
-                      type="range"
-                      min="0.5"
-                      max="1.3"
-                      step="0.05"
-                      value={scale}
-                      onChange={(e) => setScale(parseFloat(e.target.value))}
-                      className="w-full h-2 bg-white/5 rounded-lg appearance-none cursor-pointer accent-brand"
-                      style={{ accentColor: accentColor }}
-                    />
-                    <p className="text-[9px] text-gray-500 font-bold uppercase text-center tracking-widest">{t('scalingDescription')}</p>
+                    <button 
+                      onClick={() => {
+                        const next = !isPerformanceMode;
+                        setIsPerformanceMode(next);
+                        addNotification({
+                          type: 'info',
+                          title: t('performanceTurbo'),
+                          message: next ? (language === 'ku' ? "دۆخی خێرا چالاک کرا" : "Performance Turbo Activated") : (language === 'ku' ? "دۆخی ئاسایی گەڕێندرایەوە" : "Standard Experience Restored")
+                        });
+                      }}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-500 ${isPerformanceMode ? 'bg-brand shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.4)]' : 'bg-white/10'}`}
+                    >
+                      <motion.div 
+                        animate={{ x: isPerformanceMode ? 24 : 4 }}
+                        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-xl"
+                      />
+                    </button>
+                  </div>
+                  <div className="p-4 bg-brand/5 border border-brand/10 rounded-2xl flex items-start gap-3">
+                    <Info size={14} className="text-brand shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-gray-400 font-medium leading-relaxed italic">
+                      {t('performanceInfo')}
+                    </p>
                   </div>
                 </div>
 

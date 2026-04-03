@@ -7,7 +7,7 @@ import {
     Link as LinkIcon, ArrowLeft, Sparkles,
 
     Activity, Info, Star, ChevronRight, Share, Copy,
-    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search
+    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, Settings
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -52,30 +52,33 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
     );
 };
 
-const AtmosphereParticles: React.FC = () => (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-            <motion.div
-                key={i}
-                initial={{ 
-                    x: Math.random() * 100 + "%", 
-                    y: Math.random() * 100 + "%",
-                    opacity: 0 
-                }}
-                animate={{ 
-                    y: [null, Math.random() * 100 + "%"],
-                    opacity: [0, 0.4, 0]
-                }}
-                transition={{
-                    duration: Math.random() * 20 + 20,
-                    repeat: Infinity,
-                    ease: "linear"
-                }}
-                className="absolute w-1 h-1 bg-white/20 rounded-full blur-[1px]"
-            />
-        ))}
-    </div>
-);
+const AtmosphereParticles: React.FC<{ active?: boolean }> = ({ active = true }) => {
+    if (!active) return null;
+    return (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[...Array(20)].map((_, i) => (
+                <motion.div
+                    key={i}
+                    initial={{ 
+                        x: Math.random() * 100 + "%", 
+                        y: Math.random() * 100 + "%",
+                        opacity: 0 
+                    }}
+                    animate={{ 
+                        y: [null, Math.random() * 100 + "%"],
+                        opacity: [0, 0.4, 0]
+                    }}
+                    transition={{
+                        duration: Math.random() * 20 + 20,
+                        repeat: Infinity,
+                        ease: "linear"
+                    }}
+                    className="absolute w-1 h-1 bg-white/20 rounded-full blur-[1px]"
+                />
+            ))}
+        </div>
+    );
+};
 
 const BreathingLogo: React.FC = () => (
     <div className="relative">
@@ -109,7 +112,7 @@ const BreathingLogo: React.FC = () => (
     </div>
 );
 
-const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progress, status }) => {
+const CinematicLoader: React.FC<{ progress: number, status: string, performanceMode?: boolean }> = ({ progress, status, performanceMode }) => {
     const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی باشترین کوالیتی...");
     
     React.useEffect(() => {
@@ -123,11 +126,11 @@ const CinematicLoader: React.FC<{ progress: number, status: string }> = ({ progr
     return (
         <motion.div
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.02, filter: 'blur(60px)' }}
-            transition={{ duration: 2, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, scale: 1.02, filter: performanceMode ? 'none' : 'blur(60px)' }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
             className="fixed inset-0 z-[1000] bg-[#030303] flex flex-col items-center justify-center overflow-hidden"
         >
-            <AtmosphereParticles />
+            <AtmosphereParticles active={!performanceMode} />
             
             {/* Soft Ambient Glows */}
             <div className="absolute top-0 inset-x-0 h-full bg-gradient-to-b from-brand/[0.03] to-transparent pointer-events-none" />
@@ -263,7 +266,6 @@ const DubbedMoviesPage: React.FC = () => {
     const [nodeToEdit, setNodeToEdit] = useState<any | null>(null);
     const [editData, setEditData] = useState({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW' });
     const [isUpdating, setIsUpdating] = useState(false);
-
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
     // Advanced Sorting & Filtering State
@@ -271,11 +273,11 @@ const DubbedMoviesPage: React.FC = () => {
 
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { accentColor } = useUI();
+    const { accentColor, isPerformanceMode } = useUI();
     const { addNotification } = useNotification();
     const [hasNewMovies, setHasNewMovies] = useState(false);
     const [isLive, setIsLive] = useState(false);
-    const [visibleCount, setVisibleCount] = useState(24);
+    const [visibleCount, setVisibleCount] = useState(isPerformanceMode ? 12 : 24);
     const observerTarget = useRef<HTMLDivElement>(null);
 
 
@@ -285,7 +287,14 @@ const DubbedMoviesPage: React.FC = () => {
         const loadDubbedArchive = async () => {
             const isEstablished = sessionStorage.getItem('zana_protocol_established');
             let resolveLoader: () => void;
-            const loaderPromise = new Promise<void>(res => { resolveLoader = res; });
+            const loaderPromise = new Promise<void>(res => { 
+                resolveLoader = res;
+                // Guarded Timeout (Zana Protocol Integrity)
+                setTimeout(() => {
+                    setLoadingStatus('PROTOCOL TIMEOUT: RECOVERING LOCAL NODES...');
+                    res();
+                }, 6000);
+            });
 
             // Ensure loader statuses are dynamic
             const setDynamicStatus = async (msg: string, delay: number) => {
@@ -390,50 +399,67 @@ const DubbedMoviesPage: React.FC = () => {
         loadDubbedArchive();
 
         // --- REAL-TIME SUBSCRIPTION ---
-        // This ensures all users see new uploads INSTANTLY
         const channel = supabase
             .channel('public:dubbed_movies')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'dubbed_movies' }, (payload) => {
-                console.log('Real-time update:', payload);
-                if (payload.eventType === 'INSERT') {
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'dubbed_movies' }, async (payload) => {
+                console.log('Zana Engine Real-time Signal:', payload.eventType);
+                
+                // For heavy changes, trigger a silent re-sync to ensure total grid integrity
+                if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
                     setHasNewMovies(true);
-                    const newMovie = payload.new as any;
-                    const formatted = {
-                        ...newMovie,
-                        id: `custom_${newMovie.id}`,
-                        poster_path: newMovie.imageBase64,
-                        backdrop_path: newMovie.bannerBase64 || newMovie.imageBase64,
-                        kurdishTitle: newMovie.title,
-                        kurdishOverview: newMovie.description,
-                        customStream: newMovie.videoUrl,
-                        media_type: 'movie'
-                    };
-                    setDubbedContent(prev => {
-                        const next = [formatted, ...prev];
-                        db.saveMovies(next).catch(console.error);
-                        return next;
-                    });
-                } else if (payload.eventType === 'DELETE') {
-                    setDubbedContent(prev => {
-                        const next = prev.filter(m => String(m.id) !== `custom_${payload.old.id}`);
-                        db.saveMovies(next).catch(console.error);
-                        return next;
-                    });
+                    // Silently refresh the local list without showing a loader
+                    const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
+                    if (data) {
+                        const formatted = data.map((movie: any) => ({
+                            ...movie,
+                            id: `custom_${movie.id}`,
+                            poster_path: movie.imageBase64,
+                            backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                            title: movie.title,
+                            kurdishTitle: movie.title,
+                            overview: movie.description,
+                            kurdishOverview: movie.description,
+                            customStream: movie.videoUrl,
+                            media_type: 'movie',
+                            level: movie.level || 'KING'
+                        }));
+
+                        // Priority Sorting Alignment
+                        formatted.sort((a, b) => {
+                            const priority: { [key: string]: number } = {
+                                'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
+                            };
+                            return (priority[a.level] ?? 99) - (priority[b.level] ?? 99);
+                        });
+
+                        setDubbedContent([...formatted]);
+                        db.saveMovies(formatted).catch(() => {});
+                    }
                 } else if (payload.eventType === 'UPDATE') {
                     setDubbedContent(prev => {
                         const next = prev.map(m => String(m.id) === `custom_${payload.new.id}` ? {
                             ...m,
                             ...payload.new,
                             poster_path: (payload.new as any).imageBase64,
-                            backdrop_path: (payload.new as any).bannerBase64 || (payload.new as any).imageBase64
+                            backdrop_path: (payload.new as any).bannerBase64 || (payload.new as any).imageBase64,
+                            title: (payload.new as any).title,
+                            kurdishTitle: (payload.new as any).title,
+                            overview: (payload.new as any).description,
+                            kurdishOverview: (payload.new as any).description,
                         } : m);
-                        db.saveMovies(next).catch(console.error);
+                        db.saveMovies(next).catch(() => {});
                         return next;
                     });
                 }
             })
             .subscribe((status) => {
-                if (status === 'SUBSCRIBED') setIsLive(true);
+                if (status === 'SUBSCRIBED') {
+                    setIsLive(true);
+                } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+                    setIsLive(false);
+                    // Attempt to re-sync if connection is lost
+                    setTimeout(() => channel.subscribe(), 5000);
+                }
             });
 
         return () => {
@@ -467,12 +493,38 @@ const DubbedMoviesPage: React.FC = () => {
         setIsForceSyncing(true);
         addNotification({ type: 'info', title: 'Network Call', message: 'Re-syncing catalog from Zana Servers directly...' });
 
-        try {
-            // Drop cache immediately and force Postgres fetch
-            await redis.del('custom_dubbed_movies');
-            const { data, error } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
+        // 1. Independent Cache Purge (Don't wait for it to finish the main sync)
+        const purgeCache = async () => {
+            try {
+                await redis.del('custom_dubbed_movies');
+                console.log("[ZANA ENGINE] Global cache purged.");
+            } catch (e) {
+                console.warn("[ZANA ENGINE] Cache purge skipped due to network latency.");
+            }
+        };
 
-            if (data && !error) {
+        // Fire and forget (or run in parallel)
+        purgeCache();
+
+        try {
+            // 2. Direct Postgres align with a generous timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Operation timeout (12s limit)')), 12000)
+            );
+
+            const fetchPromise = (async () => {
+                const { data, error } = await supabase
+                    .from('dubbed_movies')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                return data;
+            })();
+
+            const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+
+            if (data) {
                 const formattedCustom = data.map((movie: any) => ({
                     ...movie,
                     id: `custom_${movie.id}`,
@@ -487,25 +539,30 @@ const DubbedMoviesPage: React.FC = () => {
                     level: movie.level || 'KING'
                 }));
 
-                // Strict Priority Re-Sort
+                // Priority Sorting Alignment
                 formattedCustom.sort((a, b) => {
                     const priority: { [key: string]: number } = {
                         'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
                     };
-                    const pA = priority[a.level] ?? 99;
-                    const pB = priority[b.level] ?? 99;
-                    return pA - pB;
+                    return (priority[a.level] ?? 99) - (priority[b.level] ?? 99);
                 });
 
                 setDubbedContent([...formattedCustom]);
                 await db.saveMovies(formattedCustom);
-
-                addNotification({ type: 'success', title: 'Sync Integrity Established', message: `Grid synced with ${formattedCustom.length} active nodes.` });
-            } else {
-                addNotification({ type: 'error', title: 'Sync Error', message: `Failed to align with Zana Servers. ${error?.message || ''}` });
+                
+                addNotification({ 
+                    type: 'success', 
+                    title: 'Sync Integrity Established', 
+                    message: `Grid synced with ${formattedCustom.length} active nodes.` 
+                });
             }
         } catch (e: any) {
-            addNotification({ type: 'error', title: 'Network Outage', message: `Operation failed. ${e?.message || ''}` });
+            console.error("Force sync failed", e);
+            addNotification({ 
+                type: 'error', 
+                title: e.message.includes('timeout') ? 'Latency Detected' : 'Network Outage', 
+                message: e.message.includes('timeout') ? 'The data stream is slow. Local nodes preserved.' : `Operation failed. ${e?.message || 'Database connection error.'}` 
+            });
         } finally {
             setIsForceSyncing(false);
         }
@@ -764,6 +821,7 @@ const DubbedMoviesPage: React.FC = () => {
 
     const confirmDelete = async () => {
         if (!movieToDelete) return;
+        setIsUpdating(true);
         try {
             // 1. Robust ID Extraction
             const rawIdString = movieToDelete.startsWith('custom_') 
@@ -775,7 +833,7 @@ const DubbedMoviesPage: React.FC = () => {
 
             console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${numericId}`);
 
-            // 2. Database Execution with count: 'exact' to check if rows were affected
+            // 2. Database Execution
             const { error, status } = await supabase
                 .from('dubbed_movies')
                 .delete()
@@ -783,6 +841,14 @@ const DubbedMoviesPage: React.FC = () => {
 
             if (error) {
                 console.error('[SUPABASE ERROR]', error);
+                if (status === 403 || error.message?.includes('permission')) {
+                    addNotification({ 
+                        type: 'error', 
+                        title: 'Permission Denied', 
+                        message: 'The database is protected by RLS. Run the SQL fix in the implementation plan to allow "anon" deletions.' 
+                    });
+                    return;
+                }
                 throw error;
             }
 
@@ -790,16 +856,7 @@ const DubbedMoviesPage: React.FC = () => {
             
             // 3. Update Upstash Redis Global Cache
             try {
-                const { data: freshList } = await supabase
-                    .from('dubbed_movies')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (freshList) {
-                    await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 });
-                } else {
-                    await redis.del('custom_dubbed_movies');
-                }
+                await redis.del('custom_dubbed_movies');
             } catch (cacheErr) {
                 console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB delete succeeded.', cacheErr);
             }
@@ -811,41 +868,42 @@ const DubbedMoviesPage: React.FC = () => {
                 return next;
             });
 
-            // Reset Hero Index if necessary
+            // Reset Hero Index and Cleanup Modals
             setCurrentHeroIndex(0);
+            setMovieToDelete(null);
+            setShowUploadModal(false);
 
             addNotification({ 
                 type: 'success', 
                 title: 'Node Terminated', 
-                message: 'Movie data purged successfully from central registers.' 
+                message: 'Target movie has been permanently removed from the Zana Database.' 
             });
 
-        } catch (err: any) {
-            console.error('[CRITICAL FAILURE]', err);
+        } catch (e: any) {
+            console.error('[UI ACTION ERROR]', e);
             addNotification({ 
                 type: 'error', 
-                title: 'Termination Failed', 
-                message: err.message || 'The data stream refused to close.' 
+                title: 'Operation Failed', 
+                message: `Failed to remove record. ${e?.message || 'Database connection error.'}` 
             });
         } finally {
-            setMovieToDelete(null);
+            setIsUpdating(false);
         }
     };
-
+    const searchQueryLower = searchQuery.toLowerCase().trim();
     const filteredContent = dubbedContent.filter(movie => {
-        const query = searchQuery.toLowerCase().trim();
-        if (!query) return true;
+        if (!searchQueryLower) return true;
         const title = (movie.title || movie.kurdishTitle || '').toLowerCase();
         const overview = (movie.overview || movie.kurdishOverview || '').toLowerCase();
-        return title.includes(query) || overview.includes(query);
+        return title.includes(searchQueryLower) || overview.includes(searchQueryLower);
     });
 
+    const adminSearchQueryLower = adminSearchQuery.toLowerCase().trim();
     const adminFilteredContent = dubbedContent.filter(movie => {
-        const query = adminSearchQuery.toLowerCase().trim();
-        if (!query) return true;
+        if (!adminSearchQueryLower) return true;
         const title = (movie.title || movie.kurdishTitle || '').toLowerCase();
         const overview = (movie.overview || movie.kurdishOverview || '').toLowerCase();
-        return title.includes(query) || overview.includes(query);
+        return title.includes(adminSearchQueryLower) || overview.includes(adminSearchQueryLower);
     });
 
     const featuredMovie = dubbedContent[0];
@@ -853,7 +911,7 @@ const DubbedMoviesPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-transparent text-white selection:bg-brand selection:text-white pb-40 overflow-x-hidden">
             <AnimatePresence>
-                {loading && <CinematicLoader progress={loadingProgress} status={loadingStatus} />}
+                {loading && <CinematicLoader progress={loadingProgress} status={loadingStatus} performanceMode={isPerformanceMode} />}
             </AnimatePresence>
 
             {/* Neural Floating Header */}
@@ -872,7 +930,14 @@ const DubbedMoviesPage: React.FC = () => {
                         </span>
                     </div>
                 </div>
-                <div className="w-12 h-12" />
+                <div className="flex items-center gap-4 pointer-events-auto">
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95"
+                    >
+                        <Settings size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+                    </button>
+                </div>
             </div>
 
             {/* iOS 26 Cinematic Hero Carousel */}
@@ -1133,15 +1198,36 @@ const DubbedMoviesPage: React.FC = () => {
                             </div>
                         ))}
                     </div>
+                ) : filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-40 gap-8">
+                        <div className="w-32 h-32 bg-white/5 rounded-[3rem] flex items-center justify-center border border-white/10 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-brand/5 group-hover:bg-brand/10 transition-colors" />
+                            <Search size={48} className="text-gray-600 group-hover:text-brand transition-all group-hover:scale-110 duration-700" />
+                        </div>
+                        <div className="text-center space-y-4">
+                            <h3 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white shimmer-text">No Nodes Detected</h3>
+                            <p className="text-xs font-black text-gray-500 uppercase tracking-[0.4em] italic mb-10">Searching Other Frequencies...</p>
+                        </div>
+                        <button 
+                            onClick={() => { setSearchQuery(''); setActiveFilter('ALL'); }}
+                            className="bg-brand/10 hover:bg-brand/20 border border-brand/30 px-10 py-5 rounded-2xl text-brand text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.05] active:scale-95"
+                        >
+                            Reset Registry
+                        </button>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
                         {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).slice(0, visibleCount).map((movie, index) => (
 
                             <motion.div
                                 key={movie.id}
-                                initial={{ opacity: 0, y: 30 }}
+                                initial={isPerformanceMode ? { opacity: 0 } : { opacity: 0, y: 30 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                                transition={{ 
+                                    delay: isPerformanceMode ? 0 : index * 0.05, 
+                                    duration: isPerformanceMode ? 0.3 : 0.8, 
+                                    ease: "easeOut" 
+                                }}
                                 onClick={() => navigate(`/dubbed-details/${movie.id}`)}
                                 className="group cursor-pointer relative"
                             >
@@ -1602,6 +1688,7 @@ const DubbedMoviesPage: React.FC = () => {
                         )
                     }
                 </AnimatePresence>
+
             </div>
         </div >
     );

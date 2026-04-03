@@ -166,6 +166,9 @@ const translations = {
     chooseYourColor: "Choose your favorite accent color",
     interfaceScale: "Interface Scale",
     scalingDescription: "Adjust the size of text and interface elements.",
+    performanceTurbo: "Performance Turbo",
+    performanceDescription: "Optimized for Low-End Mobile",
+    performanceInfo: "Activating this protocol disables intensive atmospheric effects and simplifies transitions to ensure maximum frame rates on legacy hardware.",
 
     // Discover Page
     hollywood: "Hollywood",
@@ -357,6 +360,9 @@ const translations = {
     chooseYourColor: "ڕەنگی دڵخوازی خۆت هەڵبژێرە",
     interfaceScale: "قەبارەی ڕووکار",
     scalingDescription: "قەبارەی نووسین و پێکهاتەکانی بەرنامەکە بگۆڕە.",
+    performanceTurbo: "چالاککردنی خێرا",
+    performanceDescription: "باشترکردنی بۆ مۆبایلە لاوازەکان",
+    performanceInfo: "چالاککردنی ئەم بەشە دەبێتە ھۆی خێراتر کردنی وێب سایتەکە لەسەر مۆبایلە کۆنەکان بە لابردنی ھەندێک ئەنیمەیشن و کاریگەری.",
 
     // Discover Page
     hollywood: "هۆڵیوود",
