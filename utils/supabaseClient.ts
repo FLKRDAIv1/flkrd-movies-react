@@ -6,7 +6,7 @@ declare global {
     }
 }
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uipblcgmjvgkncvbqqma.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'sb_publishable_wephsiCymEXfeNJxcRfEFg_f7pP4FKv';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kqezlyhoqfelgfhdfxzf.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'sb_publishable_XD-RWNKEDJLppZ6Cc4MkcA_TAMhxFZt';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
