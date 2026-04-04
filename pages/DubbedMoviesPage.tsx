@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mic2, Play, Zap, Share2, X, Send,
-    Link as LinkIcon, ArrowLeft, Sparkles,
-
+    Link as LinkIcon, Sparkles,
     Activity, Info, Star, ChevronRight, Share, Copy,
-    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, Settings
+    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -951,53 +950,8 @@ const DubbedMoviesPage: React.FC = () => {
                 {loading && <CinematicLoader progress={loadingProgress} status={loadingStatus} performanceMode={isPerformanceMode} />}
             </AnimatePresence>
 
-            {/* Neural Floating Header */}
-            <div className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-700 px-6 py-4 md:px-12 md:py-8 flex items-center justify-between pointer-events-none`}>
-                <button
-                    onClick={() => navigate(-1)}
-                    className="pointer-events-auto bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95"
-                >
-                    {language === 'ku' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
-                </button>
-                <div className={`transition-all duration-700 flex items-center gap-6 ${scrollPosition > 50 ? 'opacity-100 translate-y-0 translate-x-0' : 'opacity-100 translate-y-0 translate-x-0'}`}>
-                    {/* Search Field Restoration */}
-                    <div className="relative group/search pointer-events-auto flex">
-                        <div className="absolute inset-0 bg-brand/5 blur-xl group-hover/search:bg-brand/20 transition-all rounded-full" />
-                        <div className="relative flex items-center bg-black/60 backdrop-blur-3xl border border-white/10 rounded-2xl px-6 py-3 transition-all focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/20 w-80">
-                            <Search size={18} className="text-gray-500 mr-3 group-focus-within/search:text-brand transition-colors" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search Archives..."
-                                className="bg-transparent border-none outline-none text-sm font-bold placeholder:text-gray-600 w-full text-white"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="bg-brand/10 backdrop-blur-2xl border border-brand/20 px-6 py-2 rounded-full flex items-center gap-2">
-                        <Activity size={12} className={isLive ? "text-green-500 animate-pulse" : "text-brand animate-pulse"} />
-                        <span className={`text-[10px] font-black uppercase tracking-[0.3em] ${isLive ? "text-green-500" : "text-brand"}`}>
-                            {isLive ? "LIVE PROTOCOL ENABLED" : "DUBBED MOVIES"}
-                        </span>
-                    </div>
-                </div>
-                <div className="flex items-center gap-4 pointer-events-auto">
-                    <button
-                        onClick={forceSync}
-                        className={`bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95 ${isForceSyncing ? 'animate-pulse' : ''}`}
-                        title="Force Transmission Synchronize"
-                    >
-                        <RefreshCw size={20} className={`${isForceSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-                    </button>
-                    <button
-                        onClick={() => navigate('/settings')}
-                        className="bg-black/40 backdrop-blur-3xl border border-white/10 p-4 rounded-2xl text-white hover:bg-brand transition-all shadow-2xl group active:scale-95"
-                    >
-                        <Settings size={20} className="group-hover:rotate-90 transition-transform duration-500" />
-                    </button>
-                </div>
-            </div>
+            {/* Clean Floating Header - no clutter */}
+            <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none" />
 
             {/* iOS 26 Cinematic Hero Carousel */}
             <div className="relative h-[85vh] md:h-[95vh] w-full overflow-hidden">
