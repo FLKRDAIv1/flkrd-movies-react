@@ -362,22 +362,12 @@ const DubbedMoviesPage: React.FC = () => {
                             level: movie.level || 'KING'
                         }));
 
-                        // Sort NEW movies to appear first, then KING, then BEST, then SPECIAL, then Standard
+                        // ✅ Sort purely by newest created_at first — newest movie always on top
                         formattedCustom.sort((a, b) => {
-                            const priority: { [key: string]: number } = {
-                                'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
-                            };
-                            const pA = priority[a.level] ?? 99;
-                            const pB = priority[b.level] ?? 99;
-                            
-                            if (pA !== pB) return pA - pB;
-                            
                             const dateA = new Date(a.created_at || 0).getTime();
                             const dateB = new Date(b.created_at || 0).getTime();
-                            
                             if (dateA !== dateB) return dateB - dateA;
-                            
-                            // Final tie-breaker: Newest ID first
+                            // Tiebreaker: highest numeric ID first
                             const numIdA = Number(String(a.id).replace('custom_', ''));
                             const numIdB = Number(String(b.id).replace('custom_', ''));
                             return numIdB - numIdA;
@@ -543,18 +533,14 @@ const DubbedMoviesPage: React.FC = () => {
                     level: movie.level || 'KING'
                 }));
 
-                // Priority Sorting Alignment (NEW first, then date-desc)
+                // ✅ Sort purely by newest created_at first
                 formattedCustom.sort((a, b) => {
-                    const priority: { [key: string]: number } = {
-                        'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
-                    };
-                    const pA = priority[a.level] ?? 99;
-                    const pB = priority[b.level] ?? 99;
-                    if (pA !== pB) return pA - pB;
-                    
                     const dateA = new Date(a.created_at || 0).getTime();
                     const dateB = new Date(b.created_at || 0).getTime();
-                    return dateB - dateA;
+                    if (dateA !== dateB) return dateB - dateA;
+                    const numIdA = Number(String(a.id).replace('custom_', ''));
+                    const numIdB = Number(String(b.id).replace('custom_', ''));
+                    return numIdB - numIdA;
                 });
 
                 setDubbedContent([...formattedCustom]);
@@ -705,15 +691,15 @@ const DubbedMoviesPage: React.FC = () => {
             if (error) throw error;
 
             setUploadProgress(80);
-            setUploadStep('Optimizing cache protocols...');
+            setUploadStep('Syncing to all devices...');
 
-            // 2. Pre-warm Redis and Local Cache
-            const { data: freshList } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
+            // 2. Fetch fresh sorted list — newest first
+            const { data: freshList } = await supabase
+                .from('dubbed_movies')
+                .select('*')
+                .order('created_at', { ascending: false });
+
             if (freshList) {
-                // Instantly refresh the 24h cache
-                await redis.set('custom_dubbed_movies', freshList, { ex: 86400 }).catch(() => { });
-
-                // Formulate the local cache immediately
                 const formattedCustom = freshList.map((movie: any) => ({
                     ...movie,
                     id: `custom_${movie.id}`,
@@ -724,14 +710,20 @@ const DubbedMoviesPage: React.FC = () => {
                     overview: movie.description,
                     kurdishOverview: movie.description,
                     customStream: movie.videoUrl,
-                    media_type: 'dubbed'
+                    media_type: 'dubbed',
+                    created_at: movie.created_at,
                 }));
 
+                // ✅ Instantly update UI — new movie appears at TOP
+                setDubbedContent(formattedCustom);
+
+                // ✅ Persist to IndexedDB and Redis cache
                 db.saveMovies(formattedCustom).catch(console.error);
+                redis.set('custom_dubbed_movies', freshList, { ex: 86400 }).catch(() => {});
             }
 
             setUploadProgress(100);
-            addNotification({ type: 'success', title: 'Transmission Success', message: 'Movie synchronized globally.' });
+            addNotification({ type: 'success', title: '🎬 Movie Added!', message: 'New movie is now live at the top of the list.' });
             setShowUploadModal(false);
             setUploadData({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW' });
         } catch (err: any) {
