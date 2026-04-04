@@ -69,10 +69,10 @@ const DubbedDetailPage: React.FC = () => {
         const itemId = dubbedData?.id || content?.id;
         if (!itemId) return;
 
-        const index = progress.findIndex(i => i.id === itemId && i.type === 'dubbed');
+        const index = progress.findIndex(i => String(i.id) === String(itemId) && i.type === 'dubbed');
 
         const item: WatchProgress = {
-            id: Number(itemId.toString().replace('custom_', '')),
+            id: itemId,
             type: 'dubbed',
             title: dubbedData?.kurdishTitle || dubbedData?.title || content?.title || 'Dubbed Movie',
             poster_path: dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '',

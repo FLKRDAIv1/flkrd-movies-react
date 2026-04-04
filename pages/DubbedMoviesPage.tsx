@@ -360,7 +360,7 @@ const DubbedMoviesPage: React.FC = () => {
                             overview: movie.description,
                             kurdishOverview: movie.description,
                             customStream: movie.videoUrl,
-                            media_type: 'movie',
+                            media_type: 'dubbed',
                             level: movie.level || 'KING'
                         }));
 
@@ -434,7 +434,7 @@ const DubbedMoviesPage: React.FC = () => {
                             overview: movie.description,
                             kurdishOverview: movie.description,
                             customStream: movie.videoUrl,
-                            media_type: 'movie',
+                            media_type: 'dubbed',
                             level: movie.level || 'KING'
                         }));
 
@@ -720,7 +720,7 @@ const DubbedMoviesPage: React.FC = () => {
                     overview: movie.description,
                     kurdishOverview: movie.description,
                     customStream: movie.videoUrl,
-                    media_type: 'movie'
+                    media_type: 'dubbed'
                 }));
 
                 db.saveMovies(formattedCustom).catch(console.error);

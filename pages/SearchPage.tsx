@@ -216,12 +216,25 @@ const SearchPage: React.FC = () => {
                           onMouseDown={() => {
                             setInputValue(item.title || item.name || '');
                             setIsSuggestionsVisible(false);
-                            navigate(`/details/${item.media_type}/${item.id}`);
+                            if (item.media_type === 'dubbed') {
+                              navigate(`/dubbed-details/${item.id}`);
+                            } else {
+                              navigate(`/details/${item.media_type}/${item.id}`);
+                            }
                           }}
                           className="w-full text-left flex items-center gap-5 p-5 hover:bg-brand/10 transition-all group"
                         >
-                          <div className="relative overflow-hidden rounded-xl shadow-xl border border-white/5 w-14 h-20 flex-shrink-0">
-                            <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" />
+                          <div className="relative overflow-hidden rounded-xl shadow-xl border border-white/5 w-14 h-20 flex-shrink-0 bg-white/5">
+                            <img 
+                              src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
+                              alt="" 
+                              className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                            />
+                            {item.media_type === 'dubbed' && (
+                              <div className="absolute top-1 right-1 bg-brand p-1 rounded-md shadow-lg">
+                                <Mic2 size={8} className="text-white" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-black text-lg text-main-text group-hover:text-brand transition-colors truncate italic tracking-tighter">
@@ -298,13 +311,37 @@ const SearchPage: React.FC = () => {
                 <motion.div
                   key={item.id}
                   variants={itemVariants}
-                  onClick={() => navigate(`/details/${item.media_type}/${item.id}`)}
+                  onClick={() => {
+                    if (item.media_type === 'dubbed') {
+                      navigate(`/dubbed-details/${item.id}`);
+                    } else {
+                      navigate(`/details/${item.media_type}/${item.id}`);
+                    }
+                  }}
                   className="cursor-pointer group relative bg-card-bg transition-all duration-500 rounded-[2.5rem] overflow-hidden border border-border-color hover:border-brand/50 shadow-2xl"
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ y: -10 }}
                 >
-                  <div className="aspect-[2/3] relative overflow-hidden">
-                    <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt={item.title || item.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" />
+                  <div className="aspect-[2/3] relative overflow-hidden bg-white/5">
+                    <img 
+                      src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
+                      alt={item.title || item.name} 
+                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
+                    />
+                    
+                    {item.media_type === 'dubbed' && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <motion.div
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="flex items-center gap-2 px-3 py-1 bg-brand rounded-full shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.5)] border border-white/20"
+                        >
+                          <Mic2 size={12} className="text-white" />
+                          <span className="text-[10px] font-black uppercase text-white tracking-widest">DUBBED</span>
+                        </motion.div>
+                      </div>
+                    )}
+
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-100 flex flex-col justify-end p-6">
                       <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                         <p className="text-white text-sm md:text-lg font-[1000] uppercase italic tracking-tighter leading-none mb-3 line-clamp-2 drop-shadow-lg">

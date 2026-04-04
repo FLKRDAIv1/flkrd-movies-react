@@ -3,6 +3,8 @@ import { useState, useCallback } from 'react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { API_KEY, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU } from '../constants';
+import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 
 /**
  * Advanced Scoring Engine (Multi-pass Relevance)
@@ -82,22 +84,50 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
     
     try {
       const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
-      const data = await fetchData(endpoint, language);
       
-      if (data && Array.isArray(data)) {
-        const rankedResults = data
+      // 1. Parallel Fetch: TMDB + Local Archive + Supabase
+      const [tmdbData, cachedMovies] = await Promise.all([
+        fetchData(endpoint, language),
+        db.getMovies()
+      ]);
+
+      let combinedResults: any[] = [];
+
+      // Pass A: TMDB Results
+      if (tmdbData && Array.isArray(tmdbData)) {
+        combinedResults = tmdbData
           .filter((item: Content) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
           .map((item: Content) => ({
             ...item,
             _relevanceScore: calculateSearchRelevance(trimmed, item)
-          }))
-          .filter((item: any) => item._relevanceScore > 40)
-          .sort((a: any, b: any) => b._relevanceScore - a._relevanceScore);
-        
-        setResults(rankedResults);
-      } else {
-        setResults([]);
+          }));
       }
+
+      // Pass B: Local Dubbed Archive (for speed and offline reliability)
+      if (cachedMovies && cachedMovies.length > 0) {
+        const dubbedMatches = cachedMovies
+          .filter((m: any) => {
+            const t = (m.title || m.kurdishTitle || '').toLowerCase();
+            const o = (m.overview || m.kurdishOverview || '').toLowerCase();
+            return t.includes(queryLower) || o.includes(queryLower);
+          })
+          .map((m: any) => ({
+            ...m,
+            media_type: 'dubbed',
+            _relevanceScore: calculateSearchRelevance(trimmed, m) + 500 // Boost custom dubbed movies
+          }));
+        
+        combinedResults = [...combinedResults, ...dubbedMatches];
+      }
+
+      // Deduplicate by ID and Sort
+      const uniqueResults = Array.from(new Map(combinedResults.map(item => [item.id, item])).values());
+      
+      const rankedResults = uniqueResults
+        .filter((item: any) => item._relevanceScore > 40)
+        .sort((a: any, b: any) => b._relevanceScore - a._relevanceScore);
+      
+      setResults(rankedResults);
     } catch (error) {
       console.error("Neural search engine failure:", error);
     } finally {
