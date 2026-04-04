@@ -217,7 +217,7 @@ const SearchPage: React.FC = () => {
                             setInputValue(item.title || item.name || '');
                             setIsSuggestionsVisible(false);
                             if (item.media_type === 'dubbed') {
-                              navigate(`/dubbed-details/${item.id}`);
+                              navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
                             } else {
                               navigate(`/details/${item.media_type}/${item.id}`);
                             }
@@ -313,7 +313,7 @@ const SearchPage: React.FC = () => {
                   variants={itemVariants}
                   onClick={() => {
                     if (item.media_type === 'dubbed') {
-                      navigate(`/dubbed-details/${item.id}`);
+                      navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
                     } else {
                       navigate(`/details/${item.media_type}/${item.id}`);
                     }

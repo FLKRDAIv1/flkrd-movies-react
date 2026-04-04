@@ -40,7 +40,7 @@ const DubbedDetailPage: React.FC = () => {
 
     // Smart iFrame Parser Engine
     const extractEmbedSrc = (source: string) => {
-        if (!source) return "https://rashaba.com/embed/mKkhrFhjQr3CKwz";
+        if (!source) return "";
 
         // If the admin pasted a raw <iframe src="..."> string
         if (source.includes('<iframe')) {
@@ -55,11 +55,14 @@ const DubbedDetailPage: React.FC = () => {
             return source;
         }
 
-        // Fallback for extreme edge cases based on old rashaba logic
-        return "https://rashaba.com/embed/mKkhrFhjQr3CKwz";
+        // Clean removal of the 'wrong movie' fallback (mKkhrFhjQr3CKwz)
+        return "";
     };
 
-    const embedUrl = dubbedData?.customStream ? extractEmbedSrc(dubbedData.customStream) : (dubbedData?.videoUrl ? extractEmbedSrc(dubbedData.videoUrl) : "https://rashaba.com/embed/mKkhrFhjQr3CKwz");
+    const embedUrl = useMemo(() => {
+        const source = dubbedData?.customStream || dubbedData?.videoUrl;
+        return extractEmbedSrc(source);
+    }, [dubbedData]);
 
     const updateProgress = useCallback((time: number, duration: number) => {
         if (!dubbedData && !content) return;
@@ -111,9 +114,15 @@ const DubbedDetailPage: React.FC = () => {
 
     useEffect(() => {
         let isMounted = true;
+        
+        // Instant Hydration Protocol: Skip the 10s delay if we already have data from the state
+        if (location.state?.customData) {
+            setLoading(false);
+        }
+
         const timeoutId = setTimeout(() => {
             if (isMounted) setLoading(false);
-        }, 10000); // 10s absolute fallback for the spinner
+        }, 10000); // 10s absolute maximum fallback
 
         const loadContent = async () => {
             if (!id) return;
@@ -214,12 +223,19 @@ const DubbedDetailPage: React.FC = () => {
 
                 <div className="w-full max-w-7xl mx-auto mb-8 md:mb-12">
                     <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-white/5 shadow-2xl group aspect-video" dir="ltr">
-                        <UniversalVideoPlayer
-                            src={embedUrl}
-                            accentColor={accentColor}
-                            language={language}
-                            onLoad={handlePlayerLoad}
-                        />
+                        {embedUrl ? (
+                            <UniversalVideoPlayer
+                                src={embedUrl}
+                                accentColor={accentColor}
+                                language={language}
+                                onLoad={handlePlayerLoad}
+                            />
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl">
+                                <Zap className="w-12 h-12 mb-4 animate-[pulse_1.5s_infinite]" style={{ color: accentColor }} />
+                                <span className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Preparing Digital Signal...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 

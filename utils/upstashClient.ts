@@ -18,6 +18,12 @@ export const redis = {
                 headers: { Authorization: `Bearer ${upstashToken}` },
                 signal: controller.signal
             });
+            
+            if (res.status === 429) {
+                console.warn("[UPSTASH] Rate limit exceeded. Falling back to primary databases.");
+                return null;
+            }
+
             const data = await res.json();
             if (data.result) {
                 try { return JSON.parse(data.result); } catch (e) { return data.result; }

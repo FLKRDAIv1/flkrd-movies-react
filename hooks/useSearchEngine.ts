@@ -5,6 +5,7 @@ import { fetchData } from '../services/tmdbService';
 import { API_KEY, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
+import { redis } from '../utils/upstashClient';
 
 /**
  * Advanced Scoring Engine (Multi-pass Relevance)
@@ -85,10 +86,24 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
     try {
       const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
       
-      // 1. Parallel Fetch: TMDB + Local Archive + Supabase
+      // 1. Parallel Fetch: TMDB + Local Archive + Upstash/Supabase Hybrid
       const [tmdbData, cachedMovies] = await Promise.all([
         fetchData(endpoint, language),
-        db.getMovies()
+        // Primary: Local, then Upstash
+        (async () => {
+          const local = await db.getMovies();
+          if (local && local.length > 0) return local;
+          
+          // Fast-track for new users: Read from Upstash instantly
+          const cloud = await redis.get('custom_dubbed_movies');
+          if (cloud) {
+              const parsed = Array.isArray(cloud) ? cloud : JSON.parse(cloud as string);
+              // Optimistically save to local DB for next time
+              db.saveMovies(parsed).catch(() => {});
+              return parsed;
+          }
+          return [];
+        })()
       ]);
 
       let combinedResults: any[] = [];
@@ -125,7 +140,16 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
       
       const rankedResults = uniqueResults
         .filter((item: any) => item._relevanceScore > 40)
-        .sort((a: any, b: any) => b._relevanceScore - a._relevanceScore);
+        .sort((a: any, b: any) => {
+          if (b._relevanceScore !== a._relevanceScore) {
+              return b._relevanceScore - a._relevanceScore;
+          }
+          // Tie-breaker: Newest first based on ID
+          const idA = typeof a.id === 'string' && a.id.startsWith('custom_') ? Number(a.id.replace('custom_', '')) : Number(a.id);
+          const idB = typeof b.id === 'string' && b.id.startsWith('custom_') ? Number(b.id.replace('custom_', '')) : Number(b.id);
+          if (!isNaN(idA) && !isNaN(idB)) return idB - idA;
+          return 0;
+        });
       
       setResults(rankedResults);
     } catch (error) {

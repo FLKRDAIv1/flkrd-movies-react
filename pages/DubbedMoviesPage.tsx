@@ -325,18 +325,17 @@ const DubbedMoviesPage: React.FC = () => {
             const backgroundSync = async () => {
                 let customMovies = [];
                 try {
-                    await setDynamicStatus('PINGING REDIS UPSTASH CLUSTERS...', 400);
-                    const cachedMovies = await redis.get('custom_dubbed_movies');
-                    if (cachedMovies) {
-                        await setDynamicStatus('REDIS HIT: FAST STREAM ACTIVATED...', 300);
-                        customMovies = Array.isArray(cachedMovies) ? cachedMovies : JSON.parse(cachedMovies as string);
-                    } else {
+                    await setDynamicStatus('CONNECTING TO UPSTASH EDGE CACHE...', 400);
+                    // Using 24-hour TTL (86400s) for elite performance
+                    const cachedMovies = await redis.fetchCached('custom_dubbed_movies', 86400, async () => {
                         await setDynamicStatus('REDIS MISS: QUERYING ZANA POSTGRES...', 600);
                         const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
-                        if (data) {
-                            customMovies = data;
-                            redis.set('custom_dubbed_movies', JSON.stringify(data), { ex: 3600 }).catch(() => { });
-                        }
+                        return data || [];
+                    });
+
+                    if (cachedMovies && cachedMovies.length > 0) {
+                        await setDynamicStatus('DATA STREAM ALIGNED VIA REDIS...', 300);
+                        customMovies = cachedMovies;
                     }
                 } catch (e) {
                     console.error("NETWORK SIGNAL INTERRUPTED:", e);
@@ -374,10 +373,15 @@ const DubbedMoviesPage: React.FC = () => {
                             
                             if (pA !== pB) return pA - pB;
                             
-                            // Secondary sort: created_at descending
                             const dateA = new Date(a.created_at || 0).getTime();
                             const dateB = new Date(b.created_at || 0).getTime();
-                            return dateB - dateA;
+                            
+                            if (dateA !== dateB) return dateB - dateA;
+                            
+                            // Final tie-breaker: Newest ID first
+                            const numIdA = Number(String(a.id).replace('custom_', ''));
+                            const numIdB = Number(String(b.id).replace('custom_', ''));
+                            return numIdB - numIdA;
                         });
 
                         const finalMerge = [...formattedCustom];
@@ -707,7 +711,8 @@ const DubbedMoviesPage: React.FC = () => {
             // 2. Pre-warm Redis and Local Cache
             const { data: freshList } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
             if (freshList) {
-                await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 }).catch(() => { });
+                // Instantly refresh the 24h cache
+                await redis.set('custom_dubbed_movies', freshList, { ex: 86400 }).catch(() => { });
 
                 // Formulate the local cache immediately
                 const formattedCustom = freshList.map((movie: any) => ({
@@ -796,7 +801,7 @@ const DubbedMoviesPage: React.FC = () => {
                     .order('created_at', { ascending: false });
                 
                 if (freshList) {
-                    await redis.set('custom_dubbed_movies', JSON.stringify(freshList), { ex: 3600 });
+                    await redis.set('custom_dubbed_movies', freshList, { ex: 86400 });
                 }
             } catch (cacheErr) {
                 console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB record updated.', cacheErr);

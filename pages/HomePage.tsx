@@ -7,7 +7,10 @@ import { requests, IMAGE_BASE_URL } from '../constants';
 import { WatchProgress, Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { fetchData } from '../services/tmdbService';
-import { Play, Sparkles } from 'lucide-react';
+import { Play, Sparkles, Mic2 } from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
+import { redis } from '../utils/upstashClient';
+import { db } from '../utils/db';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
@@ -67,6 +70,7 @@ const HomePage: React.FC = () => {
   const langCode = language === 'ku' ? 'ku' : 'en-US';
   const [continueWatchingItems, setContinueWatchingItems] = useState<WatchProgress[]>([]);
   const [recentlyViewedItems, setRecentlyViewedItems] = useState<WatchProgress[]>([]);
+  const [dubbedItems, setDubbedItems] = useState<Content[]>([]);
 
   const loadHistory = useCallback(() => {
     try {
@@ -94,8 +98,75 @@ const HomePage: React.FC = () => {
     }
   }, []);
 
+  const loadDubbed = useCallback(async () => {
+    let rawItems = [];
+    try {
+      // 1. Attempt High-Speed Edge Fetch (Upstash)
+      try {
+        const cached = await redis.get('custom_dubbed_movies');
+        if (cached) {
+          rawItems = Array.isArray(cached) ? cached : JSON.parse(cached as string);
+          console.log("[HP] Redis Cache Hit:", rawItems.length);
+        }
+      } catch (redisError) {
+        console.warn("[HP] Redis Signal Interrupted, shifting to Supabase...", redisError);
+      }
+
+      // 2. Fallback to Supabase Primary if Redis failed or was empty
+      if (rawItems.length === 0) {
+        const { data, error } = await supabase
+          .from('dubbed_movies')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          rawItems = data;
+          console.log("[HP] Supabase Signal Aligned:", rawItems.length);
+          // Try to heal the cache
+          redis.set('custom_dubbed_movies', data, { ex: 86400 }).catch(() => {});
+        } else if (error) {
+          throw error;
+        }
+      }
+
+      // 3. Final Fallback to Local Quantum Core (IndexedDB)
+      if (rawItems.length === 0) {
+        rawItems = await db.getMovies();
+        console.log("[HP] Recovering from Local Archive:", rawItems?.length);
+      }
+
+      if (rawItems && rawItems.length > 0) {
+        // 4. Transform and Rank (Newest First)
+        const formatted = rawItems.map((m: any) => ({
+            ...m,
+            id: `custom_${m.id}`,
+            media_type: 'dubbed',
+            poster_path: m.imageBase64,
+            backdrop_path: m.bannerBase64 || m.imageBase64,
+            title: m.title,
+            kurdishTitle: m.title,
+            overview: m.description,
+            kurdishOverview: m.description,
+            customStream: m.videoUrl
+        }));
+
+        formatted.sort((a: any, b: any) => {
+            const idA = Number(String(a.id).replace('custom_', ''));
+            const idB = Number(String(b.id).replace('custom_', ''));
+            return idB - idA;
+        });
+
+        setDubbedItems(formatted.slice(0, 20));
+        db.saveMovies(rawItems).catch(() => {});
+      }
+    } catch (e) {
+      console.error("[HP CRITICAL ERROR]", e);
+    }
+  }, []);
+
   useEffect(() => {
     loadHistory();
+    loadDubbed();
     window.addEventListener('storage', loadHistory);
     window.addEventListener('watchProgressUpdated', loadHistory);
     return () => {
@@ -141,6 +212,17 @@ const HomePage: React.FC = () => {
         </AnimatePresence>
 
         <Row title={t('trendingNow')} fetchUrl={requests.fetchTrending(langCode)} />
+        
+        {dubbedItems.length > 0 && (
+          <div className="relative">
+            <Row 
+              title={language === 'ku' ? 'دۆبلاژکراوە تاقانەکان' : 'Exclusive Dubbed Movies'} 
+              items={dubbedItems} 
+              type="dubbed"
+            />
+          </div>
+        )}
+
         <Row title={t('topRatedMovies')} fetchUrl={requests.fetchTopRatedMovies(langCode)} type="movie" />
 
         <WeeklySpotlight fetchUrl={requests.fetchTrendingMovies(langCode)} />
