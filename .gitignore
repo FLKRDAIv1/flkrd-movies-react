@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+data movie restored/
+dubbed_movies_backup.json
