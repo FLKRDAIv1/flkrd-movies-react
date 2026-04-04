@@ -507,21 +507,8 @@ const DubbedMoviesPage: React.FC = () => {
         setIsForceSyncing(true);
         addNotification({ type: 'info', title: 'Network Call', message: 'Re-syncing catalog from Zana Servers directly...' });
 
-        // 1. Independent Cache Purge (Don't wait for it to finish the main sync)
-        const purgeCache = async () => {
-            try {
-                await redis.del('custom_dubbed_movies');
-                console.log("[ZANA ENGINE] Global cache purged.");
-            } catch (e) {
-                console.warn("[ZANA ENGINE] Cache purge skipped due to network latency.");
-            }
-        };
-
-        // Fire and forget (or run in parallel)
-        purgeCache();
-
         try {
-            // 2. Direct Postgres align with a generous timeout
+            // 1. Direct Postgres align with a generous timeout
             const timeoutPromise = new Promise((_, reject) => 
                 setTimeout(() => reject(new Error('Operation timeout (12s limit)')), 12000)
             );
@@ -538,7 +525,7 @@ const DubbedMoviesPage: React.FC = () => {
 
             const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
 
-            if (data) {
+            if (data && data.length > 0) {
                 const formattedCustom = data.map((movie: any) => ({
                     ...movie,
                     id: `custom_${movie.id}`,
@@ -568,19 +555,34 @@ const DubbedMoviesPage: React.FC = () => {
                 });
 
                 setDubbedContent([...formattedCustom]);
+                
+                // CRITICAL: Only save to IndexedDB if we actually GOT movies back.
+                // This prevents wiping the offline archive if the server returns empty by mistake.
                 await db.saveMovies(formattedCustom);
                 
+                // Also purge Redis only on success
+                try {
+                    await redis.del('custom_dubbed_movies');
+                } catch (re) {
+                    console.warn("Redis purge delayed.");
+                }
+
                 addNotification({ 
                     type: 'success', 
                     title: 'Sync Integrity Established', 
                     message: `Grid synced with ${formattedCustom.length} active nodes.` 
                 });
+            } else if (data && data.length === 0) {
+                // If server explicitly says 0, but we expect 93, don't wipe the UI yet.
+                // Fallback to local instead.
+                throw new Error('Server returned empty set');
             }
         } catch (e: any) {
             console.error("Force sync failed", e);
             // Check if we have cached data before showing a hard error
             const cached = await db.getMovies();
             if (cached && cached.length > 0) {
+                setDubbedContent([...cached]);
                 addNotification({
                     type: 'info',
                     title: 'Offline Archive Loaded',

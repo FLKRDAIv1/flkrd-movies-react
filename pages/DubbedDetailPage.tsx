@@ -150,13 +150,14 @@ const DubbedDetailPage: React.FC = () => {
                     }
                 }
 
-                // 2. Fetch TMDB Enrichment IF the ID is numeric (real TMDB ID)
+                // 2. Fetch TMDB Enrichment ONLY if the ID is a valid TMDB format (usually >= 500)
+                // Small IDs (1, 2, 3, etc.) are likely your Supabase sequence IDs and should NOT be checked in TMDB.
                 const apiLang = 'en-US';
                 const cleanId = idStr.replace('custom_', '');
+                const numericId = Number(cleanId);
 
-                if (!isNaN(Number(cleanId))) {
-                    const numericTMDBId = Number(cleanId);
-                    const endpoint = `/movie/${numericTMDBId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
+                if (!isNaN(numericId) && numericId > 200) {
+                    const endpoint = `/movie/${numericId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
                     try {
                         let data = await fetchData(endpoint, language);
                         if (data && isMounted) setContent(data);
@@ -189,9 +190,9 @@ const DubbedDetailPage: React.FC = () => {
 
     if (loading && !dubbedData) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
 
-    const displayTitle = dubbedData?.kurdishTitle || content?.title || content?.name || dubbedData?.title || "Unknown Title";
-    const displayOverview = dubbedData?.kurdishOverview || content?.overview || (language === 'ku' ? "هیچ زانیاریەک بەردەست نیە" : "No description available in this node.");
-    const backdropUrl = content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || '');
+    const displayTitle = dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading Title...";
+    const displayOverview = dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "هیچ زانیاریەک بەردەست نیە" : "Wait, establishing node description...");
+    const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
 
     return (
         <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-32 transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
