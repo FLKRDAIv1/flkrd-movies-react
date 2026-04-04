@@ -24,7 +24,7 @@ const DubbedDetailPage: React.FC = () => {
     const { addNotification } = useNotification();
 
     const [content, setContent] = useState<Content | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!location.state?.customData);
     const [isPlayerLoading, setIsPlayerLoading] = useState(true);
     const [supabaseData, setSupabaseData] = useState<any>(null);
     const playerContainerRef = useRef<HTMLDivElement>(null);

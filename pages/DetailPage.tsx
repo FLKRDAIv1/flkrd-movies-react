@@ -52,8 +52,9 @@ const DetailPage: React.FC = () => {
   const { t, language } = useTranslation();
   const { theme, accentColor } = useUI();
   const { addNotification } = useNotification();
-  const [content, setContent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const [content, setContent] = useState<any>(location.state?.customData || null);
+  const [loading, setLoading] = useState(!location.state?.customData);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [recommendations, setRecommendations] = useState<Content[]>([]);

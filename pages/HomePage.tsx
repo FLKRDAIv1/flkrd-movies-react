@@ -38,7 +38,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         initial={{ opacity: 0, scale: 0.98 }}
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
-        onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)}
+        onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } })}
         className="relative h-[450px] md:h-[600px] rounded-[4rem] overflow-hidden group cursor-pointer border border-white/10 shadow-2xl"
       >
         <img
@@ -56,7 +56,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
           </div>
           <h3 className="text-4xl md:text-7xl font-[1000] text-white uppercase italic tracking-tighter mb-6 line-clamp-1 leading-none">{item.title || item.name}</h3>
           <p className="text-gray-300 text-sm md:text-xl line-clamp-2 max-w-3xl mb-12 font-bold italic leading-relaxed opacity-80">{item.overview}</p>
-          <button onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)} className="bg-white text-black font-[1000] px-12 py-5 rounded-[1.5rem] flex items-center gap-4 uppercase italic tracking-widest text-sm hover:bg-red-600 hover:text-white transition-all shadow-2xl">
+          <button onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } })} className="bg-white text-black font-[1000] px-12 py-5 rounded-[1.5rem] flex items-center gap-4 uppercase italic tracking-widest text-sm hover:bg-red-600 hover:text-white transition-all shadow-2xl">
             <Play fill="currentColor" size={18} /> {t('play')}
           </button>
         </div>

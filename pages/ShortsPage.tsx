@@ -298,7 +298,7 @@ const ShortsPage: React.FC = () => {
                 key={`${movie.id}-${index}`} movie={movie} active={index === activeIndex}
                 isMutedGlobal={isMutedGlobal} toggleMuteGlobal={toggleMuteGlobal}
                 hasInteracted={hasInteracted} onAutoScrollRequest={() => containerRef.current?.scrollBy({top: containerRef.current.clientHeight, behavior: 'smooth'})}
-                onNavigate={() => navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`)}
+                onNavigate={() => navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`, { state: { customData: movie } })}
                 isFollowed={followedIds.has(movie.id)} onToggleFollow={() => handleToggleFollow(movie.id)}
             />
         )) : (

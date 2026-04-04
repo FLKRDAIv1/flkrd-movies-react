@@ -151,13 +151,13 @@ const HeroBanner: React.FC = () => {
 
             <div className={`flex flex-wrap items-center gap-4 md:gap-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
               <button
-                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`)}
+                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
                 className="bg-white text-black font-[1000] px-10 md:px-20 py-5 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter shadow-2xl transition-all active:scale-95"
               >
                 <Play fill="currentColor" size={20} className="md:w-7 md:h-7" /> {t('play')}
               </button>
               <button
-                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`)}
+                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
                 className="bg-black/40 backdrop-blur-3xl border border-white/10 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] text-white transition-all shadow-xl active:scale-95"
               >
                 <Info size={20} className="md:w-7 md:h-7" />

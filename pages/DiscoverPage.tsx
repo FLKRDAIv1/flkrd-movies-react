@@ -287,7 +287,7 @@ const DiscoverPage: React.FC = () => {
                                             key={`${item.id}-${index}`}
                                             initial={{ opacity: 0, scale: 0.9 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)}
+                                            onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } })}
                                             className="cursor-pointer group relative"
                                             whileHover={{ y: -8, scale: 1.02 }}
                                         >

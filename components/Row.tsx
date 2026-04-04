@@ -133,7 +133,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
     if (mType === 'dubbed') {
       navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
     } else {
-      navigate(`/details/${mType}/${item.id}`);
+      navigate(`/details/${mType}/${item.id}`, { state: { customData: item } });
     }
   };
 

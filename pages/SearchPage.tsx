@@ -315,7 +315,7 @@ const SearchPage: React.FC = () => {
                     if (item.media_type === 'dubbed') {
                       navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
                     } else {
-                      navigate(`/details/${item.media_type}/${item.id}`);
+                      navigate(`/details/${item.media_type}/${item.id}`, { state: { customData: item } });
                     }
                   }}
                   className="cursor-pointer group relative bg-card-bg transition-all duration-500 rounded-[2.5rem] overflow-hidden border border-border-color hover:border-brand/50 shadow-2xl"
