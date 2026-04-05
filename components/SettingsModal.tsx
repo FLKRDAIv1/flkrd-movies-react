@@ -246,7 +246,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </span>
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => setScale(Math.max(0.8, (scale || 1) - 0.05))}
+                          onClick={() => setScale(Math.max(0.5, (scale || 1) - 0.05))}
                           className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-all active:scale-95"
                         >
                           <Minimize2 size={14} className="text-white" />
@@ -258,7 +258,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           Reset
                         </button>
                         <button
-                          onClick={() => setScale(Math.min(1.3, (scale || 1) + 0.05))}
+                          onClick={() => setScale(Math.min(1.5, (scale || 1) + 0.05))}
                           className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-all active:scale-95"
                         >
                           <Maximize2 size={14} className="text-white" />
@@ -267,15 +267,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     </div>
                     <input
                       type="range"
-                      min={80}
-                      max={130}
+                      min={50}
+                      max={150}
                       step={5}
                       value={Math.round((scale || 1) * 100)}
                       onChange={(e) => setScale(Number(e.target.value) / 100)}
                       className="w-full h-1.5 rounded-full accent-brand cursor-pointer"
                     />
                     <div className="flex justify-between text-[8px] font-black text-gray-600 uppercase tracking-widest">
-                      <span>80%</span><span>100%</span><span>130%</span>
+                      <span>50%</span><span>100%</span><span>150%</span>
                     </div>
                   </div>
                 </div>

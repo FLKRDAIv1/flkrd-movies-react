@@ -60,11 +60,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, [accentColor]);
 
   useEffect(() => {
-    localStorage.setItem('flkrd_scale', scale.toString());
-    // Changing root font-size scales all 'rem' based units (Tailwind default)
-    const baseSize = 16 * scale;
+    const clamped = Math.min(1.5, Math.max(0.5, scale));
+    localStorage.setItem('flkrd_scale', clamped.toString());
+    const baseSize = 16 * clamped;
+    // Smooth transition when resizing
+    document.documentElement.style.transition = 'font-size 0.25s ease';
     document.documentElement.style.fontSize = `${baseSize}px`;
-    document.documentElement.style.setProperty('--global-scale', scale.toString());
+    document.documentElement.style.setProperty('--global-scale', clamped.toString());
   }, [scale]);
 
   useEffect(() => {
