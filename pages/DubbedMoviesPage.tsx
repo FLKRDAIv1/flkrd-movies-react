@@ -1005,12 +1005,24 @@ const DubbedMoviesPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-[7.5rem] font-[1000] uppercase italic tracking-tighter leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,1)] text-white max-w-5xl selection:bg-white selection:text-black">
-                                        {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishTitle : heroMovies[currentHeroIndex]?.title}
-                                    </h1>
+                                    <div className="flex flex-col gap-2">
+                                        {language === 'ku' && heroMovies[currentHeroIndex]?.title && (
+                                            <motion.span
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                transition={{ delay: 0.6, duration: 0.8 }}
+                                                className="text-brand font-black text-xs md:text-sm tracking-[0.4em] uppercase italic opacity-80"
+                                            >
+                                                {heroMovies[currentHeroIndex]?.title}
+                                            </motion.span>
+                                        )}
+                                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[5rem] font-[1000] uppercase italic tracking-tighter leading-[0.9] drop-shadow-[0_15px_40px_rgba(0,0,0,0.8)] text-white max-w-4xl selection:bg-white selection:text-black">
+                                            {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishTitle : heroMovies[currentHeroIndex]?.title}
+                                        </h1>
+                                    </div>
 
-                                    <div className="flex items-center gap-6 mt-2">
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-brand/30 border border-brand/50 rounded-lg backdrop-blur-xl">
+                                    <div className="flex items-center gap-6 mt-1">
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
                                             <Activity size={12} className="text-brand" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-brand">ULTRA HD 4K</span>
                                         </div>
@@ -1018,49 +1030,55 @@ const DubbedMoviesPage: React.FC = () => {
                                             <Mic2 size={12} className="text-gray-400" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">DUBBED KURDISH</span>
                                         </div>
+                                        {heroMovies[currentHeroIndex]?.rating && (
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
+                                                <Star size={12} fill="gold" className="text-yellow-500" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{heroMovies[currentHeroIndex]?.rating}</span>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <p className="text-gray-300 text-sm md:text-xl font-medium italic line-clamp-3 max-w-3xl drop-shadow-xl leading-relaxed mt-2 bg-black/60 p-8 rounded-[2.5rem] backdrop-blur-[40px] border border-white/10 shadow-2xl">
+                                    <p className="text-gray-300 text-sm md:text-lg font-medium italic line-clamp-3 max-w-2xl drop-shadow-xl leading-relaxed mt-1 bg-black/40 p-6 rounded-3xl backdrop-blur-[30px] border border-white/10 shadow-2xl">
                                         {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishOverview : heroMovies[currentHeroIndex]?.overview}
                                     </p>
 
-                                    <div className="flex flex-wrap items-center gap-5 mt-4 pb-20">
+                                    <div className="flex flex-wrap items-center gap-4 mt-2 pb-20">
                                         <motion.button
                                             whileHover={{ scale: 1.05, x: 10 }}
                                             whileTap={{ scale: 0.95 }}
                                             onClick={() => handlePlay(heroMovies[currentHeroIndex])}
-                                            className="bg-white text-black font-[1000] px-16 py-7 rounded-[2.5rem] flex items-center gap-5 text-sm md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.15)] transition-all hover:bg-brand hover:text-white"
+                                            className="bg-white text-black font-[1000] px-10 py-5 rounded-2xl flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.15)] transition-all hover:bg-brand hover:text-white"
                                         >
-                                            <Play size={28} fill="currentColor" /> {t('play')}
+                                            <Play size={24} fill="currentColor" /> {t('play')}
                                         </motion.button>
                                         <motion.button
                                             whileHover={{ scale: 1.1, rotate: 5 }}
                                             onClick={(e) => handleShare(e, heroMovies[currentHeroIndex])}
-                                            className="bg-white/5 backdrop-blur-3xl border border-white/10 p-7 rounded-[2.5rem] text-white transition-all hover:bg-white/10 shadow-2xl group"
+                                            className="bg-white/5 backdrop-blur-3xl border border-white/10 p-5 rounded-2xl text-white transition-all hover:bg-white/10 shadow-2xl group"
                                         >
-                                            <Share2 size={28} className="group-hover:text-brand transition-colors" />
+                                            <Share2 size={24} className="group-hover:text-brand transition-colors" />
                                         </motion.button>
                                     </div>
                                 </motion.div>
                             </div>
 
                             {/* Manual Controls - Carousel Interaction */}
-                            <div className="absolute inset-y-0 left-0 right-0 z-50 flex items-center justify-between px-6 pointer-events-none mb-40">
+                            <div className="absolute inset-y-0 left-0 right-0 z-50 flex items-center justify-between px-6 pointer-events-none mb-20 lg:mb-32">
                                 <motion.button
-                                    whileHover={{ scale: 1.2, x: -5 }}
-                                    whileTap={{ scale: 0.9 }}
+                                    whileHover={{ scale: 1.1, x: -10, filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.4))' }}
+                                    whileTap={{ scale: 0.8 }}
                                     onClick={handlePrevHero}
-                                    className="w-16 h-16 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-2xl"
+                                    className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-black/30 backdrop-blur-3xl border border-white/20 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                                 >
-                                    <ChevronRight size={32} className="rotate-180" />
+                                    <ChevronRight size={36} className="rotate-180 opacity-60" />
                                 </motion.button>
                                 <motion.button
-                                    whileHover={{ scale: 1.2, x: 5 }}
-                                    whileTap={{ scale: 0.9 }}
+                                    whileHover={{ scale: 1.1, x: 10, filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.4))' }}
+                                    whileTap={{ scale: 0.8 }}
                                     onClick={handleNextHero}
-                                    className="w-16 h-16 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-2xl"
+                                    className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-black/30 backdrop-blur-3xl border border-white/20 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
                                 >
-                                    <ChevronRight size={32} />
+                                    <ChevronRight size={36} className="opacity-60" />
                                 </motion.button>
                             </div>
                         </motion.div>
