@@ -10,12 +10,11 @@ import { WatchProgress } from '../types';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 
 const Header: React.FC<{ scrolled: boolean }> = () => {
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [recentItems, setRecentItems] = useState<WatchProgress[]>([]);
   const historyRef = useRef<HTMLDivElement>(null);
 
-  const { theme, toggleTheme, accentColor } = useUI();
+  const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -196,7 +195,6 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
           </button>
         </div>
       </header>
-      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </>
   );
 };

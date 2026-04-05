@@ -11,6 +11,8 @@ interface UIContextType {
   setScale: (scale: number) => void;
   isPerformanceMode: boolean;
   setIsPerformanceMode: (isPerformanceMode: boolean) => void;
+  isSettingsOpen: boolean;
+  setIsSettingsOpen: (isOpen: boolean) => void;
   toggleTheme: () => void;
 }
 
@@ -29,6 +31,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isPerformanceMode, setIsPerformanceModeState] = useState(() =>
     localStorage.getItem('flkrd_performance_turbo') === 'true'
   );
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('flkrd_theme', theme);
@@ -85,7 +88,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const setIsPerformanceMode = (p: boolean) => setIsPerformanceModeState(p);
 
   return (
-    <UIContext.Provider value={{ theme, accentColor, scale, isPerformanceMode, setTheme, setAccentColor, setScale, setIsPerformanceMode, toggleTheme }}>
+    <UIContext.Provider value={{ 
+      theme, accentColor, scale, isPerformanceMode, isSettingsOpen,
+      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme 
+    }}>
       {children}
     </UIContext.Provider>
   );

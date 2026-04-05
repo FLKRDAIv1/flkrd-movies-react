@@ -24,6 +24,7 @@ import DubbedMoviesPage from './pages/DubbedMoviesPage';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
 import ContinueWatchingPage from './pages/ContinueWatchingPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import { fetchData } from './services/tmdbService';
 import { requests } from './constants';
@@ -133,7 +134,7 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
 const App: React.FC = () => {
     const { language, t } = useTranslation();
-    const { theme } = useUI();
+    const { theme, isSettingsOpen, setIsSettingsOpen } = useUI();
     const [loading, setLoading] = useState(true);
     const [scrolled, setScrolled] = useState(false);
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
@@ -269,6 +270,7 @@ const App: React.FC = () => {
                 <ContinueWatchingPortal />
                 <WelcomeNotificationPrompt />
                 <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
+                <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             </HashRouter>
         </div>
     );

@@ -66,14 +66,19 @@ img {
    ⚡ PERFORMANCE MODE — Real 60fps Boost
    Activated by: html.performance-mode
    ════════════════════════════════════════════════ */
-html.performance-mode *,
+html.performance-mode *:not(.motion-safe),
 html.performance-mode *::before,
 html.performance-mode *::after {
-  /* Kill all CSS animations */
+  /* Kill all CSS animations for general elements */
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
+}
+
+/* Ensure motion-safe elements (like modals) keep their logic */
+.motion-safe {
+  transition-duration: 0.2s !important;
 }
 
 /* Disable backdrop blur (most expensive GPU op) */

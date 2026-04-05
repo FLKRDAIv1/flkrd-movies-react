@@ -231,7 +231,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[200] flex items-end justify-center md:items-center p-4"
+            className={`fixed inset-0 z-[200] flex items-end justify-center md:items-center p-4 motion-safe ${!isOpen ? 'pointer-events-none' : ''}`}
             style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
           >
             <motion.div
