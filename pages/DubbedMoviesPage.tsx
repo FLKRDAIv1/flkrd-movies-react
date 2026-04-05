@@ -585,10 +585,16 @@ const DubbedMoviesPage: React.FC = () => {
         }
     };
 
-    // Auto-play the Hero Banner Carousel
-    const heroMovies = dubbedContent.filter(m => m.level === 'KING').length > 0
-        ? dubbedContent.filter(m => m.level === 'KING').slice(0, 5)
-        : dubbedContent.slice(0, 5);
+    // Latest Movie Banner Carousel Logic - Truly Newer First (Top 10)
+    const heroMovies = dubbedContent.slice(0, 10);
+    
+    const handleNextHero = () => {
+        setCurrentHeroIndex((prev) => (prev + 1) % heroMovies.length);
+    };
+
+    const handlePrevHero = () => {
+        setCurrentHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
+    };
     useEffect(() => {
         if (heroMovies.length <= 1) return;
         const timer = setInterval(() => {
@@ -984,18 +990,19 @@ const DubbedMoviesPage: React.FC = () => {
                                     transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                                     className="flex flex-col items-start gap-8 max-w-5xl"
                                 >
-                                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-3xl border border-white/10 px-5 py-2 rounded-full shadow-2xl">
+                                    <div className="flex items-center gap-3">
                                         {heroMovies[currentHeroIndex]?.level === 'KING' ? (
-                                            <>
-                                                <Star size={14} fill="gold" className="text-yellow-500 animate-pulse" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-500 italic">KING PREMIERE</span>
-                                            </>
+                                            <div className="flex items-center gap-2 px-5 py-2.5 bg-yellow-500 rounded-full text-[10px] font-black uppercase tracking-widest text-black shadow-[0_10px_40px_rgba(234,179,8,0.5)] border border-yellow-400/50">
+                                                <Star size={14} fill="currentColor" /> KING SELECTION
+                                            </div>
                                         ) : (
-                                            <>
-                                                <Sparkles size={14} className="text-brand animate-pulse" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white italic">PREMIUM SOURCE</span>
-                                            </>
+                                            <div className="flex items-center gap-2 px-5 py-2.5 bg-brand rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-[0_10px_40px_rgba(var(--brand-red-rgb),0.5)] border border-brand/50">
+                                                <Zap size={14} fill="currentColor" /> LATEST RELEASE
+                                            </div>
                                         )}
+                                        <div className="px-5 py-2.5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-white/60">
+                                            PREMIUM SOURCE
+                                        </div>
                                     </div>
 
                                     <h1 className="text-5xl sm:text-6xl md:text-8xl lg:text-[7.5rem] font-[1000] uppercase italic tracking-tighter leading-[0.85] drop-shadow-[0_20px_50px_rgba(0,0,0,1)] text-white max-w-5xl selection:bg-white selection:text-black">
@@ -1003,38 +1010,58 @@ const DubbedMoviesPage: React.FC = () => {
                                     </h1>
 
                                     <div className="flex items-center gap-6 mt-2">
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-brand/20 border border-brand/30 rounded-lg">
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-brand/30 border border-brand/50 rounded-lg backdrop-blur-xl">
                                             <Activity size={12} className="text-brand" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-brand">ULTRA HD 4K</span>
                                         </div>
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
                                             <Mic2 size={12} className="text-gray-400" />
                                             <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">DUBBED KURDISH</span>
                                         </div>
                                     </div>
 
-                                    <p className="text-gray-300 text-sm md:text-xl font-medium italic line-clamp-3 max-w-3xl drop-shadow-xl leading-relaxed mt-2 bg-black/40 p-6 rounded-[2rem] backdrop-blur-3xl border border-white/10">
+                                    <p className="text-gray-300 text-sm md:text-xl font-medium italic line-clamp-3 max-w-3xl drop-shadow-xl leading-relaxed mt-2 bg-black/60 p-8 rounded-[2.5rem] backdrop-blur-[40px] border border-white/10 shadow-2xl">
                                         {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishOverview : heroMovies[currentHeroIndex]?.overview}
                                     </p>
 
-                                    <div className="flex flex-wrap items-center gap-5 mt-4">
+                                    <div className="flex flex-wrap items-center gap-5 mt-4 pb-20">
                                         <motion.button
                                             whileHover={{ scale: 1.05, x: 10 }}
                                             whileTap={{ scale: 0.95 }}
                                             onClick={() => handlePlay(heroMovies[currentHeroIndex])}
-                                            className="bg-white text-black font-[1000] px-16 py-7 rounded-[2.5rem] flex items-center gap-5 text-sm md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.1)] transition-all hover:bg-brand hover:text-white"
+                                            className="bg-white text-black font-[1000] px-16 py-7 rounded-[2.5rem] flex items-center gap-5 text-sm md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.15)] transition-all hover:bg-brand hover:text-white"
                                         >
                                             <Play size={28} fill="currentColor" /> {t('play')}
                                         </motion.button>
                                         <motion.button
                                             whileHover={{ scale: 1.1, rotate: 5 }}
                                             onClick={(e) => handleShare(e, heroMovies[currentHeroIndex])}
-                                            className="bg-white/5 backdrop-blur-3xl border border-white/10 p-7 rounded-[2.5rem] text-white transition-all hover:bg-white/10 shadow-2xl"
+                                            className="bg-white/5 backdrop-blur-3xl border border-white/10 p-7 rounded-[2.5rem] text-white transition-all hover:bg-white/10 shadow-2xl group"
                                         >
-                                            <Share2 size={28} />
+                                            <Share2 size={28} className="group-hover:text-brand transition-colors" />
                                         </motion.button>
                                     </div>
                                 </motion.div>
+                            </div>
+
+                            {/* Manual Controls - Carousel Interaction */}
+                            <div className="absolute inset-y-0 left-0 right-0 z-50 flex items-center justify-between px-6 pointer-events-none mb-40">
+                                <motion.button
+                                    whileHover={{ scale: 1.2, x: -5 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={handlePrevHero}
+                                    className="w-16 h-16 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-2xl"
+                                >
+                                    <ChevronRight size={32} className="rotate-180" />
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{ scale: 1.2, x: 5 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={handleNextHero}
+                                    className="w-16 h-16 rounded-full bg-black/20 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-2xl"
+                                >
+                                    <ChevronRight size={32} />
+                                </motion.button>
                             </div>
                         </motion.div>
                     )}
