@@ -223,31 +223,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
+    <div 
+      className={`fixed inset-0 z-[200] flex items-end justify-center md:items-center p-4 ui-overlay transition-all duration-300 ${!isOpen ? 'hidden' : ''}`}
+      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
+      onClick={onClose}
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-            className={`fixed inset-0 z-[200] flex items-end justify-center md:items-center p-4 motion-safe ${!isOpen ? 'pointer-events-none' : ''}`}
-            style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
+            initial={{ y: 60, opacity: 0, scale: 0.96 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 40, opacity: 0, scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 38 }}
+            onClick={e => e.stopPropagation()}
+            className="w-full max-w-md relative motion-safe"
+            style={{
+              background: 'linear-gradient(145deg, rgba(18,18,18,0.98) 0%, rgba(10,10,10,0.98) 100%)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '2rem',
+              boxShadow: `0 40px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
+            }}
           >
-            <motion.div
-              initial={{ y: 60, opacity: 0, scale: 0.96 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 40, opacity: 0, scale: 0.96 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 38 }}
-              onClick={e => e.stopPropagation()}
-              className="w-full max-w-md relative"
-              style={{
-                background: 'linear-gradient(145deg, rgba(18,18,18,0.98) 0%, rgba(10,10,10,0.98) 100%)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '2rem',
-                boxShadow: `0 40px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
-              }}
-            >
               {/* Accent glow */}
               <div
                 className="absolute -top-32 -right-32 w-72 h-72 rounded-full pointer-events-none"
@@ -610,10 +606,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   {t('close')}
                 </motion.button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            )}
+        </AnimatePresence>
+      </div>
       <EnableNotificationsModal isOpen={isEnableNotificationsModalOpen} onClose={() => setIsEnableNotificationsModalOpen(false)} />
     </>
   );
