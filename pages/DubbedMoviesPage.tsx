@@ -367,7 +367,7 @@ const DubbedMoviesPage: React.FC = () => {
                             const dateA = new Date(a.created_at || 0).getTime();
                             const dateB = new Date(b.created_at || 0).getTime();
                             if (dateA !== dateB) return dateB - dateA;
-                            // Tiebreaker: highest numeric ID first
+                            // Tiebreaker: newest numeric ID first
                             const numIdA = Number(String(a.id).replace('custom_', ''));
                             const numIdB = Number(String(b.id).replace('custom_', ''));
                             return numIdB - numIdA;
@@ -431,12 +431,11 @@ const DubbedMoviesPage: React.FC = () => {
                             level: movie.level || 'KING'
                         }));
 
-                        // Priority Sorting Alignment
+                        // ✅ Neural Date Alignment: Newest First
                         formatted.sort((a, b) => {
-                            const priority: { [key: string]: number } = {
-                                'NEW': 0, 'KING': 1, 'BEST': 2, 'SPECIAL': 3
-                            };
-                            return (priority[a.level] ?? 99) - (priority[b.level] ?? 99);
+                            const dateA = new Date(a.created_at || 0).getTime();
+                            const dateB = new Date(b.created_at || 0).getTime();
+                            return dateB - dateA;
                         });
 
                         setDubbedContent([...formatted]);
@@ -533,14 +532,11 @@ const DubbedMoviesPage: React.FC = () => {
                     level: movie.level || 'KING'
                 }));
 
-                // ✅ Sort purely by newest created_at first
+                // ✅ Neural Date Alignment: Newest First
                 formattedCustom.sort((a, b) => {
                     const dateA = new Date(a.created_at || 0).getTime();
                     const dateB = new Date(b.created_at || 0).getTime();
-                    if (dateA !== dateB) return dateB - dateA;
-                    const numIdA = Number(String(a.id).replace('custom_', ''));
-                    const numIdB = Number(String(b.id).replace('custom_', ''));
-                    return numIdB - numIdA;
+                    return dateB - dateA;
                 });
 
                 setDubbedContent([...formattedCustom]);
@@ -1087,65 +1083,26 @@ const DubbedMoviesPage: React.FC = () => {
 
             {/* Content Sector Grid */}
             <div className="container mx-auto px-6 md:px-12 relative z-10 -mt-20">
-                <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
                     <div>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="p-3 bg-brand/10 rounded-2xl border border-brand/20 shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.2)]">
-                                <span className="text-2xl font-black italic text-brand">F</span>
-                            </div>
-                            <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-500 italic">ZANA SERVERS LINK</span>
-                        </div>
-
                         <h2 className="text-5xl md:text-8xl font-[1000] uppercase italic tracking-tighter text-white shimmer-text">
                             {t('dubbedMovies')}
                         </h2>
+                        <div className="h-1 w-24 bg-brand mt-4 rounded-full opacity-50" />
+                    </div>
+
+                    {/* --- Standalone System Utility --- */}
+                    <div className="flex items-center gap-6 mb-4 md:mb-0">
+                        <div 
+                            className={`p-5 rounded-[2rem] border border-white/10 bg-white/5 text-gray-500 transition-all hover:bg-white/10 hover:text-white cursor-pointer ${isForceSyncing ? 'animate-pulse' : ''}`}
+                            onClick={forceSync}
+                        >
+                            <RefreshCw size={22} className={`${isForceSyncing ? 'animate-spin' : ''}`} />
+                        </div>
                     </div>
                 </div>
 
-                {/* --- User Manual Filtering Array --- */}
-                <div className="flex overflow-x-auto gap-3 pb-4 mb-8 custom-scrollbar scroll-smooth snap-x">
-                    <button
-                        onClick={() => setActiveFilter('ALL')}
-                        className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'ALL' ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-white/30 hover:text-white'}`}
-                    >
-                        <ListVideo size={14} /> Full Hub
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('NEW')}
-                        className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'NEW' ? 'bg-brand text-white border-brand shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.5)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-brand hover:text-white'}`}
-                    >
-                        <Sparkles size={14} /> New Arrivals
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('KING')}
-                        className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'KING' ? 'bg-yellow-500 text-black border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-yellow-500 hover:text-white'}`}
-                    >
-                        <Star size={14} fill={activeFilter === 'KING' ? 'black' : 'none'} /> King Premiere
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('BEST')}
-                        className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'BEST' ? 'bg-orange-500 text-white border-orange-500 shadow-[0_0_20px_rgba(249,115,22,0.5)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-orange-500 hover:text-white'}`}
-                    >
-                        <TrendingUp size={14} /> Top Trending
-                    </button>
-                    <button
-                        onClick={() => setActiveFilter('SPECIAL')}
-                        className={`shrink-0 snap-start px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border ${activeFilter === 'SPECIAL' ? 'bg-purple-500 text-white border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.5)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-purple-500 hover:text-white'}`}
-                    >
-                        <Zap size={14} /> Special Event
-                    </button>
-
-                    <div className="flex-1" />
-
-                    <button
-                        onClick={forceSync}
-                        className={`shrink-0 snap-start p-3 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center gap-2 border bg-white/5 text-gray-400 border-white/10 hover:border-brand hover:text-brand hover:bg-brand/10 group ${isForceSyncing ? 'animate-pulse' : ''}`}
-                        title="Premium Synchronization"
-                    >
-                        <RefreshCw size={14} className={`${isForceSyncing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-700'}`} />
-                        <span className="hidden md:inline">Sync Node</span>
-                    </button>
-                </div>
+                <div className="h-[1px] w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-20" />
 
                 {/* --- Hidden Admin Floating Button --- */}
                 <button

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X } from 'lucide-react';
@@ -64,24 +64,39 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
     }
   };
 
+  const { pathname } = useLocation();
+  const isDubPage = pathname === '/dubbed-movies';
+
   return (
     <>
       <header className={`fixed top-0 left-0 right-0 z-40 p-3 sm:p-6 lg:p-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
-        <Link to="/" className="pointer-events-auto">
-          <div className="flex items-center gap-2 bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-xl p-1.5 md:p-2 transition-all shadow-lg">
-            <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-6 md:h-10 object-contain" />
-            <h1 className="text-sm md:text-2xl font-bold text-[var(--brand-red)] tracking-wider pr-2 hidden md:block">FLKRD MOVIES</h1>
-          </div>
-        </Link>
+        <div className={`pointer-events-auto ${isDubPage ? 'cursor-default transition-all duration-700 opacity-80 filter grayscale hover:grayscale-0' : ''}`}>
+          {isDubPage ? (
+            <div className="flex items-center gap-2 bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-xl p-1.5 md:p-2 transition-all shadow-lg">
+               <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-6 md:h-10 object-contain" />
+               <h1 className="text-sm md:text-2xl font-bold text-[var(--brand-red)] tracking-wider pr-2 hidden md:block uppercase italic tracking-tighter">FLKRD ORIGINALS</h1>
+            </div>
+          ) : (
+            <Link to="/">
+              <div className="flex items-center gap-2 bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-xl p-1.5 md:p-2 transition-all shadow-lg">
+                <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-6 md:h-10 object-contain" />
+                <h1 className="text-sm md:text-2xl font-bold text-[var(--brand-red)] tracking-wider pr-2 hidden md:block">FLKRD MOVIES</h1>
+              </div>
+            </Link>
+          )}
+        </div>
+        
         <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
-          <button
-            onClick={() => navigate('/continue-watching')}
-            className="hidden lg:flex items-center gap-2 bg-[var(--brand-red)] hover:brightness-110 text-white px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all hover:scale-105"
-            aria-label={t('continueWatching')}
-          >
-            <PlayCircle className="w-4 h-4 md:w-5 md:h-5 text-[var(--brand-red)]" fill="white" />
-            <span className="italic">{t('continueWatching')}</span>
-          </button>
+          {!isDubPage && (
+            <button
+              onClick={() => navigate('/continue-watching')}
+              className="hidden lg:flex items-center gap-2 bg-[var(--brand-red)] hover:brightness-110 text-white px-4 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all hover:scale-105"
+              aria-label={t('continueWatching')}
+            >
+              <PlayCircle className="w-4 h-4 md:w-5 md:h-5 text-[var(--brand-red)]" fill="white" />
+              <span className="italic">{t('continueWatching')}</span>
+            </button>
+          )}
 
           {/* History Dropdown Control */}
           <div className="relative" ref={historyRef}>
@@ -93,6 +108,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
               <History className={`w-5 h-5 md:w-6 md:h-6 transition-colors ${isHistoryOpen ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-brand'}`} />
             </button>
 
+            {/* ... Dropdown Content (unchanged) ... */}
             <AnimatePresence>
               {isHistoryOpen && (
                 <motion.div
@@ -178,21 +194,25 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
 
           <NotificationInbox />
 
-          <button
-            onClick={() => navigate('/profile')}
-            className="bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)]"
-            aria-label={t('profile')}
-          >
-            <User className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)] group-hover:text-white transition-colors" />
-          </button>
+          {!isDubPage && (
+            <button
+              onClick={() => navigate('/profile')}
+              className="bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)]"
+              aria-label={t('profile')}
+            >
+              <User className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)] group-hover:text-white transition-colors" />
+            </button>
+          )}
 
-          <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
-            aria-label={t('settings')}
-          >
-            <Cog className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)]" />
-          </button>
+          {!isDubPage && (
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
+              aria-label={t('settings')}
+            >
+              <Cog className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)]" />
+            </button>
+          )}
         </div>
       </header>
     </>

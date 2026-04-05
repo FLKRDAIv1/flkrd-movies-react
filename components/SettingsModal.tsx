@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Languages, Bell, Check, Palette, Sparkles, Moon, Sun,
   Maximize2, Minimize2, Type, Zap, Info, Monitor, Gauge,
-  ChevronRight, Activity
+  ChevronRight, Activity, Cpu
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -15,7 +15,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-/* ─── Data ─────────────────────────────────────── */
+/* ─── Data Constants ───────────────────────────── */
 const APP_COLORS = [
   { name: 'FLKRD Red',      value: '#e50914' },
   { name: 'Sky Blue',       value: '#007aff' },
@@ -37,7 +37,8 @@ const APP_THEMES = [
   { id: 'light',                     name: 'Light',       icon: '☀️', color: '#f5f5f5' },
 ];
 
-/* ─── Animated Toggle ───────────────────────────── */
+/* ─── Sub-Components ────────────────────────── */
+
 const AnimatedToggle: React.FC<{
   checked: boolean;
   onChange: () => void;
@@ -47,50 +48,31 @@ const AnimatedToggle: React.FC<{
   const isRTL = language === 'ku';
   return (
     <motion.button
-      onClick={onChange}
-      className="relative w-16 h-8 rounded-full flex-shrink-0 focus:outline-none"
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange();
+      }}
+      className="relative w-14 h-7 rounded-full flex-shrink-0 focus:outline-none overflow-hidden"
       style={{
         backgroundColor: checked ? color : 'rgba(255,255,255,0.08)',
-        boxShadow: checked ? `0 0 24px ${color}66` : 'none',
       }}
-      animate={{ backgroundColor: checked ? color : 'rgba(255,255,255,0.08)' }}
-      transition={{ duration: 0.3 }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.92 }}
     >
-      {/* Track glow */}
-      <AnimatePresence>
-        {checked && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 rounded-full"
-            style={{ boxShadow: `inset 0 0 12px ${color}44` }}
-          />
-        )}
-      </AnimatePresence>
-      {/* Thumb */}
       <motion.div
-        className="absolute top-1 w-6 h-6 bg-white rounded-full shadow-xl flex items-center justify-center"
+        className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg flex items-center justify-center"
         animate={{
           x: isRTL
-            ? (checked ? 4 : 36)
-            : (checked ? 36 : 4),
-          scale: checked ? 1.05 : 1,
+            ? (checked ? 4 : 32)
+            : (checked ? 32 : 4),
         }}
-        transition={{ type: 'spring', stiffness: 600, damping: 35 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
       >
-        <motion.div
-          className="w-2 h-2 rounded-full"
-          animate={{ backgroundColor: checked ? color : '#ccc', scale: checked ? 1 : 0.6 }}
-          transition={{ duration: 0.2 }}
-        />
+        <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: checked ? color : '#ccc' }} />
       </motion.div>
     </motion.button>
   );
 };
 
-/* ─── Live FPS Counter ──────────────────────────── */
 const FPSCounter: React.FC<{ active: boolean }> = ({ active }) => {
   const [fps, setFps] = useState(60);
   const frameRef = useRef<number>(0);
@@ -114,504 +96,360 @@ const FPSCounter: React.FC<{ active: boolean }> = ({ active }) => {
 
   const color = fps >= 55 ? '#34c759' : fps >= 40 ? '#ffcc00' : '#e50914';
   return (
-    <motion.div
-      className="flex items-center gap-1.5 font-mono text-xs font-black tabular-nums"
-      key={fps}
-      animate={{ color }}
-      transition={{ duration: 0.3 }}
-    >
-      <Activity size={11} style={{ color }} />
-      <span>{fps}</span>
-      <span className="text-gray-600 text-[9px]">FPS</span>
-    </motion.div>
+    <div className="flex items-center gap-1.5 font-mono text-[10px] font-black tabular-nums bg-white/5 px-2.5 py-1 rounded-full border border-white/5">
+      <Activity size={10} style={{ color }} className={fps < 50 ? 'animate-pulse' : ''} />
+      <span style={{ color }}>{fps} <span className="opacity-40 ml-0.5">FPS</span></span>
+    </div>
   );
 };
 
-/* ─── Section wrapper w/ stagger reveal ────────── */
 const Section: React.FC<{ children: React.ReactNode; delay?: number }> = ({ children, delay = 0 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 16 }}
+    initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ delay, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+    transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
   >
     {children}
   </motion.div>
 );
 
-/* ─── Section header ────────────────────────────── */
 const SectionLabel: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <div className="flex items-center gap-2 mb-3 px-1">
-    <span className="text-gray-500">{icon}</span>
-    <span className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">{label}</span>
-    <div className="flex-1 h-px bg-white/5" />
+  <div className="flex items-center gap-2.5 mb-4 px-1">
+    <span className="text-gray-500 scale-90">{icon}</span>
+    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 whitespace-nowrap">{label}</span>
+    <div className="flex-1 h-[1px] bg-gradient-to-r from-white/5 to-transparent" />
   </div>
 );
 
-/* ─── Glass card wrapper ────────────────────────── */
 const Card: React.FC<{ children: React.ReactNode; className?: string; glow?: string }> = ({ children, className = '', glow }) => (
-  <motion.div
-    whileHover={{ scale: 1.005 }}
-    className={`relative rounded-[1.5rem] border border-white/8 bg-white/[0.03] backdrop-blur-sm overflow-hidden ${className}`}
-    style={glow ? { boxShadow: `0 0 0 0 ${glow}` } : {}}
+  <div 
+    className={`relative rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-md overflow-hidden transition-all duration-500 ${className}`}
+    style={glow ? { boxShadow: `0 0 40px ${glow}11`, borderColor: `${glow}33` } : {}}
   >
-    {glow && (
-      <motion.div
-        className="absolute inset-0 opacity-0 rounded-[1.5rem] pointer-events-none"
-        style={{ background: `radial-gradient(circle at 50% 0%, ${glow}1a, transparent 70%)` }}
-        whileHover={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      />
-    )}
     {children}
-  </motion.div>
+  </div>
 );
 
-/* ══════════════════════════════════════════════════
-   MAIN COMPONENT
-══════════════════════════════════════════════════ */
+/* ─── Main Component ────────────────────────── */
+
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { t, language, setLanguage } = useTranslation();
-  const { theme, setTheme, accentColor, setAccentColor, scale, setScale, isPerformanceMode, setIsPerformanceMode } = useUI();
+  const { t, language } = useTranslation();
+  const { 
+    theme, setTheme, 
+    accentColor, setAccentColor, 
+    scale, setScale, 
+    isPerformanceMode, setIsPerformanceMode 
+  } = useUI();
   const { addNotification } = useNotification();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isEnableNotificationsModalOpen, setIsEnableNotificationsModalOpen] = useState(false);
-  const [showFPS, setShowFPS] = useState(false);
+  const [sessionTime, setSessionTime] = useState(0);
+
+  // Performance monitoring logic
+  useEffect(() => {
+    const start = Date.now();
+    const timer = setInterval(() => setSessionTime(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission);
   }, [isOpen]);
 
-  const handleNotificationRequest = async () => {
-    if (!('Notification' in window)) {
-      addNotification({ type: 'error', title: t('notificationsErrorTitle'), message: t('notificationsNotSupported') });
-      return;
-    }
-    if (permission === 'denied') { setIsEnableNotificationsModalOpen(true); return; }
-    if (permission === 'granted') {
-      addNotification({ type: 'info', title: t('notificationsInfoTitle'), message: t('notificationsAlreadyEnabled') });
-      return;
-    }
-    const result = await Notification.requestPermission();
-    setPermission(result);
-    if (result === 'granted') addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('notificationsEnabled') });
-  };
-
   const handleColorChange = (color: string) => {
     setAccentColor(color);
-    addNotification({ type: 'success', title: '🎨 Color Updated', message: 'Interface color synchronized.' });
+    addNotification({ 
+      type: 'success', 
+      title: '🎨 Color Updated', 
+      message: 'Interface color synchronized.' 
+    });
   };
 
   const handleThemeChange = (id: string) => {
     setTheme(id as any);
-    addNotification({ type: 'success', title: '🖼 Theme Applied', message: 'Environment configured.' });
+    addNotification({ 
+      type: 'success', 
+      title: '🖼 Theme Applied', 
+      message: 'Environment configured.' 
+    });
   };
 
   const togglePerformance = () => {
     const next = !isPerformanceMode;
     setIsPerformanceMode(next);
-    setShowFPS(next);
     addNotification({
       type: next ? 'success' : 'info',
-      title: next ? '⚡ 60 FPS Mode ON' : '🎨 Quality Mode ON',
-      message: next
-        ? (language === 'ku' ? 'دۆخی خێرا چالاک کرا' : 'All GPU effects disabled for max frames.')
-        : (language === 'ku' ? 'دۆخی ئاسایی گەڕێندرایەوە' : 'Full visual quality restored.')
+      title: next ? '⚡ 60 FPS Turbo ON' : '🎨 High Quality ON',
+      message: next 
+        ? (language === 'ku' ? 'دۆخی خێرا چالاک کرا' : 'Visual suppression active for maximum performance.')
+        : (language === 'ku' ? 'دۆخی ئاسایی گەڕێندرایەوە' : 'Full visual fidelity restored.')
     });
   };
 
   const scalePercent = Math.round((scale || 1) * 100);
 
   return (
-    <>
-    <div 
-      className={`fixed inset-0 z-[200] flex items-end justify-center md:items-center p-4 ui-overlay transition-all duration-300 ${!isOpen ? 'hidden' : ''}`}
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)' }}
-      onClick={onClose}
-    >
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ y: 60, opacity: 0, scale: 0.96 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 40, opacity: 0, scale: 0.96 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 38 }}
-            onClick={e => e.stopPropagation()}
-            className="w-full max-w-md relative motion-safe"
-            style={{
-              background: 'linear-gradient(145deg, rgba(18,18,18,0.98) 0%, rgba(10,10,10,0.98) 100%)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '2rem',
-              boxShadow: `0 40px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)`,
-            }}
-          >
-              {/* Accent glow */}
-              <div
-                className="absolute -top-32 -right-32 w-72 h-72 rounded-full pointer-events-none"
-                style={{
-                  background: `radial-gradient(circle, ${accentColor}22 0%, transparent 70%)`,
-                  filter: 'blur(40px)',
-                  transition: 'background 0.5s ease',
-                }}
-              />
+    <div className={`fixed inset-0 z-[1000] pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
+          {/* Backdrop with motion-graphics blur */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/70 backdrop-blur-[12px]"
+            style={{ pointerEvents: 'auto' }}
+          />
 
-              {/* ── Header ── */}
-              <div className="relative flex items-center justify-between px-6 pt-6 pb-5 border-b border-white/[0.06]">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    className="w-9 h-9 rounded-2xl flex items-center justify-center"
-                    style={{ backgroundColor: `${accentColor}22`, border: `1px solid ${accentColor}44` }}
-                    whileHover={{ rotate: 15, scale: 1.1 }}
-                    transition={{ type: 'spring', stiffness: 400 }}
-                  >
-                    <Sparkles size={16} style={{ color: accentColor }} />
-                  </motion.div>
-                  <div>
-                    <h2 className="text-base font-[900] text-white uppercase italic tracking-tight leading-none">
-                      {t('designSettings')}
-                    </h2>
-                    <p className="text-[9px] text-gray-600 uppercase tracking-[0.2em] mt-0.5">FLKRD SYSTEM</p>
-                  </div>
+          {/* Modal content */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 15 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="relative w-full max-w-lg bg-[#0a0a0a] rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Glass Highlight Overlay */}
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.03] to-transparent" />
+            
+            {/* Header */}
+            <div className="relative px-8 pt-8 pb-6 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div 
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg"
+                  style={{ backgroundColor: `${accentColor}15` }}
+                >
+                  <Sparkles size={20} style={{ color: accentColor }} className="animate-pulse" />
                 </div>
-                <div className="flex items-center gap-3">
-                  <FPSCounter active={showFPS} />
-                  <motion.button
-                    onClick={onClose}
-                    className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
-                    whileTap={{ scale: 0.9 }}
-                    whileHover={{ rotate: 90 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <X size={14} />
-                  </motion.button>
+                <div>
+                  <h2 className="text-lg font-[1000] text-white uppercase italic tracking-tighter leading-none">
+                    {t('designSettings')}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">FLKRD CORE 3.0</span>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center gap-3">
+                <FPSCounter active={true} />
+                <button 
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
 
-              {/* ── Scrollable Content ── */}
-              <div className="overflow-y-auto max-h-[72vh] px-5 py-5 space-y-6 scrollbar-hide">
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto max-h-[60vh] px-8 py-8 space-y-8 scroll-smooth scrollbar-hide">
+              
+              {/* Performance Diagnostics */}
+              <Section delay={0.1}>
+                <SectionLabel icon={<Cpu size={14} />} label="System Integrity" />
+                <div className="grid grid-cols-2 gap-4">
+                   <Card className="p-5 flex flex-col gap-1">
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Runtime</span>
+                      <span className="text-base font-black text-white font-mono">
+                        {Math.floor(sessionTime / 60)}m {sessionTime % 60}s
+                      </span>
+                   </Card>
+                   <Card className="p-5 flex flex-col gap-1" glow={isPerformanceMode ? '#34c759' : undefined}>
+                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Engine Status</span>
+                      <span className={`text-base font-[1000] uppercase italic ${isPerformanceMode ? 'text-green-500' : 'text-blue-400'}`}>
+                        {isPerformanceMode ? 'Turbo Mode' : 'Standard'}
+                      </span>
+                   </Card>
+                </div>
+              </Section>
 
-                {/* ── THEME ── */}
-                <Section delay={0.05}>
-                  <SectionLabel icon={<Moon size={13} />} label={t('theme')} />
-                  <div className="grid grid-cols-4 gap-2">
-                    {APP_THEMES.map((th, i) => {
-                      const active = theme === th.id;
-                      return (
-                        <motion.button
-                          key={th.id}
-                          onClick={() => handleThemeChange(th.id)}
-                          className="relative flex flex-col items-center gap-2 py-3 rounded-2xl border text-center overflow-hidden"
-                          style={{
-                            backgroundColor: active ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.02)',
-                            borderColor: active ? accentColor : 'rgba(255,255,255,0.06)',
-                            boxShadow: active ? `0 0 16px ${accentColor}33` : 'none',
-                          }}
-                          whileHover={{ scale: 1.04 }}
-                          whileTap={{ scale: 0.96 }}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.05 + i * 0.03, duration: 0.3 }}
-                        >
-                          {/* Colour swatch */}
-                          <div
-                            className="w-7 h-7 rounded-xl border border-white/10"
-                            style={{ backgroundColor: th.color }}
-                          />
-                          <span className="text-[8px] font-black uppercase tracking-wider text-gray-400 leading-none px-1">
-                            {th.name}
-                          </span>
-                          {active && (
-                            <motion.div
-                              layoutId="theme-active"
-                              className="absolute inset-0 rounded-2xl"
-                              style={{ border: `1.5px solid ${accentColor}` }}
-                              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                            />
-                          )}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </Section>
+              {/* Theme Selection */}
+              <Section delay={0.2}>
+                <SectionLabel icon={<Moon size={14} />} label={t('theme')} />
+                <div className="grid grid-cols-4 gap-3">
+                   {APP_THEMES.map((th, i) => {
+                     const active = theme === th.id;
+                     return (
+                       <button
+                         key={th.id}
+                         onClick={() => handleThemeChange(th.id)}
+                         className={`group relative flex flex-col items-center gap-3 p-4 rounded-3xl border transition-all duration-300 ${
+                           active ? 'bg-white/10' : 'bg-white/5 hover:bg-white/[0.08]'
+                         }`}
+                         style={{ borderColor: active ? accentColor : 'transparent' }}
+                       >
+                         <div 
+                           className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-white/10"
+                           style={{ backgroundColor: th.color }}
+                         >
+                           {th.icon}
+                         </div>
+                         <span className="text-[8px] font-black uppercase text-gray-400 group-hover:text-white transition-colors">
+                           {th.name.split(' ')[0]}
+                         </span>
+                         {active && (
+                           <motion.div layoutId="themeHighlight" className="absolute -inset-1 border-2 rounded-[2rem]" style={{ borderColor: accentColor }} />
+                         )}
+                       </button>
+                     );
+                   })}
+                </div>
+              </Section>
 
-                {/* ── LANGUAGE ── */}
-                <Section delay={0.1}>
-                  <SectionLabel icon={<Languages size={13} />} label={t('language')} />
-                  <Card className="p-1">
-                    <div className="flex gap-1">
-                      {['en', 'ku'].map((lang) => {
-                        const active = language === lang;
-                        return (
-                          <motion.button
-                            key={lang}
-                            onClick={() => setLanguage(lang as 'en' | 'ku')}
-                            className="flex-1 py-3 rounded-[1.2rem] text-[9px] font-black uppercase tracking-widest transition-colors relative"
-                            style={{ color: active ? '#000' : '#666' }}
-                            whileTap={{ scale: 0.97 }}
-                          >
-                            {active && (
-                              <motion.div
-                                layoutId="lang-pill"
-                                className="absolute inset-0 bg-white rounded-[1.2rem]"
-                                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                              />
-                            )}
-                            <span className="relative z-10">
-                              {lang === 'en' ? t('english') : t('kurdish')}
-                            </span>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                </Section>
-
-                {/* ── PERFORMANCE / 60 FPS ── */}
-                <Section delay={0.15}>
-                  <SectionLabel icon={<Gauge size={13} />} label={language === 'ku' ? 'خێرایی' : 'Performance'} />
-                  <Card glow={isPerformanceMode ? '#34c759' : undefined}>
-                    <div className="p-5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <motion.div
-                            className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                            animate={{
-                              backgroundColor: isPerformanceMode ? '#34c75922' : 'rgba(255,255,255,0.05)',
-                              boxShadow: isPerformanceMode ? '0 0 20px #34c75944' : 'none',
-                            }}
-                          >
-                            <motion.div
-                              animate={{ rotate: isPerformanceMode ? 360 : 0 }}
-                              transition={{ duration: 0.5, ease: 'easeOut' }}
-                            >
-                              <Zap size={18} color={isPerformanceMode ? '#34c759' : '#555'} />
-                            </motion.div>
-                          </motion.div>
-                          <div>
-                            <p className="text-sm font-[900] text-white uppercase italic tracking-tight leading-none">
-                              {language === 'ku' ? 'مۆدی ٦٠ FPS' : '60 FPS Mode'}
-                            </p>
-                            <p className="text-[9px] text-gray-600 font-bold uppercase tracking-wider mt-1">
-                              {language === 'ku' ? 'باشترکردنی مۆبایلە لاوازەکان' : t('performanceDescription')}
-                            </p>
-                          </div>
+              {/* Performance / 60 FPS */}
+              <Section delay={0.3}>
+                <SectionLabel icon={<Zap size={14} />} label="Hardware Acceleration" />
+                <Card className="p-6" glow={isPerformanceMode ? '#34c759' : undefined}>
+                   <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isPerformanceMode ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-gray-500'}`}>
+                           <Zap size={22} fill={isPerformanceMode ? 'currentColor' : 'none'} />
                         </div>
-                        <AnimatedToggle
-                          checked={isPerformanceMode}
-                          onChange={togglePerformance}
-                          color="#34c759"
-                          language={language}
-                        />
-                      </div>
-
-                      {/* FPS bar visualization */}
-                      <AnimatePresence>
-                        {isPerformanceMode && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="mt-4 pt-4 border-t border-white/5">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">GPU Effects</span>
-                                <div className="flex-1 h-px bg-white/5" />
-                                <span className="text-[9px] font-black text-red-500">OFF</span>
-                              </div>
-                              <div className="grid grid-cols-3 gap-2">
-                                {['backdrop-blur', 'box-shadow', 'animations'].map((fx) => (
-                                  <div key={fx} className="bg-red-500/10 border border-red-500/20 rounded-xl px-2 py-1.5 text-center">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500 mx-auto mb-1 animate-pulse" />
-                                    <span className="text-[7px] font-black text-red-400 uppercase tracking-wide">{fx}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-
-                    {/* Info */}
-                    <div className="px-5 pb-5">
-                      <div className="flex items-start gap-2 bg-white/[0.03] rounded-xl p-3 border border-white/5">
-                        <Info size={11} className="text-gray-600 shrink-0 mt-0.5" />
-                        <p className="text-[8.5px] text-gray-600 font-medium leading-relaxed italic">
-                          {t('performanceInfo')}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                </Section>
-
-                {/* ── ACCENT COLOR ── */}
-                <Section delay={0.2}>
-                  <SectionLabel icon={<Palette size={13} />} label={t('appColor')} />
-                  <Card className="p-4">
-                    <div className="grid grid-cols-8 gap-2">
-                      {APP_COLORS.map((color, i) => {
-                        const active = accentColor === color.value;
-                        return (
-                          <motion.button
-                            key={color.value}
-                            onClick={() => handleColorChange(color.value)}
-                            className="relative aspect-square rounded-full"
-                            style={{ backgroundColor: color.value }}
-                            whileHover={{ scale: 1.2 }}
-                            whileTap={{ scale: 0.9 }}
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: 0.2 + i * 0.03, type: 'spring', stiffness: 400, damping: 20 }}
-                            aria-label={color.name}
-                          >
-                            <AnimatePresence>
-                              {active && (
-                                <motion.div
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  exit={{ scale: 0, opacity: 0 }}
-                                  className="absolute inset-0 rounded-full flex items-center justify-center"
-                                  style={{
-                                    boxShadow: `0 0 0 2.5px #000, 0 0 0 4px ${color.value}, 0 0 16px ${color.value}88`
-                                  }}
-                                >
-                                  <Check
-                                    size={10}
-                                    strokeWidth={4}
-                                    color={color.value === '#ffffff' || color.value === '#ffcc00' ? '#000' : '#fff'}
-                                  />
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </motion.button>
-                        );
-                      })}
-                    </div>
-                  </Card>
-                </Section>
-
-                {/* ── APP SIZE ── */}
-                <Section delay={0.25}>
-                  <SectionLabel icon={<Type size={13} />} label={language === 'ku' ? 'قەبارەی ئەپ' : 'App Size'} />
-                  <Card className="p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <motion.div
-                          className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center border border-white/8"
-                          animate={{ scale: scale || 1 }}
-                          transition={{ type: 'spring', stiffness: 300 }}
-                        >
-                          <Monitor size={16} className="text-gray-400" />
-                        </motion.div>
                         <div>
-                          <motion.p
-                            key={scalePercent}
-                            initial={{ y: -8, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            className="text-lg font-[900] text-white tabular-nums leading-none"
-                          >
-                            {scalePercent}%
-                          </motion.p>
-                          <p className="text-[9px] text-gray-600 uppercase tracking-widest mt-0.5">
-                            {scalePercent < 100 ? 'Compact' : scalePercent > 100 ? 'Enlarged' : 'Default'}
-                          </p>
+                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">{language === 'ku' ? 'مۆدی ٦٠ FPS' : '60 FPS Turbo Mode'}</h3>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Suppress Blurs & Effects</p>
                         </div>
+                      </div>
+                      <AnimatedToggle 
+                        checked={isPerformanceMode} 
+                        onChange={togglePerformance} 
+                        color="#34c759"
+                        language={language}
+                      />
+                   </div>
+                   {isPerformanceMode && (
+                     <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-3"
+                     >
+                        {['Blurs Disabled', 'Shadows Removed', 'Particles Limited', 'GPU Optimized'].map(feat => (
+                          <div key={feat} className="flex items-center gap-2">
+                             <div className="w-1 h-1 rounded-full bg-green-500" />
+                             <span className="text-[8px] font-bold text-gray-500 uppercase">{feat}</span>
+                          </div>
+                        ))}
+                     </motion.div>
+                   )}
+                </Card>
+              </Section>
+
+              {/* Global Scaling */}
+              <Section delay={0.4}>
+                <SectionLabel icon={<Maximize2 size={14} />} label="Interface Intensity" />
+                <Card className="p-6">
+                   <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-4">
+                         <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40">
+                            <Monitor size={20} />
+                         </div>
+                         <div>
+                            <span className="text-2xl font-[1000] text-white font-mono">{scalePercent}%</span>
+                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">Display Density</p>
+                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <motion.button
-                          onClick={() => setScale(Math.max(0.5, (scale || 1) - 0.05))}
-                          whileTap={{ scale: 0.85 }}
-                          className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/15 border border-white/8 flex items-center justify-center transition-colors"
-                        >
-                          <Minimize2 size={12} className="text-gray-400" />
-                        </motion.button>
-                        <motion.button
-                          onClick={() => setScale(1)}
-                          whileTap={{ scale: 0.95 }}
-                          className="px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest bg-white/8 hover:bg-white/15 border border-white/8 text-gray-500 hover:text-white transition-colors"
-                        >
-                          Reset
-                        </motion.button>
-                        <motion.button
-                          onClick={() => setScale(Math.min(1.5, (scale || 1) + 0.05))}
-                          whileTap={{ scale: 0.85 }}
-                          className="w-8 h-8 rounded-full bg-white/8 hover:bg-white/15 border border-white/8 flex items-center justify-center transition-colors"
-                        >
-                          <Maximize2 size={12} className="text-gray-400" />
-                        </motion.button>
+                         <button 
+                            onClick={() => setScale(Math.max(0.4, (scale || 1) - 0.05))}
+                            className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                         >
+                            <Minimize2 size={16} />
+                         </button>
+                         <button 
+                            onClick={() => setScale(1)}
+                            className="px-5 h-10 rounded-2xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-500 hover:text-white uppercase tracking-widest"
+                         >
+                            Reset
+                         </button>
+                         <button 
+                            onClick={() => setScale(Math.min(1.5, (scale || 1) + 0.05))}
+                            className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                         >
+                            <Maximize2 size={16} />
+                         </button>
                       </div>
-                    </div>
-
-                    {/* Slider */}
-                    <div className="space-y-2">
-                      <input
+                   </div>
+                   <div className="relative group px-1">
+                      <input 
                         type="range"
-                        min={50} max={150} step={5}
+                        min="40" max="150" step="1"
                         value={scalePercent}
                         onChange={(e) => setScale(Number(e.target.value) / 100)}
-                        className="w-full h-1 cursor-pointer"
-                        style={{ accentColor }}
+                        className="w-full h-[3px] rounded-full appearance-none bg-white/5 cursor-pointer accent-brand"
+                        style={{ accentColor: accentColor }}
                       />
-                      <div className="flex justify-between text-[7.5px] font-black text-gray-700 uppercase tracking-widest">
-                        <span>50%</span><span>75%</span><span>100%</span><span>125%</span><span>150%</span>
+                      <div className="flex justify-between mt-4">
+                        <span className="text-[8px] font-black text-gray-700 uppercase">Pro (40%)</span>
+                        <span className="text-[8px] font-black text-gray-700 uppercase">Maximus (150%)</span>
                       </div>
-                    </div>
-                  </Card>
-                </Section>
+                   </div>
+                </Card>
+              </Section>
 
-                {/* ── NOTIFICATIONS ── */}
-                <Section delay={0.3}>
-                  <SectionLabel icon={<Bell size={13} />} label={t('notifications')} />
-                  <Card className="p-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-[10px] text-gray-500 font-medium leading-relaxed flex-1">
-                        {t('notificationsDescription')}
-                      </p>
-                      {permission === 'granted' ? (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="flex items-center gap-1.5 bg-green-500/10 px-3 py-2 rounded-xl border border-green-500/20"
-                        >
-                          <Check size={11} strokeWidth={3} className="text-green-500" />
-                          <span className="text-[9px] font-black text-green-400 uppercase tracking-widest whitespace-nowrap">On</span>
-                        </motion.div>
-                      ) : (
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          whileHover={{ scale: 1.03 }}
-                          onClick={handleNotificationRequest}
-                          className="px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-xl flex-shrink-0"
-                          style={{ backgroundColor: accentColor, color: accentColor === '#ffffff' || accentColor === '#ffcc00' ? '#000' : '#fff' }}
-                        >
-                          {t(permission === 'denied' ? 'manageNotifications' : 'enableNotifications')}
-                        </motion.button>
-                      )}
-                    </div>
-                  </Card>
-                </Section>
+              {/* Accent Color */}
+              <Section delay={0.5}>
+                <SectionLabel icon={<Palette size={14} />} label="Neural Theme Core" />
+                <div className="grid grid-cols-4 gap-3">
+                   {APP_COLORS.map(c => {
+                     const active = accentColor === c.value;
+                     return (
+                       <button
+                         key={c.value}
+                         onClick={() => handleColorChange(c.value)}
+                         className={`group relative flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                           active ? 'bg-white/10 border-white/20' : 'bg-white/5 border-transparent hover:bg-white/10'
+                         }`}
+                       >
+                         <div 
+                           className="w-8 h-8 rounded-xl shadow-lg flex items-center justify-center"
+                           style={{ backgroundColor: c.value, boxShadow: active ? `0 0 20px ${c.value}44` : 'none' }}
+                         >
+                            {active && <Check size={14} color={c.value === '#ffffff' ? '#000' : '#fff'} strokeWidth={4} />}
+                         </div>
+                         <span className="text-[8px] font-black uppercase text-gray-500 group-hover:text-gray-300 truncate w-full px-1">
+                           {c.name.split(' ')[0]}
+                         </span>
+                       </button>
+                     );
+                   })}
+                </div>
+              </Section>
 
-              </div>
+            </div>
 
-              {/* ── Footer ── */}
-              <div className="flex items-center justify-center px-6 py-4 border-t border-white/[0.05]">
-                <motion.button
-                  onClick={onClose}
-                  className="text-[9px] font-black text-gray-700 uppercase tracking-[0.4em] hover:text-white transition-colors flex items-center gap-1.5"
-                  whileHover={{ letterSpacing: '0.5em' }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <X size={9} />
-                  {t('close')}
-                </motion.button>
-              </div>
-              </motion.div>
-            )}
-        </AnimatePresence>
-      </div>
-      <EnableNotificationsModal isOpen={isEnableNotificationsModalOpen} onClose={() => setIsEnableNotificationsModalOpen(false)} />
-    </>
+            {/* Footer */}
+            <div className="p-8 bg-white/[0.02] border-t border-white/[0.08]">
+              <motion.button
+                onClick={onClose}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-5 rounded-[2rem] text-[10px] font-black text-white uppercase tracking-[0.4em] shadow-xl relative overflow-hidden group"
+                style={{ backgroundColor: accentColor }}
+              >
+                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+                <span className="relative flex items-center justify-center gap-3">
+                  <Activity size={14} className="stroke-[3]" />
+                  Synchronize Changes
+                </span>
+              </motion.button>
+              <p className="text-[8px] text-center text-gray-600 font-extrabold uppercase tracking-[0.1em] mt-5">
+                FLKRD Cinematic Engine © 2026 • Verified v3.4.1
+              </p>
+            </div>
+
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+    <EnableNotificationsModal 
+      isOpen={isEnableNotificationsModalOpen} 
+      onClose={() => setIsEnableNotificationsModalOpen(false)} 
+    />
+    </div>
   );
 };
 
