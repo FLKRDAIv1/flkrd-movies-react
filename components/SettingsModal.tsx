@@ -214,7 +214,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       <motion.div 
                         initial={false}
                         animate={{ 
-                          x: isPerformanceMode ? 32 : 4,
+                          x: language === 'ku'
+                            ? (isPerformanceMode ? 4 : 32)  // RTL: ON = dot left, OFF = dot right
+                            : (isPerformanceMode ? 32 : 4)  // LTR: ON = dot right, OFF = dot left
                         }}
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                         className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-xl"
@@ -230,6 +232,53 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <ColorPicker activeColor={accentColor} onSelect={handleColorChange} t={t} />
+
+                {/* UI Scale / App Size */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <Type size={18} className="text-gray-400" />
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'قەبارەی ئەپ' : 'App Size'}</h3>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-6 flex flex-col gap-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {Math.round((scale || 1) * 100)}%
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setScale(Math.max(0.8, (scale || 1) - 0.05))}
+                          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-all active:scale-95"
+                        >
+                          <Minimize2 size={14} className="text-white" />
+                        </button>
+                        <button
+                          onClick={() => setScale(1)}
+                          className="px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 border border-white/10 text-gray-400 hover:text-white transition-all active:scale-95"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={() => setScale(Math.min(1.3, (scale || 1) + 0.05))}
+                          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/10 flex items-center justify-center transition-all active:scale-95"
+                        >
+                          <Maximize2 size={14} className="text-white" />
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={80}
+                      max={130}
+                      step={5}
+                      value={Math.round((scale || 1) * 100)}
+                      onChange={(e) => setScale(Number(e.target.value) / 100)}
+                      className="w-full h-1.5 rounded-full accent-brand cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[8px] font-black text-gray-600 uppercase tracking-widest">
+                      <span>80%</span><span>100%</span><span>130%</span>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 px-1">
