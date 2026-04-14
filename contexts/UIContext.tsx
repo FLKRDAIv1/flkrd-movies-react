@@ -14,6 +14,12 @@ interface UIContextType {
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
   toggleTheme: () => void;
+  isConsoleMode: boolean;
+  setIsConsoleMode: (isConsoleMode: boolean) => void;
+  isControllerDetected: boolean;
+  setIsControllerDetected: (isDetected: boolean) => void;
+  isAdmin: boolean;
+  setIsAdmin: (isAdmin: boolean) => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -32,6 +38,23 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     localStorage.getItem('flkrd_performance_turbo') === 'true'
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdmin, setIsAdminState] = useState(() => {
+    const isAdminStored = localStorage.getItem('isFlkrdAdmin') === 'true';
+    if (!isAdminStored) return false;
+    
+    const loginAt = localStorage.getItem('flkrd_admin_login_at');
+    if (!loginAt) return true; // Legacy support
+    
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+    const isExpired = Date.now() - parseInt(loginAt) > sevenDaysInMs;
+    
+    if (isExpired) {
+        localStorage.removeItem('isFlkrdAdmin');
+        localStorage.removeItem('flkrd_admin_login_at');
+        return false;
+    }
+    return true;
+  });
 
   useEffect(() => {
     localStorage.setItem('flkrd_theme', theme);
@@ -80,16 +103,36 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [isPerformanceMode]);
 
+  const [isConsoleMode, setIsConsoleMode] = useState(false);
+  const [isControllerDetected, setIsControllerDetected] = useState(false);
+
+  useEffect(() => {
+    if (isConsoleMode) {
+      document.documentElement.classList.add('console-mode-active');
+    } else {
+      document.documentElement.classList.remove('console-mode-active');
+    }
+  }, [isConsoleMode]);
+
   const toggleTheme = () => setThemeState(prev => prev === 'light' ? 'dark' : 'light');
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
   const setScale = (s: number) => setScaleState(s);
   const setIsPerformanceMode = (p: boolean) => setIsPerformanceModeState(p);
+  const setIsAdmin = (a: boolean) => {
+    setIsAdminState(a);
+    localStorage.setItem('isFlkrdAdmin', a.toString());
+    if (a) {
+        localStorage.setItem('flkrd_admin_login_at', Date.now().toString());
+    } else {
+        localStorage.removeItem('flkrd_admin_login_at');
+    }
+  };
 
   return (
     <UIContext.Provider value={{ 
-      theme, accentColor, scale, isPerformanceMode, isSettingsOpen,
-      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme 
+      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin,
+      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin
     }}>
       {children}
     </UIContext.Provider>

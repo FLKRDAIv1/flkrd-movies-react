@@ -201,14 +201,30 @@ const DubbedDetailPage: React.FC = () => {
 
     if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
 
-    const displayTitle = dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading Title...";
-    const displayOverview = dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "هیچ زانیاریەک بەردەست نیە" : "Wait, establishing node description...");
+    // Strict Data Boundary Logic to prevent Black Screen / Crash
+    const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Initializing Source...") as string;
+    const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
+    
     const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
+    const isReady = !!(embedUrl || dubbedData || content);
 
     return (
         <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-32 transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+            <AnimatePresence mode="wait">
+                {!isReady && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+                    >
+                        <Spinner />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
-                <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-110" alt="" />
+                {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-110" alt="" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
             </div>
 
@@ -216,10 +232,10 @@ const DubbedDetailPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto mb-6">
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full text-[var(--text-primary)] active:scale-90 transition-all"
+                        className="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full text-[var(--text-primary)] active:scale-90 transition-all font-black uppercase tracking-widest text-[9px]"
                     >
-                        <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180' : ''} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
+                        <ArrowLeft size={16} className={language === 'ku' ? 'rotate-180' : ''} />
+                        {t('back')}
                     </button>
                 </div>
 
@@ -235,7 +251,7 @@ const DubbedDetailPage: React.FC = () => {
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl">
                                 <Zap className="w-12 h-12 mb-4 animate-[pulse_1.5s_infinite]" style={{ color: accentColor }} />
-                                <span className="text-xs font-black uppercase tracking-[0.3em] opacity-60">Preparing Digital Signal...</span>
+                                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Synchronizing Stream...</span>
                             </div>
                         )}
                     </div>
@@ -243,28 +259,59 @@ const DubbedDetailPage: React.FC = () => {
 
                 <div className="max-w-7xl mx-auto flex flex-col items-start mb-10">
                     <div className="flex flex-wrap items-center gap-2 mb-6">
-                        <div className="text-white text-[8px] md:text-[10px] font-black px-4 py-2 rounded-full flex items-center gap-1.5 shadow-xl uppercase tracking-widest" style={{ backgroundColor: accentColor }}>
-                            <Mic2 size={12} />
+                        <div className="text-white text-[9px] md:text-[11px] font-black px-5 py-2.5 rounded-full flex items-center gap-2 shadow-xl uppercase tracking-[0.2em]" style={{ backgroundColor: accentColor }}>
+                            <Mic2 size={14} />
                             {dubbedData?.isSubtitled ? (language === 'ku' ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : (language === 'ku' ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
                         </div>
+                        {dubbedData?.level && (
+                            <div className="bg-white/5 border border-white/10 text-white/60 text-[8px] md:text-[9px] font-black px-4 py-2.5 rounded-full uppercase tracking-widest">
+                                {dubbedData.level} RANK
+                            </div>
+                        )}
                     </div>
-                    <h1 className="text-3xl md:text-7xl font-[1000] uppercase italic tracking-tighter leading-[0.9] text-[var(--text-primary)] text-right max-w-5xl drop-shadow-2xl mb-8">
+                    <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-[calc(-0.04em)] leading-[0.85] text-[var(--text-primary)] text-right max-w-5xl drop-shadow-2xl mb-10">
                         {displayTitle}
                     </h1>
                 </div>
 
                 <div className="max-w-7xl mx-auto mb-24">
-                    <div className="bg-white/[0.02] backdrop-blur-[60px] border border-white/10 p-8 rounded-3xl md:rounded-[4rem] shadow-2xl relative overflow-hidden group">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center gap-3">
-                                <div className="w-1 h-5 rounded-full" style={{ backgroundColor: accentColor }} />
-                                <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-[var(--text-secondary)] italic">CHRONICLE_DATA</h3>
+                    <div className="bg-white/[0.02] backdrop-blur-[60px] border border-white/10 p-10 rounded-3xl md:rounded-[4rem] shadow-2xl relative overflow-hidden group">
+                        <div className="flex items-center justify-between mb-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-1.5 h-6 rounded-full shadow-[0_0_15px_currentColor]" style={{ backgroundColor: accentColor, color: accentColor }} />
+                                <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-[var(--text-secondary)] italic opacity-60">CHRONICLE_SOURCE</h3>
                             </div>
-                            <Zap size={16} className="animate-pulse" style={{ color: accentColor }} />
+                            <div className="flex items-center gap-6">
+                                {content?.vote_average && (
+                                    <div className="flex items-center gap-2 text-yellow-500 font-mono font-black text-lg">
+                                        <Star size={18} fill="currentColor" />
+                                        {content.vote_average.toFixed(1)}
+                                    </div>
+                                )}
+                                <Zap size={18} className="animate-pulse" style={{ color: accentColor }} />
+                            </div>
                         </div>
-                        <p className="text-[var(--text-primary)] text-lg md:text-3xl leading-relaxed italic text-right font-bold py-2">
+                        <p className="text-[var(--text-primary)] text-xl md:text-4xl leading-[1.6] italic text-right font-black py-4 opacity-90 tracking-tight">
                             {displayOverview}
                         </p>
+
+                        {/* Aesthetic Data Layer */}
+                        <div className="mt-12 flex flex-wrap gap-8 items-center border-t border-white/5 pt-10">
+                             <div className="flex flex-col gap-1.5">
+                                 <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Release Cycle</span>
+                                 <div className="flex items-center gap-2 text-white font-black text-xs">
+                                     <Calendar size={14} className="text-brand" />
+                                     {dubbedData?.created_at ? new Date(dubbedData.created_at).getFullYear() : (content?.release_date?.split('-')[0] || '2025')}
+                                 </div>
+                             </div>
+                             <div className="flex flex-col gap-1.5">
+                                 <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Source Protocol</span>
+                                 <div className="flex items-center gap-2 text-[var(--text-secondary)] font-black text-[10px] uppercase tracking-tighter">
+                                     <Monitor size={14} style={{ color: accentColor }} />
+                                     {dubbedData?.customStream ? "Private Node" : "Standard API"}
+                                 </div>
+                             </div>
+                        </div>
                     </div>
                 </div>
             </div>

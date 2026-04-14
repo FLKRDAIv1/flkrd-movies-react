@@ -12,24 +12,44 @@ const upstashToken = import.meta.env.VITE_UPSTASH_REDIS_REST_TOKEN || 'AZK0AAInc
 export const redis = {
     get: async (key: string) => {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 8000); // Increased to 8s
         try {
             const res = await fetch(`${upstashUrl}/get/${key}`, {
                 headers: { Authorization: `Bearer ${upstashToken}` },
                 signal: controller.signal
             });
             
-            if (res.status === 429) {
-                console.warn("[UPSTASH] Rate limit exceeded. Falling back to primary databases.");
+            if (!res.ok) {
+                if (res.status === 429) {
+                    console.warn("[UPSTASH] Rate limit exceeded.");
+                } else if (res.status === 404) {
+                    console.log("[UPSTASH] Key not found:", key);
+                }
                 return null;
             }
 
-            const data = await res.json();
+            const text = await res.text();
+            if (!text) return null;
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.warn("[UPSTASH] Non-JSON response received.");
+                return null;
+            }
+
             if (data.result) {
                 try { return JSON.parse(data.result); } catch (e) { return data.result; }
             }
-        } catch (e) {
-            console.error("Upstash Get Error:", e);
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                console.warn("[UPSTASH] GET Timeout (8s). Node unreachable.");
+            } else if (e.message?.includes('Failed to fetch')) {
+                console.warn("[UPSTASH] Network blocked or offline.");
+            } else {
+                console.error("Upstash Get Error:", e);
+            }
         } finally {
             clearTimeout(timeout);
         }
@@ -52,8 +72,14 @@ export const redis = {
                 body: JSON.stringify(body),
                 signal: controller.signal
             });
-        } catch (e) {
-            console.error("Upstash Set Error:", e);
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                console.warn("[UPSTASH] SET Timeout (5s). State not persisted.");
+            } else if (e.message?.includes('Failed to fetch')) {
+                console.warn("[UPSTASH] persistent storage unreachable.");
+            } else {
+                console.error("Upstash Set Error:", e);
+            }
         } finally {
             clearTimeout(timeout);
         }
@@ -66,8 +92,14 @@ export const redis = {
                 headers: { Authorization: `Bearer ${upstashToken}` },
                 signal: controller.signal
             });
-        } catch (e) {
-            console.error("Upstash Del Error:", e);
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                console.warn("[UPSTASH] Request timed out (5s). Silently failing.");
+            } else if (e.message?.includes('Failed to fetch')) {
+                console.warn("[UPSTASH] Network connectivity issue. Redis features disabled.");
+            } else {
+                console.error("Upstash Del Error:", e);
+            }
         } finally {
             clearTimeout(timeout);
         }

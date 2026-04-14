@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Play, Loader2, Sparkles } from 'lucide-react';
+import { X, Plus, Check, Play, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Content, WatchProgress, MyListItem } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
+import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
+import { bannedService } from '../services/bannedService';
 
 interface RowProps {
   title: string;
@@ -29,7 +31,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
   const navigate = useNavigate();
   const rowRef = useRef<HTMLDivElement>(null);
   const { language, t } = useTranslation();
-  const { theme } = useUI();
+  const { theme, isAdmin } = useUI();
   const { addNotification } = useNotification();
 
   const updateMyListIds = useCallback(() => {
@@ -103,6 +105,32 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
       window.dispatchEvent(new Event('watchProgressUpdated'));
   };
 
+  const handleBan = async (e: React.MouseEvent, item: any) => {
+    e.stopPropagation();
+    const cleanId = String(item.id).replace('custom_', '');
+    const isCustom = String(item.id).startsWith('custom_');
+    const mediaType = item.media_type || (item as WatchProgress).type || type || (isCustom ? 'dubbed' : 'movie');
+
+    if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
+
+    try {
+        // 1. Universal Ban Registry
+        const banSignal = await bannedService.banContent(cleanId, mediaType);
+        if (!banSignal) throw new Error("Registry reject");
+
+        // 2. Dubbed Physical Deletion (if applicable)
+        if (isCustom) {
+            await supabase.rpc('delete_dubbed_movie', { target_id: parseInt(cleanId) });
+        }
+        
+        addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed from global registry.' });
+        setContent(prev => prev.filter(i => i.id !== item.id));
+    } catch (err) {
+        console.error("Moderation failure:", err);
+        addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
+    }
+  };
+
   const handleScroll = useCallback(async () => {
     if (rowRef.current && fetchUrl && hasMore && !loadingMore) {
         const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
@@ -129,9 +157,11 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
   }, [fetchUrl, hasMore, loadingMore, page, language]);
 
   const navigateToDetail = (item: any) => {
-    const mType = item.media_type || (item as WatchProgress).type || type;
-    if (mType === 'dubbed') {
-      navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
+    const isCustom = String(item.id).startsWith('custom_');
+    const mType = item.media_type || (item as WatchProgress).type || type || (isCustom ? 'dubbed' : 'movie');
+    
+    if (mType === 'dubbed' || isCustom) {
+      navigate(`/dubbed-details/${String(item.id).replace('custom_', '')}`, { state: { customData: item } });
     } else {
       navigate(`/details/${mType}/${item.id}`, { state: { customData: item } });
     }
@@ -184,7 +214,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
               >
                 <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand bg-card-bg shadow-xl">
                   <img
-                    src={item.poster_path.startsWith('http') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
+                    src={(item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
                     alt={(item as Content).title || (item as Content).name}
                     className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
                     loading="lazy"
@@ -207,6 +237,15 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
                           >
                               <X className="w-4 h-4" strokeWidth={4} />
                           </button>
+                      )}
+
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => handleBan(e, item)}
+                          className="p-2 bg-red-500 border border-red-500 rounded-xl text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       )}
                   </div>
 

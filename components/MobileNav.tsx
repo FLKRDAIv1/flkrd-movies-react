@@ -26,27 +26,29 @@ const items: NavItem[] = [
 const MobileNav: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 md:hidden w-[92%] max-w-lg">
-      <div className="flex items-center justify-around bg-black/40 backdrop-blur-2xl rounded-[2rem] px-2 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10 transition-colors duration-500 light-mode:bg-white/60 light-mode:shadow-[0_10px_30px_rgba(0,0,0,0.1)]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
+      <div className="flex items-center justify-around bg-black/40 backdrop-blur-3xl rounded-[2.5rem] px-3 py-3 shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/10 transition-all duration-500 ring-1 ring-white/5">
         {items.map((item) => (
           <NavLink
             key={item.id}
             to={item.to}
             aria-label={t(item.labelKey)}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-11 h-11 rounded-2xl transition-all relative ${
-                isActive ? 'text-red-600 bg-red-600/10' : 'text-gray-500 hover:text-red-600'
+              `flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all relative group ${
+                isActive ? 'text-white' : 'text-gray-500 hover:text-white'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                {item.icon}
+                <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
+                   {item.icon}
+                </div>
                 {isActive && (
                   <motion.div
                     layoutId="active-mobile-indicator"
-                    className="absolute -bottom-1 h-1 w-4 bg-red-600 rounded-full"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="absolute -bottom-1.5 h-1.5 w-6 bg-brand rounded-full shadow-[0_0_15px_rgba(229,9,20,0.6)]"
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                   />
                 )}
               </>

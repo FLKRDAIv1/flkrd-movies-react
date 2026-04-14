@@ -28,7 +28,9 @@ import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import { fetchData } from './services/tmdbService';
 import { requests } from './constants';
-import { downloadMobileConfig } from './utils/appleProfileUtils';
+import GamepadHints from './components/GamepadHints';
+import VirtualCursor from './components/VirtualCursor';
+import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { t } = useTranslation();
@@ -139,9 +141,12 @@ const App: React.FC = () => {
     const [scrolled, setScrolled] = useState(false);
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const mainRef = useRef<HTMLElement>(null);
+    
+    // Initialized Spatial Navigation Engine
+    useSpatialNavigation();
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 8000);
+        const timer = setTimeout(() => setLoading(false), 0);
         return () => clearTimeout(timer);
     }, []);
 
@@ -242,7 +247,7 @@ const App: React.FC = () => {
     if (loading) return <SplashScreen />;
 
     return (
-        <div className={`min-h-screen transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'}`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
+        <div className={`min-h-screen bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'}`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
             <PremiumBackground />
             <HashRouter>
                 <div className="flex">
@@ -271,6 +276,7 @@ const App: React.FC = () => {
                 <WelcomeNotificationPrompt />
                 <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
                 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+                <GamepadHints />
             </HashRouter>
         </div>
     );

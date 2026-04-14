@@ -7,6 +7,6 @@ declare global {
 }
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://kqezlyhoqfelgfhdfxzf.supabase.co';
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'sb_publishable_XD-RWNKEDJLppZ6Cc4MkcA_TAMhxFZt';
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'sb_publishable_1kQfO_UIJTrLrID6J2yXMg_Ym-NacoA';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

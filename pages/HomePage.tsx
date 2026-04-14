@@ -11,6 +11,7 @@ import { Play, Sparkles, Mic2 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { redis } from '../utils/upstashClient';
 import { db } from '../utils/db';
+import { bannedService } from '../services/bannedService';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
@@ -138,42 +139,60 @@ const HomePage: React.FC = () => {
       if (rawItems && rawItems.length > 0) {
         // 4. Transform and Rank (Newest First)
         const formatted = rawItems.map((m: any) => ({
-            ...m,
-            id: `custom_${m.id}`,
-            media_type: 'dubbed',
-            poster_path: m.imageBase64,
-            backdrop_path: m.bannerBase64 || m.imageBase64,
-            title: m.title,
-            kurdishTitle: m.title,
-            overview: m.description,
-            kurdishOverview: m.description,
-            customStream: m.videoUrl
+          ...m,
+          id: `custom_${m.id}`,
+          media_type: 'dubbed',
+          poster_path: m.imageBase64,
+          backdrop_path: m.bannerBase64 || m.imageBase64,
+          title: m.title,
+          kurdishTitle: m.title,
+          overview: m.description,
+          kurdishOverview: m.description,
         }));
 
         formatted.sort((a: any, b: any) => {
-            const idA = Number(String(a.id).replace('custom_', ''));
-            const idB = Number(String(b.id).replace('custom_', ''));
-            return idB - idA;
+          const idA = Number(String(a.id).replace('custom_', ''));
+          const idB = Number(String(b.id).replace('custom_', ''));
+          return idB - idA;
         });
 
         setDubbedItems(formatted.slice(0, 20));
         db.saveMovies(rawItems).catch(() => {});
+      } else {
+        // Fallback to indexedDB if everything else failed
+        const localItems = await db.getMovies();
+        if (localItems && localItems.length > 0) {
+          setDubbedItems(localItems.slice(0, 20));
+        }
       }
     } catch (e) {
-      console.error("[HP CRITICAL ERROR]", e);
+      console.error("[HP CRITICAL ERROR] Recovery triggered:", e);
+      const localItems = await db.getMovies();
+      if (localItems && localItems.length > 0) {
+         setDubbedItems(localItems.slice(0, 20));
+      }
     }
   }, []);
 
   useEffect(() => {
-    loadHistory();
-    loadDubbed();
+    // Parallel Initialization Protocol
+    const initialize = async () => {
+        loadHistory();
+        await Promise.all([
+            loadDubbed(),
+            bannedService.fetchBannedList()
+        ]);
+    };
+    
+    initialize();
+
     window.addEventListener('storage', loadHistory);
     window.addEventListener('watchProgressUpdated', loadHistory);
     return () => {
       window.removeEventListener('storage', loadHistory);
       window.removeEventListener('watchProgressUpdated', loadHistory);
     };
-  }, [loadHistory]);
+  }, [loadHistory, loadDubbed]);
 
   return (
     <div className="pb-40 relative">

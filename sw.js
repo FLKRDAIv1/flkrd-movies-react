@@ -85,12 +85,31 @@ self.addEventListener('fetch', event => {
   }
   // -----------------------------------------
 
+  // --- ENGINE V5: ADAPTIVE NETWORK POLICY ---
+  // Bypass caching entirely for non-GET methods (POST, DELETE, PUT, PATCH)
+  // This ensures Admin Panel operations (remove/edit) always talk to the server
+  if (event.request.method !== 'GET') {
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        console.warn("[SW] Background fetch failed for non-GET method:", err);
+        return new Response(JSON.stringify({ error: 'Network failure', message: err.message }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
+  }
+
   // Bypass caching completely for local development and Vite HMR
   const url = new URL(event.request.url);
   if (
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname.startsWith('192.168.') ||
+    url.hostname.includes('supabase.co') ||
+    url.hostname.includes('upstash.io') ||
+    url.hostname.includes('themoviedb.org') ||
     url.searchParams.has('import')
   ) {
     event.respondWith(fetch(event.request));
@@ -98,9 +117,6 @@ self.addEventListener('fetch', event => {
   }
 
   // --- STALE-WHILE-REVALIDATE CACHING STRATEGY ---
-  // This ensures the user instantly gets the cached site to load fast,
-  // but it silently fetches the LATEST version from the server in the background
-  // and updates the cache for the next time they visit or refresh the app.
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       const fetchPromise = fetch(event.request).then(networkResponse => {
@@ -113,8 +129,9 @@ self.addEventListener('fetch', event => {
         }
         return networkResponse;
       }).catch(() => {
-        // If network fails (offline), return cached version if available
-        return cachedResponse;
+        // Final fallback to ensure event.respondWith never receives undefined
+        // Using 404 for missing resources instead of 503 to avoid console noise
+        return cachedResponse || new Response('Resource unavailable offline', { status: 404, statusText: 'Not Found' });
       });
 
       // Serve cached version immediately if available, otherwise wait for network

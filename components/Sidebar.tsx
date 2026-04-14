@@ -78,8 +78,11 @@ const Sidebar: React.FC = () => {
         onMouseEnter={() => setIsCollapsed(false)}
         onMouseLeave={() => setIsCollapsed(true)}
       >
-        <div className="flex items-center justify-center h-20 flex-shrink-0">
-          <img src="/flkrd-icon.png" alt="L" className={`w-10 h-10 object-contain transition-transform duration-500 ${isCollapsed ? '' : 'scale-110'}`} />
+        <div className="flex items-center justify-center h-28 flex-shrink-0 group">
+          <div className="relative">
+             <img src="/flkrd-icon.png" alt="L" className={`w-12 h-12 object-contain transition-transform duration-700 ${isCollapsed ? '' : 'scale-110'}`} />
+             <div className="absolute -inset-2 bg-brand/30 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+          </div>
         </div>
 
         <nav className="flex-grow flex flex-col space-y-2 mt-6 overflow-y-auto scrollbar-hide px-1">

@@ -4,6 +4,7 @@ import App from './App';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { UIProvider } from './contexts/UIContext';
+import { GamepadProvider } from './contexts/GamepadContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -24,11 +25,13 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <UIProvider>
+      <GamepadProvider>
         <LanguageProvider>
           <NotificationProvider>
             <App />
           </NotificationProvider>
         </LanguageProvider>
+      </GamepadProvider>
     </UIProvider>
   </React.StrictMode>
 );

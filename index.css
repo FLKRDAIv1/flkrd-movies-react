@@ -20,6 +20,8 @@ html {
   /* GPU-accelerate the root scroll container */
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
+  /* Global scaling engine injection */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 body {
@@ -33,12 +35,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeSpeed;
   overscroll-behavior: none;
+  font-size: calc(1rem * var(--global-scale));
 }
 
-/* ── Image Optimization ── */
+/* ── Multi-Device "PRO" Scaling System ── */
+@media (max-width: 768px) {
+  :root { --global-scale: 0.9; }
+}
+
+@media (min-width: 2560px) {
+  /* TV / 4K / Ultra-wide optimizations */
+  :root { --global-scale: 1.25; }
+  .max-w-7xl { max-width: 140rem !important; }
+  .max-w-5xl { max-width: 100rem !important; }
+}
+
 img {
   content-visibility: auto;
   contain: content;
+  image-rendering: -webkit-optimize-contrast;
 }
 
 /* ── Custom Scrollbar ── */
@@ -66,77 +81,140 @@ img {
    ⚡ PERFORMANCE MODE — Real 60fps Boost
    Activated by: html.performance-mode
    ════════════════════════════════════════════════ */
+
+html.performance-mode {
+  /* Reduce GPU load on the compositor */
+  transform: translate3d(0, 0, 0);
+  background: #000 !important;
+}
+
 html.performance-mode *:not(.motion-safe):not(.ui-overlay),
 html.performance-mode *::before,
 html.performance-mode *::after {
   /* Kill all CSS animations for general elements */
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
+  animation: none !important;
+  transition: none !important;
   scroll-behavior: auto !important;
+  /* Disable expensive composite layers */
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
 }
 
-/* Ensure motion-safe elements and UI overlays keep their logic */
+/* Ensure motion-safe elements and UI overlays keep their logic but stay snappy */
 .motion-safe, .ui-overlay {
-  transition-duration: 0.2s !important;
+  transition-duration: 0.1s !important;
 }
 
-/* Force pointer-events and visibility logic for overlays */
+/* Force visibility logic for overlays */
 .ui-overlay {
   z-index: 200 !important;
   pointer-events: auto;
 }
+
 .ui-overlay.hidden {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+  display: none !important;
 }
 
-/* Disable backdrop blur (most expensive GPU op) */
+/* Disable backdrop blur (most expensive GPU op - kills mobile perf) */
 html.performance-mode [class*="backdrop-blur"],
 html.performance-mode [style*="backdrop-filter"],
 html.performance-mode [style*="-webkit-backdrop-filter"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  background-color: rgba(0,0,0,0.9) !important; /* Fallback to solid dark */
 }
 
-/* Kill expensive box-shadows */
-html.performance-mode [class*="shadow-"] {
+/* Kill expensive box-shadows globally in turbo mode */
+html.performance-mode [class*="shadow-"],
+html.performance-mode [style*="box-shadow"] {
   box-shadow: none !important;
 }
 
-/* Kill blur filters */
-html.performance-mode [class*="blur-"] {
-  filter: none !important;
-}
-
-/* Kill particle / gradient backgrounds */
+/* Disable gradients and complex canvas/particles */
 html.performance-mode canvas,
 html.performance-mode [class*="particle"],
 html.performance-mode [class*="PremiumBackground"] > *:not([class*="bg-black"]) {
   display: none !important;
 }
 
-/* Kill opacity transitions (compositor is free now) */
-html.performance-mode [class*="opacity-"] {
-  opacity: 1 !important;
+/* Ensure the app is forced into a 16-bit-like visual state for speed */
+html.performance-mode img {
+  filter: none !important;
+  image-rendering: auto;
 }
 
-/* Keep framer-motion transforms on GPU but instant */
-html.performance-mode [style*="transform"] {
-  will-change: auto !important;
-}
-
-/* ── Shimmer animation for cards ── */
+/* ── Shimmer animation for cards (Simplified for performance) ── */
 @keyframes shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0%   { opacity: 0.4; }
+  50%  { opacity: 0.8; }
+  100% { opacity: 0.4; }
+}
+html.performance-mode .animate-shimmer {
+  animation: shimmer 1.5s infinite linear !important;
 }
 .animate-shimmer { animation: shimmer 2s infinite; }
 
-/* ── Brand glow pulse ── */
+/* ── Brand glow pulse (Disabled in performance mode) ── */
 @keyframes brand-pulse {
   0%, 100% { box-shadow: 0 0 20px rgba(var(--brand-red-rgb), 0.4); }
   50%       { box-shadow: 0 0 40px rgba(var(--brand-red-rgb), 0.8); }
 }
+html.performance-mode .animate-brand-pulse {
+  animation: none !important;
+  box-shadow: none !important;
+}
 .animate-brand-pulse { animation: brand-pulse 2s ease-in-out infinite; }
+
+/* ════════════════════════════════════════════════
+   🎮 CONSOLE MODE UI — Cinematic Optimization
+   ════════════════════════════════════════════════ */
+
+html.console-mode-active {
+  cursor: none !important; 
+  user-select: none;
+}
+
+/* Ensure mouse is visible by default */
+html:not(.console-mode-active) {
+  cursor: auto !important;
+}
+
+/* Premium Focus Glow for Console Navigation */
+html.console-mode-active *:focus {
+  outline: none !important;
+  box-shadow: 
+    0 0 0 4px rgba(255, 255, 255, 0.2),
+    0 0 0 8px var(--brand-red),
+    0 0 60px rgba(var(--brand-red-rgb), 0.9) !important;
+  transform: scale(1.1) translateZ(30px) !important;
+  transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  z-index: 1000 !important;
+  animation: focus-glow-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes focus-glow-pulse {
+  0% { box-shadow: 0 0 0 8px var(--brand-red), 0 0 40px rgba(var(--brand-red-rgb), 0.6); }
+  50% { box-shadow: 0 0 0 10px var(--brand-red), 0 0 70px rgba(var(--brand-red-rgb), 1.0); }
+  100% { box-shadow: 0 0 0 8px var(--brand-red), 0 0 40px rgba(var(--brand-red-rgb), 0.6); }
+}
+
+/* 3D Perspective for Main Container in Console Mode */
+html.console-mode-active #root {
+  perspective: 1000px;
+}
+
+
+/* Ensure posters/cards have safe focus areas */
+html.console-mode-active [class*="Poster"], 
+html.console-mode-active [class*="Card"],
+html.console-mode-active button,
+html.console-mode-active a {
+  transition: transform 0.3s ease;
+}
+
+/* Hide web-only elements in console mode if necessary */
+html.console-mode-active .web-only {
+  display: none !important;
+}
+

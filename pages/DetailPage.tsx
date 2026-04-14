@@ -144,8 +144,24 @@ const DetailPage: React.FC = () => {
       setLoading(true);
       try {
         const apiLang = 'en-US';
-        const endpoint = `/movie/${id}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
-        const data = await fetchData(endpoint, language);
+        const movieEndpoint = `/movie/${id}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+        
+        // Initial sync attempt
+        let data = await fetchData(movieEndpoint, language);
+        
+        // Quantum Recovery: If movie signal is lost, attempt TV node sync
+        if (!data) {
+            console.warn("[DETAIL RECOVERY] Movie signal lost. Attempting TV relay...");
+            const tvEndpoint = `/tv/${id}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+            data = await fetchData(tvEndpoint, language);
+            
+            if (data) {
+                console.log("[DETAIL RECOVERY] TV relay established. Redirecting route...");
+                navigate(`/details/tv/${id}`, { replace: true, state: { customData: data } });
+                return;
+            }
+        }
+
         if (data) {
           setContent(data);
           setCast(data.credits?.cast?.slice(0, 10) || []);
@@ -163,12 +179,29 @@ const DetailPage: React.FC = () => {
           if (saved) {
             setInitialProgress(saved.progress || 0);
           }
+        } else {
+            addNotification({ type: 'error', title: 'SIGNAL LOST', message: 'The requested node is unavailable in the global archive.' });
+            navigate(-1);
         }
-      } catch (error) { console.error(error); } finally { setLoading(false); }
+      } catch (error) { 
+          console.error("[CRITICAL SIGNAL ERROR]:", error); 
+          addNotification({ type: 'error', title: 'CORE FAILURE', message: 'System communication error.' });
+      } finally { 
+          setLoading(false); 
+      }
     };
     fetchContentDetails();
     window.scrollTo(0, 0);
   }, [id, language]);
+
+  const playButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isPlayerModalOpen && playButtonRef.current) {
+      // Small delay to ensure modal transition finishes
+      setTimeout(() => playButtonRef.current?.focus(), 300);
+    }
+  }, [isPlayerModalOpen]);
 
   const handlePlayClick = () => {
     const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
@@ -339,7 +372,7 @@ const DetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5">
-            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handlePlayClick} className="flex items-center gap-3 bg-[var(--text-primary)] text-[var(--bg-primary)] font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl transition-all"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span></motion.button>
+            <motion.button ref={playButtonRef} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handlePlayClick} className="flex items-center gap-3 bg-[var(--text-primary)] text-[var(--bg-primary)] font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl transition-all"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span></motion.button>
             {trailerKey && (
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 bg-white/10 backdrop-blur-3xl border border-white/10 text-[var(--text-primary)] font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl transition-all"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></motion.button>
             )}

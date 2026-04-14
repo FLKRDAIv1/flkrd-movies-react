@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 data movie restored/
 dubbed_movies_backup.json
+.env
+.env.*
+!.env.example

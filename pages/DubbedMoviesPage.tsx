@@ -237,8 +237,8 @@ const DubbedMoviesPage: React.FC = () => {
 
     const [scrollPosition, setScrollPosition] = useState(0);
 
-    // Admin State
-    const [isAdmin, setIsAdmin] = useState(false);
+    // Admin State - Pulled from Global UI Context
+    const { isAdmin, setIsAdmin } = useUI();
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [adminEmail, setAdminEmail] = useState('');
@@ -863,11 +863,9 @@ const DubbedMoviesPage: React.FC = () => {
 
             console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${numericId}`);
 
-            // 2. Database Execution
+            // 2. Database Execution (RPC Call to bypass DELETE CORS)
             const { error, status } = await supabase
-                .from('dubbed_movies')
-                .delete()
-                .eq('id', numericId);
+                .rpc('delete_dubbed_movie', { target_id: numericId });
 
             if (error) {
                 console.error('[SUPABASE ERROR]', error);
@@ -1499,7 +1497,7 @@ const DubbedMoviesPage: React.FC = () => {
                                                                     alt=""
                                                                     className="w-full h-full object-cover"
                                                                     onError={(e) => {
-                                                                        (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                                                                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=500';
                                                                     }}
                                                                 />
                                                             </div>

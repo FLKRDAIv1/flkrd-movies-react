@@ -15,7 +15,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
   const historyRef = useRef<HTMLDivElement>(null);
 
   const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -69,21 +69,27 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-40 p-3 sm:p-6 lg:p-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
-        <div className={`pointer-events-auto ${isDubPage ? 'cursor-default transition-all duration-700 opacity-80 filter grayscale hover:grayscale-0' : ''}`}>
-          {isDubPage ? (
-            <div className="flex items-center gap-2 bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-xl p-1.5 md:p-2 transition-all shadow-lg">
-               <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-6 md:h-10 object-contain" />
-               <h1 className="text-sm md:text-2xl font-bold text-[var(--brand-red)] tracking-wider pr-2 hidden md:block uppercase italic tracking-tighter">FLKRD ORIGINALS</h1>
-            </div>
-          ) : (
-            <Link to="/">
-              <div className="flex items-center gap-2 bg-black/25 dark-mode-box backdrop-blur-xl border border-white/10 rounded-xl p-1.5 md:p-2 transition-all shadow-lg">
-                <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-6 md:h-10 object-contain" />
-                <h1 className="text-sm md:text-2xl font-bold text-[var(--brand-red)] tracking-wider pr-2 hidden md:block">FLKRD MOVIES</h1>
-              </div>
-            </Link>
-          )}
+      <header className={`fixed top-0 left-0 right-0 z-[100] px-4 md:px-10 lg:px-14 py-4 md:py-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
+        <div className={`pointer-events-auto flex items-center gap-4 ${isDubPage ? 'transition-all duration-700 opacity-90' : ''}`}>
+          <Link to="/" className="group flex items-center gap-3 bg-black/30 md:bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl md:rounded-[2rem] p-1.5 md:p-3 transition-all hover:bg-black/50 hover:border-brand/40 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+             <div className="relative">
+                <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-8 md:h-12 w-auto object-contain transition-transform group-hover:scale-110 duration-500" />
+                <div className="absolute -inset-1 bg-brand/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
+             </div>
+             
+             {/* Dynamic Official Branding */}
+             <div className="flex flex-col pr-3">
+                <h1 className="text-sm md:text-2xl font-[1000] text-white tracking-[calc(-0.04em)] uppercase italic leading-none flex items-center gap-2">
+                   FLKRD
+                   <span className="md:hidden text-[6px] font-black bg-brand px-1.5 py-0.5 rounded-sm italic tracking-widest text-white shadow-lg">OFFICIAL</span>
+                </h1>
+                <span className="hidden md:block text-[8px] font-black text-gray-400 uppercase tracking-[0.4em] mt-1.5 opacity-60">
+                   {isDubPage 
+                     ? (language === 'ku' ? 'بەرهەمە ڕەسەنەکان' : 'ORIGINAL_PRODUCTIONS') 
+                     : (language === 'ku' ? 'پرۆتۆکۆڵی سینەمایی' : 'CINEMATIC_PROTOCOL')}
+                </span>
+             </div>
+          </Link>
         </div>
         
         <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
