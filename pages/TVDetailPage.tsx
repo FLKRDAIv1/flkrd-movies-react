@@ -153,6 +153,8 @@ const TVDetailPage: React.FC = () => {
       type: 'tv',
       title: content.name,
       poster_path: content.poster_path,
+      backdrop_path: content.backdrop_path,
+      vote_average: content.vote_average,
       progress: time,
       duration: duration || 2700,
       lastWatched: Date.now(),
@@ -268,7 +270,7 @@ const TVDetailPage: React.FC = () => {
     if (s && s !== selectedSeason) fetchSeasonDetails(s);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+  if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
   if (!content) return null;
 
   return (
@@ -416,7 +418,7 @@ const TVDetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-10">
-            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-xl border border-yellow-500/20 shadow-lg backdrop-blur-md"><Star size={14} className="text-yellow-500 fill-current" /><span className="text-xs font-black text-yellow-500">{content.vote_average.toFixed(1)}</span></div>
+            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-xl border border-yellow-500/20 shadow-lg backdrop-blur-md"><Star size={14} className="text-yellow-500 fill-current" /><span className="text-xs font-black text-yellow-500">{content.vote_average?.toFixed(1) || '0.0'}</span></div>
             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-md"><Calendar size={14} className="text-gray-400" /><span className="text-xs font-black text-gray-400">{content.first_air_date?.split('-')[0]}</span></div>
           </div>
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-10">

@@ -338,53 +338,92 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </Card>
               </Section>
 
-              {/* Global Scaling */}
+              {/* Global Display Scaling */}
               <Section delay={0.4}>
-                <SectionLabel icon={<Maximize2 size={14} />} label="Interface Intensity" />
-                <Card className="p-6">
-                   <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-4">
-                         <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40">
-                            <Monitor size={20} />
+                <SectionLabel icon={<Maximize2 size={14} />} label="Interface Intensity & Scale" />
+                <Card className="p-6 bg-gradient-to-br from-white/[0.03] to-transparent border-white/10 shadow-2xl">
+                   <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
+                      <div className="flex items-center gap-5">
+                         <div className="w-14 h-14 rounded-[1.5rem] bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shadow-[0_0_20px_rgba(229,9,20,0.1)]">
+                            <Monitor size={24} strokeWidth={2.5} />
                          </div>
                          <div>
-                            <span className="text-2xl font-[1000] text-white font-mono">{scalePercent}%</span>
-                            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">Display Density</p>
+                            <span className="text-3xl font-[1000] text-white tracking-tighter italic font-mono">{scalePercent}%</span>
+                            <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] mt-1">Global Render Density</p>
                          </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      
+                      <div className="flex items-center gap-3 bg-black/40 p-2 rounded-2xl border border-white/5">
                          <button 
                             onClick={() => setScale(Math.max(0.4, (scale || 1) - 0.05))}
-                            className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                            className="w-11 h-11 rounded-xl bg-white/5 hover:bg-brand hover:text-white border border-white/5 flex items-center justify-center text-gray-400 transition-all active:scale-90 shadow-lg"
+                            title="Decrease Size"
                          >
-                            <Minimize2 size={16} />
+                            <Minimize2 size={18} />
                          </button>
                          <button 
                             onClick={() => setScale(1)}
-                            className="px-5 h-10 rounded-2xl bg-white/5 border border-white/10 text-[9px] font-black text-gray-500 hover:text-white uppercase tracking-widest"
+                            className="px-6 h-11 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black text-white uppercase tracking-widest transition-all"
                          >
                             Reset
                          </button>
                          <button 
                             onClick={() => setScale(Math.min(1.5, (scale || 1) + 0.05))}
-                            className="w-10 h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                            className="w-11 h-11 rounded-xl bg-white/5 hover:bg-brand hover:text-white border border-white/5 flex items-center justify-center text-gray-400 transition-all active:scale-90 shadow-lg"
+                            title="Increase Size"
                          >
-                            <Maximize2 size={16} />
+                            <Maximize2 size={18} />
                          </button>
                       </div>
                    </div>
-                   <div className="relative group px-1">
-                      <input 
-                        type="range"
-                        min="40" max="150" step="1"
-                        value={scalePercent}
-                        onChange={(e) => setScale(Number(e.target.value) / 100)}
-                        className="w-full h-[3px] rounded-full appearance-none bg-white/5 cursor-pointer accent-brand"
-                        style={{ accentColor: accentColor }}
-                      />
+
+                   <div className="px-2">
+                      <div className="relative h-10 flex items-center group">
+                        <div className="absolute inset-0 bg-white/5 h-1.5 top-1/2 -translate-y-1/2 rounded-full overflow-hidden">
+                           <motion.div 
+                             initial={false}
+                             animate={{ width: `${((scale - 0.4) / (1.5 - 0.4)) * 100}%` }}
+                             className="h-full shadow-[0_0_15px_brand]"
+                             style={{ backgroundColor: accentColor }}
+                           />
+                        </div>
+                        <input 
+                          type="range"
+                          min="40" max="150" step="1"
+                          value={scalePercent}
+                          onChange={(e) => setScale(Number(e.target.value) / 100)}
+                          className="absolute w-full appearance-none bg-transparent cursor-pointer z-10"
+                          style={{ 
+                            WebkitAppearance: 'none',
+                          }}
+                        />
+                      </div>
+                      <style>{`
+                        input[type=range]::-webkit-slider-thumb {
+                          -webkit-appearance: none;
+                          height: 24px;
+                          width: 24px;
+                          border-radius: 50%;
+                          background: #fff;
+                          cursor: pointer;
+                          border: 5px solid ${accentColor};
+                          box-shadow: 0 0 20px rgba(0,0,0,0.5);
+                          transition: all 0.2s ease;
+                        }
+                        input[type=range]::-webkit-slider-thumb:hover {
+                          transform: scale(1.15);
+                          box-shadow: 0 0 30px ${accentColor}66;
+                        }
+                      `}</style>
                       <div className="flex justify-between mt-4">
-                        <span className="text-[8px] font-black text-gray-700 uppercase">Pro (40%)</span>
-                        <span className="text-[8px] font-black text-gray-700 uppercase">Maximus (150%)</span>
+                        <div className="flex flex-col items-start gap-1">
+                           <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest">Minimalist</span>
+                           <span className="text-[10px] font-bold text-gray-400">40%</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                           <span className="text-[8px] font-black text-gray-600 uppercase tracking-widest">Broadcast</span>
+                           <span className="text-[10px] font-bold text-gray-400">150%</span>
+                        </div>
                       </div>
                    </div>
                 </Card>

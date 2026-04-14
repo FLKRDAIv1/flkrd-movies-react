@@ -95,6 +95,8 @@ const DetailPage: React.FC = () => {
         type: 'movie',
         title: content.title,
         poster_path: content.poster_path,
+        backdrop_path: content.backdrop_path,
+        vote_average: content.vote_average,
         progress: time,
         duration: duration || content.runtime * 60 || 7200,
         lastWatched: Date.now()
@@ -194,7 +196,7 @@ const DetailPage: React.FC = () => {
     } catch (e) { }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+  if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
   if (!content) return null;
 
   return (
@@ -324,7 +326,7 @@ const DetailPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-8">
             <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-xl border border-yellow-500/20 shadow-lg backdrop-blur-xl">
               <Star size={14} className="text-yellow-500 fill-current" />
-              <span className="text-xs font-black text-yellow-500">{content.vote_average.toFixed(1)}</span>
+              <span className="text-xs font-black text-yellow-500">{content.vote_average?.toFixed(1) || '0.0'}</span>
             </div>
             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-xl">
               <Timer size={14} className="text-[var(--text-secondary)]" />

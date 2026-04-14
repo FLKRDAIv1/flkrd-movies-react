@@ -79,6 +79,8 @@ const DubbedDetailPage: React.FC = () => {
             type: 'dubbed',
             title: dubbedData?.kurdishTitle || dubbedData?.title || content?.title || 'Dubbed Movie',
             poster_path: dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '',
+            backdrop_path: dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path,
+            vote_average: dubbedData?.vote_average || content?.vote_average,
             progress: time,
             duration: duration || 7200,
             lastWatched: Date.now()
@@ -197,7 +199,7 @@ const DubbedDetailPage: React.FC = () => {
         setIsPlayerLoading(false);
     }, []);
 
-    if (loading && !dubbedData) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+    if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
 
     const displayTitle = dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading Title...";
     const displayOverview = dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "هیچ زانیاریەک بەردەست نیە" : "Wait, establishing node description...");

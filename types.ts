@@ -63,6 +63,8 @@ export interface WatchProgress {
   type: 'movie' | 'tv' | 'dubbed';
   title: string;
   poster_path: string;
+  backdrop_path?: string;
+  vote_average?: number;
   progress: number;
   duration: number;
   lastWatched: number;
