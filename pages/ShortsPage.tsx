@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Volume2, VolumeX, CheckCircle2, 
-  X, Play, ShieldCheck, Heart, WifiOff, Zap, Calendar, Tag, Info, Star, Music2
+  X, Play, ShieldCheck, Heart, WifiOff, Zap, Calendar, Tag, Info, Star, Music2, RotateCcw
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -32,10 +32,12 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     hasInteracted, onAutoScrollRequest, isFollowed, onToggleFollow 
 }) => {
   const { t } = useTranslation();
-  const { theme, scale } = useUI();
+  const { theme, accentColor } = useUI();
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
   const [showHeartPop, setShowHeartPop] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isVideoLoading, setIsVideoLoading] = useState(true);
   const lastTapRef = useRef<number>(0);
   
   const movieGenres = useMemo(() => {
@@ -86,40 +88,51 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
 
   const videoUrl = useMemo(() => {
     if (!trailerKey || !active || !hasInteracted) return null;
-    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1`;
-  }, [trailerKey, active, hasInteracted, isMutedGlobal]);
+    const origin = window.location.origin;
+    // Enhanced parameters for mobile auto-play and bot mitigation
+    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3&t=${reloadKey}`;
+  }, [trailerKey, active, hasInteracted, isMutedGlobal, reloadKey]);
 
   return (
-    <div className="h-full w-full relative snap-start bg-main-bg flex flex-col items-center justify-center overflow-hidden">
+    <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex flex-col items-center justify-center overflow-hidden">
+      {/* Cinematic Background Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden flex items-center justify-center">
         {trailerKey ? (
           <div className="w-full h-full relative pointer-events-none">
-            <AnimatePresence>
-                {videoUrl && (
+            <AnimatePresence mode='wait'>
+                {videoUrl ? (
                     <motion.div 
+                        key="video"
                         initial={{ opacity: 0 }} 
                         animate={{ opacity: 1 }} 
                         exit={{ opacity: 0 }}
-                        className="w-full h-full scale-[2.0] md:scale-[1.2] brightness-[0.7]"
+                        className="w-full h-full scale-[2.2] md:scale-[1.15] brightness-[0.75]"
                     >
                         <iframe 
                             src={videoUrl}
                             className="w-full h-full"
                             frameBorder="0"
-                            allow="autoplay; encrypted-media"
+                            allow="autoplay; encrypted-media; picture-in-picture"
+                            onLoad={() => setIsVideoLoading(false)}
                         />
+                    </motion.div>
+                ) : (
+                    <motion.div key="poster" className="absolute inset-0 w-full h-full">
+                        <img 
+                            src={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`} 
+                            className="w-full h-full object-cover opacity-60 scale-110 blur-xl"
+                            alt=""
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <Spinner />
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-            <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-black/95 z-20" />
             
-            {!videoUrl && (
-                <img 
-                    src={`${IMAGE_BASE_URL}${movie.backdrop_path}`} 
-                    className="absolute inset-0 w-full h-full object-cover opacity-40 blur-sm"
-                    alt=""
-                />
-            )}
+            {/* High-End Cinematic Vignette Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/90 z-20" />
+            <div className="absolute inset-0 shadow-[inset_0_0_200px_rgba(0,0,0,0.9)] z-21" />
           </div>
         ) : (
           <div className="h-full w-full bg-[#050505] flex flex-col items-center justify-center">
@@ -130,74 +143,120 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
 
       <div className="absolute inset-0 z-30" onClick={handleInteraction} />
 
+      {/* Magnetic Heart Interaction Layer */}
       <AnimatePresence>
           {showHeartPop && (
-              <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0.5, 1.6, 1.3], opacity: [0, 1, 0] }} exit={{ opacity: 0 }} className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none">
-                  <Heart className="text-brand fill-brand drop-shadow-[0_0_80px_rgba(var(--brand-red-rgb),1)] w-48 h-48 md:w-64 md:h-64" />
+              <motion.div 
+                  initial={{ scale: 0, rotate: -20, opacity: 0 }} 
+                  animate={{ scale: [0.5, 1.4, 1.2], rotate: 0, opacity: [0, 1, 0] }} 
+                  exit={{ opacity: 0 }} 
+                  transition={{ duration: 0.6, ease: "backOut" }}
+                  className="absolute inset-0 z-[60] flex items-center justify-center pointer-events-none"
+              >
+                  <Heart className="text-brand fill-brand drop-shadow-[0_0_60px_rgba(var(--brand-red-rgb),0.8)] w-56 h-56" />
               </motion.div>
           )}
       </AnimatePresence>
 
-      {/* Side Action Bar - Right Side */}
-      <div className="absolute right-3 bottom-[12%] md:right-8 md:bottom-[15%] flex flex-col items-center gap-6 md:gap-8 z-40">
-        <motion.div whileTap={{ scale: 0.85 }} className="relative cursor-pointer" onClick={onNavigate}>
-          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-brand overflow-hidden bg-black p-0.5 shadow-2xl">
+      {/* Side Action Bar - Enhanced Interaction Nodes */}
+      <div className="absolute right-3 bottom-[12%] md:right-8 md:bottom-[15%] flex flex-col items-center gap-6 md:gap-7 z-40">
+        <motion.div 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.9 }} 
+            className="relative cursor-pointer group" 
+            onClick={onNavigate}
+        >
+          <div className="w-13 h-13 md:w-16 md:h-16 rounded-full border-2 border-brand/50 p-0.5 bg-black overflow-hidden shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.3)] group-hover:border-brand transition-colors">
              <img src={movie.poster_path ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` : "https://i.imgur.com/4HoT8Yf.png"} alt="" className="w-full h-full object-cover rounded-full" />
           </div>
-          <button className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-brand text-white rounded-full p-1 border-2 border-black shadow-lg">
-            <Plus className="w-3 h-3" />
+          <button className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-brand text-white rounded-full p-1.5 border-2 border-black shadow-xl">
+            <Plus className="w-3.5 h-3.5" strokeWidth={3} />
           </button>
         </motion.div>
 
-        <button onClick={(e) => { e.stopPropagation(); onToggleFollow(); }} className="flex flex-col items-center gap-1 group">
-          <motion.div animate={isFollowed ? { scale: [1, 1.3, 1] } : {}} className={`p-4 rounded-full border transition-all ${isFollowed ? 'bg-brand border-brand shadow-[0_0_30px_rgba(var(--brand-red-rgb),0.6)]' : 'bg-black/40 border-white/10 backdrop-blur-xl'}`}>
-            <Heart className={`w-6 h-6 md:w-8 md:h-8 ${isFollowed ? "fill-white text-white" : "text-white"}`} />
+        <button onClick={(e) => { e.stopPropagation(); onToggleFollow(); }} className="flex flex-col items-center gap-1.5 group">
+          <motion.div 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.8 }}
+            animate={isFollowed ? { scale: [1, 1.2, 1] } : {}} 
+            className={`p-4 md:p-5 rounded-3xl border transition-all duration-300 ${isFollowed ? 'bg-brand border-brand shadow-[0_0_40px_rgba(var(--brand-red-rgb),0.5)]' : 'bg-white/10 border-white/10 backdrop-blur-3xl hover:bg-white/20'}`}
+          >
+            <Heart className={`w-7 h-7 md:w-8 md:h-8 ${isFollowed ? "fill-white text-white" : "text-white opacity-80"}`} />
           </motion.div>
-          <span className="text-[8px] md:text-[10px] font-black text-white/50 uppercase tracking-widest">Connect</span>
+          <span className="text-[9px] md:text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">{isFollowed ? 'Followed' : 'Connect'}</span>
         </button>
 
-        <button onClick={(e) => { e.stopPropagation(); toggleMuteGlobal(); }} className="p-4 rounded-full bg-brand shadow-2xl transition-all active:scale-90">
-          {isMutedGlobal ? <VolumeX className="w-6 h-6 md:w-8 md:h-8 text-white" /> : <Volume2 className="w-6 h-6 md:w-8 md:h-8 text-white" />}
+        <button onClick={(e) => { e.stopPropagation(); toggleMuteGlobal(); }} className="p-4 md:p-5 rounded-full bg-white/10 border border-white/10 backdrop-blur-3xl shadow-2xl transition-all hover:bg-white/20 active:scale-90">
+          {isMutedGlobal ? <VolumeX className="w-7 h-7 md:w-8 md:h-8 text-white opacity-80" /> : <Volume2 className="w-7 h-7 md:w-8 md:h-8 text-white" />}
+        </button>
+
+        <button onClick={(e) => { e.stopPropagation(); setReloadKey(k => k + 1); }} className="p-4 rounded-full bg-black/40 border border-white/5 backdrop-blur-md opacity-40 hover:opacity-100 transition-opacity">
+          <RotateCcw className="w-5 h-5 text-white" />
         </button>
       </div>
 
-      {/* Info Panel - Bottom Left */}
-      <div className="absolute bottom-10 left-4 right-20 md:left-14 md:bottom-20 md:right-32 z-40 pointer-events-none text-left" dir="ltr">
-        <div className="flex flex-col items-start gap-1">
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            <div className="bg-blue-500 rounded-full p-0.5 shadow-lg"><CheckCircle2 className="w-3 h-3 text-white" /></div>
-            <h3 className="font-black text-xs md:text-sm text-white uppercase tracking-widest italic drop-shadow-md">Zana Faroq • Transmission</h3>
+      {/* Info Panel - Bottom Left (Official Metadata Signature) */}
+      <div className="absolute bottom-10 left-5 right-24 md:left-14 md:bottom-20 md:right-32 z-40 pointer-events-none text-left" dir="ltr">
+        <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col items-start gap-1"
+        >
+          <div className="flex flex-wrap items-center gap-2.5 mb-5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-3xl">
+            <div className="bg-blue-500 rounded-full p-0.5 shadow-lg"><CheckCircle2 className="w-2.5 h-2.5 text-white" /></div>
+            <h3 className="font-black text-[9px] md:text-[11px] text-blue-400/90 uppercase tracking-[0.3em] font-mono">Official Trailer • FLKRD Cinema</h3>
           </div>
 
-          <div className="mb-6 max-w-[260px] md:max-w-xl">
+          <div className="mb-6 max-w-[280px] md:max-w-2xl">
             {logo ? (
-              <img src={`${IMAGE_BASE_URL}${logo}`} className="max-h-14 md:max-h-24 object-contain drop-shadow-2xl" alt={movie.title} />
+              <img src={`${IMAGE_BASE_URL}${logo}`} className="max-h-16 md:max-h-28 object-contain drop-shadow-[0_0_30px_rgba(0,0,0,0.8)] filter brightness-110" alt={movie.title} />
             ) : (
-              <h1 className="text-2xl md:text-5xl font-[1000] text-white uppercase italic tracking-tighter leading-none drop-shadow-2xl">{movie.title || movie.name}</h1>
+              <h1 className="text-3xl md:text-6xl font-[1000] text-white uppercase italic tracking-tight leading-none drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)]">{movie.title || movie.name}</h1>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-              <div className="flex items-center gap-1.5 bg-brand text-white px-3 py-1 rounded-lg backdrop-blur-2xl shadow-xl">
-                  <Calendar className="w-3 h-3 md:w-4 md:h-4 text-white" fill="white" />
+          <div className="flex flex-wrap items-center gap-4 mb-8">
+              <div className="flex items-center gap-2 bg-brand/90 text-white px-4 py-1.5 rounded-xl backdrop-blur-3xl shadow-2xl border border-white/10">
+                  <Calendar className="w-3.5 h-3.5" fill="white" />
                   <span className="text-[10px] md:text-xs font-black uppercase tracking-tighter">
-                      {movie.release_date?.split('-')[0] || movie.first_air_date?.split('-')[0] || '2024'}
+                      {movie.release_date?.split('-')[0] || movie.first_air_date?.split('-')[0] || '2025'}
                   </span>
               </div>
               {movie.vote_average > 0 && (
-                <div className="flex items-center gap-1.5 bg-yellow-500/20 border border-yellow-500/30 px-3 py-1 rounded-lg text-yellow-500">
-                    <Star className="w-3 h-3 md:w-4 md:h-4" fill="currentColor" />
-                    <span className="text-[10px] md:text-xs font-black">{movie.vote_average.toFixed(1)}</span>
+                <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 px-4 py-1.5 rounded-xl text-yellow-500 backdrop-blur-3xl">
+                    <Star className="w-3.5 h-3.5" fill="currentColor" />
+                    <span className="text-[10px] md:text-xs font-black tabular-nums">{movie.vote_average.toFixed(1)}</span>
                 </div>
+              )}
+              {movieGenres.length > 0 && (
+                 <div className="hidden md:flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-1.5 rounded-xl text-gray-300 backdrop-blur-3xl">
+                    <Music2 className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{movieGenres.join(' / ')}</span>
+                 </div>
               )}
           </div>
 
           <div className="flex items-center gap-4 mt-2 pointer-events-auto">
-            <button onClick={onNavigate} className="bg-white text-black font-[1000] px-10 py-4 md:px-16 md:py-5 rounded-2xl flex items-center gap-3 text-[10px] md:text-sm uppercase italic tracking-widest shadow-2xl active:scale-95 transition-all">
-              <Play className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" /> STREAM FULL NODE
+            <button onClick={onNavigate} className="relative group overflow-hidden bg-white text-black font-[1000] px-12 py-4.5 md:px-20 md:py-6 rounded-2xl flex items-center gap-4 text-[11px] md:text-base uppercase italic tracking-[0.2em] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] active:scale-95 transition-all">
+              <div className="absolute inset-0 bg-brand/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+              <Play className="w-5 h-5 md:w-6 md:h-6 relative" fill="currentColor" /> 
+              <span className="relative">STREAM FULL NODE</span>
             </button>
           </div>
-        </div>
+        </motion.div>
+      </div>
+
+      {/* Progress Sync Bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 z-50">
+          <div className="h-full bg-white/5 w-full">
+              <motion.div 
+                className="h-full bg-brand shadow-[0_0_10px_brand]"
+                initial={{ width: 0 }}
+                animate={active ? { width: '100%' } : { width: 0 }}
+                transition={{ duration: 30, ease: "linear" }}
+              />
+          </div>
       </div>
     </div>
   );
@@ -218,8 +277,18 @@ const ShortsPage: React.FC = () => {
   
   const containerRef = useRef<HTMLDivElement>(null);
   const { language } = useTranslation();
-  const { theme, scale } = useUI();
   const navigate = useNavigate();
+
+  // Mobile Viewport Height Sync
+  useEffect(() => {
+    const handleResize = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleMuteGlobal = () => { 
     setIsMutedGlobal(!isMutedGlobal); 
@@ -245,12 +314,12 @@ const ShortsPage: React.FC = () => {
 
   const handleScroll = () => {
     if (!containerRef.current) return;
-    const index = Math.round(containerRef.current.scrollTop / containerRef.current.clientHeight);
+    const index = Math.round(containerRef.current.scrollTop / (window.innerHeight));
     if (index !== activeIndex) { 
         setActiveIndex(index); 
         sessionStorage.setItem(STORAGE_KEY, index.toString()); 
     }
-    if (index >= displayedMovies.length - 3) loadShorts();
+    if (index >= displayedMovies.length - 4) loadShorts();
   };
 
   const handleToggleFollow = (id: number) => {
@@ -265,53 +334,62 @@ const ShortsPage: React.FC = () => {
     return viewMode === 'followers' ? movies.filter(m => followedIds.has(m.id)) : movies;
   }, [viewMode, movies, followedIds]);
 
-  if (loading && movies.length === 0) return <div className="h-screen bg-main-bg flex items-center justify-center"><Spinner /></div>;
+  if (loading && movies.length === 0) return <div className="h-[calc(var(--vh,1vh)*100)] bg-[#050505] flex items-center justify-center font-black tracking-tighter text-white/10 uppercase italic text-2xl animate-pulse italic">Initializing Neural Feed...</div>;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-main-bg">
+    <div className="fixed inset-0 z-[60] bg-[#050505] overflow-hidden">
       <AnimatePresence>
         {!hasInteracted && (
-          <motion.div exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-[60px] p-6 text-center">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md">
-              <div className="w-24 h-24 bg-brand/10 rounded-[3rem] flex items-center justify-center mx-auto mb-10 border border-brand/20 shadow-2xl">
-                <ShieldCheck className="text-brand w-12 h-12" />
+          <motion.div exit={{ opacity: 0 }} className="absolute inset-0 z-[100] flex items-center justify-center bg-black/98 backdrop-blur-[100px] p-8 text-center">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md w-full">
+              <div className="w-28 h-28 bg-brand/10 rounded-[3rem] flex items-center justify-center mx-auto mb-12 border border-brand/20 shadow-[0_0_100px_rgba(var(--brand-red-rgb),0.2)]">
+                <ShieldCheck className="text-brand w-14 h-14" strokeWidth={2.5} />
               </div>
-              <h2 className="text-4xl font-[1000] text-white uppercase italic tracking-tighter mb-4 text-center">Initialize Feed</h2>
-              <button onClick={() => { setIsMutedGlobal(false); setHasInteracted(true); }} className="w-full bg-white text-black font-[1000] py-6 rounded-[2rem] flex items-center justify-center gap-4 uppercase italic tracking-[0.2em] shadow-2xl hover:bg-brand hover:text-white transition-all active:scale-95">
-                  START STREAMING <Zap className="w-6 h-6" fill="currentColor" />
+              <h2 className="text-4xl md:text-5xl font-[1000] text-white uppercase italic tracking-tighter mb-6 text-center leading-none">Initialize<br/>Neural Fluid</h2>
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] mb-12">Synchronizing transmission protocols...</p>
+              <button 
+                onClick={() => { setIsMutedGlobal(false); setHasInteracted(true); }} 
+                className="w-full bg-white text-black font-[1000] py-7 rounded-[2rem] flex items-center justify-center gap-4 uppercase italic tracking-[0.2em] shadow-2xl hover:bg-brand hover:text-white transition-all active:scale-95 group"
+              >
+                  START TRANSMISSION <Zap className="w-7 h-7 group-hover:animate-pulse" fill="currentColor" />
               </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pt-8 pointer-events-none">
-          <div className="pointer-events-auto bg-black/40 backdrop-blur-3xl border border-white/10 rounded-2xl flex items-center p-1.5 shadow-2xl">
-              <button onClick={() => setViewMode('followers')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'followers' ? 'bg-brand text-white shadow-xl' : 'text-gray-500 hover:text-white'}`}>Followers</button>
-              <button onClick={() => setViewMode('explore')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'explore' ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'}`}>Explore</button>
+      <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pt-10 pointer-events-none">
+          <div className="pointer-events-auto bg-black/40 backdrop-blur-3xl border border-white/10 rounded-3xl flex items-center p-1.5 shadow-2xl overflow-hidden">
+              <button onClick={() => setViewMode('followers')} className={`px-8 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${viewMode === 'followers' ? 'bg-brand text-white shadow-xl' : 'text-gray-500 hover:text-white'}`}>Followers</button>
+              <button onClick={() => setViewMode('explore')} className={`px-8 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${viewMode === 'explore' ? 'bg-white text-black shadow-xl' : 'text-gray-500 hover:text-white'}`}>Explore</button>
           </div>
       </div>
 
-      <div ref={containerRef} onScroll={handleScroll} className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-main-bg">
+      <div 
+        ref={containerRef} 
+        onScroll={handleScroll} 
+        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-[#050505] overscroll-none"
+        style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
+      >
         {displayedMovies.length > 0 ? displayedMovies.map((movie, index) => (
             <TrailerItem 
                 key={`${movie.id}-${index}`} movie={movie} active={index === activeIndex}
                 isMutedGlobal={isMutedGlobal} toggleMuteGlobal={toggleMuteGlobal}
-                hasInteracted={hasInteracted} onAutoScrollRequest={() => containerRef.current?.scrollBy({top: containerRef.current.clientHeight, behavior: 'smooth'})}
+                hasInteracted={hasInteracted} onAutoScrollRequest={() => containerRef.current?.scrollBy({top: window.innerHeight, behavior: 'smooth'})}
                 onNavigate={() => navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`, { state: { customData: movie } })}
                 isFollowed={followedIds.has(movie.id)} onToggleFollow={() => handleToggleFollow(movie.id)}
             />
         )) : (
-            <div className="h-full flex flex-col items-center justify-center text-sec-text font-black uppercase tracking-[0.5em] text-center px-10">
+            <div className="h-full flex flex-col items-center justify-center text-gray-500 font-black uppercase tracking-[1em] text-center px-10">
                 <Spinner />
-                <p className="mt-12 italic text-[11px]">Synchronizing Nodes...</p>
+                <p className="mt-12 italic text-[11px] opacity-40">Connecting to Core...</p>
             </div>
         )}
       </div>
 
-      <div className="fixed top-6 left-6 z-50">
-        <button onClick={() => navigate('/')} className="bg-black/30 backdrop-blur-2xl p-4 rounded-2xl border border-white/10 text-white hover:bg-brand transition-all shadow-xl active:scale-90">
-            <X className="w-6 h-6 md:w-8 md:h-8" />
+      <div className="fixed top-8 left-8 z-50">
+        <button onClick={() => navigate('/')} className="group bg-black/40 backdrop-blur-3xl p-5 rounded-2xl border border-white/10 text-white hover:bg-brand transition-all shadow-2xl active:scale-90">
+            <X className="w-7 h-7 md:w-8 md:h-8 group-hover:rotate-90 transition-transform" />
         </button>
       </div>
     </div>
