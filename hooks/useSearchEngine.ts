@@ -105,14 +105,31 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
       let combinedResults: any[] = [];
 
       // Pass A: TMDB Results
+      let tmdbResults: any[] = [];
       if (tmdbData && Array.isArray(tmdbData)) {
-        combinedResults = tmdbData
+        tmdbResults = tmdbData
           .filter((item: Content) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
           .map((item: Content) => ({
             ...item,
             _relevanceScore: calculateSearchRelevance(trimmed, item)
           }));
       }
+
+      // Pass A-2: High-Performance Fallback (Retry with English if Kurdish results are zero for TMDB)
+      if (tmdbResults.length === 0 && language === 'ku') {
+        const engEndpoint = `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
+        const engData = await fetchData(engEndpoint, 'en');
+        if (engData && Array.isArray(engData)) {
+            tmdbResults = engData
+                .filter((item: Content) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
+                .map((item: Content) => ({
+                    ...item,
+                    _relevanceScore: calculateSearchRelevance(trimmed, item)
+                }));
+        }
+      }
+
+      combinedResults = [...tmdbResults];
 
       // Pass B: Local Dubbed Archive (for speed and offline reliability)
       if (cachedMovies && cachedMovies.length > 0) {
@@ -137,7 +154,7 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
       const uniqueResults = Array.from(new Map(combinedResults.map(item => [item.id, item])).values());
       
       const rankedResults = uniqueResults
-        .filter((item: any) => item._relevanceScore > 40)
+        .filter((item: any) => item._relevanceScore >= 20) // Lowered from 40 for higher inclusivity
         .sort((a: any, b: any) => {
           if (b._relevanceScore !== a._relevanceScore) {
               return b._relevanceScore - a._relevanceScore;

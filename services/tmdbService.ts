@@ -23,7 +23,10 @@ export const isForbidden = (item: Content, language: 'en' | 'ku'): boolean => {
   const overview = (item.overview || '').toLowerCase();
 
   const textToScan = `${title} ${originalTitle} ${overview}`;
-  return allKeywords.some(keyword => textToScan.includes(keyword));
+  return allKeywords.some(keyword => {
+    const k = keyword.toLowerCase().trim();
+    return k !== '' && textToScan.includes(k);
+  });
 };
 
 export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {

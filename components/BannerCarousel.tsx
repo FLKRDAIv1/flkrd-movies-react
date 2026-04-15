@@ -95,6 +95,7 @@ const HeroBanner: React.FC = () => {
   if (items.length === 0) return null;
 
   const currentItem = items[currentIndex];
+  if (!currentItem) return <div className="h-[85vh] md:h-screen w-full bg-black flex items-center justify-center"><Spinner /></div>;
 
   return (
     <div className="relative h-[85vh] md:h-screen w-full overflow-hidden bg-black group/hero">
