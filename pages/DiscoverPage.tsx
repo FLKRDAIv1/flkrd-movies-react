@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2 } from 'lucide-react';
+import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2, Trash2 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchPaginatedData } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { bannedService } from '../services/bannedService';
 
 type Selection = 'hollywood' | 'bollywood' | 'infinity' | 'country' | 'animations';
 
@@ -60,7 +62,8 @@ const DiscoverPage: React.FC = () => {
     
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { theme } = useUI();
+    const { theme, isAdmin } = useUI();
+    const { addNotification } = useNotification();
     const langCode = language === 'ku' ? 'ku' : 'en-US';
     const isRtl = language === 'ku';
     const observer = useRef<IntersectionObserver | null>(null);
@@ -148,6 +151,24 @@ const DiscoverPage: React.FC = () => {
             setLoadingMore(false);
         });
     }, [loadingMore, selection, page, hasMore, yearFilter, selectedGenres, activeCountry, langCode, language]);
+    
+    const handleBan = async (e: React.MouseEvent, item: Content) => {
+        e.stopPropagation();
+        const cleanId = String(item.id).replace('custom_', '');
+        const mediaType = item.media_type || (String(item.id).startsWith('custom_') ? 'dubbed' : 'movie');
+        
+        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
+        
+        try {
+            const success = await bannedService.banContent(cleanId, mediaType);
+            if (success) {
+                addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
+                setResults(prev => prev.filter(r => r.id !== item.id));
+            }
+        } catch (err) {
+            console.error("Ban failed:", err);
+        }
+    };
 
     const loadMoreRef = useCallback(node => {
         if (loadingMore) return;
@@ -296,6 +317,17 @@ const DiscoverPage: React.FC = () => {
                                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
                                                   <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
                                               </div>
+
+                                              {isAdmin && (
+                                                <div className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button 
+                                                        onClick={(e) => handleBan(e, item)}
+                                                        className="p-3 bg-red-600/80 backdrop-blur-md rounded-2xl text-white border border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:bg-red-600 hover:scale-110 active:scale-95 transition-all"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                              )}
                                             </div>
                                         </motion.div>
                                     ))}

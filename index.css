@@ -199,8 +199,8 @@ html.console-mode-active *:focus {
   100% { box-shadow: 0 0 0 8px var(--brand-red), 0 0 40px rgba(var(--brand-red-rgb), 0.6); }
 }
 
-/* 3D Perspective for Main Container in Console Mode */
-html.console-mode-active #root {
+/* 3D Perspective for Main Container in Console Mode - Fixed to not break viewport-fixed elements */
+html.console-mode-active .console-perspective-container {
   perspective: 1000px;
 }
 

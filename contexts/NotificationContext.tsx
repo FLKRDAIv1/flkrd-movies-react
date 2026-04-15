@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import { Notification } from '../types';
 import NotificationItem from '../components/NotificationItem';
 import { notificationEmitter } from '../utils/notificationEmitter';
+import Portal from '../components/Portal';
 
 interface NotificationContextType {
   addNotification: (notification: Omit<Notification, 'id'>) => void;
@@ -35,15 +36,17 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   return (
     <NotificationContext.Provider value={{ addNotification }}>
       {children}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 sm:top-6 z-[101] w-full max-w-sm space-y-3 pointer-events-none px-4 sm:px-0">
-        {notifications.map(notification => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onDismiss={removeNotification}
-          />
-        ))}
-      </div>
+      <Portal id="notification-portal">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 sm:top-6 z-[101] w-full max-w-sm space-y-3 pointer-events-none px-4 sm:px-0">
+          {notifications.map(notification => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onDismiss={removeNotification}
+            />
+          ))}
+        </div>
+      </Portal>
     </NotificationContext.Provider>
   );
 };

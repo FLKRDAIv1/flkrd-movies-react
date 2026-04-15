@@ -9,6 +9,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import EnableNotificationsModal from './EnableNotificationsModal';
+import Portal from './Portal';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -189,10 +190,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const scalePercent = Math.round((scale || 1) * 100);
 
   return (
-    <div className={`fixed inset-0 z-[1000] pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
-    <AnimatePresence>
-      {isOpen && (
-        <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
+    <Portal id="settings-portal">
+      <div className={`fixed inset-0 z-[1000] pointer-events-none ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-auto">
           {/* Backdrop with motion-graphics blur */}
           <motion.div 
             initial={{ opacity: 0 }}
@@ -498,6 +500,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       onClose={() => setIsEnableNotificationsModalOpen(false)} 
     />
     </div>
+    </Portal>
   );
 };
 

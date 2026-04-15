@@ -5,7 +5,7 @@ import { fetchData } from '../services/tmdbService';
 import { API_KEY, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
-import { redis } from '../utils/upstashClient';
+import { db } from '../utils/db';
 
 /**
  * Advanced Scoring Engine (Multi-pass Relevance)
@@ -86,21 +86,17 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
     try {
       const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
       
-      // 1. Parallel Fetch: TMDB + Local Archive + Upstash/Supabase Hybrid
       const [tmdbData, cachedMovies] = await Promise.all([
         fetchData(endpoint, language),
-        // Primary: Local, then Upstash
         (async () => {
           const local = await db.getMovies();
           if (local && local.length > 0) return local;
           
-          // Fast-track for new users: Read from Upstash instantly
-          const cloud = await redis.get('custom_dubbed_movies');
-          if (cloud) {
-              const parsed = Array.isArray(cloud) ? cloud : JSON.parse(cloud as string);
-              // Optimistically save to local DB for next time
-              db.saveMovies(parsed).catch(() => {});
-              return parsed;
+          // Fallback to Supabase directly if local is empty
+          const { data } = await supabase.from('dubbed_movies').select('*').limit(20);
+          if (data) {
+              db.saveMovies(data).catch(() => {});
+              return data;
           }
           return [];
         })()

@@ -9,7 +9,6 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { fetchData } from '../services/tmdbService';
 import { Play, Sparkles, Mic2 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
-import { redis } from '../utils/upstashClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
 
@@ -43,7 +42,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         className="relative h-[450px] md:h-[600px] rounded-[4rem] overflow-hidden group cursor-pointer border border-white/10 shadow-2xl"
       >
         <img
-          src={`${IMAGE_BASE_URL}${item.backdrop_path}`}
+          src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           alt=""
         />
@@ -102,32 +101,18 @@ const HomePage: React.FC = () => {
   const loadDubbed = useCallback(async () => {
     let rawItems = [];
     try {
-      // 1. Attempt High-Speed Edge Fetch (Upstash)
-      try {
-        const cached = await redis.get('custom_dubbed_movies');
-        if (cached) {
-          rawItems = Array.isArray(cached) ? cached : JSON.parse(cached as string);
-          console.log("[HP] Redis Cache Hit:", rawItems.length);
-        }
-      } catch (redisError) {
-        console.warn("[HP] Redis Signal Interrupted, shifting to Supabase...", redisError);
-      }
-
-      // 2. Fallback to Supabase Primary if Redis failed or was empty
-      if (rawItems.length === 0) {
-        const { data, error } = await supabase
-          .from('dubbed_movies')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-          rawItems = data;
-          console.log("[HP] Supabase Signal Aligned:", rawItems.length);
-          // Try to heal the cache
-          redis.set('custom_dubbed_movies', data, { ex: 86400 }).catch(() => {});
-        } else if (error) {
-          throw error;
-        }
+      // 1. Direct Supabase Fetch (Optimized)
+      const { data, error } = await supabase
+        .from('dubbed_movies')
+        .select('id, title, description, imageBase64, bannerBase64, created_at, level')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (!error && data) {
+        rawItems = data;
+        console.log("[HP] Supabase Signal Aligned:", rawItems.length);
+      } else if (error) {
+        throw error;
       }
 
       // 3. Final Fallback to Local Quantum Core (IndexedDB)
@@ -138,7 +123,10 @@ const HomePage: React.FC = () => {
 
       if (rawItems && rawItems.length > 0) {
         // 4. Transform and Rank (Newest First)
-        const formatted = rawItems.map((m: any) => ({
+        const bannedIds = await bannedService.fetchBannedList();
+        const formatted = rawItems
+          .filter((m: any) => !bannedIds.has(String(m.id)))
+          .map((m: any) => ({
           ...m,
           id: `custom_${m.id}`,
           media_type: 'dubbed',
@@ -148,6 +136,8 @@ const HomePage: React.FC = () => {
           kurdishTitle: m.title,
           overview: m.description,
           kurdishOverview: m.description,
+          customStream: m.videoUrl,
+          level: m.level || 'KING'
         }));
 
         formatted.sort((a: any, b: any) => {

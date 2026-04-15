@@ -6,7 +6,7 @@ import {
     Mic2, Play, Zap, Share2, X, Send,
     Link as LinkIcon, Sparkles,
     Activity, Info, Star, ChevronRight, Share, Copy,
-    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search
+    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, ShieldAlert
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -15,8 +15,8 @@ import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
-import { redis } from '../utils/upstashClient';
 import { compressImage } from '../utils/imageUtils';
 import { db, initDB } from '../utils/db';
 
@@ -47,6 +47,9 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
             className={`${className} transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
             alt={alt}
             onLoad={() => setIsLoaded(true)}
+            onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+            }}
         />
     );
 };
@@ -174,10 +177,6 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
                     <div className="flex flex-col items-center gap-4 w-full">
                         <div className="w-48 h-[1px] bg-white/[0.03] relative overflow-hidden rounded-full">
                             <motion.div
-                                animate={{ 
-                                    x: ["-100%", "200%"],
-                                    opacity: [0, 1, 0]
-                                }}
                                 transition={{ 
                                     duration: 4, 
                                     repeat: Infinity, 
@@ -238,7 +237,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [scrollPosition, setScrollPosition] = useState(0);
 
     // Admin State - Pulled from Global UI Context
-    const { isAdmin, setIsAdmin } = useUI();
+    const { accentColor, isPerformanceMode, isAdmin, setIsAdmin } = useUI();
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [adminEmail, setAdminEmail] = useState('');
@@ -272,12 +271,14 @@ const DubbedMoviesPage: React.FC = () => {
 
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { accentColor, isPerformanceMode } = useUI();
     const { addNotification } = useNotification();
     const [hasNewMovies, setHasNewMovies] = useState(false);
     const [isLive, setIsLive] = useState(false);
-    const [visibleCount, setVisibleCount] = useState(isPerformanceMode ? 12 : 24);
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
     const observerTarget = useRef<HTMLDivElement>(null);
+    const PAGE_SIZE = 24;
 
 
     useEffect(() => {
@@ -324,31 +325,37 @@ const DubbedMoviesPage: React.FC = () => {
             const backgroundSync = async () => {
                 let customMovies = [];
                 try {
-                    await setDynamicStatus('CONNECTING TO UPSTASH EDGE CACHE...', 400);
-                    // Using 24-hour TTL (86400s) for elite performance
-                    const cachedMovies = await redis.fetchCached('custom_dubbed_movies', 86400, async () => {
-                        await setDynamicStatus('REDIS MISS: QUERYING ZANA POSTGRES...', 600);
-                        const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
-                        return data || [];
-                    });
+                    await setDynamicStatus('QUERYING ZANA POSTGRES...', 400);
+                    
+                    const { data, error } = await supabase
+                        .from('dubbed_movies')
+                        .select('*')
+                        .order('created_at', { ascending: false })
+                        .range(0, PAGE_SIZE - 1);
 
-                    if (cachedMovies && cachedMovies.length > 0) {
-                        await setDynamicStatus('DATA STREAM ALIGNED VIA REDIS...', 300);
-                        customMovies = cachedMovies;
+                    if (error) throw error;
+                    
+                    if (data) {
+                        await setDynamicStatus('DATA STREAM ALIGNED...', 300);
+                        customMovies = data;
+                        setHasMore(data.length === PAGE_SIZE);
                     }
                 } catch (e) {
                     console.error("NETWORK SIGNAL INTERRUPTED:", e);
-                    // CRITICAL FALLBACK: Load from local Quantum Core if Supabase is unreachable
                     const cached = await db.getMovies();
                     if (cached && cached.length > 0) {
                         setDubbedContent(cached);
+                        setHasMore(false);
                         await setDynamicStatus('OFFLINE ARCHIVE RECOVERED. SIGNAL TUNING...', 400);
-                        return; // Exit early since we have cached data
+                        return;
                     }
                 } finally {
                     if (customMovies.length > 0) {
                         await setDynamicStatus('APPLYING TAG PRIORITY SORTING ALGORITHMS...', 500);
-                        const formattedCustom = customMovies.map((movie: any) => ({
+                        const bannedIds = await bannedService.fetchBannedList();
+                        const formattedCustom = customMovies
+                            .filter((m: any) => !bannedIds.has(String(m.id)))
+                            .map((movie: any) => ({
                             ...movie,
                             id: `custom_${movie.id}`,
                             poster_path: movie.imageBase64,
@@ -362,21 +369,18 @@ const DubbedMoviesPage: React.FC = () => {
                             level: movie.level || 'KING'
                         }));
 
-                        // ✅ Sort purely by newest created_at first — newest movie always on top
                         formattedCustom.sort((a, b) => {
                             const dateA = new Date(a.created_at || 0).getTime();
                             const dateB = new Date(b.created_at || 0).getTime();
                             if (dateA !== dateB) return dateB - dateA;
-                            // Tiebreaker: newest numeric ID first
                             const numIdA = Number(String(a.id).replace('custom_', ''));
                             const numIdB = Number(String(b.id).replace('custom_', ''));
                             return numIdB - numIdA;
                         });
 
-                        const finalMerge = [...formattedCustom];
-                        setDubbedContent(finalMerge);
-                        await db.saveMovies(finalMerge);
-                        await setDynamicStatus(`SYNC COMPLETE. ${finalMerge.length} TOTAL NODES ALIGNED.`, 200);
+                        setDubbedContent(formattedCustom);
+                        await db.saveMovies(formattedCustom);
+                        await setDynamicStatus(`SYNC COMPLETE. ${formattedCustom.length} NODES INITIALIZED.`, 200);
                     }
                     if (resolveLoader) resolveLoader();
                 }
@@ -474,51 +478,28 @@ const DubbedMoviesPage: React.FC = () => {
         };
     }, []);
 
-    // Intersection Observer for Infinite Scroll
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting && dubbedContent.length > visibleCount) {
-                    setVisibleCount(prev => prev + 24);
-                }
-            },
-            { threshold: 0.5 }
-        );
+    const fetchMoreMovies = async () => {
+        if (isFetchingMore || !hasMore) return;
 
-        if (observerTarget.current) {
-            observer.observe(observerTarget.current);
-        }
-
-        return () => observer.disconnect();
-    }, [dubbedContent.length, visibleCount]);
-
-
-    const [isForceSyncing, setIsForceSyncing] = useState(false);
-
-    const forceSync = async () => {
-        setIsForceSyncing(true);
-        addNotification({ type: 'info', title: 'Network Call', message: 'Re-syncing catalog from Zana Servers directly...' });
+        setIsFetchingMore(true);
+        const nextPage = page + 1;
+        const from = nextPage * PAGE_SIZE;
+        const to = from + PAGE_SIZE - 1;
 
         try {
-            // 1. Direct Postgres align with a generous timeout
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Operation timeout (12s limit)')), 12000)
-            );
+            const { data, error } = await supabase
+                .from('dubbed_movies')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .range(from, to);
 
-            const fetchPromise = (async () => {
-                const { data, error } = await supabase
-                    .from('dubbed_movies')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) throw error;
-                return data;
-            })();
-
-            const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+            if (error) throw error;
 
             if (data && data.length > 0) {
-                const formattedCustom = data.map((movie: any) => ({
+                const bannedIds = await bannedService.fetchBannedList();
+                const formatted = data
+                    .filter((m: any) => !bannedIds.has(String(m.id)))
+                    .map((movie: any) => ({
                     ...movie,
                     id: `custom_${movie.id}`,
                     poster_path: movie.imageBase64,
@@ -532,7 +513,88 @@ const DubbedMoviesPage: React.FC = () => {
                     level: movie.level || 'KING'
                 }));
 
-                // ✅ Neural Date Alignment: Newest First
+                setDubbedContent(prev => {
+                    const next = [...prev, ...formatted];
+                    db.saveMovies(next).catch(() => {});
+                    return next;
+                });
+                setPage(nextPage);
+                setHasMore(data.length === PAGE_SIZE);
+            } else {
+                setHasMore(false);
+            }
+        } catch (e) {
+            console.error("Pagination error:", e);
+            setHasMore(false);
+        } finally {
+            setIsFetchingMore(false);
+        }
+    };
+
+    // Intersection Observer for Infinite Scroll
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore && !isFetchingMore) {
+                    fetchMoreMovies();
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => observer.disconnect();
+    }, [hasMore, isFetchingMore, page]);
+
+
+    const [isForceSyncing, setIsForceSyncing] = useState(false);
+    const [bannedItems, setBannedItems] = useState<any[]>([]);
+    const [isLoadingBanned, setIsLoadingBanned] = useState(false);
+
+    const forceSync = async () => {
+        setIsForceSyncing(true);
+        addNotification({ type: 'info', title: 'Network Call', message: 'Re-syncing catalog from Zana Servers directly...' });
+
+        try {
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Operation timeout (12s limit)')), 12000)
+            );
+
+            const fetchPromise = (async () => {
+                // Fetch first 40 nodes on force sync for better coverage
+                const { data, error } = await supabase
+                    .from('dubbed_movies')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(0, 39);
+
+                if (error) throw error;
+                return data;
+            })();
+
+            const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+
+            if (data && data.length > 0) {
+                const bannedIds = await bannedService.fetchBannedList();
+                const formattedCustom = data
+                    .filter((m: any) => !bannedIds.has(String(m.id)))
+                    .map((movie: any) => ({
+                    ...movie,
+                    id: `custom_${movie.id}`,
+                    poster_path: movie.imageBase64,
+                    backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                    title: movie.title,
+                    kurdishTitle: movie.title,
+                    overview: movie.description,
+                    kurdishOverview: movie.description,
+                    customStream: movie.videoUrl,
+                    media_type: 'dubbed',
+                    level: movie.level || 'KING'
+                }));
+
                 formattedCustom.sort((a, b) => {
                     const dateA = new Date(a.created_at || 0).getTime();
                     const dateB = new Date(b.created_at || 0).getTime();
@@ -540,26 +602,18 @@ const DubbedMoviesPage: React.FC = () => {
                 });
 
                 setDubbedContent([...formattedCustom]);
-                
-                // CRITICAL: Only save to IndexedDB if we actually GOT movies back.
-                // This prevents wiping the offline archive if the server returns empty by mistake.
                 await db.saveMovies(formattedCustom);
                 
-                // Also purge Redis only on success
-                try {
-                    await redis.del('custom_dubbed_movies');
-                } catch (re) {
-                    console.warn("Redis purge delayed.");
-                }
-
+                // RESET PAGINATION ON FORCE SYNC
+                setPage(0);
+                setHasMore(data.length === 40); // Since forceSync fetches 40
+                
                 addNotification({ 
                     type: 'success', 
                     title: 'Sync Integrity Established', 
                     message: `Grid synced with ${formattedCustom.length} active nodes.` 
                 });
             } else if (data && data.length === 0) {
-                // If server explicitly says 0, but we expect 93, don't wipe the UI yet.
-                // Fallback to local instead.
                 throw new Error('Server returned empty set');
             }
         } catch (e: any) {
@@ -602,7 +656,6 @@ const DubbedMoviesPage: React.FC = () => {
         }, 8000); // 8-second rotation
         return () => clearInterval(timer);
     }, [heroMovies.length]);
-
     const handlePlay = (item: any) => {
         navigate(`/dubbed-details/${item.id}`, {
             state: {
@@ -613,9 +666,65 @@ const DubbedMoviesPage: React.FC = () => {
         });
     };
 
+    useEffect(() => {
+        if (activeAdminTab === ('banned' as any)) {
+            fetchBannedItems();
+        }
+    }, [activeAdminTab]);
+
+    const fetchBannedItems = async () => {
+        setIsLoadingBanned(true);
+        try {
+            const list = await bannedService.getBannedRegistry();
+            setBannedItems(list || []);
+        } catch (err) {
+            console.error("Failed to fetch banned registry:", err);
+        } finally {
+            setIsLoadingBanned(false);
+        }
+    };
+
+    const handleUnban = async (id: string) => {
+        if (!window.confirm("RESTORE NODE? [RECOVERY SIGNAL]")) return;
+        try {
+            const success = await bannedService.unbanContent(id);
+            if (success) {
+                addNotification({ type: 'success', title: 'NODE RESTORED', message: 'Content is now visible again.' });
+                setBannedItems(prev => prev.filter(item => String(item.tmdb_id || item.id) !== String(id)));
+            }
+        } catch (err) {
+            console.error("Unban failed:", err);
+        }
+    };
+
     const handleShare = (e: React.MouseEvent, item: any) => {
         e.stopPropagation();
         setShareTarget(item);
+    };
+
+    const handleBan = async (e: React.MouseEvent, movie: any) => {
+        e.stopPropagation();
+        const cleanId = String(movie.id).replace('custom_', '');
+        const mediaType = 'dubbed';
+
+        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
+
+        try {
+            // 1. Universal Ban Registry
+            const banSignal = await bannedService.banContent(cleanId, mediaType);
+            if (!banSignal) throw new Error("Registry reject");
+
+            // 2. Dubbed Physical Deletion
+            await supabase.from('dubbed_movies').delete().eq('id', movie.id.replace('custom_', ''));
+            
+            addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
+            
+            // Refresh local state
+            setDubbedContent(prev => prev.filter(m => m.id !== movie.id));
+        } catch (err) {
+            console.error("Moderation failure:", err);
+            addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Action rejected.' });
+        }
     };
 
     const copyLink = () => {
@@ -699,7 +808,8 @@ const DubbedMoviesPage: React.FC = () => {
             const { data: freshList } = await supabase
                 .from('dubbed_movies')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(40);
 
             if (freshList) {
                 const formattedCustom = freshList.map((movie: any) => ({
@@ -719,9 +829,8 @@ const DubbedMoviesPage: React.FC = () => {
                 // ✅ Instantly update UI — new movie appears at TOP
                 setDubbedContent(formattedCustom);
 
-                // ✅ Persist to IndexedDB and Redis cache
+                // ✅ Persist to IndexedDB
                 db.saveMovies(formattedCustom).catch(console.error);
-                redis.set('custom_dubbed_movies', freshList, { ex: 86400 }).catch(() => {});
             }
 
             setUploadProgress(100);
@@ -784,21 +893,8 @@ const DubbedMoviesPage: React.FC = () => {
                 throw error;
             }
 
-            // --- Synchronization Protocols ---
-
-            // 3. Refresh Global Redis Cache (Fetch latest to ensure 100% accuracy)
-            try {
-                const { data: freshList } = await supabase
-                    .from('dubbed_movies')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (freshList) {
-                    await redis.set('custom_dubbed_movies', freshList, { ex: 86400 });
-                }
-            } catch (cacheErr) {
-                console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB record updated.', cacheErr);
-            }
+            // 3. Synchronization Protocols 
+            // Local persistence handled in the next step to ensure atomic UI updates.
 
             // 4. Sync Local UI State and IndexedDB Persistence
             setDubbedContent((prev) => {
@@ -882,11 +978,10 @@ const DubbedMoviesPage: React.FC = () => {
 
             // --- Synchronization Protocols ---
             
-            // 3. Update Upstash Redis Global Cache
             try {
-                await redis.del('custom_dubbed_movies');
+                // Redis is decommissioned, syncing via direct Supabase alignment
             } catch (cacheErr) {
-                console.warn('[CACHE SYNC WARN] Redis heartbeat failed, but DB delete succeeded.', cacheErr);
+                console.warn('[SYNC WARN] State alignment heartbeat failed, but DB delete succeeded.', cacheErr);
             }
 
             // 4. Update Local UI State and IndexedDB
@@ -1195,7 +1290,7 @@ const DubbedMoviesPage: React.FC = () => {
                     </motion.div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
-                        {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).slice(0, visibleCount).map((movie, index) => (
+                        {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).map((movie, index) => (
 
                             <motion.div
                                 key={movie.id}
@@ -1228,6 +1323,15 @@ const DubbedMoviesPage: React.FC = () => {
                                         >
                                             <Share size={18} />
                                         </button>
+
+                                        {isAdmin && (
+                                            <button
+                                                onClick={(e) => handleBan(e, movie)}
+                                                className="bg-red-600/80 backdrop-blur-xl border border-red-500 p-4 rounded-full text-white hover:bg-red-600 hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,0,0,0.4)]"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {movie.level && (
@@ -1253,13 +1357,18 @@ const DubbedMoviesPage: React.FC = () => {
                 )}
 
                 {/* Infinite Scroll Sensor */}
-                <div ref={observerTarget} className="h-20 w-full flex items-center justify-center mt-10">
-                    {dubbedContent.length > visibleCount && (
-                        <div className="flex flex-col items-center gap-3">
-                            <RefreshCw size={24} className="text-brand animate-spin" />
-                            <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Hydrating More Content...</span>
+                <div ref={observerTarget} className="h-40 w-full flex flex-col items-center justify-center mt-10 gap-4 mb-20">
+                    {isFetchingMore ? (
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-10 h-10 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
+                            <span className="text-[10px] text-brand font-black uppercase tracking-[0.5em] animate-pulse">Syncing Next Node...</span>
                         </div>
-                    )}
+                    ) : !hasMore && dubbedContent.length > 0 ? (
+                        <div className="flex flex-col items-center gap-2 opacity-30">
+                            <div className="h-[1px] w-20 bg-brand/20" />
+                            <span className="text-[10px] text-white/50 font-black uppercase tracking-[0.5em] text-center px-4">Catalog Integrity Check Successful.<br/>End of Reached Nodes.</span>
+                        </div>
+                    ) : null}
                 </div>
 
                 {/* Protocol Sharing Modal */}
@@ -1371,6 +1480,9 @@ const DubbedMoviesPage: React.FC = () => {
                                         </button>
                                         <button onClick={() => setActiveAdminTab('archive')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ListVideo size={16} /> Movies List
+                                        </button>
+                                        <button onClick={() => setActiveAdminTab('banned' as any)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === ('banned' as any) ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <ShieldAlert size={16} /> Banned
                                         </button>
                                     </div>
 
@@ -1516,7 +1628,33 @@ const DubbedMoviesPage: React.FC = () => {
                                                         </div>
                                                     ))
                                                 )}
+                                                {activeAdminTab === ('banned' as any) && (
+                                            <div className="space-y-4 pb-4">
+                                                {isLoadingBanned ? (
+                                                    <div className="py-20 flex justify-center"><RefreshCw className="animate-spin text-red-500" /></div>
+                                                ) : bannedItems.length === 0 ? (
+                                                    <div className="py-20 text-center text-gray-500 font-bold uppercase tracking-widest italic opacity-30">Registry Clean</div>
+                                                ) : (
+                                                    <div className="space-y-3">
+                                                        {bannedItems.map((item) => (
+                                                            <div key={item.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-red-500/10 transition-all hover:bg-white/10">
+                                                                <div>
+                                                                    <p className="text-white font-black uppercase text-xs tracking-tighter line-clamp-1">NODE: {item.tmdb_id || item.id}</p>
+                                                                    <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Type: {item.media_type} • Since {new Date(item.created_at).toLocaleDateString()}</p>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => handleUnban(String(item.tmdb_id || item.id))}
+                                                                    className="px-4 py-2 bg-green-600/20 text-green-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-600 hover:text-white transition-all shadow-lg active:scale-95"
+                                                                >
+                                                                    Recover
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
+                                        )}
+                                    </div>
                                         )}
                                     </div>
                                 </motion.div>

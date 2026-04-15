@@ -14,6 +14,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
+import Portal from '../components/Portal';
 
 const DubbedDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -126,83 +127,85 @@ const DubbedDetailPage: React.FC = () => {
             if (isMounted) setLoading(false);
         }, 10000); // 10s absolute maximum fallback
 
-        const loadContent = async () => {
-            if (!id) return;
-            setLoading(true);
+    const loadContent = async () => {
+        if (!id) return;
+        setLoading(true);
 
-            try {
-                // 1. Check if it's a Supabase movie
-                const idStr = id.toString();
-                if (idStr.startsWith('custom_')) {
-                    const dbId = idStr.replace('custom_', '');
-                    try {
-                        const numericId = !isNaN(Number(dbId)) ? Number(dbId) : dbId;
-                        const { data, error } = await supabase.from('dubbed_movies').select('*').eq('id', numericId).single();
-                        if (data && !error) {
-                            setSupabaseData({
-                                ...data,
-                                id: `custom_${data.id}`,
-                                poster_path: data.imageBase64,
-                                backdrop_path: data.bannerBase64 || data.imageBase64,
-                                customStream: data.videoUrl,
-                                kurdishTitle: data.title,
-                                kurdishOverview: data.description
-                            });
-                        } else {
-                            // FALLBACK to IndexedDB
-                            const cached = await db.getMovies();
-                            const match = cached.find(m => m.id === idStr || m.id === numericId || `custom_${m.id}` === idStr);
-                            if (match) setSupabaseData(match);
-                        }
-                    } catch (e) {
+        try {
+            const idStr = id.toString();
+            const cleanId = idStr.replace('custom_', '');
+            const numericId = !isNaN(Number(cleanId)) ? Number(cleanId) : cleanId;
+
+            // 1. Parallel Enrichment: Supabase/Local + TMDB
+            const [supabaseResult, tmdbResult] = await Promise.all([
+                // Fetch basic data from Supabase or IndexedDB
+                (async () => {
+                    if (idStr.startsWith('custom_')) {
+                        const { data, error } = await supabase
+                            .from('dubbed_movies')
+                            .select('*')
+                            .eq('id', numericId)
+                            .single();
+                        
+                        if (data && !error) return data;
+                        
+                        // Fallback to IndexedDB
                         const cached = await db.getMovies();
-                        const match = cached.find(m => m.id === idStr || `custom_${m.id}` === idStr);
-                        if (match) setSupabaseData(match);
+                        return cached.find(m => String(m.id) === idStr || String(m.id).includes(String(numericId)));
                     }
-                }
+                    return null;
+                })(),
 
-                // 2. Fetch TMDB Enrichment ONLY if the ID is a valid TMDB format (usually >= 500)
-                // Small IDs (1, 2, 3, etc.) are likely your Supabase sequence IDs and should NOT be checked in TMDB.
-                const apiLang = 'en-US';
-                const cleanId = idStr.replace('custom_', '');
-                const numericId = Number(cleanId);
-
-                if (!isNaN(numericId) && numericId > 200) {
-                    const endpoint = `/movie/${numericId}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits`;
-                    try {
-                        let data = await fetchData(endpoint, language);
-                        if (data && isMounted) setContent(data);
-                    } catch (err) {
-                        console.log("TMDB metadata error, using local/supabase data.");
+                // Fetch TMDB Metadata in parallel
+                (async () => {
+                    const numId = Number(cleanId);
+                    if (!isNaN(numId) && numId > 200) {
+                        try {
+                            return await fetchData(`/movie/${numId}?api_key=${API_KEY}&language=en-US&append_to_response=credits`, language);
+                        } catch (e) { return null; }
                     }
-                }
-            } catch (err) {
-                console.error("Critical loader crash:", err);
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                    clearTimeout(timeoutId);
-                }
+                    return null;
+                })()
+            ]);
+
+            if (supabaseResult && isMounted) {
+                setSupabaseData({
+                    ...supabaseResult,
+                    id: `custom_${supabaseResult.id}`,
+                    poster_path: supabaseResult.imageBase64,
+                    backdrop_path: supabaseResult.bannerBase64 || supabaseResult.imageBase64,
+                    customStream: supabaseResult.videoUrl,
+                    kurdishTitle: supabaseResult.title,
+                    kurdishOverview: supabaseResult.description
+                });
             }
-        };
 
-        loadContent();
-        window.scrollTo(0, 0);
+            if (tmdbResult && isMounted) {
+                setContent(tmdbResult);
+            }
 
-        return () => {
-            isMounted = false;
-            clearTimeout(timeoutId);
-        };
-    }, [id, language]);
+        } catch (err) {
+            console.error("Critical loader crash:", err);
+            addNotification({ type: 'error', title: 'Connection Issue', message: 'Could not sync with Zana Servers. Loading locally...' });
+        } finally {
+            if (isMounted) setLoading(false);
+        }
+    };
 
-    const handlePlayerLoad = useCallback(() => {
-        setIsPlayerLoading(false);
-    }, []);
+    loadContent();
+    window.scrollTo(0, 0);
 
-    if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+    return () => { isMounted = false; };
+}, [id, language]);
 
-    // Strict Data Boundary Logic to prevent Black Screen / Crash
-    const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Initializing Source...") as string;
+const handlePlayerLoad = useCallback(() => {
+    setIsPlayerLoading(false);
+}, []);
+
+if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+
+// Strict Data Boundary Logic to prevent Black Screen / Crash
+const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading...") as string;
     const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
     
     const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
@@ -229,15 +232,17 @@ const DubbedDetailPage: React.FC = () => {
             </div>
 
             <div className="relative z-10 pt-24 md:pt-32 px-4 md:px-12">
-                <div className="max-w-7xl mx-auto mb-6">
+            <Portal id="dubbed-nav-portal">
+                <div className={`fixed top-24 ${language === 'ku' ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 px-4 py-2 rounded-full text-[var(--text-primary)] active:scale-90 transition-all font-black uppercase tracking-widest text-[9px]"
+                        className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 px-5 py-2.5 rounded-2xl text-[var(--text-primary)] hover:bg-[var(--brand-red)] hover:text-white active:scale-90 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl"
                     >
-                        <ArrowLeft size={16} className={language === 'ku' ? 'rotate-180' : ''} />
+                        <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180' : ''} />
                         {t('back')}
                     </button>
                 </div>
+            </Portal>
 
                 <div className="w-full max-w-7xl mx-auto mb-8 md:mb-12">
                     <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-white/5 shadow-2xl group aspect-video" dir="ltr">

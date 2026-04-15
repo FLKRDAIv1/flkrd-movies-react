@@ -445,7 +445,7 @@ const ShortsPage: React.FC = () => {
       <div 
         ref={containerRef} 
         onScroll={handleScroll} 
-        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-[#050505] overscroll-none"
+        className="h-full w-full overflow-y-scroll snap-y snap-proximity scrollbar-hide bg-[#050505] overscroll-none"
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
       >
         {displayedMovies.length > 0 ? displayedMovies.map((movie, index) => (

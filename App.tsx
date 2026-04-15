@@ -26,6 +26,7 @@ import ContinueWatchingPage from './pages/ContinueWatchingPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
+import Portal from './components/Portal';
 import { fetchData } from './services/tmdbService';
 import { requests } from './constants';
 import GamepadHints from './components/GamepadHints';
@@ -44,8 +45,9 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-[50px] flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[var(--card-bg)] border border-white/10 rounded-[3rem] w-full max-w-lg p-8 md:p-12 relative overflow-hidden shadow-2xl">
+        <Portal id="ios-prompt-portal">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-[50px] flex items-center justify-center p-6">
+                <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[var(--card-bg)] border border-white/10 rounded-[3rem] w-full max-w-lg p-8 md:p-12 relative overflow-hidden shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-red)]" />
                 <button onClick={handleClose} className="absolute top-6 right-6 text-gray-500 hover:text-[var(--text-primary)] transition-colors"><X size={24} /></button>
 
@@ -131,6 +133,7 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </AnimatePresence>
             </motion.div>
         </motion.div>
+        </Portal>
     );
 };
 
@@ -247,14 +250,14 @@ const App: React.FC = () => {
     if (loading) return <SplashScreen />;
 
     return (
-        <div className={`min-h-screen bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'}`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
+        <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
             <PremiumBackground />
             <HashRouter>
-                <div className="flex">
+                <div className="flex flex-1 h-full overflow-hidden relative">
                     <Sidebar />
-                    <div className="flex-1 flex flex-col min-w-0">
+                    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
                         <Header scrolled={scrolled} />
-                        <main ref={mainRef} className="flex-1 overflow-y-auto">
+                        <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
                             <Routes>
                                 <Route path="/" element={<HomePage />} />
                                 <Route path="/tv" element={<TVShowsPage />} />

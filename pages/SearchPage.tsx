@@ -329,18 +329,42 @@ const SearchPage: React.FC = () => {
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
                     />
                     
-                    {item.media_type === 'dubbed' && (
-                      <div className="absolute top-4 right-4 z-20">
-                        <motion.div
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="flex items-center gap-2 px-3 py-1 bg-brand rounded-full shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.5)] border border-white/20"
-                        >
-                          <Mic2 size={12} className="text-white" />
-                          <span className="text-[10px] font-black uppercase text-white tracking-widest">DUBBED</span>
-                        </motion.div>
-                      </div>
-                    )}
+                    <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
+                        {item.media_type === 'dubbed' && (
+                          <motion.div
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                            className="flex items-center gap-2 px-3 py-1 bg-brand rounded-full shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.5)] border border-white/20"
+                          >
+                            <Mic2 size={12} className="text-white" />
+                            <span className="text-[10px] font-black uppercase text-white tracking-widest">DUBBED</span>
+                          </motion.div>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const cleanId = String(item.id).replace('custom_', '');
+                              const mediaType = item.media_type || (String(item.id).startsWith('custom_') ? 'dubbed' : 'movie');
+                              if (window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) {
+                                try {
+                                  const success = await bannedService.banContent(cleanId, mediaType);
+                                  if (success) {
+                                    addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
+                                    setResults(prev => prev.filter(r => r.id !== item.id));
+                                  }
+                                } catch (err) {
+                                  console.error("Ban failed:", err);
+                                }
+                              }
+                            }}
+                            className="p-2 bg-red-500 border border-red-500 rounded-xl text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                    </div>
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-100 flex flex-col justify-end p-6">
                       <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">

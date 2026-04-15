@@ -69,7 +69,7 @@ export const GamepadProvider: React.FC<{ children: ReactNode }> = ({ children })
       handleAxis(yVal, 'DOWN', 'UP', 1);
 
       // ── Right Stick Scrolling Logic (Axes 2 & 3) ──
-      const scrollThreshold = 0.2;
+      const scrollThreshold = 0.75; // Increased to prevent drift-induced 'auto-scrolling'
       const scrollX = Math.abs(gp.axes[2]) > scrollThreshold ? gp.axes[2] : 0;
       const scrollY = Math.abs(gp.axes[3]) > scrollThreshold ? gp.axes[3] : 0;
 

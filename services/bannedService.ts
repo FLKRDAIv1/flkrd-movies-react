@@ -48,6 +48,37 @@ class BannedService {
             return false;
         }
     }
+    async getBannedRegistry() {
+        try {
+            const { data, error } = await supabase
+                .from('banned_content')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            console.error("[BANNED SERVICE] Registry fetch failed:", err);
+            return [];
+        }
+    }
+
+    async unbanContent(id: string | number) {
+        const stringId = String(id);
+        try {
+            const { error } = await supabase
+                .from('banned_content')
+                .delete()
+                .eq('content_id', stringId);
+            
+            if (error) throw error;
+            
+            this.bannedIds.delete(stringId);
+            return true;
+        } catch (err) {
+            console.error("[BANNED SERVICE] Unban failed:", err);
+            return false;
+        }
+    }
 }
 
 export const bannedService = new BannedService();

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Play, Info, ChevronLeft, ChevronRight, Zap, Calendar } from 'lucide-react';
+import { Star, Play, Info, ChevronLeft, ChevronRight, Zap, Calendar, Trash2 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import Spinner from './Spinner';
+import { useUI } from '../contexts/UIContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { bannedService } from '../services/bannedService';
 
 interface ExtendedContent extends Content {
   logo?: string;
@@ -18,6 +21,8 @@ const HeroBanner: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t, language } = useTranslation();
+  const { isAdmin } = useUI();
+  const { addNotification } = useNotification();
   const langCode = language === 'ku' ? 'ku' : 'en-US';
 
   const fetchHeroContent = useCallback(async () => {
@@ -63,6 +68,27 @@ const HeroBanner: React.FC = () => {
   const handlePrev = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+  };
+
+  const handleBan = async (e: React.MouseEvent, item: ExtendedContent) => {
+    e.stopPropagation();
+    const cleanId = String(item.id);
+    const mediaType = item.media_type || 'movie';
+
+    if (!window.confirm(`TERMINATE HERO NODE ${cleanId}? [GLOBAL BAN]`)) return;
+
+    try {
+        const success = await bannedService.banContent(cleanId, mediaType);
+        if (success) {
+            addNotification({ type: 'success', title: 'HERO PURGED', message: 'Content removed from global registry.' });
+            setItems(prev => prev.filter(r => r.id !== item.id));
+            if (currentIndex >= items.length - 1) {
+              setCurrentIndex(0);
+            }
+        }
+    } catch (err) {
+        console.error("Ban failed:", err);
+    }
   };
 
   if (loading && items.length === 0) return <div className="h-[85vh] flex items-center justify-center bg-black"><Spinner /></div>;
@@ -162,6 +188,15 @@ const HeroBanner: React.FC = () => {
               >
                 <Info size={20} className="md:w-7 md:h-7" />
               </button>
+
+              {isAdmin && (
+                <button
+                    onClick={(e) => handleBan(e, currentItem)}
+                    className="bg-red-600/20 backdrop-blur-3xl border border-red-500/50 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] text-red-500 transition-all shadow-xl active:scale-95 hover:bg-red-600 hover:text-white group"
+                >
+                    <Trash2 size={20} className="md:w-7 md:h-7 group-hover:scale-110 transition-transform" />
+                </button>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>
