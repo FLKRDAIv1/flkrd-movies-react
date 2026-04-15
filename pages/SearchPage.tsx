@@ -7,6 +7,7 @@ import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play } from 'lucide-react';
 
 const SearchVisualEffect = () => {
