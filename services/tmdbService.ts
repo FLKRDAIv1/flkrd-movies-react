@@ -5,7 +5,8 @@ import { bannedService } from './bannedService';
 // Lightweight In-Memory Cache (Replaces Upstash Redis)
 const sessionCache = new Map<string, any>();
 
-export const isForbidden = (item: Content, language: 'en' | 'ku'): boolean => {
+export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boolean = false): boolean => {
+  if (isAdmin) return false;
   if (item.adult) return true;
   
   const itemId = String(item.id).replace('custom_', '');
@@ -36,12 +37,24 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
   if (sessionCache.has(cacheKey)) {
     const cachedData = sessionCache.get(cacheKey);
     
-    // Ensure bannedService is initialized (quick check)
+    // Ensure banned list is ready
     await bannedService.fetchBannedList();
 
-    return Array.isArray(cachedData) 
-      ? cachedData.filter((item: Content) => !isForbidden(item, language))
-      : (isForbidden(cachedData, language) ? null : cachedData);
+    if (Array.isArray(cachedData)) {
+      const filtered = cachedData.filter((item: Content) => !isForbidden(item, language));
+      if (filtered.length === 0 && cachedData.length > 0) {
+          // If cache was fully banned, clear it and force re-fetch
+          sessionCache.delete(cacheKey);
+      } else {
+          return filtered;
+      }
+    } else {
+      if (isForbidden(cachedData, language)) {
+          sessionCache.delete(cacheKey);
+          return null;
+      }
+      return cachedData;
+    }
   }
 
   // 2. Concurrent Fetch: Data + Banned Registry Sync

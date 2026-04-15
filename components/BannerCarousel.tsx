@@ -139,18 +139,28 @@ const HeroBanner: React.FC = () => {
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className={`w-full flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'}`}
           >
-            {/* Metadata Badge for Desktop corner-style */}
-            <div className={`hidden md:flex items-center gap-4 mb-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-                <div className="bg-red-600 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_20px_rgba(229,9,20,0.4)] flex items-center gap-2">
-                    <Zap size={14} fill="white" className="animate-pulse" /> {t('trendingNow')}
+            {/* Desktop-Style Metadata Sidebar (Left Corner Alignment) */}
+            <div className={`hidden md:flex flex-col gap-6 mb-10 ${language === 'ku' ? 'items-end' : 'items-start'}`}>
+                <div className="flex items-center gap-4">
+                  <div className="bg-red-600 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_30px_rgba(229,9,20,0.5)] flex items-center gap-2">
+                      <Zap size={14} fill="white" className="animate-pulse" /> {t('trendingNow')}
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-5 py-2.5 rounded-2xl text-xs font-[1000] uppercase tracking-widest flex items-center gap-2">
+                      <Calendar size={14} className="text-red-500" />
+                      {currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}
+                  </div>
                 </div>
-                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
-                    <Calendar size={14} className="text-red-500" />
-                    {currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}
-                </div>
-                <div className="bg-yellow-500/10 backdrop-blur-3xl border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2">
-                    <Star size={14} fill="currentColor" />
-                    {currentItem.vote_average.toFixed(1)}
+                
+                <div className="flex items-center gap-4">
+                  <div className="bg-yellow-500/10 backdrop-blur-3xl border border-yellow-500/20 text-yellow-500 px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2">
+                      <Star size={14} fill="currentColor" />
+                      {currentItem.vote_average.toFixed(1)} / 10
+                  </div>
+                  {currentItem.media_type && (
+                    <div className="bg-blue-500/10 backdrop-blur-3xl border border-blue-500/20 text-blue-400 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] italic">
+                      {t(currentItem.media_type)}
+                    </div>
+                  )}
                 </div>
             </div>
 

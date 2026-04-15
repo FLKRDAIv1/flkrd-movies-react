@@ -39,7 +39,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
         onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } })}
-        className="relative h-[450px] md:h-[650px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-2xl transition-all duration-700"
+        className="relative h-[450px] md:h-[700px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand/40"
       >
         <img
           src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL.replace('w1280', 'original')}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
@@ -47,28 +47,40 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
           alt=""
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className={`absolute bottom-10 md:bottom-20 ${language === 'ku' ? 'right-8 md:right-24' : 'left-8 md:left-24'} z-20 flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-4xl`}>
-          <div className={`flex items-center gap-3 mb-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-            <div className="p-2.5 bg-red-600 rounded-2xl shadow-[0_0_20px_#e50914] flex items-center gap-2">
-              <Sparkles className="text-white" size={16} />
-              <span className="text-[10px] font-[1000] text-white uppercase tracking-[0.4em]">{t('weeklySpotlight') || 'SPOTLIGHT'}</span>
-            </div>
-            <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest">
-                {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0]}
-            </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
+        
+        <div className={`absolute bottom-10 md:bottom-20 ${language === 'ku' ? 'right-8 md:right-32' : 'left-8 md:left-32'} z-20 flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-5xl`}>
+          {/* Metadata Grid (Corner-Style) */}
+          <div className={`hidden md:flex flex-col gap-6 mb-12 ${language === 'ku' ? 'items-end' : 'items-start'}`}>
+              <div className="flex items-center gap-4">
+                  <div className="p-3 bg-red-600 rounded-2xl shadow-[0_0_30px_#e50914] flex items-center gap-2">
+                    <Sparkles className="text-white animate-pulse" size={16} />
+                    <span className="text-[10px] font-[1000] text-white uppercase tracking-[0.4em]">{t('weeklySpotlight') || 'SPOTLIGHT'}</span>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-5 py-3 rounded-2xl text-xs font-[1000] uppercase tracking-[0.2em]">
+                      {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0]}
+                  </div>
+              </div>
           </div>
+
+          {/* Mobile Spotlight Badge */}
+          <div className={`md:hidden p-2.5 bg-red-600 rounded-2xl shadow-lg flex items-center gap-2 mb-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+             <Sparkles className="text-white" size={12} />
+             <span className="text-[8px] font-black text-white uppercase tracking-[0.2em]">{t('weeklySpotlight')}</span>
+          </div>
+
           <h3 className={`text-5xl md:text-9xl font-[1000] text-white uppercase italic tracking-tighter mb-8 line-clamp-1 leading-[0.85] drop-shadow-[0_20px_40px_rgba(0,0,0,1)] ${language === 'ku' ? 'text-right' : 'text-left'}`}>
             {item.title || item.name}
           </h3>
-          <p className={`text-gray-300 text-sm md:text-2xl line-clamp-3 mb-14 font-bold italic leading-relaxed opacity-90 drop-shadow-lg ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+          <p className={`text-gray-300 text-sm md:text-2xl line-clamp-3 mb-14 font-bold italic leading-relaxed opacity-90 drop-shadow-lg max-w-3xl ${language === 'ku' ? 'text-right' : 'text-left'}`}>
             {item.overview}
           </p>
           <div className={`flex flex-wrap items-center gap-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
             <button
                 onClick={(e) => { e.stopPropagation(); navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } }); }}
-                className="bg-white text-black font-[1000] px-12 md:px-24 py-6 md:py-8 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-4 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_25px_50px_rgba(255,255,255,0.1)] transition-all active:scale-95 hover:bg-red-600 hover:text-white"
+                className="bg-white text-black font-[1000] px-14 md:px-28 py-7 md:py-9 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-5 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.1)] transition-all active:scale-95 hover:bg-red-600 hover:text-white"
             >
-                <Play fill="currentColor" size={24} className="md:w-9 md:h-9" /> {t('play')}
+                <Play fill="currentColor" size={24} className="md:w-10 md:h-10" /> {t('play')}
             </button>
           </div>
         </div>

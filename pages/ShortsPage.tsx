@@ -95,7 +95,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
       const endpoint = `/${type}/${movie.id}?api_key=${API_KEY}&append_to_response=videos,images&include_image_language=en,null`;
       try {
         const data = await fetchData(endpoint, 'en');
-        if (data) {
+        if (data && !bannedService.isBanned(String(movie.id))) {
           const videos = data.videos?.results || [];
           const trailer = videos.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube') 
                        || videos.find((v: any) => v.site === 'YouTube') 
@@ -110,7 +110,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
           const logoPath = logos.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
           if (logoPath) setLogo(logoPath);
         } else if (active) {
-            console.warn("[SHORTS] Content node missing metadata:", movie.id);
+            console.warn("[SHORTS] Content node missing metadata or banned:", movie.id);
         }
       } catch (err) {
         console.error("[SHORTS] Transmission failure:", err);
@@ -358,15 +358,23 @@ const ShortsPage: React.FC = () => {
     const lang = language === 'ku' ? 'ku' : 'en-US';
     try {
       const data = await fetchData(`${requests.fetchTrendingMovies(lang)}&page=${page}`, language);
-      if (data) { 
+      if (data && Array.isArray(data)) { 
           setMovies(prev => {
               const existingIds = new Set(prev.map(m => m.id));
-              const uniqueNew = data.filter((m: any) => !existingIds.has(m.id));
+              const uniqueNew = data.filter((m: any) => {
+                  if (!m || !m.id) return false;
+                  const idStr = String(m.id);
+                  return !existingIds.has(m.id) && !bannedService.isBanned(idStr);
+              });
               return [...prev, ...uniqueNew];
           }); 
           setPage(p => p + 1); 
       }
-    } catch (e) {} finally { setLoading(false); }
+    } catch (e) {
+      console.error("[SHORTS ENGINE] Initialization failure:", e);
+    } finally { 
+      setLoading(false); 
+    }
   }, [language, page]);
 
   useEffect(() => { loadShorts(); }, [loadShorts]);

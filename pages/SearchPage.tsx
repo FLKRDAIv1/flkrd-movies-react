@@ -4,11 +4,12 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Content } from '../types';
 import { IMAGE_BASE_URL_POSTER, GENRES_T } from '../constants';
 import Spinner from '../components/Spinner';
+import Portal from '../components/Portal';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play } from 'lucide-react';
+import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
   return (
@@ -107,7 +108,7 @@ const SearchPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { theme, isAdmin } = useUI();
+  const { isAdmin } = useUI();
   const { addNotification } = useNotification();
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
 
@@ -369,6 +370,10 @@ const SearchPage: React.FC = () => {
                     </div>
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-100 flex flex-col justify-end p-6">
+                      <Portal id="notification-portal">
+                        <div className="fixed top-24 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-10 sm:top-28 z-[200] w-full max-w-sm space-y-4 pointer-events-none px-4 sm:px-0">
+                        </div>
+                      </Portal>
                       <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                         <p className="text-white text-sm md:text-lg font-[1000] uppercase italic tracking-tighter leading-none mb-3 line-clamp-2 drop-shadow-lg">
                           {item.title || item.name}
