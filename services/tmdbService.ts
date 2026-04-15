@@ -32,14 +32,9 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
   // 1. Check In-Memory Cache first (Instant)
   if (sessionCache.has(cacheKey)) {
     const cachedData = sessionCache.get(cacheKey);
-    // Silent Refresh in background
-    setTimeout(async () => {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`).catch(() => null);
-        if (response?.ok) {
-            const data = await response.json();
-            sessionCache.set(cacheKey, data);
-        }
-    }, 100);
+    
+    // Ensure bannedService is initialized (quick check)
+    await bannedService.fetchBannedList();
 
     return Array.isArray(cachedData) 
       ? cachedData.filter((item: Content) => !isForbidden(item, language))

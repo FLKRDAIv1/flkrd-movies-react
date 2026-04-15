@@ -32,6 +32,7 @@ import { requests } from './constants';
 import GamepadHints from './components/GamepadHints';
 import VirtualCursor from './components/VirtualCursor';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
+import { bannedService } from './services/bannedService';
 
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { t } = useTranslation();
@@ -149,6 +150,7 @@ const App: React.FC = () => {
     useSpatialNavigation();
 
     useEffect(() => {
+        bannedService.fetchBannedList();
         const timer = setTimeout(() => setLoading(false), 0);
         return () => clearTimeout(timer);
     }, []);

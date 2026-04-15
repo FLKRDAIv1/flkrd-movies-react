@@ -128,20 +128,37 @@ const HeroBanner: React.FC = () => {
         </motion.div>
       </AnimatePresence>
 
-      <div className={`absolute bottom-[20%] md:bottom-[28%] ${language === 'ku' ? 'right-6 md:right-32' : 'left-6 md:left-32'} z-30 flex flex-col items-start pointer-events-auto max-w-[90%] md:max-w-3xl`}>
+      <div className={`absolute bottom-[15%] md:bottom-[20%] ${language === 'ku' ? 'right-6 md:right-40' : 'left-6 md:left-40'} z-30 flex flex-col items-start pointer-events-auto max-w-[95%] md:max-w-4xl`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={`content-${currentItem.id}`}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.6 }}
+            initial={{ opacity: 0, x: language === 'ku' ? 40 : -40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: language === 'ku' ? -20 : 20 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className={`w-full flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'}`}
           >
-            <div className={`flex items-center gap-3 mb-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-              <div className="bg-red-600 text-white px-4 py-1.5 rounded-full text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em] shadow-lg flex items-center gap-2">
-                <Zap size={12} fill="white" className="animate-pulse" /> {t('trendingNow')}
+            {/* Metadata Badge for Desktop corner-style */}
+            <div className={`hidden md:flex items-center gap-4 mb-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+                <div className="bg-red-600 text-white px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_20px_rgba(229,9,20,0.4)] flex items-center gap-2">
+                    <Zap size={14} fill="white" className="animate-pulse" /> {t('trendingNow')}
+                </div>
+                <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                    <Calendar size={14} className="text-red-500" />
+                    {currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}
+                </div>
+                <div className="bg-yellow-500/10 backdrop-blur-3xl border border-yellow-500/20 text-yellow-500 px-4 py-2 rounded-2xl text-xs font-black flex items-center gap-2">
+                    <Star size={14} fill="currentColor" />
+                    {currentItem.vote_average.toFixed(1)}
+                </div>
+            </div>
+
+            {/* Mobile Metadata */}
+            <div className={`md:hidden flex items-center gap-3 mb-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+              <div className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
+                <Zap size={10} fill="white" /> {t('trendingNow')}
               </div>
+              <span className="text-white/60 text-[10px] font-black">{currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}</span>
             </div>
 
             <div className="mb-8 md:mb-12 w-full">
@@ -149,54 +166,44 @@ const HeroBanner: React.FC = () => {
                 <motion.img
                   src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${currentItem.logo}`}
                   alt={currentItem.title || currentItem.name}
-                  className={`h-auto max-h-24 md:max-h-40 object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,1)] ${language === 'ku' ? 'mr-auto' : 'ml-0'}`}
+                  className={`h-auto max-h-24 md:max-h-56 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,1)] ${language === 'ku' ? 'mr-auto' : 'ml-0'}`}
                 />
               ) : (
-                <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-tighter leading-[0.9] text-white drop-shadow-[0_10px_20px_rgba(0,0,0,1)] shimmer-text">
+                <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-tighter leading-[0.9] text-white drop-shadow-[0_15px_30px_rgba(0,0,0,1)] shimmer-text">
                   {currentItem.title || currentItem.name}
                 </h1>
               )}
             </div>
 
-            <p className={`text-gray-300 font-bold italic text-sm md:text-xl line-clamp-2 mb-10 max-w-2xl ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+            <p className={`text-gray-300 font-bold italic text-sm md:text-xl line-clamp-3 mb-10 md:mb-14 max-w-2xl leading-relaxed opacity-90 ${language === 'ku' ? 'text-right' : 'text-left'}`}>
               {currentItem.overview}
             </p>
 
-            <div className={`flex items-center gap-6 mb-10 md:mb-14 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-              <div className="flex items-center gap-2">
-                <Calendar size={14} className="text-red-600" />
-                <span className="text-xs md:text-lg font-black uppercase tracking-[0.2em] text-gray-400">
-                  {currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 px-3 py-1 rounded-xl">
-                <Star size={14} fill="currentColor" />
-                <span className="text-xs md:text-lg font-black">{currentItem.vote_average.toFixed(1)}</span>
-              </div>
-            </div>
-
-            <div className={`flex flex-wrap items-center gap-4 md:gap-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+            <div className={`flex flex-wrap items-center gap-4 md:gap-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
               <button
                 onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                className="bg-white text-black font-[1000] px-10 md:px-20 py-5 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter shadow-2xl transition-all active:scale-95"
+                className="bg-white text-black font-[1000] px-10 md:px-24 py-5 md:py-7 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-4 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] transition-all active:scale-95 hover:bg-red-600 hover:text-white"
               >
-                <Play fill="currentColor" size={20} className="md:w-7 md:h-7" /> {t('play')}
+                <Play fill="currentColor" size={20} className="md:w-9 md:h-9" /> {t('play')}
               </button>
-              <button
-                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                className="bg-black/40 backdrop-blur-3xl border border-white/10 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] text-white transition-all shadow-xl active:scale-95"
-              >
-                <Info size={20} className="md:w-7 md:h-7" />
-              </button>
-
-              {isAdmin && (
+              
+              <div className="flex items-center gap-4">
                 <button
-                    onClick={(e) => handleBan(e, currentItem)}
-                    className="bg-red-600/20 backdrop-blur-3xl border border-red-500/50 p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] text-red-500 transition-all shadow-xl active:scale-95 hover:bg-red-600 hover:text-white group"
+                    onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
+                    className="bg-black/40 backdrop-blur-3xl border border-white/10 p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-white transition-all shadow-xl active:scale-95 hover:bg-white/10"
                 >
-                    <Trash2 size={20} className="md:w-7 md:h-7 group-hover:scale-110 transition-transform" />
+                    <Info size={20} className="md:w-9 md:h-9" />
                 </button>
-              )}
+
+                {isAdmin && (
+                    <button
+                        onClick={(e) => handleBan(e, currentItem)}
+                        className="bg-red-600/20 backdrop-blur-3xl border border-red-500/50 p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-red-500 transition-all shadow-xl active:scale-95 hover:bg-red-600 hover:text-white group"
+                    >
+                        <Trash2 size={20} className="md:w-9 md:h-9 group-hover:scale-110 transition-transform" />
+                    </button>
+                )}
+              </div>
             </div>
           </motion.div>
         </AnimatePresence>

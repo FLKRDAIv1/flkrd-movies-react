@@ -5,7 +5,7 @@ import { fetchData } from '../services/tmdbService';
 import { API_KEY, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
-import { db } from '../utils/db';
+import { bannedService } from '../services/bannedService';
 
 /**
  * Advanced Scoring Engine (Multi-pass Relevance)
@@ -116,8 +116,10 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
 
       // Pass B: Local Dubbed Archive (for speed and offline reliability)
       if (cachedMovies && cachedMovies.length > 0) {
+        const bannedIds = await bannedService.fetchBannedList();
         const dubbedMatches = cachedMovies
           .filter((m: any) => {
+            if (bannedIds.has(String(m.id))) return false;
             const t = (m.title || m.kurdishTitle || '').toLowerCase();
             const o = (m.overview || m.kurdishOverview || '').toLowerCase();
             return t.includes(queryLower) || o.includes(queryLower);

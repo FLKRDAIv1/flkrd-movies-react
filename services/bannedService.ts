@@ -4,28 +4,37 @@ class BannedService {
     private bannedIds: Set<string> = new Set();
     private lastFetch: number = 0;
     private CACHE_TTL = 60000; // 1 minute
+    private initPromise: Promise<Set<string>> | null = null;
 
     async fetchBannedList() {
-        const now = Date.now();
-        if (now - this.lastFetch < this.CACHE_TTL && this.bannedIds.size > 0) {
-            return this.bannedIds;
-        }
+        if (this.initPromise) return this.initPromise;
+        
+        this.initPromise = (async () => {
+            const now = Date.now();
+            if (now - this.lastFetch < this.CACHE_TTL && this.bannedIds.size > 0) {
+                return this.bannedIds;
+            }
 
-        try {
-            const { data, error } = await supabase
-                .from('banned_content')
-                .select('content_id');
-            
-            if (error) throw error;
-            
-            this.bannedIds = new Set(data.map(item => String(item.content_id)));
-            this.lastFetch = now;
-            console.log("[BANNED SERVICE] Quantum registry updated:", this.bannedIds.size);
-            return this.bannedIds;
-        } catch (err) {
-            console.error("[BANNED SERVICE] Signal failure:", err);
-            return this.bannedIds;
-        }
+            try {
+                const { data, error } = await supabase
+                    .from('banned_content')
+                    .select('content_id');
+                
+                if (error) throw error;
+                
+                this.bannedIds = new Set(data.map(item => String(item.content_id)));
+                this.lastFetch = now;
+                console.log("[BANNED SERVICE] Quantum registry updated:", this.bannedIds.size);
+                return this.bannedIds;
+            } catch (err) {
+                console.error("[BANNED SERVICE] Signal failure:", err);
+                return this.bannedIds;
+            } finally {
+                this.initPromise = null;
+            }
+        })();
+
+        return this.initPromise;
     }
 
     isBanned(id: string | number): boolean {

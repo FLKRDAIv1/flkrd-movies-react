@@ -48,13 +48,18 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
     updateMyListIds();
     setHasError(false);
     if (items) {
-      setContent(items);
+      const filteredItems = items.filter(item => {
+          const itemId = String(item.id).replace('custom_', '');
+          return !bannedService.isBanned(itemId);
+      });
+      setContent(filteredItems);
       setLoading(false);
       setHasMore(false);
     } else if (fetchUrl) {
       setLoading(true);
       const data = await fetchData(getPagedUrl(fetchUrl, 1), language);
-      if (data && Array.isArray(data) && data.length > 0) {
+      if (data && Array.isArray(data)) {
+        // data coming from fetchData is already filtered by isForbidden
         setContent(data);
         setPage(1);
         setHasMore(data.length >= 15); 

@@ -106,7 +106,8 @@ const SearchPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { theme } = useUI();
+  const { theme, isAdmin } = useUI();
+  const { addNotification } = useNotification();
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
 
   useEffect(() => {

@@ -421,7 +421,10 @@ const DubbedMoviesPage: React.FC = () => {
                     // Silently refresh the local list without showing a loader
                     const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
                     if (data) {
-                        const formatted = data.map((movie: any) => ({
+                        const bannedIds = await bannedService.fetchBannedList();
+                        const formatted = data
+                            .filter((movie: any) => !bannedIds.has(String(movie.id)))
+                            .map((movie: any) => ({
                             ...movie,
                             id: `custom_${movie.id}`,
                             poster_path: movie.imageBase64,
