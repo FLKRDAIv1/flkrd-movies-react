@@ -26,29 +26,32 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
     // 2. Prevent page navigation away from the site (Redirect Protection)
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       // Some players try to redirect the parent page. 
-      // This is a soft block - we don't want to prevent user from leaving, 
-      // but we want to catch rapid/automated redirects.
     };
 
     // 3. Global Click Interception (Capturing Phase)
-    // This stops events before they reach the iframe or after they bubble back 
-    // if the iframe is cross-origin. For same-origin it's perfect.
-    // For cross-origin VidKing, it prevents the parent page from reacting to 
-    // overlay clicks.
     const handleGlobalClick = (e: MouseEvent) => {
-      // If the click is on something that looks like an ad overlay
       const target = e.target as HTMLElement;
-      
-      // Check for common ad overlay patterns (invisible, absolute, high z-index)
       const style = window.getComputedStyle(target);
+      
+      // Heuristic for ad overlays:
+      // 1. Positioned absolute/fixed
+      // 2. High z-index (often > 1000)
+      // 3. Covers large area or has no visible content
+      // 4. Transparent but catching clicks
       if (
         (style.position === 'absolute' || style.position === 'fixed') &&
-        (parseFloat(style.opacity) < 0.1 || style.backgroundColor === 'transparent') &&
-        parseInt(style.zIndex) > 100
+        (parseInt(style.zIndex) > 500) &&
+        (parseFloat(style.opacity) < 0.1 || style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)')
       ) {
-        console.warn("[QUANTUM-SHIELD] Neutralized hidden overlay click.");
+        console.warn("[QUANTUM-SHIELD] Neutralized hidden overlay click on:", target);
         e.preventDefault();
         e.stopPropagation();
+        
+        // Aggressive: Try to remove it from DOM if it's an overlay
+        if (target.tagName === 'DIV' && !target.hasChildNodes()) {
+            target.remove();
+        }
+        return false;
       }
     };
 
@@ -59,9 +62,10 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
           if (node instanceof HTMLElement) {
             // Remove typical ad-container patterns
             if (
-              node.id.includes('pop') || 
-              node.className.includes('ads-') || 
-              (node.style.position === 'fixed' && node.style.zIndex === '2147483647')
+              node.id.toLowerCase().includes('pop') || 
+              node.id.toLowerCase().includes('ads') ||
+              node.className.toLowerCase().includes('ads-') || 
+              (node.style.position === 'fixed' && parseInt(node.style.zIndex) > 10000)
             ) {
               console.warn("[QUANTUM-SHIELD] Auto-purged ad node:", node);
               node.remove();
