@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import Spinner from './Spinner';
+import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 
 interface UniversalVideoPlayerProps {
     src: string;
@@ -24,6 +25,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
 
     const lastSrc = useRef<string>('');
     const safetyTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Initialize Quantum Shielding to block VidKing pop-ups/redirects
+    useQuantumAdBlocker(true);
 
     // Guaranteed cleanup for timer
     useEffect(() => {
