@@ -8,6 +8,21 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        headers: {
+          // Allow eval (needed by Vite HMR + some streaming players)
+          // Allow blob: and data: URIs (needed by HLS.js and video providers)
+          // Allow all iframes from streaming providers
+          'Content-Security-Policy': [
+            "default-src * 'self' 'unsafe-inline' 'unsafe-eval' blob: data:",
+            "script-src * 'self' 'unsafe-inline' 'unsafe-eval' blob: data:",
+            "script-src-elem * 'self' 'unsafe-inline' 'unsafe-eval' blob: data:",
+            "worker-src * blob: data:",
+            "frame-src *",
+            "media-src * blob: data:",
+            "img-src * blob: data:",
+            "connect-src *",
+          ].join('; '),
+        },
       },
       plugins: [react()],
       define: {
