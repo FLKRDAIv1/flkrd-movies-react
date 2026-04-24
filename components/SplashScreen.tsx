@@ -88,6 +88,7 @@ const SplashScreen: React.FC = () => {
             <span className="text-white font-mono text-sm md:text-base font-bold tracking-wider shadow-black drop-shadow-md">
               {displayedText1}
               <motion.span
+                initial={{ opacity: 0 }}
                 animate={{ opacity: [0, 1, 0] }}
                 transition={{ repeat: Infinity, duration: 0.8 }}
                 className="inline-block w-0.5 h-4 ml-1 bg-red-600 align-middle"
