@@ -4,9 +4,9 @@ import { PlayerSource } from '../types';
 const LOCAL_STORAGE_KEY = 'playerSourceScores';
 
 const INITIAL_SOURCES: Omit<PlayerSource, 'score'>[] = [
-  { name: 'FLKRD SERVER 1' },
-  { name: 'FLKRD SERVER 2' },
-  { name: 'FLKRD SERVER 3' },
+  { name: 'FLKRD SERVER 1' }, // VidKing
+  { name: 'FLKRD SERVER 2' }, // Vidsrc.to
+  { name: 'FLKRD SERVER 3' }, // Embed.su
   { name: 'FLKRD SERVER 4' },
   { name: 'FLKRD SERVER 5' },
   { name: 'FLKRD SERVER 6' },
@@ -26,9 +26,9 @@ const getScores = (): { [key: string]: number } => {
     console.error("Failed to parse player source scores", error);
   }
   return {
-    'FLKRD SERVER 1': 200,
-    'FLKRD SERVER 2': 180,
-    'FLKRD SERVER 3': 170,
+    'FLKRD SERVER 1': 300, // VidKing (Top Priority)
+    'FLKRD SERVER 2': 280, // Vidsrc.to
+    'FLKRD SERVER 3': 270, // Embed.su
     'FLKRD SERVER 4': 160,
     'FLKRD SERVER 5': 150,
     'FLKRD SERVER 6': 140,
@@ -50,63 +50,72 @@ export const getRankedSources = (): PlayerSource[] => {
 
 export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', season?: number, episode?: number, progress: number = 0) => {
   const isTv = type === 'tv';
-  // Use 'start' or 'progress' based on Vidking's resume capabilities
-  const progressParam = progress > 10 ? `&start=${Math.floor(progress)}` : '';
+  
+  // VidKing uses 'progress=' for start time (in seconds)
+  const vidKingProgress = progress > 10 ? `&progress=${Math.floor(progress)}` : '';
+  
+  // Other servers use 'start=' or similar
+  const genericProgress = progress > 10 ? `&start=${Math.floor(progress)}` : '';
 
   switch (name) {
-    case 'FLKRD SERVER 1':
+    case 'FLKRD SERVER 1': // VidKing
       return isTv
-        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true&nextEpisode=true&episodeSelector=true${progressParam.replace('start', 'progress')}`
-        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`;
-    case 'FLKRD SERVER 2':
+        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true&nextEpisode=true&episodeSelector=true${vidKingProgress}`
+        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${vidKingProgress}`;
+    
+    case 'FLKRD SERVER 2': // Vidsrc.to
       return isTv
-        ? `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`
-        : `https://player.autoembed.cc/embed/movie/${id}`;
-    case 'FLKRD SERVER 3':
-      return isTv
-        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
-        : `https://multiembed.mov/?video_id=${id}&tmdb=1`;
-    case 'FLKRD SERVER 4':
-      return isTv
-        ? `https://vidsrc-embed.ru/embed/tv/${id}/${season}-${episode}`
-        : `https://vidsrc-embed.ru/embed/movie/${id}`;
-    case 'FLKRD SERVER 5':
+        ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
+        : `https://vidsrc.to/embed/movie/${id}`;
+    
+    case 'FLKRD SERVER 3': // Embed.su
       return isTv
         ? `https://embed.su/embed/tv/${id}/${season}/${episode}`
         : `https://embed.su/embed/movie/${id}`;
+        
+    case 'FLKRD SERVER 4':
+      return isTv
+        ? `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`
+        : `https://player.autoembed.cc/embed/movie/${id}`;
+        
+    case 'FLKRD SERVER 5':
+      return isTv
+        ? `https://multiembed.mov/?video_id=${id}&tmdb=1&s=${season}&e=${episode}`
+        : `https://multiembed.mov/?video_id=${id}&tmdb=1`;
+        
     case 'FLKRD SERVER 6':
+      return isTv
+        ? `https://vidsrc-embed.ru/embed/tv/${id}/${season}-${episode}`
+        : `https://vidsrc-embed.ru/embed/movie/${id}`;
+        
+    case 'FLKRD SERVER 7':
       return isTv
         ? `https://www.2embed.cc/embedtv/${id}&s=${season}&e=${episode}`
         : `https://www.2embed.cc/embed/${id}`;
-    case 'FLKRD SERVER 7':
+        
+    case 'FLKRD SERVER 8':
       return isTv
         ? `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`
         : `https://vidsrc.me/embed/movie?tmdb=${id}`;
-    case 'FLKRD SERVER 8':
+        
+    case 'FLKRD SERVER 9':
       return isTv
         ? `https://vidsrc.pro/embed/tv/${id}/${season}/${episode}`
         : `https://vidsrc.pro/embed/movie/${id}`;
-    case 'FLKRD SERVER 9':
-      return isTv
-        ? `https://multiembed.mov/direct/superembed/tv?tmdb=${id}&s=${season}&e=${episode}`
-        : `https://multiembed.mov/direct/superembed/movie?tmdb=${id}`;
+        
     case 'FLKRD SERVER 10':
       return isTv
         ? `https://player.smashy.stream/tv/${id}?s=${season}&e=${episode}`
         : `https://player.smashy.stream/movie/${id}`;
+        
     default:
       return isTv
-        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`
-        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`;
+        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true${vidKingProgress}`
+        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${vidKingProgress}`;
   }
 };
 
 export const getSourceSandboxConfig = (name: string): string | undefined => {
-  // VidKing (SERVER 1) is the only one that tolerates being jaied to block popups/redirects!
-  // All other servers (vidsrc, superembed, 2embed, etc.) throw "Sandbox not allowed" if forced into an iframe sandbox.
-  if (name === 'FLKRD SERVER 1') {
-    return "allow-scripts allow-same-origin allow-forms allow-presentation";
-  }
-
-  return undefined; // No sandbox allowed for all other sources
+  // USER explicitly requested removing sandbox to avoid detection!
+  return undefined; 
 };

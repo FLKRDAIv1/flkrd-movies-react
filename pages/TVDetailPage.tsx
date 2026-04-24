@@ -185,27 +185,11 @@ const TVDetailPage: React.FC = () => {
     window.dispatchEvent(new Event('storage'));
   }, [content, selectedSeason, selectedEpisode, id, isBingeEnabled, showBingeCountdown]);
 
-  useEffect(() => {
-    const handlePlayerMessages = (event: MessageEvent) => {
-      try {
-        const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (payload && (payload.type === 'PLAYER_EVENT' || payload.event)) {
-          const data = payload.data || payload;
-          if (data.event === 'timeupdate' || data.event === 'pause') {
-            updateProgress(data);
-          }
-          if (data.event === 'ended') {
-            if (isBingeEnabled) {
-              setShowBingeCountdown(true);
-              setCountdown(10);
-            }
-          }
-        }
-      } catch (e) { }
-    };
-    window.addEventListener('message', handlePlayerMessages);
-    return () => window.removeEventListener('message', handlePlayerMessages);
-  }, [updateProgress, isBingeEnabled]);
+  const handlePlayerProgress = useCallback((data: any) => {
+    if (data.event === 'timeupdate' || data.event === 'pause' || data.event === 'ended') {
+      updateProgress(data);
+    }
+  }, [updateProgress]);
 
   const fetchSeasonDetails = useCallback(async (seasonNum: number) => {
     setSeasonDetails(null);
@@ -342,13 +326,13 @@ const TVDetailPage: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <iframe
+              <UniversalVideoPlayer
                 src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress)}
-                sandbox={getSourceSandboxConfig(activeSource)}
-                allowFullScreen
-                className="w-full h-full border-none pointer-events-auto"
+                accentColor={accentColor}
+                language={language}
                 onLoad={() => setIsPlayerLoading(false)}
-              ></iframe>
+                onProgress={handlePlayerProgress}
+              />
 
               <AnimatePresence>
                 {showSourceSwitcher && (

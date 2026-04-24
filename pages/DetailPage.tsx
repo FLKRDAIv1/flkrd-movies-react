@@ -116,20 +116,12 @@ const DetailPage: React.FC = () => {
     } catch (e) { }
   }, [content, bingeMode, showBingePrompt, recommendations]);
 
-  useEffect(() => {
-    const handlePlayerMessages = (event: MessageEvent) => {
-      try {
-        const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (payload && (payload.type === 'PLAYER_EVENT' || payload.event)) {
-          const data = payload.data || payload;
-          if (data.event === 'timeupdate' || data.event === 'pause') {
-            updateProgress(data.time || data.currentTime || 0, data.duration || 0);
-          }
-        }
-      } catch (e) { }
-    };
-    window.addEventListener('message', handlePlayerMessages);
-    return () => window.removeEventListener('message', handlePlayerMessages);
+  const handlePlayerProgress = useCallback((data: any) => {
+    if (data.event === 'timeupdate' || data.event === 'pause' || data.event === 'ended') {
+      const time = data.currentTime || data.time || 0;
+      const duration = data.duration || 0;
+      updateProgress(time, duration);
+    }
   }, [updateProgress]);
 
   useEffect(() => {
@@ -280,13 +272,13 @@ const DetailPage: React.FC = () => {
 
             <div className="w-full max-w-7xl aspect-video relative bg-black shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden">
               {isPlayerLoading && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10"><Spinner /><span className="mt-6 text-[10px] font-black tracking-[0.5em] text-red-600 animate-pulse uppercase">Syncing Stream...</span></div>}
-              <iframe
+              <UniversalVideoPlayer
                 src={getSourceUrl(activeSource, id!, 'movie', undefined, undefined, initialProgress)}
-                sandbox={getSourceSandboxConfig(activeSource)}
-                allowFullScreen
-                className="w-full h-full border-none pointer-events-auto"
+                accentColor={accentColor}
+                language={language}
                 onLoad={() => setIsPlayerLoading(false)}
-              ></iframe>
+                onProgress={handlePlayerProgress}
+              />
 
               <AnimatePresence>
                 {showSourceSwitcher && (

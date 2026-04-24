@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Shield, Activity } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 
@@ -8,6 +8,7 @@ interface UniversalVideoPlayerProps {
     onLoad?: () => void;
     accentColor?: string;
     language?: string;
+    onProgress?: (data: any) => void;
 }
 
 declare global {
@@ -16,7 +17,7 @@ declare global {
     }
 }
 
-const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad, accentColor, language }) => {
+const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad, accentColor, language, onProgress }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isHls, setIsHls] = useState(false);
     const [isIframe, setIsIframe] = useState(false);
@@ -26,10 +27,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
     const lastSrc = useRef<string>('');
     const safetyTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Initialize Quantum Shielding to block VidKing pop-ups/redirects
+    // Initialize Quantum Shielding to block pop-ups/redirects
+    // Aggressive mode is active because we removed the iframe sandbox
     useQuantumAdBlocker(true);
 
-    // Guaranteed cleanup for timer
+    // Listen for VidKing / Player Events via PostMessage
+    useEffect(() => {
+        const handlePlayerMessages = (event: MessageEvent) => {
+            try {
+                // Ensure message is from a trusted source or contains expected structure
+                const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                
+                // VidKing Standard: { type: "PLAYER_EVENT", data: { event: "...", ... } }
+                // Also support flattened structure if some providers send it
+                if (payload && (payload.type === 'PLAYER_EVENT' || payload.event)) {
+                    const data = payload.data || payload;
+                    console.log(`[PLAYER-SIGNAL] Received ${data.event}:`, data);
+                    
+                    if (onProgress) {
+                        onProgress(data);
+                    }
+                }
+            } catch (e) {
+                // Ignore non-JSON or unrelated messages
+            }
+        };
+
+        window.addEventListener('message', handlePlayerMessages);
+        return () => window.removeEventListener('message', handlePlayerMessages);
+    }, [onProgress]);
+
     useEffect(() => {
         return () => {
             if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
@@ -37,13 +64,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
     }, []);
 
     useEffect(() => {
-        // Only reset entire player if the source actually changes
         if (src !== lastSrc.current) {
             lastSrc.current = src;
             setLoading(true);
             setHlsError(false);
 
-            // Mode detection
             const isDirect = src.toLowerCase().endsWith('.m3u8') ||
                 src.toLowerCase().endsWith('.mp4') ||
                 src.toLowerCase().endsWith('.webm') ||
@@ -54,11 +79,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
             setIsHls(isDirect);
             setIsIframe(!isDirect);
 
-            // Set a foolproof 4-second safety timer for this specific source
             if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
             safetyTimerRef.current = setTimeout(() => {
                 setLoading(false);
-                console.log("Player safety timeout triggered - showing fallback UI");
             }, 4000);
         }
 
@@ -67,7 +90,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
             return;
         }
 
-        // HLS Implementation
         if (isHls && !hlsError) {
             if (src.toLowerCase().includes('.m3u8') && window.Hls) {
                 if (window.Hls.isSupported()) {
@@ -81,44 +103,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                     if (videoRef.current) {
                         hls.loadSource(src);
                         hls.attachMedia(videoRef.current);
-
                         hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
                             setLoading(false);
                             if (onLoad) onLoad();
                         });
-
                         hls.on(window.Hls.Events.ERROR, (event: any, data: any) => {
                             if (data.fatal) {
-                                console.warn("HLS Error:", data.type);
                                 setHlsError(true);
                                 setIsIframe(true);
                                 setIsHls(false);
                                 hls.destroy();
-                                // If it already errored, we might as well show the iframe now
                                 setLoading(false);
                             }
                         });
                     }
                     return () => hls.destroy();
-                } else if (videoRef.current?.canPlayType('application/vnd.apple.mpegurl')) {
-                    videoRef.current.src = src;
-                    videoRef.current.onloadedmetadata = () => {
-                        setLoading(false);
-                        if (onLoad) onLoad();
-                    };
-                    videoRef.current.onerror = () => {
-                        setHlsError(true);
-                        setIsIframe(true);
-                        setIsHls(false);
-                        setLoading(false);
-                    };
                 }
             } else if (videoRef.current) {
                 videoRef.current.src = src;
-                videoRef.current.onloadeddata = () => {
-                    setLoading(false);
-                    if (onLoad) onLoad();
-                };
+                videoRef.current.onloadeddata = () => setLoading(false);
                 videoRef.current.onerror = () => {
                     setHlsError(true);
                     setIsIframe(true);
@@ -131,12 +134,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
 
     const getFinalIframeSrc = (source: string) => {
         let cleanSrc = source.includes('<iframe') ? (source.match(/src=["'](.*?)["']/) || [])[1] : source;
-        if (cleanSrc && cleanSrc.includes('rashaba.com/upload')) {
-            const parts = cleanSrc.split('/');
-            const idPart = parts.find(p => p.length > 12 && !p.includes('.') && !p.includes('-'));
-            if (idPart) return `https://rashaba.com/embed/${idPart}`;
-        }
-        return cleanSrc || "https://rashaba.com/embed/mKkhrFhjQr3CKwz";
+        return cleanSrc || "";
     };
 
     return (
@@ -145,20 +143,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050505]">
                     <div className="relative p-8 flex flex-col items-center">
                         <Spinner />
-                        <span className="mt-8 text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic" style={{ color: accentColor }}>
-                            {language === 'ku' ? 'ئامادەکردنی پلەیەر...' : 'INITIALIZING SECURE NODE'}
-                        </span>
-
-                        {/* Emergency bypass button after 2 seconds */}
-                        <button
-                            onClick={() => setLoading(false)}
-                            className="mt-12 flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full transition-all group active:scale-95"
-                        >
-                            <X size={12} className="text-white/40 group-hover:text-white" />
-                            <span className="text-[8px] font-bold text-white/40 group-hover:text-white uppercase tracking-widest italic">
-                                {language === 'ku' ? 'دایبخە' : 'FORCE DISMISS'}
+                        <div className="mt-8 flex flex-col items-center gap-2">
+                            <span className="text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic" style={{ color: accentColor }}>
+                                {language === 'ku' ? 'ئامادەکردنی پلەیەر...' : 'INITIALIZING SECURE NODE'}
                             </span>
-                        </button>
+                            <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
+                                <Shield size={10} className="text-red-500" />
+                                <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">QUANTUM SHIELD ACTIVE</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -171,8 +164,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                     autoPlay
                     playsInline
                     onPlaying={() => setLoading(false)}
-                    onCanPlay={() => setLoading(false)}
-                    onPlay={() => setLoading(false)}
                 />
             )}
 
@@ -180,6 +171,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                 <iframe
                     src={getFinalIframeSrc(src)}
                     className="w-full h-full border-none pointer-events-auto z-10"
+                    // Removed sandbox attribute to prevent provider-side anti-adblock detection
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture"
                     allowFullScreen
                     referrerPolicy="no-referrer"
@@ -188,7 +180,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                         setLoading(false);
                         if (onLoad) onLoad();
                     }}
-                    title="Universal Video Player"
+                    title="FLKRD Universal Player"
                 />
             )}
         </div>
