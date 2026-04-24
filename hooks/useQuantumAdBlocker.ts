@@ -17,10 +17,14 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
     const originalOpen = window.open;
     // @ts-ignore
     window.open = function(url?: string | URL, target?: string, features?: string) {
-      const urlStr = String(url).toLowerCase();
+      const urlStr = String(url || '').toLowerCase();
       
-      // Allow only internal navigation or non-suspicious URLs (if any)
-      // Most third-party player popups are suspicious
+      // Block blob URLs and suspicious ad patterns that bypass CSP
+      if (urlStr.startsWith('blob:') || urlStr.includes('about:blank')) {
+        console.warn("[QUANTUM-SHIELD] Blocked suspicious blob/blank popup.");
+        return null;
+      }
+
       console.warn("[QUANTUM-SHIELD] Neutralized programmatic popup to:", url);
       return null;
     };
