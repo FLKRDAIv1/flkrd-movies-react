@@ -17,7 +17,7 @@ declare global {
     }
 }
 
-const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad, accentColor, language, onProgress }) => {
+const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [isHls, setIsHls] = useState(false);
     const [isIframe, setIsIframe] = useState(false);
@@ -33,12 +33,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
         try {
+            // Optimization: Skip processing if no progress handler
+            if (!onProgress) return;
+
             const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            if (payload && (payload.type === 'PLAYER_EVENT' || payload.event)) {
+            if (payload && (payload.type === 'PLAYER_EVENT' || payload.event || payload.type === 'timeupdate')) {
                 const data = payload.data || payload;
-                if (onProgress) {
-                    onProgress(data);
-                }
+                onProgress(data);
             }
         } catch (e) {
             // Ignore non-JSON / unrelated messages silently
@@ -124,14 +125,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
         }
     }, [src, onLoad, hlsError, isHls]);
 
-    const getFinalIframeSrc = (source: string): string => {
-        const cleanSrc = source.includes('<iframe')
-            ? (source.match(/src=["'](.*?)["']/) || [])[1]
-            : source;
+    // Use memo to prevent iframe src recalculation on parent re-renders
+    const iframeSrc = React.useMemo(() => {
+        const cleanSrc = src.includes('<iframe')
+            ? (src.match(/src=["'](.*?)["']/) || [])[1]
+            : src;
         return cleanSrc || '';
-    };
-
-    const iframeSrc = getFinalIframeSrc(src);
+    }, [src]);
 
     return (
         <div className="w-full h-full relative bg-black flex items-center justify-center">
@@ -192,6 +192,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
             )}
         </div>
     );
-};
+});
 
 export default UniversalVideoPlayer;

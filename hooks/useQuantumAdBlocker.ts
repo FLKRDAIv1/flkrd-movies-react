@@ -56,15 +56,16 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
               }
             }
 
-            // Heuristic Overlay Blocking
+            // Heuristic Overlay Blocking — refined to avoid legitimate UI
             const style = window.getComputedStyle(node);
             const isHighZ = parseInt(style.zIndex) > 1000;
             const isFixed = style.position === 'fixed' || style.position === 'absolute';
-            const isTransparent = parseFloat(style.opacity) < 0.1 || style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)';
+            const isTransparent = parseFloat(style.opacity) < 0.05; // More strict on transparency
+            const isFullScreen = node.offsetWidth > window.innerWidth * 0.9 && node.offsetHeight > window.innerHeight * 0.9;
             
-            if (isHighZ && isFixed && isTransparent) {
-                // Potential invisible click-catcher
-                console.warn("[QUANTUM-SHIELD] Purged invisible ad-overlay.");
+            if (isHighZ && isFixed && (isTransparent || isFullScreen) && !node.innerText) {
+                // Potential invisible click-catcher or forced ad-overlay
+                console.warn("[QUANTUM-SHIELD] Purged suspicious ad-overlay.");
                 node.remove();
             }
           }

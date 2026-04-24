@@ -51,17 +51,14 @@ export const getRankedSources = (): PlayerSource[] => {
 export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', season?: number, episode?: number, progress: number = 0) => {
   const isTv = type === 'tv';
   
-  // VidKing uses 'progress=' for start time (in seconds)
-  const vidKingProgress = progress > 10 ? `&progress=${Math.floor(progress)}` : '';
-  
   // Other servers use 'start=' or similar
   const genericProgress = progress > 10 ? `&start=${Math.floor(progress)}` : '';
 
   switch (name) {
     case 'FLKRD SERVER 1': // VidKing
       return isTv
-        ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true&nextEpisode=true&episodeSelector=true${vidKingProgress}`
-        : `https://www.vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${vidKingProgress}`;
+        ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoplay=1&playsinline=1&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
+        : `https://www.vidking.net/embed/movie/${id}?color=e50914&autoplay=1&playsinline=1${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
     
     case 'FLKRD SERVER 2': // Vidsrc.to
       return isTv
@@ -110,8 +107,8 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         
     default:
       return isTv
-        ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true${vidKingProgress}`
-        : `https://www.vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${vidKingProgress}`;
+        ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoplay=1&playsinline=1${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
+        : `https://www.vidking.net/embed/movie/${id}?color=e50914&autoplay=1&playsinline=1${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
   }
 };
 
