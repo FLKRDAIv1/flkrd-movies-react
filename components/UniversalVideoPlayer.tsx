@@ -176,9 +176,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
                 <iframe
                     src={getFinalIframeSrc(src)}
                     className="w-full h-full border-none pointer-events-auto z-10"
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture"
                     allowFullScreen
                     referrerPolicy="no-referrer"
+                    loading="lazy"
                     onLoad={() => {
                         setLoading(false);
                         if (onLoad) onLoad();
