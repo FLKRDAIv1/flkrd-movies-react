@@ -70,8 +70,8 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
     
     case 'FLKRD SERVER 3': // Embed.su
       return isTv
-        ? `https://embed.su/embed/tv/${id}/${season}/${episode}`
-        : `https://embed.su/embed/movie/${id}`;
+        ? `https://embedsu.vip/embed/tv/${id}/${season}/${episode}`
+        : `https://embedsu.vip/embed/movie/${id}`;
         
     case 'FLKRD SERVER 4':
       return isTv

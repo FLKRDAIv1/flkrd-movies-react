@@ -10,6 +10,7 @@ import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { clearTMDBCache } from '../services/tmdbService';
+import { bannedService } from '../services/bannedService';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
