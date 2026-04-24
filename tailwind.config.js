@@ -7,13 +7,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: 'var(--brand-red)',
-        'main-bg': 'var(--bg-primary)',
-        'main-text': 'var(--text-primary)',
-        'sec-text': 'var(--text-secondary)',
-        'card-bg': 'var(--card-bg)',
-        'box-bg': 'var(--box-bg)',
-        'border-color': 'var(--border-color)',
+        brand: '#e50914',
+        'main-bg': '#000000',
+        'main-text': '#ffffff',
+        'sec-text': '#a3a3a3',
+        'card-bg': '#0a0a0a',
+        'box-bg': '#141414',
+        'border-color': '#262626',
       }
     },
   },
