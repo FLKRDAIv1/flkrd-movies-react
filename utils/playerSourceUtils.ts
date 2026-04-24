@@ -56,8 +56,8 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
   switch (name) {
     case 'FLKRD SERVER 1':
       return isTv
-        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&nextEpisode=true&episodeSelector=true${progressParam}`
-        : `https://vidking.net/embed/movie/${id}?color=e50914${progressParam}`;
+        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true&nextEpisode=true&episodeSelector=true${progressParam.replace('start', 'progress')}`
+        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`;
     case 'FLKRD SERVER 2':
       return isTv
         ? `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`
@@ -96,8 +96,8 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         : `https://player.smashy.stream/movie/${id}`;
     default:
       return isTv
-        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914${progressParam}`
-        : `https://vidking.net/embed/movie/${id}?color=e50914${progressParam}`;
+        ? `https://vidking.net/embed/tv/${id}/${season}/${episode}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`
+        : `https://vidking.net/embed/movie/${id}?color=e50914&autoPlay=true${progressParam.replace('start', 'progress')}`;
   }
 };
 

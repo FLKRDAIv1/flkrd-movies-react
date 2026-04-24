@@ -9,6 +9,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
+import { clearTMDBCache } from '../services/tmdbService';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
@@ -355,6 +356,7 @@ const SearchPage: React.FC = () => {
                                   const success = await bannedService.banContent(cleanId, mediaType);
                                   if (success) {
                                     addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
+                                    clearTMDBCache();
                                     setResults(prev => prev.filter(r => r.id !== item.id));
                                   }
                                 } catch (err) {

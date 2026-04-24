@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Check, Play, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Content, WatchProgress, MyListItem } from '../types';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, clearTMDBCache } from '../services/tmdbService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -129,6 +129,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
         }
         
         addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed from global registry.' });
+        clearTMDBCache();
         setContent(prev => prev.filter(i => i.id !== item.id));
     } catch (err) {
         console.error("Moderation failure:", err);

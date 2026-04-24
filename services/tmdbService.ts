@@ -5,6 +5,11 @@ import { bannedService } from './bannedService';
 // Lightweight In-Memory Cache (Replaces Upstash Redis)
 const sessionCache = new Map<string, any>();
 
+export const clearTMDBCache = () => {
+  sessionCache.clear();
+  console.log("[TMDB SERVICE] Quantum Cache Purged.");
+};
+
 export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boolean = false): boolean => {
   if (isAdmin) return false;
   if (item.adult) return true;
