@@ -169,9 +169,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({ src, onLoad
 
             {isIframe && (
                 <iframe
+                    key={getFinalIframeSrc(src)}
                     src={getFinalIframeSrc(src)}
                     className="w-full h-full border-none pointer-events-auto z-10"
-                    // Removed sandbox attribute to prevent provider-side anti-adblock detection
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture"
                     allowFullScreen
                     referrerPolicy="no-referrer"
