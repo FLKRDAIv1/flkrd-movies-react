@@ -18,6 +18,7 @@ import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
+import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();

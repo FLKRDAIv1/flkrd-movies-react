@@ -16,6 +16,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
+import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -311,7 +312,7 @@ const TVDetailPage: React.FC = () => {
                           className="text-red-600"
                           strokeDasharray="364"
                           initial={{ strokeDashoffset: 364 }}
-                          animate={{ strokeDashoffset: 364 - (364 * (10 - countdown) / 10) }}
+                          animate={{ strokeDashoffset: Math.max(0, 364 - (364 * (10 - countdown) / 10)) }}
                           transition={{ duration: 1, ease: "linear" }}
                         />
                       </svg>
