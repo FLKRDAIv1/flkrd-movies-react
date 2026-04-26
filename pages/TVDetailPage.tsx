@@ -107,6 +107,11 @@ const TVDetailPage: React.FC = () => {
     const nextEp = seasonDetails.episodes[currentIdx + 1];
 
     if (nextEp) {
+      // Fetch progress for the next episode before switching
+      const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+      const saved = progressData.find((p: any) => p.id === content.id && p.season === selectedSeason && p.episode === nextEp.episode_number);
+      
+      setInitialProgress(saved ? saved.progress : 0);
       setSelectedEpisode(nextEp.episode_number);
       setIsPlayerLoading(true);
       setShowBingeCountdown(false);
@@ -114,6 +119,11 @@ const TVDetailPage: React.FC = () => {
     } else {
       const nextSeasonNum = selectedSeason + 1;
       if (content?.number_of_seasons >= nextSeasonNum) {
+        // Fetch progress for first episode of next season
+        const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+        const saved = progressData.find((p: any) => p.id === content.id && p.season === nextSeasonNum && p.episode === 1);
+        
+        setInitialProgress(saved ? saved.progress : 0);
         setSelectedSeason(nextSeasonNum);
         setSelectedEpisode(1);
         setIsPlayerLoading(true);
