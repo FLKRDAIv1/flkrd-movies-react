@@ -56,7 +56,7 @@ const AdGuardOnboarding: React.FC<AdGuardOnboardingProps> = ({ onComplete, accen
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-3xl overflow-hidden"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/90 backdrop-blur-3xl overflow-hidden"
     >
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 pointer-events-none">
