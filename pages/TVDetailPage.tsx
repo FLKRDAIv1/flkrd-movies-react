@@ -179,19 +179,13 @@ const TVDetailPage: React.FC = () => {
     localStorage.setItem('watchProgress', JSON.stringify(progress));
     window.dispatchEvent(new Event('watchProgressUpdated'));
 
-    // Mark as watched and trigger binge countdown if near the end
-    if (time > (duration || 2700) * 0.98) {
+      // Mark as watched (Binge countdown trigger removed as requested - provider handles next episode)
       const tvProg = JSON.parse(localStorage.getItem('tv_progress') || '{}');
       const showSet = new Set(tvProg[id!] || []);
       showSet.add(`${selectedSeason}-${selectedEpisode}`);
       tvProg[id!] = Array.from(showSet);
       localStorage.setItem('tv_progress', JSON.stringify(tvProg));
       setWatchedEpisodes(new Set(tvProg[id!]));
-
-      if (isBingeEnabled && !showBingeCountdown) {
-        setShowBingeCountdown(true);
-        setCountdown(10);
-      }
     }
     window.dispatchEvent(new Event('storage'));
   }, [content, selectedSeason, selectedEpisode, id, isBingeEnabled, showBingeCountdown]);

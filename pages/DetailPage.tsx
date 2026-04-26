@@ -110,9 +110,7 @@ const DetailPage: React.FC = () => {
       localStorage.setItem('watchProgress', JSON.stringify(progress));
       window.dispatchEvent(new Event('watchProgressUpdated'));
 
-      if (time > (duration || 7200) * 0.98 && bingeMode && !showBingePrompt && recommendations.length > 0) {
-        setShowBingePrompt(true);
-      }
+      // Binge prompt removed as requested
       window.dispatchEvent(new Event('storage'));
     } catch (e) { }
   }, [content, bingeMode, showBingePrompt, recommendations]);
