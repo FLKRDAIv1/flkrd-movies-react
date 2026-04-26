@@ -111,16 +111,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     const hls = new window.Hls({
                         xhrSetup: (xhr: any) => { xhr.withCredentials = false; },
                         enableWorker: true,
-                        // High Performance & Low-End Internet Optimization
-                        maxBufferLength: 30,         // Increase buffer to 30s
-                        maxMaxBufferLength: 60,      // Max buffer 60s
-                        backBufferLength: 10,        // Keep 10s of back buffer
-                        enableAdaptiveMaxBufferLength: true,
+                        autoStartLoad: true,
+                        startLevel: -1,
+                        capLevelToPlayerSize: true,
+                        debug: false,
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
+                        maxBufferSize: 60 * 1024 * 1024,
+                        backBufferLength: 60,
                         manifestLoadingMaxRetry: 10,
+                        manifestLoadingRetryDelay: 1000,
                         levelLoadingMaxRetry: 10,
+                        levelLoadingRetryDelay: 1000,
                         fragLoadingMaxRetry: 10,
-                        startLevel: -1,              // Auto-select best level
-                        abrEwmaDefaultEstimate: 500000, // 500kbps initial estimate for faster start
+                        fragLoadingRetryDelay: 1000,
+                        lowLatencyMode: true,
+                        enableAdaptiveMaxBufferLength: true,
+                        abrEwmaDefaultEstimate: 500000,
                     });
                     if (videoRef.current) {
                         hls.loadSource(src);
@@ -253,8 +260,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     className="w-full h-full border-none z-10"
                     style={{ display: 'block' }}
                     referrerPolicy="no-referrer-when-downgrade"
+                    // HIGH PRIORITY — ensure video loads before other non-critical assets
+                    loading="eager"
+                    // @ts-ignore
+                    fetchpriority="high"
                     // NO sandbox — providers detect sandbox and refuse to load
-                    // NO loading="lazy" — player must load immediately
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
                     allowFullScreen
                     onLoad={() => {
