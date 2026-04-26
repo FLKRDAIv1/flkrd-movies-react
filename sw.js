@@ -101,26 +101,23 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Bypass caching completely for local development and Vite HMR
+  // --- BYPASS LOGIC ---
   const url = new URL(event.request.url);
+
+  // 1. Bypass all external traffic (Streaming, APIs, etc.)
+  if (url.origin !== self.location.origin) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // 2. Bypass local development assets
   if (
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname.startsWith('192.168.') ||
-    url.hostname.includes('vidking.net') ||
-    url.hostname.includes('vidsrc.to') ||
-    url.hostname.includes('embedsu.vip') ||
-    url.hostname.includes('supabase.co') ||
-    url.hostname.includes('upstash.io') ||
-    url.hostname.includes('themoviedb.org') ||
     url.searchParams.has('import')
   ) {
-    event.respondWith(
-      fetch(event.request).catch(err => {
-        // Return a silent 503 if dev server is unreachable, avoiding console noise
-        return new Response('Dev Server Unreachable', { status: 503, statusText: 'Service Unavailable' });
-      })
-    );
+    event.respondWith(fetch(event.request).catch(() => {}));
     return;
   }
 

@@ -171,13 +171,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         }
     }, [src, onLoad, hlsError, isHls]);
 
-    // Use memo to prevent iframe src recalculation on parent re-renders
+    // Use a ref to store the 'frozen' source that won't change during playback
+    // This prevents the iframe from reloading when progress updates
+    const frozenSrcRef = useRef<string | null>(null);
+    const lastContentKeyRef = useRef<string>('');
+
+    // Compute a unique key for the current content/source combination
+    const currentContentKey = `${src.split('?')[0]}`;
+
     const iframeSrc = React.useMemo(() => {
         const cleanSrc = src.includes('<iframe')
             ? (src.match(/src=["'](.*?)["']/) || [])[1]
             : src;
-        return cleanSrc || '';
-    }, [src]);
+        const finalSrc = cleanSrc || '';
+
+        // If this is the same content/source, keep the frozen one
+        if (frozenSrcRef.current && currentContentKey === lastContentKeyRef.current) {
+            return frozenSrcRef.current;
+        }
+
+        // New content or source — update the frozen reference
+        frozenSrcRef.current = finalSrc;
+        lastContentKeyRef.current = currentContentKey;
+        return finalSrc;
+    }, [src, currentContentKey]);
 
     // Create a stable key that ignores the 'start=' parameter
     // This prevents the iframe from remounting if ONLY the resume time changes
