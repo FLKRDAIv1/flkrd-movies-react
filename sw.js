@@ -112,7 +112,12 @@ self.addEventListener('fetch', event => {
     url.hostname.includes('themoviedb.org') ||
     url.searchParams.has('import')
   ) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        // Return a silent 503 if dev server is unreachable, avoiding console noise
+        return new Response('Dev Server Unreachable', { status: 503, statusText: 'Service Unavailable' });
+      })
+    );
     return;
   }
 
