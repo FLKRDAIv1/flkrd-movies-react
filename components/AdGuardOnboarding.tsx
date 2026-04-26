@@ -145,14 +145,13 @@ const AdGuardOnboarding: React.FC<AdGuardOnboardingProps> = ({ onComplete, accen
                 </motion.button>
               )}
               
-              {step < steps.length - 1 && (
-                <button 
-                  onClick={onComplete}
-                  className="text-gray-500 hover:text-white transition-colors text-xs font-black uppercase tracking-[0.3em] mt-4"
-                >
-                  بازدان
-                </button>
-              )}
+              <button 
+                onClick={onComplete}
+                className="text-gray-500 hover:text-white transition-colors text-xs font-black uppercase tracking-[0.3em] mt-4 flex items-center justify-center gap-2"
+              >
+                <X size={14} />
+                داخستنی ڕێبەر
+              </button>
             </div>
 
             {/* Step Indicators */}

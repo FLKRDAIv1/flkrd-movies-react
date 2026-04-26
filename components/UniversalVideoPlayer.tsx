@@ -27,8 +27,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
 
+    useEffect(() => {
+        const hasSeenOnboarding = localStorage.getItem('flkrd_adguard_guide_shown');
+        if (!hasSeenOnboarding) {
+            setShowAdGuardOnboarding(true);
+        }
+    }, []);
+
     const handleOnboardingComplete = () => {
         setShowAdGuardOnboarding(false);
+        localStorage.setItem('flkrd_adguard_guide_shown', 'true');
     };
 
     const triggerAdGuardGuide = () => {

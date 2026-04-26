@@ -17,7 +17,6 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
-import AdGuardOnboarding from '../components/AdGuardOnboarding';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -256,21 +255,6 @@ const TVDetailPage: React.FC = () => {
     if (s && s !== selectedSeason) fetchSeasonDetails(s);
   };
 
-  const [showAdGuardExitGuide, setShowAdGuardExitGuide] = useState(false);
-
-  const closePlayerAndShowGuide = () => {
-    setIsPlayerModalOpen(false);
-    const hasSeenOnboarding = localStorage.getItem('flkrd_adguard_guide_shown');
-    if (!hasSeenOnboarding) {
-        setShowAdGuardExitGuide(true);
-    }
-  };
-
-  const handleOnboardingComplete = () => {
-    setShowAdGuardExitGuide(false);
-    localStorage.setItem('flkrd_adguard_guide_shown', 'true');
-  };
-
   if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
   if (!content) return null;
 
@@ -304,7 +288,7 @@ const TVDetailPage: React.FC = () => {
         {isPlayerModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center" dir="ltr">
             <div className="w-full max-w-6xl flex items-center justify-between p-3 md:p-4 bg-black/50 backdrop-blur-md border-b border-white/5 z-[300]">
-              <button onClick={closePlayerAndShowGuide} className="text-white bg-white/10 rounded-xl p-2 hover:bg-red-600 transition-colors"><X size={20} /></button>
+              <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/10 rounded-xl p-2 hover:bg-red-600 transition-colors"><X size={20} /></button>
               <div className="text-center px-4">
                 <p className="text-red-600 font-black uppercase text-[10px] tracking-[0.2em]">{content.name}</p>
                 <p className="text-xs text-white font-bold truncate">S{selectedSeason} • E{selectedEpisode}</p>
@@ -368,15 +352,6 @@ const TVDetailPage: React.FC = () => {
               </AnimatePresence>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showAdGuardExitGuide && (
-          <AdGuardOnboarding 
-            onComplete={handleOnboardingComplete} 
-            accentColor={accentColor}
-          />
         )}
       </AnimatePresence>
 
