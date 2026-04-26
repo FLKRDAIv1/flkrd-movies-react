@@ -172,6 +172,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         return cleanSrc || '';
     }, [src]);
 
+    // Create a stable key that ignores the 'start=' parameter
+    // This prevents the iframe from remounting if ONLY the resume time changes
+    const stableKey = React.useMemo(() => {
+        if (!iframeSrc) return '';
+        try {
+            const url = new URL(iframeSrc);
+            url.searchParams.delete('start');
+            return url.toString();
+        } catch (e) {
+            return iframeSrc.split('&start=')[0];
+        }
+    }, [iframeSrc]);
+
     return (
         <div className="w-full h-full relative bg-black flex items-center justify-center">
 
@@ -232,10 +245,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 />
             )}
 
-            {/* Iframe Embed — key forces full remount on URL change, preventing chrome-error:// issues */}
+            {/* Iframe Embed — key forces full remount ONLY on URL change (excluding start time) */}
             {isIframe && iframeSrc && (
                 <iframe
-                    key={iframeSrc}
+                    key={stableKey}
                     src={iframeSrc}
                     className="w-full h-full border-none z-10"
                     style={{ display: 'block' }}
