@@ -107,6 +107,9 @@ self.addEventListener('fetch', event => {
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname.startsWith('192.168.') ||
+    url.hostname.includes('vidking.net') ||
+    url.hostname.includes('vidsrc.to') ||
+    url.hostname.includes('embedsu.vip') ||
     url.hostname.includes('supabase.co') ||
     url.hostname.includes('upstash.io') ||
     url.hostname.includes('themoviedb.org') ||

@@ -252,10 +252,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     src={iframeSrc}
                     className="w-full h-full border-none z-10"
                     style={{ display: 'block' }}
-                    // NO referrerPolicy — providers like VidKing check referer to allow embeds
+                    referrerPolicy="no-referrer-when-downgrade"
                     // NO sandbox — providers detect sandbox and refuse to load
                     // NO loading="lazy" — player must load immediately
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
                     allowFullScreen
                     onLoad={() => {
                         setLoading(false);
