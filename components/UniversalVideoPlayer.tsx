@@ -111,6 +111,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     const hls = new window.Hls({
                         xhrSetup: (xhr: any) => { xhr.withCredentials = false; },
                         enableWorker: true,
+                        // High Performance & Low-End Internet Optimization
+                        maxBufferLength: 30,         // Increase buffer to 30s
+                        maxMaxBufferLength: 60,      // Max buffer 60s
+                        backBufferLength: 10,        // Keep 10s of back buffer
+                        enableAdaptiveMaxBufferLength: true,
+                        manifestLoadingMaxRetry: 10,
+                        levelLoadingMaxRetry: 10,
+                        fragLoadingMaxRetry: 10,
+                        startLevel: -1,              // Auto-select best level
+                        abrEwmaDefaultEstimate: 500000, // 500kbps initial estimate for faster start
                     });
                     if (videoRef.current) {
                         hls.loadSource(src);
@@ -121,11 +131,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         });
                         hls.on(window.Hls.Events.ERROR, (_: any, data: any) => {
                             if (data.fatal) {
-                                setHlsError(true);
-                                setIsIframe(true);
-                                setIsHls(false);
-                                hls.destroy();
-                                setLoading(false);
+                                switch (data.type) {
+                                    case window.Hls.ErrorTypes.NETWORK_ERROR:
+                                        hls.startLoad();
+                                        break;
+                                    case window.Hls.ErrorTypes.MEDIA_ERROR:
+                                        hls.recoverMediaError();
+                                        break;
+                                    default:
+                                        setHlsError(true);
+                                        setIsIframe(true);
+                                        setIsHls(false);
+                                        hls.destroy();
+                                        setLoading(false);
+                                        break;
+                                }
                             }
                         });
                     }
@@ -207,6 +227,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     controls
                     autoPlay
                     playsInline
+                    preload="auto"
                     onPlaying={() => setLoading(false)}
                 />
             )}
