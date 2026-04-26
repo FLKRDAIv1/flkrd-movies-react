@@ -49,21 +49,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     // Quantum Ad Shield — blocks pop-ups and overlays injected by embed providers
     useQuantumAdBlocker(true);
 
+    // Stabilize onProgress callback to prevent listener flapping
+    const onProgressRef = useRef(onProgress);
+    useEffect(() => {
+        onProgressRef.current = onProgress;
+    }, [onProgress]);
+
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
         try {
-            // Optimization: Skip processing if no progress handler
-            if (!onProgress) return;
+            if (!onProgressRef.current) return;
 
             const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            if (payload && (payload.type === 'PLAYER_EVENT' || payload.event || payload.type === 'timeupdate')) {
+            // Catch all possible player message formats (VidKing, Vidsrc, etc.)
+            if (payload && (
+                payload.type === 'PLAYER_EVENT' || 
+                payload.event || 
+                payload.type === 'timeupdate' ||
+                payload.type === 'media_time'
+            )) {
                 const data = payload.data || payload;
-                onProgress(data);
+                onProgressRef.current(data);
             }
-        } catch (e) {
-            // Ignore non-JSON / unrelated messages silently
-        }
-    }, [onProgress]);
+        } catch (e) { }
+    }, []); // Listener is now absolutely stable
 
     useEffect(() => {
         window.addEventListener('message', handlePlayerMessages);
