@@ -19,6 +19,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
+import AdGuardOnboarding from '../components/AdGuardOnboarding';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -197,6 +198,8 @@ const DetailPage: React.FC = () => {
     }
   }, [isPlayerModalOpen]);
 
+  const [showAdGuardExitGuide, setShowAdGuardExitGuide] = useState(false);
+
   const handlePlayClick = () => {
     const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
     const saved = progressData.find((p: any) => p.id === content?.id && p.type === 'movie');
@@ -204,6 +207,19 @@ const DetailPage: React.FC = () => {
 
     setIsPlayerLoading(true);
     setIsPlayerModalOpen(true);
+  };
+
+  const closePlayerAndShowGuide = () => {
+    setIsPlayerModalOpen(false);
+    const hasSeenOnboarding = localStorage.getItem('flkrd_adguard_guide_shown');
+    if (!hasSeenOnboarding) {
+        setShowAdGuardExitGuide(true);
+    }
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowAdGuardExitGuide(false);
+    localStorage.setItem('flkrd_adguard_guide_shown', 'true');
   };
 
   const handleToggleMyList = () => {
@@ -256,7 +272,7 @@ const DetailPage: React.FC = () => {
         {isPlayerModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center backdrop-blur-3xl" dir="ltr">
             <div className="w-full max-w-7xl flex items-center justify-between p-4 md:p-6 bg-black/40 backdrop-blur-xl border-b border-white/5 z-[300]">
-              <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
+              <button onClick={closePlayerAndShowGuide} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
                 <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
               </button>
               <div className="flex flex-col items-center text-center">
@@ -301,6 +317,15 @@ const DetailPage: React.FC = () => {
               </AnimatePresence>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showAdGuardExitGuide && (
+          <AdGuardOnboarding 
+            onComplete={handleOnboardingComplete} 
+            accentColor={accentColor}
+          />
         )}
       </AnimatePresence>
 

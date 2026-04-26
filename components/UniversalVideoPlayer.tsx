@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, ShieldCheck } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
+import AdGuardOnboarding from './AdGuardOnboarding';
+import { AnimatePresence } from 'framer-motion';
 
 interface UniversalVideoPlayerProps {
     src: string;
@@ -23,6 +25,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [isIframe, setIsIframe] = useState(false);
     const [loading, setLoading] = useState(true);
     const [hlsError, setHlsError] = useState(false);
+    const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
+
+    const handleOnboardingComplete = () => {
+        setShowAdGuardOnboarding(false);
+    };
+
+    const triggerAdGuardGuide = () => {
+        setShowAdGuardOnboarding(true);
+    };
 
     const lastSrc = useRef<string>('');
     const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,6 +147,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     return (
         <div className="w-full h-full relative bg-black flex items-center justify-center">
 
+            {/* AdGuard Onboarding Overlay */}
+            <AnimatePresence>
+                {showAdGuardOnboarding && (
+                    <AdGuardOnboarding 
+                        onComplete={handleOnboardingComplete} 
+                        accentColor={accentColor}
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Loading Overlay */}
             {loading && (
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050505]">
@@ -146,13 +167,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 className="text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic"
                                 style={{ color: accentColor || '#e50914' }}
                             >
-                                {language === 'ku' ? 'ئامادەکردنی پلەیەر...' : 'INITIALIZING SECURE NODE'}
+                                {language === 'ku' ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
                             </span>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
-                                <Shield size={10} className="text-red-500" />
-                                <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">
-                                    QUANTUM SHIELD ACTIVE
-                                </span>
+                            <div className="flex flex-col items-center gap-3">
+                                <button 
+                                    onClick={triggerAdGuardGuide}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-600/30 rounded-full hover:bg-blue-600/40 transition-all group"
+                                >
+                                    <ShieldCheck size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
+                                        {language === 'ku' ? 'ڕێبەری نوێکردنەوەی AdGuard' : 'ADGUARD UPDATE GUIDE'}
+                                    </span>
+                                </button>
+                                <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
+                                    <Shield size={10} className="text-red-500" />
+                                    <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">
+                                        QUANTUM SHIELD ACTIVE
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>

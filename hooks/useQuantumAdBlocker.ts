@@ -25,6 +25,11 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
         return null;
       }
 
+      // Allow AdGuard for the onboarding guide
+      if (urlStr.includes('adguard.com')) {
+        return originalOpen(url, target, features);
+      }
+
       console.warn("[QUANTUM-SHIELD] Neutralized programmatic popup to:", url);
       return null;
     };
