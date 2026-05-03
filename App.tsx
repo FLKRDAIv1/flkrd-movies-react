@@ -33,6 +33,7 @@ import GamepadHints from './components/GamepadHints';
 import VirtualCursor from './components/VirtualCursor';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { bannedService } from './services/bannedService';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { t } = useTranslation();
@@ -282,6 +283,7 @@ const App: React.FC = () => {
                 <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
                 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
                 <GamepadHints />
+                <SpeedInsights />
             </HashRouter>
         </div>
     );
