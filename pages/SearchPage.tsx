@@ -115,6 +115,14 @@ const SearchPage: React.FC = () => {
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
 
   useEffect(() => {
+    const handleBannedUpdate = () => {
+      executeSearch(inputValue);
+    };
+    window.addEventListener('banned-list-updated', handleBannedUpdate);
+    return () => window.removeEventListener('banned-list-updated', handleBannedUpdate);
+  }, [inputValue, executeSearch]);
+
+  useEffect(() => {
     if (inputValue === queryParam && results.length > 0) {
       return;
     }

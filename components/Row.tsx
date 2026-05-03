@@ -76,7 +76,11 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
   useEffect(() => {
     loadInitialData();
     window.addEventListener('storage', updateMyListIds);
-    return () => window.removeEventListener('storage', updateMyListIds);
+    window.addEventListener('banned-list-updated', loadInitialData);
+    return () => {
+        window.removeEventListener('storage', updateMyListIds);
+        window.removeEventListener('banned-list-updated', loadInitialData);
+    };
   }, [fetchUrl, items, language, updateMyListIds]);
 
   const handleToggleMyList = (e: React.MouseEvent, item: any, mediaType: 'movie' | 'tv') => {

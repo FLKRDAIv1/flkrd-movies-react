@@ -27,3 +27,5 @@ dubbed_movies_backup.json
 .env
 .env.*
 !.env.example
+.vercel
+.env*.local

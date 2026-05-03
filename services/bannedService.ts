@@ -6,12 +6,12 @@ class BannedService {
     private CACHE_TTL = 60000; // 1 minute
     private initPromise: Promise<Set<string>> | null = null;
 
-    async fetchBannedList() {
-        if (this.initPromise) return this.initPromise;
+    async fetchBannedList(force = false) {
+        if (this.initPromise && !force) return this.initPromise;
         
         this.initPromise = (async () => {
             const now = Date.now();
-            if (now - this.lastFetch < this.CACHE_TTL && this.bannedIds.size > 0) {
+            if (!force && now - this.lastFetch < this.CACHE_TTL && this.bannedIds.size > 0) {
                 return this.bannedIds;
             }
 
@@ -51,6 +51,7 @@ class BannedService {
             if (error) throw error;
             
             this.bannedIds.add(stringId);
+            this.notify();
             return true;
         } catch (err) {
             console.error("[BANNED SERVICE] Ban registration failed:", err);
@@ -82,12 +83,38 @@ class BannedService {
             if (error) throw error;
             
             this.bannedIds.delete(stringId);
+            this.notify();
             return true;
         } catch (err) {
             console.error("[BANNED SERVICE] Unban failed:", err);
             return false;
         }
     }
+
+    private notify() {
+        window.dispatchEvent(new CustomEvent('banned-list-updated'));
+    }
+
+    setupRealtime() {
+        return supabase
+            .channel('banned_content_sync')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'banned_content' },
+                async (payload) => {
+                    console.log("[BANNED SERVICE] Realtime sync received:", payload.eventType);
+                    await this.fetchBannedList(true); // Force refresh
+                    
+                    // Import and clear TMDB cache to ensure the UI removes the banned movie
+                    const { clearTMDBCache } = await import('./tmdbService');
+                    clearTMDBCache();
+                    
+                    this.notify();
+                }
+            )
+            .subscribe();
+    }
 }
 
 export const bannedService = new BannedService();
+bannedService.setupRealtime(); // Initialize immediately

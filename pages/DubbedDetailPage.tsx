@@ -43,21 +43,38 @@ const DubbedDetailPage: React.FC = () => {
     const extractEmbedSrc = (source: string) => {
         if (!source) return "";
 
-        // If the admin pasted a raw <iframe src="..."> string
+        let finalUrl = "";
+
+        // 1. Extract from iframe if needed
         if (source.includes('<iframe')) {
             const match = source.match(/src=["'](.*?)["']/);
             if (match && match[1]) {
-                return match[1];
+                finalUrl = match[1];
+            }
+        } else if (source.startsWith('http')) {
+            finalUrl = source;
+        }
+
+        if (!finalUrl) return "";
+
+        // 2. Professional Injection: Automatically fix VidKing and others
+        try {
+            if (finalUrl.includes('vidking.net')) {
+                const url = new URL(finalUrl);
+                if (!url.searchParams.has('sub')) url.searchParams.append('sub', '1');
+                if (!url.searchParams.has('subtitles')) url.searchParams.append('subtitles', '1');
+                if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
+                if (!url.searchParams.has('color')) url.searchParams.append('color', accentColor?.replace('#', '') || 'e50914');
+                finalUrl = url.toString();
+            }
+        } catch (e) {
+            // Fallback for malformed URLs
+            if (finalUrl.includes('vidking.net') && !finalUrl.includes('sub=')) {
+                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'sub=1&subtitles=1&autoplay=1';
             }
         }
 
-        // If it's already a clean URL, just return it
-        if (source.startsWith('http')) {
-            return source;
-        }
-
-        // Clean removal of the 'wrong movie' fallback (mKkhrFhjQr3CKwz)
-        return "";
+        return finalUrl;
     };
 
     const embedUrl = useMemo(() => {

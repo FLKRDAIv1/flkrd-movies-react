@@ -1,4 +1,4 @@
-import { API_BASE_URL, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU, FORBIDDEN_GENRE_IDS, FORBIDDEN_CONTENT_IDS } from '../constants';
+import { API_KEY, API_BASE_URL, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU, FORBIDDEN_GENRE_IDS, FORBIDDEN_CONTENT_IDS } from '../constants';
 import { Content } from '../types';
 import { bannedService } from './bannedService';
 
@@ -41,30 +41,32 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
   // 1. Check In-Memory Cache first (Instant)
   if (sessionCache.has(cacheKey)) {
     const cachedData = sessionCache.get(cacheKey);
-    
-    // Ensure banned list is ready
     await bannedService.fetchBannedList();
 
     if (Array.isArray(cachedData)) {
       const filtered = cachedData.filter((item: Content) => !isForbidden(item, language));
-      if (filtered.length === 0 && cachedData.length > 0) {
-          // If cache was fully banned, clear it and force re-fetch
-          sessionCache.delete(cacheKey);
-      } else {
-          return filtered;
-      }
+      if (filtered.length > 0 || cachedData.length === 0) return filtered;
     } else {
-      if (isForbidden(cachedData, language)) {
-          sessionCache.delete(cacheKey);
-          return null;
-      }
-      return cachedData;
+      if (!isForbidden(cachedData, language)) return cachedData;
     }
   }
 
-  // 2. Concurrent Fetch: Data + Banned Registry Sync
+  // 2. Check Persistent IndexedDB Cache (Pro Sync)
   try {
-    const [bannedResult, response] = await Promise.all([
+    const { db } = await import('../utils/db');
+    const persistentData = await db.getCache(cacheKey);
+    if (persistentData) {
+        sessionCache.set(cacheKey, persistentData);
+        if (Array.isArray(persistentData)) {
+            return persistentData.filter((item: Content) => !isForbidden(item, language));
+        }
+        if (!isForbidden(persistentData, language)) return persistentData;
+    }
+  } catch (e) { }
+
+  // 3. Network Fetch
+  try {
+    const [_, response] = await Promise.all([
       bannedService.fetchBannedList(),
       fetch(`${API_BASE_URL}${endpoint}`).catch(() => null)
     ]);
@@ -72,10 +74,13 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
     if (!response || !response.ok) return null;
     const rawData = await response.json();
     
-    sessionCache.set(cacheKey, rawData);
-
-    if (!rawData) return null;
+    // Normalize data
     const result = rawData.results || rawData;
+    
+    sessionCache.set(cacheKey, result);
+    
+    // Async persist to Disk
+    import('../utils/db').then(({ db }) => db.setCache(cacheKey, result));
 
     if (Array.isArray(result)) {
       return result.filter((item: Content) => !isForbidden(item, language));
@@ -126,4 +131,10 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
   } catch (error) {
     return null;
   }
+};
+
+export const fetchExternalIds = async (id: string | number, type: 'movie' | 'tv') => {
+  const endpoint = `/${type}/${id}/external_ids?api_key=${API_KEY}`;
+  const data = await fetchData(endpoint, 'en');
+  return data;
 };

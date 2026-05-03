@@ -200,11 +200,27 @@ const HomePage: React.FC = () => {
     
     initialize();
 
+    // Realtime Sync for Dubbed Movies
+    const dubbedSubscription = supabase
+      .channel('dubbed_movies_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dubbed_movies' },
+        () => {
+          console.log("[HP] Realtime Dubbed Update detected");
+          loadDubbed();
+        }
+      )
+      .subscribe();
+
     window.addEventListener('storage', loadHistory);
     window.addEventListener('watchProgressUpdated', loadHistory);
+    window.addEventListener('banned-list-updated', loadDubbed);
     return () => {
+      dubbedSubscription.unsubscribe();
       window.removeEventListener('storage', loadHistory);
       window.removeEventListener('watchProgressUpdated', loadHistory);
+      window.removeEventListener('banned-list-updated', loadDubbed);
     };
   }, [loadHistory, loadDubbed]);
 

@@ -9,7 +9,7 @@ import {
   ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, SeasonDetails, Episode, WatchProgress } from '../types';
-import { fetchData, isForbidden } from '../services/tmdbService';
+import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -17,6 +17,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
+import { subtitleService } from '../services/subtitleService';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -81,6 +82,8 @@ const TVDetailPage: React.FC = () => {
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [imdbId, setImdbId] = useState<string | null>(null);
 
   // Binge Mode Logic
   const [isBingeEnabled, setIsBingeEnabled] = useState(() => localStorage.getItem('flkrd_binge_mode') === 'true');
@@ -89,6 +92,51 @@ const TVDetailPage: React.FC = () => {
   const countdownTimerRef = useRef<number | null>(null);
 
   const sources = getRankedSources();
+
+  // [SUBTITLE SYNC] Fetch episode-specific subtitles
+  useEffect(() => {
+    const fetchEpisodeSubtitles = async () => {
+      if (!id || !isPlayerModalOpen) return;
+      setSubtitleUrl(null); // Reset for new episode
+      try {
+        const externalIds = await fetchExternalIds(id, 'tv');
+        if (externalIds && externalIds.imdb_id) {
+          setImdbId(externalIds.imdb_id);
+          const results = await subtitleService.searchSubtitles(
+            externalIds.imdb_id, 
+            'tv', 
+            selectedSeason, 
+            selectedEpisode, 
+            'ku'
+          );
+          if (results && results.length > 0) {
+            const downloadLink = await subtitleService.getDownloadLink(results[0].attributes.file_id);
+            if (downloadLink) {
+              const blobUrl = await subtitleService.getSubtitleBlob(downloadLink);
+              if (blobUrl) {
+                console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, blobUrl);
+                setSubtitleUrl(blobUrl);
+                addNotification({ 
+                  type: 'success', 
+                  title: 'ژێرنووسی کوردی', 
+                  message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
+                });
+              }
+            }
+          } else {
+            addNotification({ 
+              type: 'info', 
+              title: 'ژێرنووس', 
+              message: `ببورە، ژێرنووسی کوردی بۆ S${selectedSeason} E${selectedEpisode} بەردەست نییە.` 
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[SUBTITLE SYNC] Error fetching TV tracks:", e);
+      }
+    };
+    fetchEpisodeSubtitles();
+  }, [id, selectedSeason, selectedEpisode, isPlayerModalOpen]);
 
   const toggleBingeMode = () => {
     const newState = !isBingeEnabled;
@@ -291,8 +339,8 @@ const TVDetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center" dir="ltr">
-            <div className="w-full max-w-6xl flex items-center justify-between p-3 md:p-4 bg-black/50 backdrop-blur-md border-b border-white/5 z-[300]">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
+            <div className="w-full flex items-center justify-between p-3 md:p-4 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
               <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/10 rounded-xl p-2 hover:bg-red-600 transition-colors"><X size={20} /></button>
               <div className="text-center px-4">
                 <p className="text-red-600 font-black uppercase text-[10px] tracking-[0.2em]">{content.name}</p>
@@ -302,7 +350,7 @@ const TVDetailPage: React.FC = () => {
                 <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
               </button>
             </div>
-            <div className="w-full max-w-6xl aspect-video relative bg-black shadow-2xl border border-white/5 overflow-hidden">
+            <div className="flex-1 w-full relative bg-black overflow-hidden">
               {isPlayerLoading && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10"><Spinner /></div>}
               <AnimatePresence>
                 {showBingeCountdown && (
@@ -317,7 +365,7 @@ const TVDetailPage: React.FC = () => {
                           className="text-red-600"
                           strokeDasharray="364"
                           initial={{ strokeDashoffset: 364 }}
-                          animate={{ strokeDashoffset: Math.max(0, 364 - (364 * (10 - countdown) / 10)) }}
+                          animate={{ strokeDashoffset: Math.max(0, 364 - (364 * (10 - (countdown ?? 10)) / 10)) }}
                           transition={{ duration: 1, ease: "linear" }}
                         />
                       </svg>
@@ -333,11 +381,16 @@ const TVDetailPage: React.FC = () => {
                 )}
               </AnimatePresence>
               <UniversalVideoPlayer
-                src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress)}
+                src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
                 accentColor={accentColor}
                 language={language}
                 onLoad={() => setIsPlayerLoading(false)}
                 onProgress={handlePlayerProgress}
+                subtitleUrl={subtitleUrl || undefined}
+                imdbId={imdbId || content?.imdb_id}
+                contentType="tv"
+                season={selectedSeason}
+                episode={selectedEpisode}
               />
 
               <AnimatePresence>

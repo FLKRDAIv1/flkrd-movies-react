@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, Link as LinkIcon, Send, Facebook, AlertTriangle, RefreshCcw, ArrowLeft, Shield, MapPin, Award, Timer, TrendingUp, Volume2, VolumeX, Cpu
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, WatchProgress } from '../types';
-import { fetchData, isForbidden } from '../services/tmdbService';
+import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
 import Spinner from '../components/Spinner';
 import Row from '../components/Row';
@@ -19,6 +19,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
+import { subtitleService } from '../services/subtitleService';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -69,6 +70,8 @@ const DetailPage: React.FC = () => {
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [imdbId, setImdbId] = useState<string | null>(null);
 
   const [bingeMode, setBingeMode] = useState(() => {
     try { return localStorage.getItem('flkrd_binge_mode') === 'true'; } catch (e) { return false; }
@@ -171,6 +174,38 @@ const DetailPage: React.FC = () => {
           if (saved) {
             setInitialProgress(saved.progress || 0);
           }
+
+          // [SUBTITLE SYNC] Search for Kurdish subtitles using OpenSubtitles
+          try {
+            const externalIds = await fetchExternalIds(id, 'movie');
+            if (externalIds && externalIds.imdb_id) {
+                setImdbId(externalIds.imdb_id);
+                const results = await subtitleService.searchSubtitles(externalIds.imdb_id, 'movie', undefined, undefined, 'ku');
+                if (results && results.length > 0) {
+                    const downloadLink = await subtitleService.getDownloadLink(results[0].attributes.file_id);
+                    if (downloadLink) {
+                        const blobUrl = await subtitleService.getSubtitleBlob(downloadLink);
+                        if (blobUrl) {
+                            console.log("[SUBTITLE SYNC] Kurdish Track Established:", blobUrl);
+                            setSubtitleUrl(blobUrl);
+                            addNotification({ 
+                              type: 'success', 
+                              title: 'ژێرنووسی کوردی', 
+                              message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
+                            });
+                        }
+                    }
+                } else {
+                    addNotification({ 
+                      type: 'info', 
+                      title: 'ژێرنووس', 
+                      message: 'ببورە، ژێرنووسی کوردی بۆ ئەم بەرهەمە لە OpenSubtitles نەدۆزرایەوە.' 
+                    });
+                }
+            }
+          } catch (e) {
+              console.warn("[SUBTITLE SYNC] Error fetching automated tracks:", e);
+          }
         } else {
             addNotification({ type: 'error', title: 'SIGNAL LOST', message: 'The requested node is unavailable in the global archive.' });
             navigate(-1);
@@ -252,8 +287,8 @@ const DetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[200] flex flex-col items-center justify-center backdrop-blur-3xl" dir="ltr">
-            <div className="w-full max-w-7xl flex items-center justify-between p-4 md:p-6 bg-black/40 backdrop-blur-xl border-b border-white/5 z-[300]">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
+            <div className="w-full flex items-center justify-between p-4 md:p-6 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
               <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
                 <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
               </button>
@@ -269,14 +304,17 @@ const DetailPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="w-full max-w-7xl aspect-video relative bg-black shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 overflow-hidden">
+            <div className="flex-1 w-full relative bg-black overflow-hidden">
               {isPlayerLoading && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10"><Spinner /><span className="mt-6 text-[10px] font-black tracking-[0.5em] text-red-600 animate-pulse uppercase">Syncing Stream...</span></div>}
               <UniversalVideoPlayer
-                src={getSourceUrl(activeSource, id!, 'movie', undefined, undefined, initialProgress)}
+                src={getSourceUrl(activeSource, id!, 'movie', undefined, undefined, initialProgress, accentColor, subtitleUrl || undefined)}
                 accentColor={accentColor}
                 language={language}
                 onLoad={() => setIsPlayerLoading(false)}
                 onProgress={handlePlayerProgress}
+                subtitleUrl={subtitleUrl || undefined}
+                imdbId={imdbId || content?.imdb_id}
+                contentType="movie"
               />
 
               <AnimatePresence>

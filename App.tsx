@@ -27,6 +27,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import Portal from './components/Portal';
+import DesktopTitleBar from './components/DesktopTitleBar';
 import { fetchData } from './services/tmdbService';
 import { requests } from './constants';
 import GamepadHints from './components/GamepadHints';
@@ -151,6 +152,9 @@ const App: React.FC = () => {
     useSpatialNavigation();
 
     useEffect(() => {
+        if ((window as any).__TAURI_INTERNALS__) {
+            document.body.classList.add('is-tauri');
+        }
         bannedService.fetchBannedList();
         const timer = setTimeout(() => setLoading(false), 0);
         return () => clearTimeout(timer);
@@ -254,11 +258,12 @@ const App: React.FC = () => {
 
     return (
         <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
+            <DesktopTitleBar />
             <PremiumBackground />
             <HashRouter>
                 <div className="flex flex-1 h-full overflow-hidden relative">
                     <Sidebar />
-                    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+                    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pt-10 tauri-only-pt">
                         <Header scrolled={scrolled} />
                         <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
                             <Routes>

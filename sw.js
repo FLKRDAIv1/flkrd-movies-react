@@ -67,6 +67,23 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  const isSubtitleRequest = [
+    'thingproxy.freeboard.io',
+    'api.codetabs.com',
+    'api.allorigins.win',
+    'corsproxy.io',
+    'worker-proud-sun-6804.zanafaroq.workers.dev',
+    'api.opensubtitles.com',
+    'strem.io',
+    'opensubtitles-v3.strem.io'
+  ].some(domain => url.hostname.includes(domain));
+
+  // 1. Bypass all subtitle requests immediately (let browser handle them directly)
+  if (isSubtitleRequest) {
+    return; // Falling through lets browser handle the request normally
+  }
+
   // --- REAL-TIME AD BLOCKER INTERCEPTION ---
   if (isAdRequest(event.request.url)) {
     console.log(`[Flkrd AdBlocker] Intercepted and blocked: ${event.request.url}`);
@@ -87,11 +104,13 @@ self.addEventListener('fetch', event => {
 
   // --- ENGINE V5: ADAPTIVE NETWORK POLICY ---
   // Bypass caching entirely for non-GET methods (POST, DELETE, PUT, PATCH)
-  // This ensures Admin Panel operations (remove/edit) always talk to the server
   if (event.request.method !== 'GET') {
     event.respondWith(
       fetch(event.request).catch(err => {
-        console.warn("[SW] Background fetch failed for non-GET method:", err);
+        // Only warn for local domains, ignore external failures
+        if (url.origin === self.location.origin) {
+            console.warn("[SW] Background fetch failed for non-GET method:", err);
+        }
         return new Response(JSON.stringify({ error: 'Network failure', message: err.message }), {
             status: 503,
             headers: { 'Content-Type': 'application/json' }
@@ -102,11 +121,9 @@ self.addEventListener('fetch', event => {
   }
 
   // --- BYPASS LOGIC ---
-  const url = new URL(event.request.url);
-
-  // 1. Bypass all external traffic (Streaming, APIs, etc.)
+  // 2. Bypass all external traffic (Streaming, APIs, etc.)
   if (url.origin !== self.location.origin) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(fetch(event.request).catch(() => {}));
     return;
   }
 

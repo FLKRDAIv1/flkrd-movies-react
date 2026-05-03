@@ -222,3 +222,25 @@ html.console-mode-active .web-only {
   display: none !important;
 }
 
+/* ════════════════════════════════════════════════
+   🚀 TAURI DESKTOP MODE — Native Integration
+   ════════════════════════════════════════════════ */
+
+.is-tauri .tauri-only-pt {
+  padding-top: 2.5rem !important; /* Matches TitleBar height (10) */
+}
+
+/* Ensure nothing covers the title bar controls */
+.is-tauri #desktop-title-bar-portal {
+  position: relative;
+  z-index: 9999;
+}
+
+/* Fix for transparent window backgrounds */
+.is-tauri body {
+  background-color: transparent !important;
+}
+
+[data-tauri-drag-region] {
+  cursor: default;
+}

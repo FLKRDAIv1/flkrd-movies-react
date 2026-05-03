@@ -16,6 +16,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
     const id = String(Date.now() + Math.random());
     setNotifications(prev => [...prev, { ...notification, id }]);
+    
+    // Native Sync: Trigger Tauri system notification
+    if (notification.type !== 'info') { // Only notify system for important events
+        import('../services/tauriService').then(({ tauriService }) => {
+            tauriService.notify(notification.title, notification.message);
+        });
+    }
   }, []);
 
   const removeNotification = useCallback((id: string) => {

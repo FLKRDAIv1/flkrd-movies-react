@@ -203,6 +203,7 @@ const ContinueWatchingPortal: React.FC = () => {
                 strokeWidth="4" 
                 fill="none" 
                 strokeDasharray="100 100" 
+                initial={{ strokeDashoffset: 100 }}
                 animate={{ strokeDashoffset: 100 - (activeItem ? progressPercent : 0) }} 
                 transition={{ duration: 1.5, ease: "easeOut" }} 
             />
