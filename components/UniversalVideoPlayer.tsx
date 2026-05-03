@@ -374,7 +374,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             `}</style>
             {!loading && (
                 <>
-                    {/* Fullscreen button removed as the player now auto-fills the screen (Pseudo-Fullscreen) */}
+                    {/* Top-Left: Brand Watermark */}
+                    <div className="absolute top-4 left-4 md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500">
+                        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                            {/* Glossy reflection */}
+                            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
+                            <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">
+                                F
+                            </span>
+                        </div>
+                    </div>
 
                     {/* Top-Right: Settings Menu */}
                     <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-2">
@@ -428,7 +437,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                     {language === 'ku' ? 'ڕەنگی نوسین' : 'Typography Color'}
                                                 </label>
                                                 <div className="flex gap-3">
-                                                    {['#ffffff', '#facc15', '#22d3ee', '#4ade80'].map(c => (
+                                                    {['#ffffff', '#facc15', '#22d3ee', '#4ade80', '#ef4444'].map(c => (
                                                         <button 
                                                             key={c}
                                                             onClick={() => setSubtitleColor(c)}
