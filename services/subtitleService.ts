@@ -160,12 +160,37 @@ export const subtitleService = {
     async getDownloadLink(fileId: number) {
         if (fileId === 0) return null;
         try {
+            // 1. Try Vercel Serverless Function (Bypasses Browser User-Agent Restrictions)
+            try {
+                // Determine if we are in production or local. 
+                // For local, we can try to hit the deployed production endpoint if we know it, 
+                // but relative path /api/subtitle will work in prod or if using vercel dev.
+                const apiUrl = window.location.hostname === 'localhost' 
+                    ? 'https://mb-flix.vercel.app/api/subtitle' // Try prod Vercel if on localhost
+                    : '/api/subtitle';
+                
+                const apiRes = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ file_id: fileId })
+                });
+
+                if (apiRes.ok) {
+                    const data = await apiRes.json();
+                    if (data && data.link) return data.link;
+                }
+            } catch (apiErr) {
+                console.warn("[SUBTITLE SERVICE] Vercel API failed, falling back to proxy fetch.", apiErr);
+            }
+
+            // 2. Fallback to Proxy Rotator (Will likely fail in browsers due to Kong User-Agent block)
             const response = await this.fetchWithFallback('https://api.opensubtitles.com/api/v1/download', {
                 method: 'POST',
                 headers: {
                     'Api-Key': OPENSUBTITLES_API_KEY,
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'User-Agent': USER_AGENT
                 },
                 body: JSON.stringify({ file_id: fileId })
             });
