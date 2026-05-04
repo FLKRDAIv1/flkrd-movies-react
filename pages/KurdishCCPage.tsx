@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Subtitles, ArrowRight, ArrowLeft, Trash2, Clapperboard, MonitorPlay } from 'lucide-react';
-import { kurdishCcService, KurdishCCEntry } from '../services/kurdishCcService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Spinner from '../components/Spinner';
+import { Content } from '../types';
 
 const KurdishCCPage: React.FC = () => {
-    const [items, setItems] = useState<KurdishCCEntry[]>([]);
+    const [items, setItems] = useState<Content[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { t, language } = useTranslation();
@@ -24,20 +24,40 @@ const KurdishCCPage: React.FC = () => {
 
     const loadData = async () => {
         setLoading(true);
-        const data = await kurdishCcService.getAll();
-        setItems(data);
-        setLoading(false);
-    };
+        try {
+            const { subtitleService } = await import('../services/subtitleService');
+            const { fetchDetails } = await import('../services/tmdbService');
+            
+            // 1. Fetch from OpenSubtitles REST API
+            const subData = await subtitleService.fetchLatestKurdishMovies();
+            
+            // 2. Extract and Deduplicate TMDB IDs
+            const seenIds = new Set<number>();
+            const uniqueEntries: { id: number, type: 'movie' | 'tv' }[] = [];
+            
+            subData.forEach((sub: any) => {
+                const attrs = sub.attributes;
+                const tmdbId = attrs.feature_details?.tmdb_id;
+                const type = attrs.feature_details?.feature_type?.toLowerCase() === 'movie' ? 'movie' : 'tv';
+                
+                if (tmdbId && !seenIds.has(tmdbId)) {
+                    seenIds.add(tmdbId);
+                    uniqueEntries.push({ id: tmdbId, type: type as any });
+                }
+            });
 
-    const handleRemove = async (e: React.MouseEvent, tmdbId: number) => {
-        e.stopPropagation();
-        if (!window.confirm('Remove from Kurdish CC Registry?')) return;
-        
-        const success = await kurdishCcService.remove(tmdbId);
-        if (success) {
-            setItems(prev => prev.filter(item => item.tmdb_id !== tmdbId));
-            addNotification({ type: 'success', title: 'Removed', message: 'Movie removed from registry.' });
+            // 3. Fetch full TMDB details for the top items
+            const limitedEntries = uniqueEntries.slice(0, 30);
+            const detailResults = await Promise.all(
+                limitedEntries.map(entry => fetchDetails(entry.id, entry.type, language))
+            );
+
+            // 4. Set the items directly
+            setItems(detailResults.filter(d => d !== null) as Content[]);
+        } catch (err) {
+            console.error("[KurdishCCPage] Error loading data:", err);
         }
+        setLoading(false);
     };
 
     const ColorMixtureDivider = () => (
@@ -84,18 +104,22 @@ const KurdishCCPage: React.FC = () => {
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-40 gap-6 relative z-10">
-                    <Spinner size="lg" />
-                    <span className="text-sec-text font-black uppercase tracking-[0.5em] animate-pulse text-sm">Syncing Registry...</span>
+                    <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="w-16 h-16 border-4 border-red-500/30 border-t-red-600 rounded-full"
+                    />
+                    <span className="text-sec-text font-black uppercase tracking-[0.5em] animate-pulse text-sm">Syncing with OpenSubtitles...</span>
                 </div>
             ) : items.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-8 relative z-10">
                     {items.map((item, index) => (
                         <motion.div
-                            key={`${item.tmdb_id}-${index}`}
+                            key={`${item.id}-${index}`}
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: index * 0.05 }}
-                            onClick={() => navigate(`/details/${item.media_type}/${item.tmdb_id}`)}
+                            onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)}
                             className="cursor-pointer group relative"
                             whileHover={{ y: -8, scale: 1.02 }}
                         >
@@ -104,7 +128,7 @@ const KurdishCCPage: React.FC = () => {
                                     <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt={item.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
                                 ) : (
                                     <div className="w-full h-full bg-box-bg flex items-center justify-center">
-                                        {item.media_type === 'movie' ? <Clapperboard size={40} className="text-sec-text/30" /> : <MonitorPlay size={40} className="text-sec-text/30" />}
+                                        <Clapperboard size={40} className="text-sec-text/30" />
                                     </div>
                                 )}
                                 
@@ -116,19 +140,8 @@ const KurdishCCPage: React.FC = () => {
                                 </div>
 
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
-                                    <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title}</p>
+                                    <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
                                 </div>
-
-                                {isAdmin && (
-                                    <div className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100 transition-all">
-                                        <button 
-                                            onClick={(e) => handleRemove(e, item.tmdb_id)}
-                                            className="p-3 bg-red-600/80 backdrop-blur-md rounded-2xl text-white border border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:bg-red-600 hover:scale-110 active:scale-95 transition-all"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                )}
                             </div>
                         </motion.div>
                     ))}

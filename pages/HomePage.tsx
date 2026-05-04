@@ -192,23 +192,39 @@ const HomePage: React.FC = () => {
   
   const loadKurdishCC = useCallback(async () => {
     try {
-      const data = await kurdishCcService.getAll();
-      if (data && data.length > 0) {
-        const formatted: Content[] = data.map(item => ({
-          id: item.tmdb_id,
-          title: item.title,
-          poster_path: item.poster_path,
-          backdrop_path: item.poster_path, // Fallback to poster for backdrop in row
-          overview: '',
-          vote_average: 0,
-          media_type: item.media_type
+      const { subtitleService } = await import('../services/subtitleService');
+      const subData = await subtitleService.fetchLatestKurdishMovies();
+      
+      const seenIds = new Set<number>();
+      const uniqueEntries: { id: number, type: 'movie' | 'tv' }[] = [];
+      
+      subData.forEach((sub: any) => {
+        const attrs = sub.attributes;
+        const tmdbId = attrs.feature_details?.tmdb_id;
+        const type = attrs.feature_details?.feature_type?.toLowerCase() === 'movie' ? 'movie' : 'tv';
+        if (tmdbId && !seenIds.has(tmdbId)) {
+          seenIds.add(tmdbId);
+          uniqueEntries.push({ id: tmdbId, type: type as any });
+        }
+      });
+
+      // Fetch top 12 for the home row
+      const detailResults = await Promise.all(
+        uniqueEntries.slice(0, 12).map(entry => fetchData(`/${entry.type}/${entry.id}?api_key=${API_KEY}&language=${langCode}`))
+      );
+
+      const formatted: Content[] = detailResults
+        .filter(d => d !== null)
+        .map(d => ({
+          ...d,
+          media_type: d.title ? 'movie' : 'tv'
         }));
-        setKurdishCCItems(formatted);
-      }
+
+      setKurdishCCItems(formatted);
     } catch (err) {
       console.error("[HP] Kurdish CC Load Error:", err);
     }
-  }, []);
+  }, [langCode]);
 
   useEffect(() => {
     // Parallel Initialization Protocol

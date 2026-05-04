@@ -93,22 +93,6 @@ class CCDetectionService {
                     }
                 }
 
-                if (hasCC) {
-                    // Fetch TMDB details to save in registry
-                    try {
-                        const { kurdishCcService } = await import('./kurdishCcService');
-                        const tmdbRes = await fetch(`https://api.themoviedb.org/3/${item.type}/${item.tmdbId}?api_key=4289a4cd43dc2c2c04cc47ab890c2132`);
-                        if (tmdbRes.ok) {
-                            const tmdbData = await tmdbRes.json();
-                            const title = tmdbData.title || tmdbData.name;
-                            const poster = tmdbData.poster_path;
-                            await kurdishCcService.register(item.tmdbId, item.type, title, poster);
-                        }
-                    } catch (registryErr) {
-                        console.error("[CC DETECT] Registry error:", registryErr);
-                    }
-                }
-
                 this.saveToStorage(key, hasCC);
                 item.resolve(hasCC);
             } catch (err) {

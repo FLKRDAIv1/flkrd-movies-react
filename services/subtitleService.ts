@@ -19,6 +19,27 @@ export interface SubtitleResult {
 }
 
 export const subtitleService = {
+    async fetchLatestKurdishMovies() {
+        try {
+            const url = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
+            const response = await this.fetchWithFallback(url, {
+                headers: {
+                    'Api-Key': OPENSUBTITLES_API_KEY,
+                    'User-Agent': USER_AGENT
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.data || [];
+            }
+            return [];
+        } catch (err) {
+            console.error("[SUBTITLE SERVICE] Error fetching latest Kurdish movies:", err);
+            return [];
+        }
+    },
+
     async fetchWithFallback(url: string, options: any = {}) {
         // --- STEP 1: TAURI NATIVE FETCH (Bypasses CORS entirely) ---
         try {
