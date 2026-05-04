@@ -159,7 +159,8 @@ export const subtitleService = {
                 method: 'POST',
                 headers: {
                     'Api-Key': OPENSUBTITLES_API_KEY,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ file_id: fileId })
             });
