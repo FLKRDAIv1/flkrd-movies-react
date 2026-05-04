@@ -53,10 +53,15 @@ export const subtitleService = {
                 // We ONLY send headers if it's the 'direct' attempt.
                 // For proxies, we try to keep it simple.
                 const isDirect = proxy.type === 'direct';
+                const supportsHeaders = ['direct', 'corsproxy', 'codetabs'].includes(proxy.type);
+                
+                // If it's a POST request but the proxy doesn't support headers, skip it
+                if (options.method === 'POST' && !supportsHeaders) continue;
+
                 const fetchOptions: any = {
                     method: options.method || 'GET',
                     body: options.body,
-                    headers: isDirect ? (options.headers || {}) : { 'Accept': '*/*' }
+                    headers: supportsHeaders ? (options.headers || {}) : { 'Accept': '*/*' }
                 };
 
                 const response = await fetch(proxy.url, fetchOptions);

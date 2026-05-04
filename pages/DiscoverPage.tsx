@@ -10,6 +10,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { bannedService } from '../services/bannedService';
+import KurdishCCBadge from '../components/KurdishCCBadge';
 
 type Selection = 'hollywood' | 'bollywood' | 'infinity' | 'country' | 'animations';
 
@@ -314,6 +315,12 @@ const DiscoverPage: React.FC = () => {
                                         >
                                             <div className="relative aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-border-color group-hover:border-brand/50 transition-all duration-700 shadow-2xl">
                                               <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                                              
+                                              {/* Kurdish CC Badge */}
+                                              {!String(item.id).startsWith('custom_') && (
+                                                <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                                              )}
+
                                               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
                                                   <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
                                               </div>

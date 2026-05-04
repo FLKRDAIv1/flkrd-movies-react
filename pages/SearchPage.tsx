@@ -11,6 +11,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { clearTMDBCache } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
+import KurdishCCBadge from '../components/KurdishCCBadge';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
@@ -341,6 +342,11 @@ const SearchPage: React.FC = () => {
                       alt={item.title || item.name} 
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
                     />
+
+                    {/* Kurdish CC Badge (Auto-detect via queue) */}
+                    {!String(item.id).startsWith('custom_') && (
+                      <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                    )}
                     
                     <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
                         {item.media_type === 'dubbed' && (
