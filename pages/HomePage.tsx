@@ -7,10 +7,11 @@ import { requests, IMAGE_BASE_URL } from '../constants';
 import { WatchProgress, Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { fetchData } from '../services/tmdbService';
-import { Play, Sparkles, Mic2 } from 'lucide-react';
+import { Play, Sparkles, Mic2, Subtitles } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
+import { kurdishCcService, KurdishCCEntry } from '../services/kurdishCcService';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
@@ -95,6 +96,7 @@ const HomePage: React.FC = () => {
   const [continueWatchingItems, setContinueWatchingItems] = useState<WatchProgress[]>([]);
   const [recentlyViewedItems, setRecentlyViewedItems] = useState<WatchProgress[]>([]);
   const [dubbedItems, setDubbedItems] = useState<Content[]>([]);
+  const [kurdishCCItems, setKurdishCCItems] = useState<Content[]>([]);
 
   const loadHistory = useCallback(() => {
     try {
@@ -187,6 +189,26 @@ const HomePage: React.FC = () => {
       }
     }
   }, []);
+  
+  const loadKurdishCC = useCallback(async () => {
+    try {
+      const data = await kurdishCcService.getAll();
+      if (data && data.length > 0) {
+        const formatted: Content[] = data.map(item => ({
+          id: item.tmdb_id,
+          title: item.title,
+          poster_path: item.poster_path,
+          backdrop_path: item.poster_path, // Fallback to poster for backdrop in row
+          overview: '',
+          vote_average: 0,
+          media_type: item.media_type
+        }));
+        setKurdishCCItems(formatted);
+      }
+    } catch (err) {
+      console.error("[HP] Kurdish CC Load Error:", err);
+    }
+  }, []);
 
   useEffect(() => {
     // Parallel Initialization Protocol
@@ -194,6 +216,7 @@ const HomePage: React.FC = () => {
         loadHistory();
         await Promise.all([
             loadDubbed(),
+            loadKurdishCC(),
             bannedService.fetchBannedList()
         ]);
     };
@@ -259,6 +282,25 @@ const HomePage: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {kurdishCCItems.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="relative">
+              <Row 
+                title={language === 'ku' ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
+                items={kurdishCCItems} 
+              />
+              <div className="absolute top-2 right-6 md:right-32 flex items-center gap-2 bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-500/30">
+                <Subtitles size={12} className="text-red-500" />
+                <span className="text-[9px] font-black text-white uppercase tracking-wider">PREMIUM CC</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         <Row title={t('trendingNow')} fetchUrl={requests.fetchTrending(langCode)} />
         
