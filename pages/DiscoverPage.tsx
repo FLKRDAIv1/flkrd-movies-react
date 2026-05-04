@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2, Trash2 } from 'lucide-react';
+import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2, Trash2, Subtitles } from 'lucide-react';
 import { Content } from '../types';
 import { fetchPaginatedData } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
