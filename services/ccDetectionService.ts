@@ -40,6 +40,14 @@ class CCDetectionService {
         const stored = this.loadFromStorage(key);
         if (stored !== null) {
             this.cache.set(key, stored);
+            
+            // If it's cached as true, we should make sure it's in Supabase registry
+            // We can push it to the queue just to fetch TMDB details and register it.
+            if (stored === true) {
+                this.queue.push({ tmdbId, type, resolve: () => {} });
+                this.processQueue();
+            }
+            
             return stored;
         }
 
