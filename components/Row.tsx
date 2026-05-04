@@ -10,6 +10,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
+import KurdishCCBadge from './KurdishCCBadge';
 
 interface RowProps {
   title: string;
@@ -229,6 +230,11 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
                     className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
                     loading="lazy"
                   />
+
+                  {/* Kurdish CC Badge (Auto-detect via queue) */}
+                  {!String(item.id).startsWith('custom_') && (
+                    <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType as 'movie' | 'tv'} />
+                  )}
 
                   <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
                       {!isProgressRow && (
