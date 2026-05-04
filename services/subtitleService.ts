@@ -21,26 +21,30 @@ export interface SubtitleResult {
 export const subtitleService = {
     async fetchLatestKurdishMovies() {
         try {
-            // Call our Vercel Serverless Proxy to avoid CORS and 400 errors
-            const url = `/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
-            const response = await fetch(url);
+            // On Vercel, /api/subtitle is a real serverless function.
+            // In Vite dev, it returns the JS source file — so we check content-type first.
+            const proxyUrl = `/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
+            const proxyRes = await fetch(proxyUrl).catch(() => null);
 
-            if (response.ok) {
-                const data = await response.json();
-                return data.data || [];
+            if (proxyRes && proxyRes.ok) {
+                const ct = proxyRes.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await proxyRes.json();
+                    return data.data || [];
+                }
             }
-            
-            // Fallback if local API is not available (e.g. standard vite dev)
-            // We use the proxy with basic headers
-            const fallbackUrl = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
-            const fbRes = await this.fetchWithFallback(fallbackUrl, {
+
+            // Fallback: direct OpenSubtitles call (works in Vite dev if not blocked)
+            const directUrl = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
+            const directRes = await this.fetchWithFallback(directUrl, {
                 headers: {
                     'Api-Key': OPENSUBTITLES_API_KEY,
-                    'User-Agent': USER_AGENT
+                    'User-Agent': USER_AGENT,
+                    'Accept': 'application/json'
                 }
             });
-            if (fbRes.ok) {
-                const data = await fbRes.json();
+            if (directRes && directRes.ok) {
+                const data = await directRes.json();
                 return data.data || [];
             }
             return [];

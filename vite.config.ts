@@ -8,6 +8,18 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/api/subtitle': {
+            target: 'https://api.opensubtitles.com',
+            rewrite: (path) => path.replace(/^\/api\/subtitle/, '/api/v1/subtitles'),
+            changeOrigin: true,
+            headers: {
+              'Api-Key': 'TMK1BRNZCmW3AfZaJBZiGlieOD8Cq1hl',
+              'User-Agent': 'flkrd_movies_v1',
+              'Accept': 'application/json'
+            }
+          }
+        },
         headers: {
           // Allow eval (needed by Vite HMR + some streaming players)
           // Allow blob: and data: URIs (needed by HLS.js and video providers)
