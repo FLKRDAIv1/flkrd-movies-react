@@ -13,8 +13,38 @@ export default async function handler(req, res) {
         return res.status(200).end();
     }
 
+    if (req.method === 'GET') {
+        const { languages, order_by, order_direction, tmdb_id, type } = req.query;
+        
+        try {
+            const OPENSUBTITLES_API_KEY = 'TMK1BRNZCmW3AfZaJBZiGlieOD8Cq1hl';
+            const USER_AGENT = 'flkrd_movies_v1';
+
+            let url = `https://api.opensubtitles.com/api/v1/subtitles?`;
+            if (languages) url += `languages=${languages}&`;
+            if (order_by) url += `order_by=${order_by}&`;
+            if (order_direction) url += `order_direction=${order_direction}&`;
+            if (tmdb_id) url += `tmdb_id=${tmdb_id}&`;
+            if (type) url += `type=${type}&`;
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Api-Key': OPENSUBTITLES_API_KEY,
+                    'User-Agent': USER_AGENT,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await response.json();
+            return res.status(response.status).json(data);
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    }
+
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed. Use POST.' });
+        return res.status(405).json({ error: 'Method not allowed. Use POST or GET.' });
     }
 
     try {
@@ -39,12 +69,7 @@ export default async function handler(req, res) {
         });
 
         const data = await response.json();
-        
-        if (!response.ok) {
-            return res.status(response.status).json(data);
-        }
-
-        return res.status(200).json(data);
+        return res.status(response.status).json(data);
     } catch (error) {
         console.error("Vercel Subtitle Proxy Error:", error);
         return res.status(500).json({ error: error.message || 'Internal Server Error' });

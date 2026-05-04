@@ -21,16 +21,26 @@ export interface SubtitleResult {
 export const subtitleService = {
     async fetchLatestKurdishMovies() {
         try {
-            const url = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
-            const response = await this.fetchWithFallback(url, {
+            // Call our Vercel Serverless Proxy to avoid CORS and 400 errors
+            const url = `/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
+            const response = await fetch(url);
+
+            if (response.ok) {
+                const data = await response.json();
+                return data.data || [];
+            }
+            
+            // Fallback if local API is not available (e.g. standard vite dev)
+            // We use the proxy with basic headers
+            const fallbackUrl = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
+            const fbRes = await this.fetchWithFallback(fallbackUrl, {
                 headers: {
                     'Api-Key': OPENSUBTITLES_API_KEY,
                     'User-Agent': USER_AGENT
                 }
             });
-
-            if (response.ok) {
-                const data = await response.json();
+            if (fbRes.ok) {
+                const data = await fbRes.json();
                 return data.data || [];
             }
             return [];
