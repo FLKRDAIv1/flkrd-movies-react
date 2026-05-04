@@ -7,11 +7,12 @@ import { requests, IMAGE_BASE_URL } from '../constants';
 import { WatchProgress, Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { fetchData } from '../services/tmdbService';
-import { Play, Sparkles, Mic2, Subtitles } from 'lucide-react';
+import { Play, Sparkles, Subtitles } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
-import { kurdishCcService, KurdishCCEntry } from '../services/kurdishCcService';
+import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
+import { API_KEY, API_BASE_URL } from '../constants';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
@@ -192,35 +193,19 @@ const HomePage: React.FC = () => {
   
   const loadKurdishCC = useCallback(async () => {
     try {
-      const { subtitleService } = await import('../services/subtitleService');
-      const subData = await subtitleService.fetchLatestKurdishMovies();
-      
-      const seenIds = new Set<number>();
-      const uniqueEntries: { id: number, type: 'movie' | 'tv' }[] = [];
-      
-      subData.forEach((sub: any) => {
-        const attrs = sub.attributes;
-        const tmdbId = attrs.feature_details?.tmdb_id;
-        const type = attrs.feature_details?.feature_type?.toLowerCase() === 'movie' ? 'movie' : 'tv';
-        if (tmdbId && !seenIds.has(tmdbId)) {
-          seenIds.add(tmdbId);
-          uniqueEntries.push({ id: tmdbId, type: type as any });
-        }
-      });
-
-      // Fetch top 12 for the home row
-      const detailResults = await Promise.all(
-        uniqueEntries.slice(0, 12).map(entry => fetchData(`/${entry.type}/${entry.id}?api_key=${API_KEY}&language=${langCode}`))
+      // Use the curated registry and fetch from TMDB directly (no CORS issues)
+      const top12 = KURDISH_CC_REGISTRY.slice(0, 12);
+      const results = await Promise.all(
+        top12.map(async entry => {
+          try {
+            const res = await fetch(`${API_BASE_URL}/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}&language=${langCode}`);
+            if (!res.ok) return null;
+            const d = await res.json();
+            return { ...d, media_type: entry.type } as Content;
+          } catch { return null; }
+        })
       );
-
-      const formatted: Content[] = detailResults
-        .filter(d => d !== null)
-        .map(d => ({
-          ...d,
-          media_type: d.title ? 'movie' : 'tv'
-        }));
-
-      setKurdishCCItems(formatted);
+      setKurdishCCItems(results.filter(Boolean) as Content[]);
     } catch (err) {
       console.error("[HP] Kurdish CC Load Error:", err);
     }

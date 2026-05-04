@@ -1,59 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Subtitles, ArrowRight, ArrowLeft, Trash2, Clapperboard, MonitorPlay } from 'lucide-react';
-import { IMAGE_BASE_URL_POSTER } from '../constants';
+import { motion } from 'framer-motion';
+import { Subtitles, ArrowRight, ArrowLeft, Clapperboard } from 'lucide-react';
+import { IMAGE_BASE_URL_POSTER, API_KEY, API_BASE_URL } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
-import { useUI } from '../contexts/UIContext';
-import { useNotification } from '../contexts/NotificationContext';
-import Spinner from '../components/Spinner';
 import { Content } from '../types';
+import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 
 const KurdishCCPage: React.FC = () => {
     const [items, setItems] = useState<Content[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
-    const { t, language } = useTranslation();
-    const { isAdmin } = useUI();
-    const { addNotification } = useNotification();
+    const { language } = useTranslation();
     const isRtl = language === 'ku';
+    const langCode = language === 'ku' ? 'ku' : 'en-US';
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [langCode]);
 
     const loadData = async () => {
         setLoading(true);
         try {
-            const { subtitleService } = await import('../services/subtitleService');
-            const { fetchDetails } = await import('../services/tmdbService');
-            
-            // 1. Fetch from OpenSubtitles REST API
-            const subData = await subtitleService.fetchLatestKurdishMovies();
-            
-            // 2. Extract and Deduplicate TMDB IDs
-            const seenIds = new Set<number>();
-            const uniqueEntries: { id: number, type: 'movie' | 'tv' }[] = [];
-            
-            subData.forEach((sub: any) => {
-                const attrs = sub.attributes;
-                const tmdbId = attrs.feature_details?.tmdb_id;
-                const type = attrs.feature_details?.feature_type?.toLowerCase() === 'movie' ? 'movie' : 'tv';
-                
-                if (tmdbId && !seenIds.has(tmdbId)) {
-                    seenIds.add(tmdbId);
-                    uniqueEntries.push({ id: tmdbId, type: type as any });
-                }
-            });
+            // Fetch TMDB details for all registry entries in parallel batches
+            const BATCH_SIZE = 10;
+            const results: Content[] = [];
 
-            // 3. Fetch full TMDB details for the top items
-            const limitedEntries = uniqueEntries.slice(0, 30);
-            const detailResults = await Promise.all(
-                limitedEntries.map(entry => fetchDetails(entry.id, entry.type, language))
-            );
+            for (let i = 0; i < KURDISH_CC_REGISTRY.length; i += BATCH_SIZE) {
+                const batch = KURDISH_CC_REGISTRY.slice(i, i + BATCH_SIZE);
+                const batchResults = await Promise.all(
+                    batch.map(async entry => {
+                        try {
+                            const url = `${API_BASE_URL}/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}&language=${langCode}`;
+                            const res = await fetch(url);
+                            if (!res.ok) return null;
+                            const data = await res.json();
+                            return { ...data, media_type: entry.type } as Content;
+                        } catch {
+                            return null;
+                        }
+                    })
+                );
+                results.push(...batchResults.filter(Boolean) as Content[]);
+            }
 
-            // 4. Set the items directly
-            setItems(detailResults.filter(d => d !== null) as Content[]);
+            setItems(results);
         } catch (err) {
             console.error("[KurdishCCPage] Error loading data:", err);
         }
