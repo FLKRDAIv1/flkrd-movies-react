@@ -267,6 +267,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </span>
                    </Card>
                 </div>
+                
+                <Card className="p-5 mt-4 flex items-center justify-between border-red-500/20 bg-red-500/5">
+                    <div>
+                        <span className="text-[8px] font-black text-red-400 uppercase tracking-widest block mb-1">System Memory</span>
+                        <span className="text-sm font-[1000] text-white uppercase tracking-wider">Cache Purge</span>
+                    </div>
+                    <button 
+                        onClick={() => {
+                            if(window.confirm('Are you sure you want to clear system cache? This will reset local data.')) {
+                                localStorage.clear();
+                                sessionStorage.clear();
+                                window.location.reload();
+                            }
+                        }}
+                        className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-red-500/30"
+                    >
+                        Execute
+                    </button>
+                </Card>
               </Section>
 
               {/* Theme Selection */}
