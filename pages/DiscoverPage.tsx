@@ -207,12 +207,13 @@ const DiscoverPage: React.FC = () => {
                 <h1 className="text-3xl md:text-6xl font-[1000] text-main-text uppercase tracking-tighter italic drop-shadow-2xl">{t('discoverPrompt')}</h1>
             </motion.div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-6xl relative z-10">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-8 w-full max-w-7xl relative z-10">
+                <CategoryButton title={language === 'ku' ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-red-600" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
                 <CategoryButton title={t('hollywood')} onClick={() => navigate('/discover/hollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-blue-600" />
                 <CategoryButton title={t('bollywood')} onClick={() => navigate('/discover/bollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-orange-600" />
                 <CategoryButton title={t('animations')} onClick={() => navigate('/discover/animations')} icon={<Zap className="w-6 h-6 md:w-8 md:h-8" />} color="bg-yellow-600" />
                 <CategoryButton title={t('choiceCountry')} onClick={() => navigate('/discover/country')} icon={<Globe className="w-6 h-6 md:w-8 md:h-8" />} color="bg-green-600" />
-                <CategoryButton title={language === 'ku' ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-purple-600" className="col-span-2 md:col-span-1" />
+                <CategoryButton title={language === 'ku' ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-purple-600" />
             </div>
         </div>
     );

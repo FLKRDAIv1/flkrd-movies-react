@@ -15,6 +15,7 @@ import MobileNav from './components/MobileNav';
 import MyListPage from './pages/MyListPage';
 import ShortsPage from './pages/ShortsPage';
 import SplashScreen from './components/SplashScreen';
+import KurdishCCPage from './pages/KurdishCCPage';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
 import StudiosListPage from './pages/StudiosListPage';
@@ -272,6 +273,7 @@ const App: React.FC = () => {
                                 <Route path="/dubbed" element={<DubbedMoviesPage />} />
                                 <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
                                 <Route path="/shorts" element={<ShortsPage />} />
+                                <Route path="/kurdish-cc" element={<KurdishCCPage />} />
                                 <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
                                 <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
                                 <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
