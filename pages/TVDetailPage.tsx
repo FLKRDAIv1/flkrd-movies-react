@@ -254,6 +254,17 @@ const TVDetailPage: React.FC = () => {
   }, [id, language]);
 
   useEffect(() => {
+    const handleBanUpdate = () => {
+      if (id && bannedService.isBanned(id.replace('custom_', ''))) {
+        addNotification({ type: 'error', title: 'NODE OFFLINE', message: 'This content has been removed globally.' });
+        navigate('/');
+      }
+    };
+    window.addEventListener('banned-list-updated', handleBanUpdate);
+    return () => window.removeEventListener('banned-list-updated', handleBanUpdate);
+  }, [id, navigate, addNotification]);
+
+  useEffect(() => {
     const fetchContentDetails = async () => {
       if (!id) return;
       setLoading(true);

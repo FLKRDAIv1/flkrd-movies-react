@@ -18,6 +18,7 @@ import SplashScreen from './components/SplashScreen';
 import KurdishCCPage from './pages/KurdishCCPage';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
+import { useNotification } from './contexts/NotificationContext';
 import StudiosListPage from './pages/StudiosListPage';
 import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
 import DiscoverPage from './pages/DiscoverPage';
@@ -144,6 +145,7 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const App: React.FC = () => {
     const { language, t } = useTranslation();
     const { theme, isSettingsOpen, setIsSettingsOpen } = useUI();
+    const { addNotification } = useNotification();
     const [loading, setLoading] = useState(true);
     const [scrolled, setScrolled] = useState(false);
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
@@ -181,34 +183,46 @@ const App: React.FC = () => {
     useEffect(() => {
         const checkForNewContent = async () => {
             try {
-                if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-
                 const data = await fetchData(requests.fetchLatestMovies('en-US'), 'en');
                 if (data && data.length > 0) {
                     const latestMovie = data[0];
                     const lastNotifiedId = localStorage.getItem('flkrd_last_notified_id');
 
                     if (lastNotifiedId !== String(latestMovie.id)) {
-                        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-                            const registration = await navigator.serviceWorker.ready;
-                            if (registration && registration.showNotification) {
-                                registration.showNotification(t('newMovieTitle', { movieTitle: latestMovie.title }), {
-                                    body: t('newMovieBody', { movieTitle: latestMovie.title }),
+                        const title = t('newMovieTitle', { movieTitle: latestMovie.title });
+                        const body = t('newMovieBody', { movieTitle: latestMovie.title });
+                        
+                        // 1. In-App Native-like Professional Notification (Always fires)
+                        addNotification({
+                            type: 'success',
+                            title: title,
+                            message: body,
+                        });
+
+                        // 2. System/Browser Push Notifications
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                                const registration = await navigator.serviceWorker.ready;
+                                if (registration && registration.showNotification) {
+                                    registration.showNotification(title, {
+                                        body: body,
+                                        icon: 'https://i.imgur.com/4HoT8Yf.png',
+                                        badge: 'https://i.imgur.com/4HoT8Yf.png',
+                                        image: `https://image.tmdb.org/t/p/w500${latestMovie.backdrop_path}`,
+                                        vibrate: [200, 100, 200],
+                                        data: {
+                                            url: `/#/details/movie/${latestMovie.id}`
+                                        }
+                                    } as any);
+                                }
+                            } else {
+                                new Notification(title, {
+                                    body: body,
                                     icon: 'https://i.imgur.com/4HoT8Yf.png',
-                                    badge: 'https://i.imgur.com/4HoT8Yf.png',
-                                    image: `https://image.tmdb.org/t/p/w500${latestMovie.backdrop_path}`,
-                                    vibrate: [200, 100, 200],
-                                    data: {
-                                        url: `/#/details/movie/${latestMovie.id}`
-                                    }
-                                } as any);
+                                });
                             }
-                        } else if (typeof Notification !== 'undefined') {
-                            new Notification(t('newMovieTitle', { movieTitle: latestMovie.title }), {
-                                body: t('newMovieBody', { movieTitle: latestMovie.title }),
-                                icon: 'https://i.imgur.com/4HoT8Yf.png',
-                            });
                         }
+                        
                         localStorage.setItem('flkrd_last_notified_id', String(latestMovie.id));
                     }
                 }
@@ -218,7 +232,7 @@ const App: React.FC = () => {
         };
 
         checkForNewContent();
-        const interval = setInterval(checkForNewContent, 1800000);
+        const interval = setInterval(checkForNewContent, 300000); // Poll every 5 minutes for real-time feel
         return () => clearInterval(interval);
     }, [t]);
 

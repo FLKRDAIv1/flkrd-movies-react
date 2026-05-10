@@ -109,23 +109,24 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
       if (tmdbData && Array.isArray(tmdbData)) {
         tmdbResults = tmdbData
           .filter((item: Content) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
-          .map((item: Content) => ({
+          .map((item: Content, index: number) => ({
             ...item,
-            _relevanceScore: calculateSearchRelevance(trimmed, item)
+            _relevanceScore: calculateSearchRelevance(trimmed, item) + Math.max(50, 100 - index)
           }));
       }
 
-      // Pass A-2: High-Performance Fallback (Retry with English if Kurdish results are zero for TMDB)
-      if (tmdbResults.length === 0 && language === 'ku') {
+      // Pass A-2: High-Performance Merge (Always fetch English results in Kurdish mode to maximize coverage of all regions)
+      if (language === 'ku') {
         const engEndpoint = `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
         const engData = await fetchData(engEndpoint, 'en');
         if (engData && Array.isArray(engData)) {
-            tmdbResults = engData
+            const extraEngResults = engData
                 .filter((item: Content) => (item.media_type === 'movie' || item.media_type === 'tv') && item.poster_path)
-                .map((item: Content) => ({
+                .map((item: Content, index: number) => ({
                     ...item,
-                    _relevanceScore: calculateSearchRelevance(trimmed, item)
+                    _relevanceScore: calculateSearchRelevance(trimmed, item) + Math.max(50, 100 - index)
                 }));
+            tmdbResults = [...tmdbResults, ...extraEngResults];
         }
       }
 

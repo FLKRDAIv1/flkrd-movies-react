@@ -26,10 +26,14 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
       const data = await fetchData(fetchUrl, language);
       if (data && data.length > 0) {
         setItem(data[0]);
+      } else {
+        setItem(null);
       }
       setLoading(false);
     };
     getData();
+    window.addEventListener('banned-list-updated', getData);
+    return () => window.removeEventListener('banned-list-updated', getData);
   }, [fetchUrl, language]);
 
   if (loading || !item) return null;
@@ -315,6 +319,7 @@ const HomePage: React.FC = () => {
           </div>
         )}
 
+        <Row title={language === 'ku' ? 'تۆپ ١٠ فیلمی ئەمڕۆ' : 'Top 10 Today'} fetchUrl={requests.fetchTrendingMoviesDay(langCode)} type="movie" limit={10} />
         <Row title={t('topRatedMovies')} fetchUrl={requests.fetchTopRatedMovies(langCode)} type="movie" />
 
         <WeeklySpotlight fetchUrl={requests.fetchTrendingMovies(langCode)} />

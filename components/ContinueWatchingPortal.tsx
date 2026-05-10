@@ -52,7 +52,7 @@ const ContinueWatchingPortal: React.FC = () => {
         if (document.visibilityState === 'visible') loadProgressHistory();
     });
 
-    const interval = setInterval(loadProgressHistory, 5000);
+    const interval = setInterval(loadProgressHistory, 1000); // 1 second real-time sync
     return () => {
       window.removeEventListener('storage', syncHandler);
       window.removeEventListener('watchProgressUpdated', syncHandler);

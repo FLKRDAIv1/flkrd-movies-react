@@ -133,6 +133,18 @@ const DubbedDetailPage: React.FC = () => {
     }, [updateProgress]);
 
     useEffect(() => {
+        const handleBanUpdate = () => {
+            const cleanId = id?.replace('custom_', '');
+            if (cleanId && bannedService.isBanned(cleanId)) {
+                addNotification({ type: 'error', title: 'NODE OFFLINE', message: 'This content has been removed globally.' });
+                navigate('/');
+            }
+        };
+        window.addEventListener('banned-list-updated', handleBanUpdate);
+        return () => window.removeEventListener('banned-list-updated', handleBanUpdate);
+    }, [id, navigate, addNotification]);
+
+    useEffect(() => {
         let isMounted = true;
         
         // Instant Hydration Protocol: Skip the 10s delay if we already have data from the state

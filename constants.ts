@@ -13,6 +13,7 @@ export const APP_VERSION = "1.8.1";
 export const requests = {
   fetchTrending: (lang: string) => `/trending/all/week?api_key=${API_KEY}&language=${lang}`,
   fetchTrendingMovies: (lang: string) => `/trending/movie/week?api_key=${API_KEY}&language=${lang}`,
+  fetchTrendingMoviesDay: (lang: string) => `/trending/movie/day?api_key=${API_KEY}&language=${lang}&include_adult=false`,
   fetchTrendingTV: (lang: string) => `/trending/tv/week?api_key=${API_KEY}&language=${lang}`,
   fetchLatestMovies: (lang: string) => `/movie/now_playing?api_key=${API_KEY}&language=${lang}&include_adult=false`,
   fetchLatestActionMovies: (lang: string, page: number = 1) => `/discover/movie?api_key=${API_KEY}&with_genres=28&language=${lang}&sort_by=popularity.desc&include_adult=false&page=${page}`,

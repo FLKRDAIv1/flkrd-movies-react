@@ -19,9 +19,13 @@ const TVShowsPage: React.FC = () => {
             const data = await fetchData(requests.fetchPopularTV(langCode), language);
             if (data && data.length > 0) {
                 setHeaderContent(data[0]);
+            } else {
+                setHeaderContent(null);
             }
         };
         getHeaderContent();
+        window.addEventListener('banned-list-updated', getHeaderContent);
+        return () => window.removeEventListener('banned-list-updated', getHeaderContent);
     }, [langCode, language]);
 
     return (

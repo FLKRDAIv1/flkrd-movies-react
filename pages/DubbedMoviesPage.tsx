@@ -475,8 +475,16 @@ const DubbedMoviesPage: React.FC = () => {
                 }
             });
 
+        // --- BAN LIST LISTENER ---
+        const handleBanUpdate = async () => {
+            const bannedIds = await bannedService.fetchBannedList();
+            setDubbedContent(prev => prev.filter(m => !bannedIds.has(String(m.id).replace('custom_', ''))));
+        };
+        window.addEventListener('banned-list-updated', handleBanUpdate);
+
         return () => {
             window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('banned-list-updated', handleBanUpdate);
             supabase.removeChannel(channel);
         };
     }, []);

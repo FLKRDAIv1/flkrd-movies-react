@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield, ShieldCheck, Activity, X, Search, ArrowRight } from 'lucide-react';
+import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import AdGuardOnboarding from './AdGuardOnboarding';
@@ -24,6 +24,96 @@ declare global {
         Hls: any;
     }
 }
+
+const getLanguageFlag = (langCode: string) => {
+    const code = langCode?.toLowerCase();
+    const defaultFlag = <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_the_United_Nations.svg" alt="UN" className="w-4 h-3 object-cover rounded-[2px] shadow-sm" />;
+    
+    if (!code) return defaultFlag;
+    if (code === 'ku' || code === 'ckb') {
+        return <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" alt="Kurdistan" className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
+    }
+    
+    const flagMap: Record<string, string> = {
+        'en': 'us', 'eng': 'us', 'en-us': 'us', 'en-gb': 'gb',
+        'ar': 'sa', 'ara': 'sa',
+        'fa': 'ir', 'per': 'ir', 'fas': 'ir',
+        'tr': 'tr', 'tur': 'tr',
+        'fr': 'fr', 'fre': 'fr', 'fra': 'fr',
+        'de': 'de', 'ger': 'de', 'deu': 'de',
+        'es': 'es', 'spa': 'es',
+        'it': 'it', 'ita': 'it',
+        'ru': 'ru', 'rus': 'ru',
+        'zh': 'cn', 'chi': 'cn', 'zho': 'cn',
+        'ja': 'jp', 'jpn': 'jp',
+        'ko': 'kr', 'kor': 'kr',
+        'hi': 'in', 'hin': 'in',
+        'nl': 'nl', 'dut': 'nl', 'nld': 'nl',
+        'pt': 'pt', 'por': 'pt',
+        'pl': 'pl', 'pol': 'pl',
+        'sv': 'se', 'swe': 'se',
+        'no': 'no', 'nor': 'no',
+        'da': 'dk', 'dan': 'dk',
+        'fi': 'fi', 'fin': 'fi',
+        'cs': 'cz', 'cze': 'cz', 'ces': 'cz',
+        'sk': 'sk', 'slo': 'sk', 'slk': 'sk',
+        'hu': 'hu', 'hun': 'hu',
+        'ro': 'ro', 'rum': 'ro', 'ron': 'ro',
+        'bg': 'bg', 'bul': 'bg',
+        'el': 'gr', 'gre': 'gr', 'ell': 'gr',
+        'he': 'il', 'heb': 'il',
+        'id': 'id', 'ind': 'id',
+        'ms': 'my', 'may': 'my', 'msa': 'my',
+        'th': 'th', 'tha': 'th',
+        'vi': 'vn', 'vie': 'vn',
+        'uk': 'ua', 'ukr': 'ua',
+        'sr': 'rs', 'srp': 'rs',
+        'hr': 'hr', 'hrv': 'hr',
+        'sl': 'si', 'slv': 'si',
+        'et': 'ee', 'est': 'ee',
+        'lv': 'lv', 'lav': 'lv',
+        'lt': 'lt', 'lit': 'lt',
+        'sq': 'al', 'alb': 'al', 'sqi': 'al',
+        'mk': 'mk', 'mac': 'mk', 'mkd': 'mk',
+        'bs': 'ba', 'bos': 'ba',
+        'is': 'is', 'ice': 'is', 'isl': 'is',
+        'ka': 'ge', 'geo': 'ge', 'kat': 'ge',
+        'hy': 'am', 'arm': 'am', 'hye': 'am',
+        'az': 'az', 'aze': 'az',
+        'kk': 'kz', 'kaz': 'kz',
+        'uz': 'uz', 'uzb': 'uz',
+        'ur': 'pk', 'urd': 'pk',
+        'bn': 'bd', 'ben': 'bd',
+        'ta': 'in', 'tam': 'in',
+        'te': 'in', 'tel': 'in',
+        'ml': 'in', 'mal': 'in',
+        'mr': 'in', 'mar': 'in',
+        'gu': 'in', 'guj': 'in',
+        'kn': 'in', 'kan': 'in',
+        'pa': 'in', 'pan': 'in',
+        'my': 'mm', 'bur': 'mm', 'mya': 'mm',
+        'km': 'kh', 'khm': 'kh',
+        'lo': 'la', 'lao': 'la',
+        'am': 'et', 'amh': 'et',
+        'sw': 'ke', 'swa': 'ke',
+        'af': 'za', 'afr': 'za',
+        'zu': 'za', 'zul': 'za',
+        'xh': 'za', 'xho': 'za',
+        'ig': 'ng', 'ibo': 'ng',
+        'yo': 'ng', 'yor': 'ng',
+        'ha': 'ng', 'hau': 'ng',
+        'ne': 'np', 'nep': 'np',
+        'si': 'lk', 'sin': 'lk',
+        'tl': 'ph', 'tgl': 'ph',
+        'mn': 'mn', 'mon': 'mn'
+    };
+    
+    const countryCode = flagMap[code];
+    if (countryCode) {
+        return <img src={`https://flagcdn.com/${countryCode}.svg`} alt={code} className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
+    }
+    return defaultFlag;
+};
 
 const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -483,6 +573,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                                         <div className="flex flex-col gap-4">
                                             <div className="flex flex-col gap-2">
+                                                <div className="flex justify-between items-center">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                        {language === 'ku' ? 'خێرایی ژێرنووس (چرکە)' : 'Subtitle Sync (Sec)'}
+                                                    </label>
+                                                    <span className="text-[10px] font-bold text-blue-500">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset / 1000}s</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => setSubtitleOffset(prev => prev - 500)} className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white font-bold text-xs">-0.5s</button>
+                                                    <input 
+                                                        type="range" min="-5000" max="5000" step="500"
+                                                        value={subtitleOffset}
+                                                        onChange={(e) => setSubtitleOffset(Number(e.target.value))}
+                                                        className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-600"
+                                                    />
+                                                    <button onClick={() => setSubtitleOffset(prev => prev + 500)} className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white font-bold text-xs">+0.5s</button>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col gap-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                     {language === 'ku' ? 'گەڕان بۆ ژێرنووس' : 'Subtitle Discovery'}
                                                 </label>
@@ -527,26 +636,51 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                 <button 
                                                                     key={sub.id}
                                                                     onClick={() => handleSelectSub(sub)}
-                                                                    className={`text-left p-4 rounded-2xl text-[11px] transition-all border flex items-center justify-between group relative overflow-hidden ${
+                                                                    className={`w-full text-left p-3.5 rounded-[20px] transition-all duration-300 border flex items-center gap-4 group relative overflow-hidden ${
                                                                         (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') 
-                                                                        ? 'bg-red-600/10 border-red-600/30 hover:bg-red-600/20 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
-                                                                        : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.08] hover:border-white/10'
+                                                                        ? 'bg-gradient-to-r from-red-600/10 to-transparent border-red-600/30 hover:border-red-500/60 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
+                                                                        : 'bg-gradient-to-r from-white/[0.03] to-transparent border-white/5 hover:border-white/15 hover:bg-white/[0.06]'
                                                                     }`}
                                                                 >
-                                                                    <div className="flex flex-col gap-1 relative z-10">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="font-black text-red-500 text-[9px] uppercase tracking-wider">{sub?.attributes?.language || 'UN'}</span>
+                                                                    {/* Prominent Flag Container */}
+                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
+                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb')
+                                                                        ? 'bg-red-600/20 border-red-500/30'
+                                                                        : 'bg-white/5 border-white/10 group-hover:bg-white/10'
+                                                                    } transition-colors`}>
+                                                                        <div className="scale-[1.2]">
+                                                                            {getLanguageFlag(sub?.attributes?.language || '')}
+                                                                        </div>
+                                                                    </div>
+                                                                
+                                                                    <div className="flex flex-col flex-1 min-w-0 relative z-10">
+                                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                                            <span className={`font-[1000] text-[10px] uppercase tracking-[0.2em] ${
+                                                                                (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
+                                                                            } transition-colors`}>
+                                                                                {sub?.attributes?.language || 'UNKNOWN'}
+                                                                            </span>
                                                                             {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') && (
-                                                                                <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-lg uppercase tracking-tighter">Verified</span>
+                                                                                <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(229,9,20,0.5)] uppercase tracking-tighter flex items-center gap-1">
+                                                                                    <Sparkles size={8} /> Verified
+                                                                                </span>
                                                                             )}
                                                                         </div>
-                                                                        <span className="text-gray-200 font-bold group-hover:text-white transition-colors truncate max-w-[180px]">
-                                                                            {sub?.attributes?.display_name || 'Standard Subtitle'}
+                                                                        <span className="text-gray-200 font-bold text-[11px] group-hover:text-white transition-colors truncate w-full">
+                                                                            {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Standard Track'}
                                                                         </span>
                                                                     </div>
-                                                                    <ArrowRight size={14} className="text-gray-600 group-hover:text-red-500 group-hover:translate-x-1 transition-all relative z-10" />
+                                                                    
+                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb')
+                                                                        ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
+                                                                        : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
+                                                                    }`}>
+                                                                        <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                                                    </div>
+                                                                
                                                                     {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') && (
-                                                                        <div className="absolute top-0 right-0 w-16 h-16 bg-red-600/10 blur-2xl rounded-full -mr-8 -mt-8" />
+                                                                        <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
                                                                     )}
                                                                 </button>
                                                             ))
@@ -623,6 +757,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     controls
                     autoPlay
                     playsInline
+                    webkit-playsinline="true"
                     preload="auto"
                     onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
                     onPlaying={() => setLoading(false)}
@@ -665,9 +800,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         }}
                     >
                         {(() => {
+                            // Apply offset dynamically (subtitleOffset is in milliseconds)
+                            const offsetSec = subtitleOffset / 1000;
                             // Find active cue with a tiny buffer for smoother transitions
                             const activeCue = subtitleCues.find(cue => 
-                                currentTime >= (cue.start - 0.1) && currentTime <= (cue.end + 0.1)
+                                currentTime >= (cue.start + offsetSec - 0.1) && currentTime <= (cue.end + offsetSec + 0.1)
                             );
                             
                             if (!activeCue) return null;

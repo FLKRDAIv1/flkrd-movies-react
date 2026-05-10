@@ -50,6 +50,8 @@ const HeroBanner: React.FC = () => {
 
   useEffect(() => {
     fetchHeroContent();
+    window.addEventListener('banned-list-updated', fetchHeroContent);
+    return () => window.removeEventListener('banned-list-updated', fetchHeroContent);
   }, [fetchHeroContent]);
 
   useEffect(() => {

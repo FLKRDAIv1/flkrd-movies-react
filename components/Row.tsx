@@ -18,9 +18,10 @@ interface RowProps {
   type?: 'movie' | 'tv';
   items?: (Content | WatchProgress | MyListItem)[];
   isProgressRow?: boolean;
+  limit?: number;
 }
 
-const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }) => {
+const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, limit }) => {
   const [content, setContent] = useState<(Content | WatchProgress | MyListItem)[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -61,9 +62,9 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow }
       const data = await fetchData(getPagedUrl(fetchUrl, 1), language);
       if (data && Array.isArray(data)) {
         // data coming from fetchData is already filtered by isForbidden
-        setContent(data);
+        setContent(limit ? data.slice(0, limit) : data);
         setPage(1);
-        setHasMore(data.length >= 15); 
+        setHasMore(limit ? false : data.length >= 15); 
       } else if (data === null) {
         setHasError(true);
       } else {

@@ -138,6 +138,9 @@ const DiscoverPage: React.FC = () => {
             setLoading(false);
         };
         loadInitialData();
+
+        window.addEventListener('banned-list-updated', loadInitialData);
+        return () => window.removeEventListener('banned-list-updated', loadInitialData);
     }, [selection, activeCountry, yearFilter, selectedGenres, language, langCode]);
 
     const loadMoreMovies = useCallback(() => {
