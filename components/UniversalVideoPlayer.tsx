@@ -412,7 +412,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         const cleanSrc = src.includes('<iframe')
             ? (src.match(/src=["'](.*?)["']/) || [])[1]
             : src;
-        const finalSrc = cleanSrc || '';
+        let finalSrc = cleanSrc || '';
+
+        // Force inline playback for iOS on external embed providers
+        if (finalSrc && !finalSrc.includes('playsinline=')) {
+            finalSrc += (finalSrc.includes('?') ? '&' : '?') + 'playsinline=1';
+        }
 
         if (frozenSrcRef.current && currentContentKey === lastContentKeyRef.current) {
             return frozenSrcRef.current;
@@ -844,12 +849,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     // @ts-ignore
                     fetchPriority="high"
                     // NO sandbox — providers detect sandbox and refuse to load
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
+                    allow="autoplay; fullscreen; playsinline; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
 
                     // @ts-ignore
                     mozallowfullscreen="true"
                     // @ts-ignore
                     allowtransparency="true"
+                    // @ts-ignore
+                    webkitallowfullscreen="true"
                     onLoad={() => {
                         setLoading(false);
                         if (onLoad) onLoad();
