@@ -23,7 +23,7 @@ const AdGuardOnboarding: React.FC<AdGuardOnboardingProps> = ({ onComplete, accen
       subtitle: "ئەپی AdGuard دابەزێنە بۆ مۆبایلەکەت بۆ ئەوەی هەموو ڕیکلام و لینکە بێزارکەرەکان بلۆک بکات.",
       icon: <Download size={64} className="text-green-500" />,
       button: "داگرتنی ئەپ",
-      link: "https://adguard.com/download.html?auto=1&_plc=en",
+      link: "/adguard-dns.mobileconfig",
       color: "from-green-600 to-emerald-600"
     },
     {
@@ -31,7 +31,7 @@ const AdGuardOnboarding: React.FC<AdGuardOnboardingProps> = ({ onComplete, accen
       subtitle: "هەمیشە ئەپەکەت نوێ بکەرەوە بۆ ئەوەی نوێترین فلتەرەکانی بلۆککردن چالاک بن و خێرایی ئینتەرنێتت جێگیر بێت.",
       icon: <Zap size={64} className="text-yellow-500" />,
       button: "نوێکردنەوەی ئەپ",
-      link: "https://adguard.com/download.html?auto=1&_plc=en",
+      link: "/adguard-dns.mobileconfig",
       color: "from-yellow-600 to-orange-600"
     },
     {
