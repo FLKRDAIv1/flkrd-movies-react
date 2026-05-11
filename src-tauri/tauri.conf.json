@@ -39,6 +39,9 @@
     ],
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    },
+    "ios": {
+      "allowsInlineMediaPlayback": true
     }
   }
 }

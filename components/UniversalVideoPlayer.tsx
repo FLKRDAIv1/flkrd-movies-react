@@ -757,25 +757,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             {/* HLS / Direct Video */}
             {isHls && (
                 <video
+                    id="vidking-player"
                     ref={videoRef}
-                    className="w-full h-full object-contain z-10"
-                    controls
+                    className="w-full h-full object-contain z-10 pointer-events-none"
+                    style={{ WebkitPlaysInline: 'inline' } as any}
+                    controls={false}
+                    muted
                     autoPlay
                     playsInline
                     webkit-playsinline="true"
                     preload="auto"
                     onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
                     onPlaying={() => setLoading(false)}
-                    onDoubleClick={() => {
-                        import('../utils/tauriUtils').then(({ isTauri }) => {
-                            if (isTauri()) {
-                                import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-                                    const win = getCurrentWindow();
-                                    win.isFullscreen().then(f => win.setFullscreen(!f));
-                                });
-                            }
-                        });
-                    }}
                 >
                     {(localSubtitleUrl || subtitleUrl) && (
                         <track 
