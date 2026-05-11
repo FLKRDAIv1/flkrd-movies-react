@@ -838,7 +838,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     key={stableKey}
                     src={iframeSrc}
                     className="w-full h-full border-none z-10"
-                    style={{ display: 'block' }}
+                    style={{ display: 'block', WebkitPlaysInline: 'inline' } as any}
+                    // @ts-ignore
+                    playsInline={true}
+                    // @ts-ignore
+                    webkit-playsinline="true"
                     // @ts-ignore
                     fetchPriority="high"
                     // NO sandbox — providers detect sandbox and refuse to load

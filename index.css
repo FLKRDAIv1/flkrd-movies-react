@@ -244,3 +244,11 @@ html.console-mode-active .web-only {
 [data-tauri-drag-region] {
   cursor: default;
 }
+
+/* ── iOS Native Player Hijack Prevention ── */
+video {
+  pointer-events: none !important;
+  -webkit-playsinline: inline !important;
+  playsinline: inline !important;
+}
+
