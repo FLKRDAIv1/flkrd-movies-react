@@ -46,6 +46,7 @@ export default function PremiumVidLinkPlayer({
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
+  const [activeServer, setActiveServer] = useState<'vidlink' | 'superembed'>('vidlink');
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
@@ -129,26 +130,36 @@ export default function PremiumVidLinkPlayer({
   const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
   const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
   
-  // Real-time speed URL format
-  const baseUrl = type === 'movie' 
+  // Construct URLs for both servers
+  const vidLinkBase = type === 'movie' 
     ? `https://vidlink.pro/movie/${tmdbId}`
     : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+  
+  const superEmbedBase = type === 'movie'
+    ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
+    : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
 
-  // Using player=jw for better CC (Subtitle) and iOS stability
-  const videoUrl = `${baseUrl}?primaryColor=${playerColor}&secondaryColor=5c4747&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=true&nextbutton=true${startAt}${subParam}`;
+  // VidLink (FLKRD SERVER 1) - using server=2 as requested
+  const vidLinkUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=5c4747&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=true&nextbutton=true&server=2${startAt}${subParam}`;
+  
+  // SuperEmbed (FLKRD SERVER 2) - Professional Ad-Free config
+  const superEmbedUrl = `${superEmbedBase}&vip=1`;
+
+  const videoUrl = activeServer === 'vidlink' ? vidLinkUrl : superEmbedUrl;
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   // 2. STEALTH SHIELD LOGIC
   // We start without a sandbox to bypass "Please Disable Sandbox" detection.
-  // After 3 seconds (once the player has initialized), we engage the shield.
+  // After a few seconds (once the player has initialized), we engage the shield.
   useEffect(() => {
+    setIsShieldActive(false); // Reset on server switch
     const timer = setTimeout(() => {
       setIsShieldActive(true);
-      console.log("[VIP-PLAYER] Security Shield Engaged. Ads Neutralized.");
-    }, 4500); // 4.5 seconds is the sweet spot for VidLink handshake
+      console.log(`[VIP-PLAYER] Security Shield Engaged for ${activeServer}. Ads Neutralized.`);
+    }, activeServer === 'superembed' ? 6000 : 4500); // SuperEmbed needs slightly longer to handshake
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeServer]);
 
   // Official VidLink Progress & Event Tracking
   useEffect(() => {
@@ -218,6 +229,30 @@ export default function PremiumVidLinkPlayer({
             <Shield size={12} fill="currentColor" />
             SHIELD ACTIVE
           </div>
+        </div>
+
+        {/* Professional Relink (Server Switcher) */}
+        <div className="flex bg-black/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-1.5 shadow-2xl">
+          <button 
+            onClick={() => { setActiveServer('vidlink'); setIsShieldActive(false); }}
+            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all ${
+              activeServer === 'vidlink' 
+                ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(229,9,20,0.4)]' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            FLKRD SERVER 1
+          </button>
+          <button 
+            onClick={() => { setActiveServer('superembed'); setIsShieldActive(false); }}
+            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all ${
+              activeServer === 'superembed' 
+                ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(229,9,20,0.4)]' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            FLKRD SERVER 2
+          </button>
         </div>
       </div>
 
