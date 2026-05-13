@@ -161,6 +161,7 @@ export const subtitleService = {
                     });
 
                     if (prioritizedResults.length > 0) return prioritizedResults;
+                }
             }
         } catch (e) {
             console.warn("[SUBTITLE SERVICE] Stremio Discovery failed, trying SubDL.", e);
