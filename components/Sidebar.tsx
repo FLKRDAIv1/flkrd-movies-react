@@ -143,14 +143,35 @@ const Sidebar: React.FC = () => {
         <div className="flex items-center justify-center h-32 flex-shrink-0 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent opacity-50" />
           <motion.div 
-            animate={{ scale: isCollapsed ? 1 : 1.15 }}
-            className="relative z-10 p-4 bg-black/40 rounded-[2rem] border border-white/10 shadow-2xl backdrop-blur-xl"
+            animate={{ 
+              scale: isCollapsed ? 1 : 1.1,
+              width: isCollapsed ? "4rem" : "12rem"
+            }}
+            className="relative z-10 flex items-center justify-center p-3 bg-black/40 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden"
           >
-             <img 
-               src="/flkrd-icon.png" 
-               alt="FLKRD" 
-               className="w-10 h-10 object-contain" 
-             />
+             <AnimatePresence mode="wait">
+               {isCollapsed ? (
+                 <motion.img 
+                   key="icon"
+                   initial={{ opacity: 0, scale: 0.8 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   exit={{ opacity: 0, scale: 0.8 }}
+                   src="/flkrd-icon.png" 
+                   alt="F" 
+                   className="w-10 h-10 object-contain" 
+                 />
+               ) : (
+                 <motion.img 
+                   key="logo"
+                   initial={{ opacity: 0, x: -20 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   exit={{ opacity: 0, x: -20 }}
+                   src="/flkrd-logo.png" 
+                   alt="FLKRD" 
+                   className="h-10 w-auto object-contain" 
+                 />
+               )}
+             </AnimatePresence>
              <div className="absolute -inset-2 bg-red-600/20 blur-2xl opacity-50 rounded-full" />
           </motion.div>
         </div>

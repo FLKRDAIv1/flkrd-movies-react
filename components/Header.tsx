@@ -71,13 +71,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
     <>
       <header className={`fixed top-0 left-0 right-0 z-[100] px-4 md:px-10 lg:px-14 py-4 md:py-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
         <div className={`pointer-events-auto flex items-center gap-4 ${isDubPage ? 'transition-all duration-700 opacity-90' : ''}`}>
-          <Link to="/" className="group flex items-center gap-3 bg-black/30 md:bg-black/20 backdrop-blur-3xl border border-white/10 rounded-2xl md:rounded-[2rem] p-1.5 md:p-3 transition-all hover:bg-black/50 hover:border-brand/40 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-             <div className="relative">
-                <img src="/flkrd-logo.png" alt="FLKRD LOGO" className="h-8 md:h-12 w-auto object-contain transition-transform group-hover:scale-110 duration-500" />
-                <div className="absolute -inset-1 bg-brand/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
-             </div>
-             
-          </Link>
+          {/* Logo removed - migrated to sidebar */}
         </div>
         
         <div className="flex items-center gap-2 md:gap-3 pointer-events-auto">
