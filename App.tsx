@@ -2,30 +2,30 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
-import HomePage from './pages/HomePage';
-import DetailPage from './pages/DetailPage';
-import TVDetailPage from './pages/TVDetailPage';
-import DubbedDetailPage from './pages/DubbedDetailPage';
+const HomePage = React.lazy(() => import('./pages/HomePage'));
+const DetailPage = React.lazy(() => import('./pages/DetailPage'));
+const TVDetailPage = React.lazy(() => import('./pages/TVDetailPage'));
+const DubbedDetailPage = React.lazy(() => import('./pages/DubbedDetailPage'));
+const SearchPage = React.lazy(() => import('./pages/SearchPage'));
+const TVShowsPage = React.lazy(() => import('./pages/TVShowsPage'));
+const StudioPage = React.lazy(() => import('./pages/StudioPage'));
+const MyListPage = React.lazy(() => import('./pages/MyListPage'));
+const ShortsPage = React.lazy(() => import('./pages/ShortsPage'));
+const KurdishCCPage = React.lazy(() => import('./pages/KurdishCCPage'));
+const StudiosListPage = React.lazy(() => import('./pages/StudiosListPage'));
+const DiscoverPage = React.lazy(() => import('./pages/DiscoverPage'));
+const DubbedMoviesPage = React.lazy(() => import('./pages/DubbedMoviesPage'));
+const ContinueWatchingPage = React.lazy(() => import('./pages/ContinueWatchingPage'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 import Header from './components/Header';
-import SearchPage from './pages/SearchPage';
-import TVShowsPage from './pages/TVShowsPage';
-import StudioPage from './pages/StudioPage';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
-import MyListPage from './pages/MyListPage';
-import ShortsPage from './pages/ShortsPage';
 import SplashScreen from './components/SplashScreen';
-import KurdishCCPage from './pages/KurdishCCPage';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
 import { useNotification } from './contexts/NotificationContext';
-import StudiosListPage from './pages/StudiosListPage';
 import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
-import DiscoverPage from './pages/DiscoverPage';
-import DubbedMoviesPage from './pages/DubbedMoviesPage';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
-import ContinueWatchingPage from './pages/ContinueWatchingPage';
-import ProfilePage from './pages/ProfilePage';
 import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import Portal from './components/Portal';
@@ -280,22 +280,28 @@ const App: React.FC = () => {
                     <Sidebar />
                     <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pt-10 tauri-only-pt">
                         <Header scrolled={scrolled} />
-                        <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
-                            <Routes>
-                                <Route path="/" element={<HomePage />} />
-                                <Route path="/tv" element={<TVShowsPage />} />
-                                <Route path="/dubbed" element={<DubbedMoviesPage />} />
-                                <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
-                                <Route path="/shorts" element={<ShortsPage />} />
-                                <Route path="/kurdish-cc" element={<KurdishCCPage />} />
-                                <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
-                                <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
-                                <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
-                                <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
-                                <Route path="/continue-watching" element={<ContinueWatchingPage />} />
-                                <Route path="/profile" element={<ProfilePage />} />
-                            </Routes>
-                        </main>
+                        <React.Suspense fallback={
+                          <div className="flex flex-col items-center justify-center h-full pt-40 gap-6">
+                            <SplashScreen />
+                          </div>
+                        }>
+                            <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
+                                <Routes>
+                                    <Route path="/" element={<HomePage />} />
+                                    <Route path="/tv" element={<TVShowsPage />} />
+                                    <Route path="/dubbed" element={<DubbedMoviesPage />} />
+                                    <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
+                                    <Route path="/shorts" element={<ShortsPage />} />
+                                    <Route path="/kurdish-cc" element={<KurdishCCPage />} />
+                                    <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
+                                    <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
+                                    <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
+                                    <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
+                                    <Route path="/continue-watching" element={<ContinueWatchingPage />} />
+                                    <Route path="/profile" element={<ProfilePage />} />
+                                </Routes>
+                            </main>
+                        </React.Suspense>
                     </div>
                     <MobileNav />
                 </div>
