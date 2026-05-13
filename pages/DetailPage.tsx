@@ -360,33 +360,93 @@ const DetailPage: React.FC = () => {
               <AnimatePresence>
                 {showSourceSwitcher && (
                   <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 bottom-0 w-72 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide">
-                    <div className="flex items-center justify-between mb-8"><h3 className="text-base font-black uppercase italic tracking-tighter text-white">Nodes</h3><button onClick={() => setShowSourceSwitcher(false)} className="text-white hover:text-red-500"><X size={20} /></button></div>
-                    <div className="space-y-3 pb-10">
-                      {sources.map(s => {
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_#e50914]" />
+                        <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">Streaming Nodes</h3>
+                      </div>
+                      <button 
+                        onClick={() => setShowSourceSwitcher(false)}
+                        className="p-2 hover:bg-white/10 rounded-full transition-all group"
+                      >
+                        <X size={20} className="text-gray-400 group-hover:rotate-90 transition-transform" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 pb-12">
+                      {sources.map((s, idx) => {
                         const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
                                        s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
-                                       s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : null;
+                                       s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : 
+                                       s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
+
+                        const isActive = activeSource === s.name;
+                        
+                        // Simulated data for "Special" feel
+                        const speed = s.name === 'FLKRD SERVER' ? '1.4 GB/s' : s.name === 'FLKRD SERVER 1' ? '1.2 GB/s' : '980 MB/s';
+                        const latency = s.name === 'FLKRD SERVER' ? '24ms' : '45ms';
 
                         return (
-                          <button key={s.name} onClick={() => { setActiveSource(s.name); setIsPlayerLoading(true); setShowSourceSwitcher(false); }} className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${activeSource === s.name ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/5 hover:border-white/20 text-gray-400'}`}>
-                            <div className="flex items-center gap-3">
-                              {iconPath ? (
-                                <img src={iconPath} className="w-6 h-6 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
-                              ) : (
-                                <div className={`w-2 h-2 rounded-full ${activeSource === s.name ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
-                              )}
-                              <div className="flex flex-col items-start">
-                                <span className="text-[10px] font-black uppercase tracking-widest">{s.name}</span>
-                                {s.badge === 'ku' && (
-                                  <div className="flex items-center gap-1.5 mt-1">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-sm" alt="KU" />
-                                    <span className={`text-[7px] font-black uppercase ${activeSource === s.name ? 'text-white' : 'text-green-500'}`}>KURDISH CC</span>
+                          <motion.button 
+                            key={s.name}
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: idx * 0.05 }}
+                            whileHover={{ scale: 1.02, x: -4 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => { 
+                              setActiveSource(s.name); 
+                              setIsPlayerLoading(true); 
+                              setShowSourceSwitcher(false); 
+                            }} 
+                            className={`w-full p-5 rounded-[2rem] flex flex-col gap-3 transition-all border group relative overflow-hidden ${
+                              isActive 
+                                ? 'bg-red-600/10 border-red-600/40 shadow-[0_0_30px_rgba(229,9,20,0.1)]' 
+                                : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/[0.08]'
+                            }`}
+                          >
+                            {isActive && (
+                              <motion.div 
+                                layoutId="active-node-glow"
+                                className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-transparent"
+                              />
+                            )}
+
+                            <div className="flex items-center justify-between relative z-10">
+                              <div className="flex items-center gap-4">
+                                <div className="relative">
+                                  {iconPath ? (
+                                    <img src={iconPath} className="w-8 h-8 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                                  ) : (
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 font-black text-[10px] ${isActive ? 'text-red-500' : 'text-gray-500'}`}>
+                                      {idx + 1}
+                                    </div>
+                                  )}
+                                  {isActive && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-black" />}
+                                </div>
+                                <div className="flex flex-col items-start">
+                                  <span className={`text-xs font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                                    {s.name}
+                                  </span>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-black/20 text-gray-500'}`}>
+                                      {speed}
+                                    </span>
+                                    {s.badge === 'ku' && (
+                                      <div className="flex items-center gap-1">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[2px]" alt="" />
+                                        <span className="text-[7px] font-black text-green-500 uppercase">KU CC</span>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                <span className={`text-[8px] font-black italic ${isActive ? 'text-white/60' : 'text-gray-600'}`}>{latency}</span>
+                                {isActive && <div className="w-1.5 h-1.5 bg-red-600 rounded-full shadow-[0_0_8px_#e50914]" />}
                               </div>
                             </div>
-                            {activeSource === s.name && <Check size={14} />}
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
