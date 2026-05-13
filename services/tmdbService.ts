@@ -1,12 +1,15 @@
+
 import { API_KEY, API_BASE_URL, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU, FORBIDDEN_GENRE_IDS, FORBIDDEN_CONTENT_IDS } from '../constants';
 import { Content } from '../types';
 import { bannedService } from './bannedService';
 
-// Lightweight In-Memory Cache (Replaces Upstash Redis)
+// Quantum Cache Layers
 const sessionCache = new Map<string, any>();
+const pendingRequests = new Map<string, Promise<any>>();
 
 export const clearTMDBCache = () => {
   sessionCache.clear();
+  pendingRequests.clear();
   console.log("[TMDB SERVICE] Quantum Cache Purged.");
 };
 
@@ -35,65 +38,68 @@ export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boole
   });
 };
 
+const filterContent = (data: any, language: 'en' | 'ku'): any => {
+    if (!data) return null;
+    if (Array.isArray(data)) {
+        return data.filter((item: Content) => !isForbidden(item, language));
+    }
+    return isForbidden(data, language) ? null : data;
+};
+
 export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  // 1. Check In-Memory Cache first (Instant)
+  // 1. Instant Memory Access
   if (sessionCache.has(cacheKey)) {
-    const cachedData = sessionCache.get(cacheKey);
-    await bannedService.fetchBannedList();
-
-    if (Array.isArray(cachedData)) {
-      const filtered = cachedData.filter((item: Content) => !isForbidden(item, language));
-      if (filtered.length > 0 || cachedData.length === 0) return filtered;
-    } else {
-      if (!isForbidden(cachedData, language)) return cachedData;
-    }
+    return filterContent(sessionCache.get(cacheKey), language);
   }
 
-  // 2. Check Persistent IndexedDB Cache (Pro Sync)
-  try {
-    const { db } = await import('../utils/db');
-    const persistentData = await db.getCache(cacheKey);
-    if (persistentData) {
+  // 2. Request Deduplication
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      // 3. Persistent Disk Access
+      const { db } = await import('../utils/db');
+      const persistentData = await db.getCache(cacheKey);
+      
+      if (persistentData) {
         sessionCache.set(cacheKey, persistentData);
-        if (Array.isArray(persistentData)) {
-            return persistentData.filter((item: Content) => !isForbidden(item, language));
-        }
-        if (!isForbidden(persistentData, language)) return persistentData;
+        // Trigger background revalidation for next visit
+        fetch(`${API_BASE_URL}${endpoint}`).then(async res => {
+          if (res.ok) {
+            const fresh = await res.json();
+            const result = fresh.results || fresh;
+            sessionCache.set(cacheKey, result);
+            db.setCache(cacheKey, result);
+          }
+        }).catch(() => {});
+        
+        return filterContent(persistentData, language);
+      }
+
+      // 4. Network Fallback
+      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      if (!response || !response.ok) return null;
+      
+      const rawData = await response.json();
+      const result = rawData.results || rawData;
+      
+      sessionCache.set(cacheKey, result);
+      db.setCache(cacheKey, result);
+      
+      return filterContent(result, language);
+    } catch (error) {
+      return null;
+    } finally {
+      pendingRequests.delete(cacheKey);
     }
-  } catch (e) { }
+  })();
 
-  // 3. Network Fetch
-  try {
-    const [_, response] = await Promise.all([
-      bannedService.fetchBannedList(),
-      fetch(`${API_BASE_URL}${endpoint}`).catch(() => null)
-    ]);
-
-    if (!response || !response.ok) return null;
-    const rawData = await response.json();
-    
-    // Normalize data
-    const result = rawData.results || rawData;
-    
-    sessionCache.set(cacheKey, result);
-    
-    // Async persist to Disk
-    import('../utils/db').then(({ db }) => db.setCache(cacheKey, result));
-
-    if (Array.isArray(result)) {
-      return result.filter((item: Content) => !isForbidden(item, language));
-    }
-
-    if (result && result.id) {
-      if (isForbidden(result, language)) return null;
-    }
-
-    return result;
-  } catch (error) {
-    return null;
-  }
+  pendingRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
 };
 
 export interface PaginatedResponse {
@@ -105,36 +111,70 @@ export interface PaginatedResponse {
 export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'): Promise<PaginatedResponse | null> => {
   const cacheKey = `tmdb_pag_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  const [bannedIds, response] = await Promise.all([
-    bannedService.fetchBannedList(),
-    fetch(`${API_BASE_URL}${endpoint}`).catch(() => null)
-  ]);
-
-  if (sessionCache.has(cacheKey) && (!response || !response.ok)) {
+  // 1. Memory Check
+  if (sessionCache.has(cacheKey)) {
     const data = sessionCache.get(cacheKey);
-    const filteredResults = data.results.filter((item: Content) => !isForbidden(item, language));
-    return { results: filteredResults, page: data.page, total_pages: data.total_pages };
-  }
-
-  try {
-    if (!response || !response.ok) return null;
-    const data = await response.json();
-    sessionCache.set(cacheKey, data);
-
-    if (!data || !data.results) return null;
-    const filteredResults = data.results.filter((item: Content) => !isForbidden(item, language));
     return {
-      results: filteredResults,
+      results: filterContent(data.results, language),
       page: data.page,
-      total_pages: data.total_pages,
+      total_pages: data.total_pages
     };
-  } catch (error) {
-    return null;
   }
+
+  // 2. Deduplication
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
+  }
+
+  const fetchPromise = (async () => {
+    try {
+      // 3. Disk Check
+      const { db } = await import('../utils/db');
+      const persistentData = await db.getCache(cacheKey);
+      
+      if (persistentData) {
+        sessionCache.set(cacheKey, persistentData);
+        // Background Refresh
+        fetch(`${API_BASE_URL}${endpoint}`).then(async res => {
+            if (res.ok) {
+                const fresh = await res.json();
+                sessionCache.set(cacheKey, fresh);
+                db.setCache(cacheKey, fresh);
+            }
+        }).catch(() => {});
+        
+        return {
+          results: filterContent(persistentData.results, language),
+          page: persistentData.page,
+          total_pages: persistentData.total_pages
+        };
+      }
+
+      // 4. Network
+      const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      if (!response || !response.ok) return null;
+      
+      const data = await response.json();
+      sessionCache.set(cacheKey, data);
+      db.setCache(cacheKey, data);
+
+      return {
+        results: filterContent(data.results, language),
+        page: data.page,
+        total_pages: data.total_pages,
+      };
+    } catch (error) {
+      return null;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+
+  pendingRequests.set(cacheKey, fetchPromise);
+  return fetchPromise;
 };
 
 export const fetchExternalIds = async (id: string | number, type: 'movie' | 'tv') => {
   const endpoint = `/${type}/${id}/external_ids?api_key=${API_KEY}`;
-  const data = await fetchData(endpoint, 'en');
-  return data;
+  return await fetchData(endpoint, 'en');
 };

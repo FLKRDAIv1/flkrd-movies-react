@@ -158,7 +158,28 @@ const App: React.FC = () => {
         if ((window as any).__TAURI_INTERNALS__) {
             document.body.classList.add('is-tauri');
         }
-        bannedService.fetchBannedList();
+        
+        // Quantum Prefetch Engine - Eagerly load core archives
+        const prefetchCore = async () => {
+            try {
+                // 1. Parallel fetch banned registry & trending
+                await Promise.all([
+                    bannedService.fetchBannedList(),
+                    fetchData(requests.fetchTrending, 'en'),
+                    fetchData(requests.fetchLatestMovies('en-US'), 'en')
+                ]);
+                
+                // 2. Background prefetch secondary routes
+                setTimeout(() => {
+                    fetchData(requests.fetchNetflixOriginals, 'en');
+                    fetchData(requests.fetchTopRated, 'en');
+                }, 2000);
+            } catch (e) {
+                console.warn("[QUANTUM PREFETCH] Sync stalled:", e);
+            }
+        };
+
+        prefetchCore();
         const timer = setTimeout(() => setLoading(false), 0);
         return () => clearTimeout(timer);
     }, []);
