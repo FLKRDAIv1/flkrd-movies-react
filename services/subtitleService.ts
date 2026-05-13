@@ -161,8 +161,11 @@ export const subtitleService = {
                     });
 
                     if (prioritizedResults.length > 0) return prioritizedResults;
-                }
             }
+        } catch (e) {
+            console.warn("[SUBTITLE SERVICE] Stremio Discovery failed, trying SubDL.", e);
+        }
+
         // [STRATEGY 2] SubDL Discovery Phase (Strong Kurdish availability)
         if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
             try {
