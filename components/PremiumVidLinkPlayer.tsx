@@ -230,6 +230,8 @@ export default function PremiumVidLinkPlayer({
           // We rely on sw.js (Service Worker) for stealthy ad-blocking to avoid "Bot Detection"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
           referrerPolicy="strict-origin-when-cross-origin"
+          // @ts-ignore
+          scrolling="no"
           onLoad={() => setIsPlayerLoading(false)}
         ></iframe>
 

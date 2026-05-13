@@ -18,6 +18,7 @@
 /* ── Base ── */
 *, *::before, *::after {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -247,8 +248,27 @@ html.console-mode-active .web-only {
 
 /* ── iOS Native Player Hijack Prevention ── */
 video {
-  pointer-events: none !important;
-  -webkit-playsinline: inline !important;
-  playsinline: inline !important;
+  -webkit-playsinline: true !important;
+  playsinline: true !important;
+}
+
+/* ── Global Safari Backdrop Filter Support ── */
+[class*="backdrop-blur-"] {
+  -webkit-backdrop-filter: blur(var(--tw-backdrop-blur)) !important;
+}
+
+/* ── Professional Scrolling for Safari ── */
+.scrollbar-hide, [class*="overflow-y-auto"] {
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ── Fixed Viewport for Safari (Dvh support) ── */
+.h-screen {
+  height: 100vh;
+  height: 100dvh;
+}
+.min-h-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 

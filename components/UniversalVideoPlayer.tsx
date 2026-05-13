@@ -843,22 +843,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     key={stableKey}
                     src={iframeSrc}
                     className="w-full h-full border-none z-10"
-                    style={{ display: 'block', WebkitPlaysInline: 'inline' } as any}
-                    // @ts-ignore
-                    playsInline={true}
-                    // @ts-ignore
-                    webkit-playsinline="true"
-                    // @ts-ignore
-                    fetchPriority="high"
+                    style={{ display: 'block' }}
+                    allowFullScreen
                     // NO sandbox — providers detect sandbox and refuse to load
                     allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
-
+                    referrerPolicy="strict-origin-when-cross-origin"
                     // @ts-ignore
-                    mozallowfullscreen="true"
-                    // @ts-ignore
-                    allowtransparency="true"
-                    // @ts-ignore
-                    webkitallowfullscreen="true"
+                    scrolling="no"
                     onLoad={() => {
                         setLoading(false);
                         if (onLoad) onLoad();
