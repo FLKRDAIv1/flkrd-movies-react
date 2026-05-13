@@ -5,7 +5,9 @@
  */
 
 // IMPORTANT: User must generate their own API key at https://www.opensubtitles.com/en/consumers
-const OPENSUBTITLES_API_KEY = 'TMK1BRNZCmW3AfZaJBZiGlieOD8Cq1hl'; 
+import { OPENSUBTITLES_API_KEY, SUBDL_API_KEY } from '../constants';
+import JSZip from 'jszip';
+
 const USER_AGENT = 'flkrd_movies_v1';
 
 export interface SubtitleResult {
@@ -161,11 +163,19 @@ export const subtitleService = {
                     if (prioritizedResults.length > 0) return prioritizedResults;
                 }
             }
-        } catch (e) {
-            console.warn("[SUBTITLE SERVICE] Discovery failed, falling back to REST API.", e);
+        // [STRATEGY 2] SubDL Discovery Phase (Strong Kurdish availability)
+        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+            try {
+                const subdlResults = await this.searchSubDL(imdbId, type, season, episode, language);
+                if (subdlResults && subdlResults.length > 0) {
+                    return subdlResults;
+                }
+            } catch (e) {
+                console.warn("[SUBTITLE SERVICE] SubDL discovery failed, trying REST fallback.", e);
+            }
         }
 
-        // [STRATEGY 2] Fallback to OpenSubtitles.com REST API
+        // [STRATEGY 3] Fallback to OpenSubtitles.com REST API
         if (!OPENSUBTITLES_API_KEY || OPENSUBTITLES_API_KEY.includes('YOUR_API_KEY')) {
             return [];
         }
@@ -199,6 +209,43 @@ export const subtitleService = {
             return data.data as SubtitleResult[];
         } catch (error) {
             console.error("[SUBTITLE SERVICE] REST API Search error:", error);
+            return [];
+        }
+    },
+
+    async searchSubDL(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku') {
+        try {
+            const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+            // Map common language codes to SubDL (SubDL usually likes Full names or ISO)
+            const langMap: Record<string, string> = { 'ku': 'Kurdish', 'ckb': 'Kurdish', 'fa': 'Persian', 'ar': 'Arabic', 'en': 'English' };
+            const subdlLang = langMap[language] || 'Kurdish';
+            
+            let url = `https://api.subdl.com/api/v1/subtitles?api_key=${SUBDL_API_KEY}&imdb_id=${cleanImdbId}&languages=${subdlLang}`;
+            if (type === 'tv' && season && episode) {
+                url += `&season_number=${season}&episode_number=${episode}&type=tv`;
+            } else {
+                url += `&type=movie`;
+            }
+
+            console.log("[SUBTITLE SERVICE] SubDL Search Engine Engaged:", url);
+            const response = await this.fetchWithFallback(url);
+            if (!response.ok) return [];
+
+            const data = await response.json();
+            if (data.status && data.subtitles && data.subtitles.length > 0) {
+                return data.subtitles.map((s: any) => ({
+                    id: `subdl-${s.sd_id || Math.random()}`,
+                    attributes: {
+                        language: language,
+                        display_name: s.release_name || `${subdlLang} Subtitle (SubDL)`,
+                        url: s.url || `https://dl.subdl.com/subtitle/${s.sd_id}.zip`,
+                        file_id: 0 // SubDL uses direct URLs usually
+                    }
+                }));
+            }
+            return [];
+        } catch (e) {
+            console.error("[SUBTITLE SERVICE] SubDL search error:", e);
             return [];
         }
     },
@@ -261,10 +308,30 @@ export const subtitleService = {
             
             if (!link) throw new Error("Could not obtain download link");
 
-            // Fetch the actual text content
+            // Fetch the actual text content (or zip)
             const response = await this.fetchWithFallback(link);
             if (!response.ok) throw new Error("Could not fetch subtitle content");
             
+            const contentType = response.headers.get('content-type') || '';
+            
+            // Handle ZIP extraction for SubDL
+            if (contentType.includes('zip') || link.endsWith('.zip')) {
+                const blob = await response.blob();
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(blob);
+                
+                // Find first .srt or .vtt file
+                const srtFile = Object.values(zipContent.files).find(f => 
+                    !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
+                );
+                
+                if (srtFile) {
+                    console.log("[SUBTITLE SERVICE] Extracted subtitle from SubDL ZIP:", srtFile.name);
+                    return await srtFile.async('string');
+                }
+                throw new Error("No subtitle file found in ZIP archive");
+            }
+
             const text = await response.text();
             if (!text || text.length < 10) throw new Error("Empty subtitle content");
             

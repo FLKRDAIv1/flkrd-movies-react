@@ -4,6 +4,7 @@ import translations from './translations';
 
 export const API_KEY = "39ad6c4210f7e4357f3b5762fcaeb1db";
 export const OPENSUBTITLES_API_KEY = "4BixV2IOdGyewzC3a0Dvqq1MYbfZ3yFx";
+export const SUBDL_API_KEY = "YOUR_SUBDL_API_KEY"; // Placeholder - user should update
 export const API_BASE_URL = "https://api.themoviedb.org/3";
 export const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 export const IMAGE_BASE_URL_POSTER = "https://image.tmdb.org/t/p/w500";
