@@ -46,7 +46,6 @@ export default function PremiumVidLinkPlayer({
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
-  const [subtitleOffset, setSubtitleOffset] = useState(0);
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
