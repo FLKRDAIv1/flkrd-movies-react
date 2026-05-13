@@ -46,7 +46,7 @@ export default function PremiumVidLinkPlayer({
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
-  const [activeServer, setActiveServer] = useState<'vidlink' | 'superembed'>('vidlink');
+  const [activeServer, setActiveServer] = useState<'vidlink' | 'vidsrc' | 'superembed'>('vidlink');
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
@@ -139,13 +139,20 @@ export default function PremiumVidLinkPlayer({
     ? `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`
     : `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
 
+  const vidSrcBase = type === 'movie'
+    ? `https://vidsrc.to/embed/movie/${tmdbId}`
+    : `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`;
+
   // VidLink (FLKRD SERVER 1) - using server=2 as requested
   const vidLinkUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=5c4747&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=true&nextbutton=true&server=2${startAt}${subParam}`;
   
-  // SuperEmbed (FLKRD SERVER 2) - Professional Ad-Free config
+  // VidSrc (FLKRD SERVER 2) - New high-speed fallback
+  const vidSrcUrl = `${vidSrcBase}?autoplay=1`;
+
+  // SuperEmbed (FLKRD SERVER 3) - Professional Ad-Free config
   const superEmbedUrl = `${superEmbedBase}&vip=1`;
 
-  const videoUrl = activeServer === 'vidlink' ? vidLinkUrl : superEmbedUrl;
+  const videoUrl = activeServer === 'vidlink' ? vidLinkUrl : activeServer === 'vidsrc' ? vidSrcUrl : superEmbedUrl;
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
@@ -157,7 +164,7 @@ export default function PremiumVidLinkPlayer({
     const timer = setTimeout(() => {
       setIsShieldActive(true);
       console.log(`[VIP-PLAYER] Security Shield Engaged for ${activeServer}. Ads Neutralized.`);
-    }, activeServer === 'superembed' ? 6000 : 4500); // SuperEmbed needs slightly longer to handshake
+    }, activeServer === 'vidlink' ? 4500 : 6500); // VidLink is fastest, others need more time
     return () => clearTimeout(timer);
   }, [activeServer]);
 
@@ -244,6 +251,16 @@ export default function PremiumVidLinkPlayer({
             FLKRD SERVER 1
           </button>
           <button 
+            onClick={() => { setActiveServer('vidsrc'); setIsShieldActive(false); }}
+            className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all ${
+              activeServer === 'vidsrc' 
+                ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(229,9,20,0.4)]' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            FLKRD SERVER 2
+          </button>
+          <button 
             onClick={() => { setActiveServer('superembed'); setIsShieldActive(false); }}
             className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tighter transition-all ${
               activeServer === 'superembed' 
@@ -251,7 +268,7 @@ export default function PremiumVidLinkPlayer({
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
-            FLKRD SERVER 2
+            FLKRD SERVER 3
           </button>
         </div>
       </div>
