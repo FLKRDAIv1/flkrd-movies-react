@@ -77,18 +77,6 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
                 <div className="absolute -inset-1 bg-brand/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity rounded-full" />
              </div>
              
-             {/* Dynamic Official Branding */}
-             <div className="flex flex-col pr-3">
-                <h1 className="text-sm md:text-2xl font-[1000] text-white tracking-[calc(-0.04em)] uppercase italic leading-none flex items-center gap-2">
-                   FLKRD
-                   <span className="md:hidden text-[6px] font-black bg-brand px-1.5 py-0.5 rounded-sm italic tracking-widest text-white shadow-lg">OFFICIAL</span>
-                </h1>
-                <span className="hidden md:block text-[8px] font-black text-gray-400 uppercase tracking-[0.4em] mt-1.5 opacity-60">
-                   {isDubPage 
-                     ? (language === 'ku' ? 'بەرهەمە ڕەسەنەکان' : 'ORIGINAL_PRODUCTIONS') 
-                     : (language === 'ku' ? 'پرۆتۆکۆڵی سینەمایی' : 'CINEMATIC_PROTOCOL')}
-                </span>
-             </div>
           </Link>
         </div>
         
