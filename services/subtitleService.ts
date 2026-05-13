@@ -6,7 +6,6 @@
 
 // IMPORTANT: User must generate their own API key at https://www.opensubtitles.com/en/consumers
 import { OPENSUBTITLES_API_KEY, SUBDL_API_KEY } from '../constants';
-import JSZip from 'jszip';
 
 const USER_AGENT = 'flkrd_movies_v1';
 
@@ -321,6 +320,11 @@ export const subtitleService = {
             // Handle ZIP extraction for SubDL
             if (contentType.includes('zip') || link.endsWith('.zip')) {
                 const blob = await response.blob();
+                
+                // Dynamic Load JSZip from CDN to avoid npm install as requested
+                const JSZipModule = await import('https://esm.sh/jszip@3.10.1');
+                const JSZip = JSZipModule.default;
+                
                 const zip = new JSZip();
                 const zipContent = await zip.loadAsync(blob);
                 
