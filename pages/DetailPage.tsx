@@ -333,7 +333,7 @@ const DetailPage: React.FC = () => {
 
             <div className="flex-1 w-full relative bg-black overflow-hidden">
               
-              {activeSource === 'FLKRD SERVER' ? (
+              {activeSource === 'FLKRD SERVER 1' ? (
                 <PremiumVidLinkPlayer
                   tmdbId={id!}
                   type="movie"

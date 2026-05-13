@@ -406,7 +406,7 @@ const TVDetailPage: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {activeSource === 'FLKRD SERVER' ? (
+              {activeSource === 'FLKRD SERVER 1' ? (
                 <PremiumVidLinkPlayer
                   tmdbId={id!}
                   type="tv"
