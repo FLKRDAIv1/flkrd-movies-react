@@ -373,7 +373,7 @@ const DetailPage: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="space-y-4 pb-12">
+                    <div className="space-y-3 pb-12">
                       {sources.map((s, idx) => {
                         const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
                                        s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
@@ -399,51 +399,58 @@ const DetailPage: React.FC = () => {
                               setIsPlayerLoading(true); 
                               setShowSourceSwitcher(false); 
                             }} 
-                            className={`w-full p-5 rounded-[2rem] flex flex-col gap-3 transition-all border group relative overflow-hidden ${
+                            className={`w-full p-5 rounded-[1.5rem] flex flex-col gap-3 transition-all border group relative overflow-hidden ${
                               isActive 
-                                ? 'bg-red-600/10 border-red-600/40 shadow-[0_0_30px_rgba(229,9,20,0.1)]' 
-                                : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/[0.08]'
+                                ? 'bg-white/[0.03] border-red-600/30 shadow-[0_20px_40px_rgba(0,0,0,0.4)]' 
+                                : 'bg-transparent border-transparent hover:border-white/10 hover:bg-white/[0.02]'
                             }`}
                           >
+                            {/* Accent Line for Active State */}
                             {isActive && (
                               <motion.div 
-                                layoutId="active-node-glow"
-                                className="absolute inset-0 bg-gradient-to-r from-red-600/20 to-transparent"
+                                layoutId="active-accent-line"
+                                className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-red-600 rounded-full shadow-[0_0_15px_#e50914]"
                               />
                             )}
 
                             <div className="flex items-center justify-between relative z-10">
                               <div className="flex items-center gap-4">
-                                <div className="relative">
+                                <div className="relative flex items-center justify-center w-10 h-10">
                                   {iconPath ? (
-                                    <img src={iconPath} className="w-8 h-8 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                                    <img src={iconPath} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
                                   ) : (
-                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 font-black text-[10px] ${isActive ? 'text-red-500' : 'text-gray-500'}`}>
+                                    <span className={`text-lg font-black italic ${isActive ? 'text-red-500' : 'text-gray-700'}`}>
                                       {idx + 1}
-                                    </div>
+                                    </span>
                                   )}
-                                  {isActive && <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-black" />}
+                                  {isActive && (
+                                    <motion.div 
+                                      animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
+                                      transition={{ duration: 2, repeat: Infinity }}
+                                      className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
+                                    />
+                                  )}
                                 </div>
                                 <div className="flex flex-col items-start">
-                                  <span className={`text-xs font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-gray-400'}`}>
+                                  <span className={`text-xs font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-gray-500'}`}>
                                     {s.name}
                                   </span>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${isActive ? 'bg-white/20 text-white' : 'bg-black/20 text-gray-500'}`}>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className={`text-[8px] font-bold ${isActive ? 'text-red-500' : 'text-gray-600'}`}>
                                       {speed}
                                     </span>
                                     {s.badge === 'ku' && (
-                                      <div className="flex items-center gap-1">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[2px]" alt="" />
-                                        <span className="text-[7px] font-black text-green-500 uppercase">KU CC</span>
+                                      <div className="flex items-center gap-1 opacity-60">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px]" alt="" />
+                                        <span className="text-[7px] font-black text-green-500 uppercase">KU</span>
                                       </div>
                                     )}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[8px] font-black italic ${isActive ? 'text-white/60' : 'text-gray-600'}`}>{latency}</span>
-                                {isActive && <div className="w-1.5 h-1.5 bg-red-600 rounded-full shadow-[0_0_8px_#e50914]" />}
+                                <span className={`text-[8px] font-black italic tracking-tighter ${isActive ? 'text-white/40' : 'text-gray-700'}`}>{latency}</span>
+                                {isActive && <div className="w-1 h-1 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_#e50914]" />}
                               </div>
                             </div>
                           </motion.button>
