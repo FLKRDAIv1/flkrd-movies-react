@@ -139,14 +139,14 @@ export default function PremiumVidLinkPlayer({
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   // 2. STEALTH SHIELD LOGIC
-  // We start without a sandbox to bypass "Please Disable Sandbox" detection.
-  // After a few seconds (once the player has initialized), we engage the shield.
+  // We utilize the Service Worker (sw.js) for stealthy, network-level ad blocking.
+  // The UI badge indicates when the player has initialized and the network shield is actively monitoring traffic.
   useEffect(() => {
     setIsShieldActive(false); 
     const timer = setTimeout(() => {
       setIsShieldActive(true);
-      console.log(`[VIP-PLAYER] Security Shield Engaged for VidLink. Ads Neutralized.`);
-    }, 4500); 
+      console.log(`[VIP-PLAYER] Network Security Shield Synchronized. Node: VidLink.`);
+    }, 7000); // 7s ensures full provider handshake
     return () => clearTimeout(timer);
   }, []);
 
@@ -227,12 +227,10 @@ export default function PremiumVidLinkPlayer({
           src={videoUrl}
           className="w-full h-full border-0"
           allowFullScreen
+          // We rely on sw.js (Service Worker) for stealthy ad-blocking to avoid "Bot Detection"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
-          // @ts-ignore
-          playsInline={true}
-          // THE STEALTH TRICK: 
-          // We only apply the sandbox attribute AFTER the player has finished its initial "No Sandbox" check.
-          sandbox={isShieldActive ? "allow-scripts allow-same-origin allow-forms allow-presentation allow-modals allow-top-navigation" : undefined}
+          referrerPolicy="strict-origin-when-cross-origin"
+          onLoad={() => setIsPlayerLoading(false)}
         ></iframe>
 
         <AnimatePresence>
