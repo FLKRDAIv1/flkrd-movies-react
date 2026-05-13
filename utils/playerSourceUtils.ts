@@ -1,19 +1,20 @@
 
 import { PlayerSource } from '../types';
 
+export interface EnhancedPlayerSource extends PlayerSource {
+  badge?: 'ku' | 'diamond' | 'crown' | 'bronze';
+}
+
 const LOCAL_STORAGE_KEY = 'playerSourceScores';
 
 const INITIAL_SOURCES: Omit<PlayerSource, 'score'>[] = [
+  { name: 'FLKRD SERVER' }, // Premium VidLink (Ad-Free)
   { name: 'FLKRD SERVER 1' }, // VidKing
   { name: 'FLKRD SERVER 2' }, // Vidsrc.to
-  { name: 'FLKRD SERVER 3' }, // Embed.su
-  { name: 'FLKRD SERVER 4' },
   { name: 'FLKRD SERVER 5' },
   { name: 'FLKRD SERVER 6' },
   { name: 'FLKRD SERVER 7' },
   { name: 'FLKRD SERVER 8' },
-  { name: 'FLKRD SERVER 9' },
-  { name: 'FLKRD SERVER 10' },
 ];
 
 const getScores = (): { [key: string]: number } => {
@@ -26,25 +27,36 @@ const getScores = (): { [key: string]: number } => {
     console.error("Failed to parse player source scores", error);
   }
   return {
-    'FLKRD SERVER 1': 300, // VidKing (Top Priority)
-    'FLKRD SERVER 2': 280, // Vidsrc.to
-    'FLKRD SERVER 3': 270, // Embed.su
-    'FLKRD SERVER 4': 160,
+    'FLKRD SERVER': 500, // Premium VidLink (Master)
+    'FLKRD SERVER 1': 480, // SuperEmbed VIP (Diamond)
+    'FLKRD SERVER 2': 460, // VidKing (Bronze)
     'FLKRD SERVER 5': 150,
     'FLKRD SERVER 6': 140,
     'FLKRD SERVER 7': 130,
     'FLKRD SERVER 8': 120,
-    'FLKRD SERVER 9': 110,
-    'FLKRD SERVER 10': 100,
   };
 };
 
-export const getRankedSources = (): PlayerSource[] => {
+export const getRankedSources = (hasKurdishSub: boolean = false): EnhancedPlayerSource[] => {
   const scores = getScores();
-  const sourcesWithScores: PlayerSource[] = INITIAL_SOURCES.map(source => ({
-    ...source,
-    score: scores[source.name] ?? 0,
-  }));
+  const sourcesWithScores: EnhancedPlayerSource[] = INITIAL_SOURCES.map(source => {
+    let score = scores[source.name] ?? 0;
+    let badge: EnhancedPlayerSource['badge'] = undefined;
+
+    // Pinning Logic: If Kurdish sub is found, boost specific servers that handle it best
+    if (hasKurdishSub) {
+      if (source.name === 'FLKRD SERVER' || source.name === 'FLKRD SERVER 1') {
+        score += 1000; // Force to top
+        badge = 'ku';
+      }
+    }
+
+    return {
+      ...source,
+      score,
+      badge
+    };
+  });
   return sourcesWithScores.sort((a, b) => b.score - a.score);
 };
 
@@ -54,27 +66,26 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
   const subParam = subtitleUrl ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}` : '';
 
   switch (name) {
-    case 'FLKRD SERVER 1': // VidKing (Professional Source)
-      const vkParams = `&color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1${subParam}`;
+    case 'FLKRD SERVER': // Premium VidLink (Ad-Free / Beenama Style)
+      const vlParams = `?primaryColor=${playerColor}&secondaryColor=5c4747&iconColor=eefdec&icons=vid&player=jw&title=true&poster=true&autoplay=true&nextbutton=true${progress > 10 ? `&startAt=${Math.floor(progress)}` : ''}${subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : ''}`;
+      return isTv
+        ? `https://vidlink.pro/tv/${id}/${season}/${episode}${vlParams}`
+        : `https://vidlink.pro/movie/${id}${vlParams}`;
+
+    case 'FLKRD SERVER 1': // SuperEmbed Standard (Diamond Source - Reliable)
+      const isImdb = id.startsWith('tt');
+      const tmdbParam = isImdb ? '' : '&tmdb=1';
+      const seUrl = isTv
+        ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${season}&e=${episode}`
+        : `https://multiembed.mov/?video_id=${id}${tmdbParam}`;
+      return seUrl;
+
+    case 'FLKRD SERVER 2': // VidKing (Bronze Source)
+      const vkParams = `&color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1&sub_file=${encodeURIComponent(subtitleUrl || '')}&sub_label=Kurdish${subParam}`;
       return isTv
         ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?${vkParams}&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
     
-    case 'FLKRD SERVER 2': // Vidsrc.to
-      return isTv
-        ? `https://vidsrc.to/embed/tv/${id}/${season}/${episode}`
-        : `https://vidsrc.to/embed/movie/${id}`;
-    
-    case 'FLKRD SERVER 3': // Embed.su
-      const esSub = subtitleUrl ? `&subtitles=${encodeURIComponent(subtitleUrl)}` : '';
-      return isTv
-        ? `https://embedsu.vip/embed/tv/${id}/${season}/${episode}${esSub ? `?${esSub.slice(1)}` : ''}`
-        : `https://embedsu.vip/embed/movie/${id}${esSub ? `?${esSub.slice(1)}` : ''}`;
-        
-    case 'FLKRD SERVER 4':
-      return isTv
-        ? `https://player.autoembed.cc/embed/tv/${id}/${season}/${episode}`
-        : `https://player.autoembed.cc/embed/movie/${id}`;
         
     case 'FLKRD SERVER 5':
       return isTv
@@ -96,15 +107,6 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         ? `https://vidsrc.me/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`
         : `https://vidsrc.me/embed/movie?tmdb=${id}`;
         
-    case 'FLKRD SERVER 9':
-      return isTv
-        ? `https://vidsrc.pro/embed/tv/${id}/${season}/${episode}`
-        : `https://vidsrc.pro/embed/movie/${id}`;
-        
-    case 'FLKRD SERVER 10':
-      return isTv
-        ? `https://player.smashy.stream/tv/${id}?s=${season}&e=${episode}`
-        : `https://player.smashy.stream/movie/${id}`;
         
     default:
       const defParams = `&color=${playerColor}&autoplay=1&playsinline=1&sub=1`;

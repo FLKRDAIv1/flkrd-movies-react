@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles } from 'lucide-react';
+import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import AdGuardOnboarding from './AdGuardOnboarding';
@@ -366,6 +366,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         hls.loadSource(src);
                         hls.attachMedia(videoRef.current);
                         hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                            if (videoRef.current) videoRef.current.volume = 0.5;
                             setLoading(false);
                             if (onLoad) onLoad();
                         });
@@ -393,7 +394,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 }
             } else if (videoRef.current) {
                 videoRef.current.src = src;
-                videoRef.current.onloadeddata = () => setLoading(false);
+                videoRef.current.onloadeddata = () => {
+                    if (videoRef.current) videoRef.current.volume = 0.5;
+                    setLoading(false);
+                };
                 videoRef.current.onerror = () => {
                     setHlsError(true);
                     setIsIframe(true);
@@ -489,7 +493,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                             }}
                             className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-2xl"
                         >
-                            <Activity size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
+                            <Subtitles size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
                         </button>
 
                         <AnimatePresence>
@@ -502,7 +506,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 >
                                     <div className="flex items-center justify-between border-b border-white/5 pb-4">
                                         <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase">
-                                            <Activity size={14} className="text-red-600" />
+                                            <Subtitles size={14} className="text-red-600" />
                                             {language === 'ku' ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
                                         </h3>
                                         <button onClick={() => setShowSubSettings(false)} className="text-gray-500 hover:text-white transition-colors">
@@ -631,8 +635,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                 (sub?.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())
                                                             )
                                                             .sort((a, b) => {
-                                                                const aIsKu = a?.attributes?.language === 'ku' || a?.attributes?.language === 'ckb';
-                                                                const bIsKu = b?.attributes?.language === 'ku' || b?.attributes?.language === 'ckb';
+                                                                const aLang = (a?.attributes?.language || '').toLowerCase();
+                                                                const bLang = (b?.attributes?.language || '').toLowerCase();
+                                                                const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur';
+                                                                const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur';
                                                                 if (aIsKu && !bIsKu) return -1;
                                                                 if (!aIsKu && bIsKu) return 1;
                                                                 return 0;
@@ -649,7 +655,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                 >
                                                                     {/* Prominent Flag Container */}
                                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
-                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb')
+                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
                                                                         ? 'bg-red-600/20 border-red-500/30'
                                                                         : 'bg-white/5 border-white/10 group-hover:bg-white/10'
                                                                     } transition-colors`}>
@@ -665,7 +671,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                             } transition-colors`}>
                                                                                 {sub?.attributes?.language || 'UNKNOWN'}
                                                                             </span>
-                                                                            {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') && (
+                                                                            {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
                                                                                 <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(229,9,20,0.5)] uppercase tracking-tighter flex items-center gap-1">
                                                                                     <Sparkles size={8} /> Verified
                                                                                 </span>
@@ -677,14 +683,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                     </div>
                                                                     
                                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb')
+                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
                                                                         ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
                                                                         : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
                                                                     }`}>
                                                                         <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                                                                     </div>
                                                                 
-                                                                    {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') && (
+                                                                    {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
                                                                         <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
                                                                     )}
                                                                 </button>
@@ -765,7 +771,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     muted
                     autoPlay
                     playsInline
-                    webkit-playsinline="true"
                     preload="auto"
                     onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
                     onPlaying={() => setLoading(false)}
@@ -846,7 +851,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     // @ts-ignore
                     fetchPriority="high"
                     // NO sandbox — providers detect sandbox and refuse to load
-                    allow="autoplay; fullscreen; playsinline; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
 
                     // @ts-ignore
                     mozallowfullscreen="true"

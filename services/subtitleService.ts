@@ -143,12 +143,22 @@ export const subtitleService = {
                                 language: s.lang,
                                 display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
                                 url: s.url,
-                                file_id: 0 // Indicates a direct link, no POST needed!
+                                file_id: s.file_id || 0 // Use existing file_id if available
                             }
                         }));
                     
-                    // If we found results via Stremio, RETURN THEM IMMEDIATELY.
-                    if (results.length > 0) return results;
+                    // Filter and Sort: Prioritize true Kurdish (ku/ckb) then files with "Kurdish" in name
+                    const prioritizedResults = results.sort((a, b) => {
+                        const aName = a.attributes.display_name.toLowerCase();
+                        const bName = b.attributes.display_name.toLowerCase();
+                        const aIsKu = a.attributes.language === 'ku' || a.attributes.language === 'ckb' || aName.includes('kurd');
+                        const bIsKu = b.attributes.language === 'ku' || b.attributes.language === 'ckb' || bName.includes('kurd');
+                        if (aIsKu && !bIsKu) return -1;
+                        if (!aIsKu && bIsKu) return 1;
+                        return 0;
+                    });
+
+                    if (prioritizedResults.length > 0) return prioritizedResults;
                 }
             }
         } catch (e) {
@@ -165,7 +175,8 @@ export const subtitleService = {
             let url = `https://api.opensubtitles.com/api/v1/subtitles?imdb_id=${cleanImdbId}`;
             
             if (!allLanguages) {
-                const langCodes = language === 'ku' ? 'ku,ckb,ar,en' : `${language},en`;
+                // Search for Kurdish, Sorani, Persian (many Kurdish subs are tagged as Persian), and Arabic
+                const langCodes = 'ku,ckb,fa,ar,en';
                 url += `&languages=${langCodes}`;
             }
 
@@ -270,30 +281,24 @@ export const subtitleService = {
             const { isTauri } = await import("../utils/tauriUtils");
             
             // Only use proxy for official opensubtitles.com links which have strict CORS
-            // Stremio links (strem.io) often work better directly in browser
             if (!isTauri() && url.includes('opensubtitles.com')) {
                 fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
             }
 
             const response = await fetch(fetchUrl);
-            if (!response.ok) {
-                // If it failed with proxy, try one last time directly if it's strem.io
-                if (fetchUrl !== url) {
-                    const directRes = await fetch(url);
-                    if (directRes.ok) return this.processSubtitleText(await directRes.text(), offset);
-                }
-                return null;
+            if (response.ok) {
+                const text = await response.text();
+                const result = await this.processSubtitleText(text, offset);
+                if (result) return result;
             }
-            
-            return this.processSubtitleText(await response.text(), offset);
+
+            // [FALLBACK] If Data URI creation failed (too long) or fetch failed:
+            // Return a Proxied Direct URL that the player can fetch himself
+            console.log("[SUBTITLE SERVICE] Using Direct Proxy Fallback for:", url);
+            return `https://corsproxy.io/?${encodeURIComponent(url)}`;
         } catch (error) {
-            console.error("[SUBTITLE SERVICE] Blob creation error:", error);
-            // Last resort: try direct fetch if proxy failed
-            try {
-                const response = await fetch(url);
-                if (response.ok) return this.processSubtitleText(await response.text(), offset);
-            } catch (e) {}
-            return null;
+            console.error("[SUBTITLE SERVICE] Subtitle delivery error:", error);
+            return `https://corsproxy.io/?${encodeURIComponent(url)}`;
         }
     },
 
@@ -310,9 +315,21 @@ export const subtitleService = {
                 processedText = this.shiftVtt(processedText, offset);
             }
 
-            const blob = new Blob([processedText], { type: 'text/vtt' });
-            return URL.createObjectURL(blob);
+            // [PERFORMANCE FIX] 
+            // Only use Data URIs for very small subtitles to avoid 414 URI Too Long errors.
+            // For large movie subtitles, we should use a direct proxied URL if available.
+            const base64Vtt = btoa(unescape(encodeURIComponent(processedText)));
+            const dataUri = `data:text/vtt;base64,${base64Vtt}`;
+            
+            // If the data URI is too long (over 4KB), it will break many servers.
+            // In that case, we return null and let the caller use a direct URL fallback.
+            if (dataUri.length > 4000) {
+                console.warn("[SUBTITLE SERVICE] Data URI too long, requiring direct URL fallback.");
+                return null; 
+            }
+            return dataUri;
         } catch (e) {
+            console.error("[SUBTITLE SERVICE] Error creating Data URI:", e);
             return null;
         }
     },

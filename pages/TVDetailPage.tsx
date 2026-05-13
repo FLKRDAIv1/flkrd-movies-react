@@ -17,6 +17,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
+import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
 
 const ColorMixtureDivider: React.FC = () => {
@@ -72,7 +73,7 @@ const TVDetailPage: React.FC = () => {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
-  const [activeSource, setActiveSource] = useState('FLKRD SERVER 1');
+  const [activeSource, setActiveSource] = useState('FLKRD SERVER');
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<string>>(new Set());
   const [initialProgress, setInitialProgress] = useState(0);
@@ -91,7 +92,7 @@ const TVDetailPage: React.FC = () => {
   const [countdown, setCountdown] = useState(10);
   const countdownTimerRef = useRef<number | null>(null);
 
-  const sources = getRankedSources();
+  const [sources, setSources] = useState(() => getRankedSources(false));
 
   // [SUBTITLE SYNC] Fetch episode-specific subtitles
   useEffect(() => {
@@ -110,12 +111,27 @@ const TVDetailPage: React.FC = () => {
             'ku'
           );
           if (results && results.length > 0) {
-            const downloadLink = await subtitleService.getDownloadLink(results[0].attributes.file_id);
+            // Prioritize true Kurdish (ku/ckb) or titles with "kurd"
+            const bestTrack = results.find(r => 
+                r.attributes.language === 'ku' || 
+                r.attributes.language === 'ckb' || 
+                r.attributes.display_name.toLowerCase().includes('kurd')
+            ) || results[0];
+
+            const downloadLink = bestTrack.attributes.file_id !== 0 
+                ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
+                : bestTrack.attributes.url;
+
             if (downloadLink) {
               const blobUrl = await subtitleService.getSubtitleBlob(downloadLink);
               if (blobUrl) {
                 console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, blobUrl);
                 setSubtitleUrl(blobUrl);
+                
+                // [PINNING] Boost Kurdish-ready servers
+                const ranked = getRankedSources(true);
+                setSources(ranked);
+
                 addNotification({ 
                   type: 'success', 
                   title: 'ژێرنووسی کوردی', 
@@ -362,7 +378,6 @@ const TVDetailPage: React.FC = () => {
               </button>
             </div>
             <div className="flex-1 w-full relative bg-black overflow-hidden">
-              {isPlayerLoading && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10"><Spinner /></div>}
               <AnimatePresence>
                 {showBingeCountdown && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
@@ -391,30 +406,66 @@ const TVDetailPage: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              <UniversalVideoPlayer
-                src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
-                accentColor={accentColor}
-                language={language}
-                onLoad={() => setIsPlayerLoading(false)}
-                onProgress={handlePlayerProgress}
-                subtitleUrl={subtitleUrl || undefined}
-                imdbId={imdbId || content?.imdb_id}
-                contentType="tv"
-                season={selectedSeason}
-                episode={selectedEpisode}
-              />
+              {activeSource === 'FLKRD SERVER' ? (
+                <PremiumVidLinkPlayer
+                  tmdbId={id!}
+                  type="tv"
+                  season={selectedSeason}
+                  episode={selectedEpisode}
+                  title={content.name}
+                  initialProgress={initialProgress}
+                  accentColor={accentColor}
+                  subtitleUrl={subtitleUrl || undefined}
+                  imdbId={imdbId || undefined}
+                  onProgress={handlePlayerProgress}
+                />
+              ) : (
+                <UniversalVideoPlayer
+                  src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
+                  accentColor={accentColor}
+                  language={language}
+                  onLoad={() => setIsPlayerLoading(false)}
+                  onProgress={handlePlayerProgress}
+                  subtitleUrl={subtitleUrl || undefined}
+                  imdbId={imdbId || content?.imdb_id}
+                  contentType="tv"
+                  season={selectedSeason}
+                  episode={selectedEpisode}
+                />
+              )}
 
               <AnimatePresence>
                 {showSourceSwitcher && (
                   <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 bottom-0 w-72 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide">
                     <div className="flex items-center justify-between mb-8"><h3 className="text-base font-black uppercase italic tracking-tighter">Nodes</h3><button onClick={() => setShowSourceSwitcher(false)}><X size={20} /></button></div>
                     <div className="space-y-3 pb-10">
-                      {sources.map(s => (
-                        <button key={s.name} onClick={() => { setActiveSource(s.name); setIsPlayerLoading(true); setShowSourceSwitcher(false); }} className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${activeSource === s.name ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/5 hover:border-white/20 text-gray-400'}`}>
-                          <span className="text-[10px] font-black uppercase">{s.name}</span>
-                          {activeSource === s.name && <Zap size={14} fill="white" />}
-                        </button>
-                      ))}
+                      {sources.map(s => {
+                        const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
+                                       s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
+                                       s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : null;
+
+                        return (
+                          <button key={s.name} onClick={() => { setActiveSource(s.name); setIsPlayerLoading(true); setShowSourceSwitcher(false); }} className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${activeSource === s.name ? 'bg-red-600 border-red-500 text-white' : 'bg-white/5 border-white/5 hover:border-white/20 text-gray-400'}`}>
+                            <div className="flex items-center gap-3">
+                              {iconPath ? (
+                                <img src={iconPath} className="w-6 h-6 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                              ) : (
+                                <div className={`w-2 h-2 rounded-full ${activeSource === s.name ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
+                              )}
+                              <div className="flex flex-col items-start">
+                                <span className="text-[10px] font-black uppercase tracking-widest">{s.name}</span>
+                                {s.badge === 'ku' && (
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-sm" alt="KU" />
+                                    <span className={`text-[7px] font-black uppercase ${activeSource === s.name ? 'text-white' : 'text-green-500'}`}>KURDISH CC</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            {activeSource === s.name && <Check size={14} />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
