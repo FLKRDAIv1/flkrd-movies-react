@@ -113,10 +113,13 @@ export default function PremiumVidLinkPlayer({
 
     const fetchVtt = async () => {
       try {
-        const response = await fetch(subtitleUrl);
-        if (response.ok) {
-          const text = await response.text();
-          setVttContent(text);
+        const blobUrl = await subtitleService.getSubtitleBlob(subtitleUrl);
+        if (blobUrl) {
+          const response = await fetch(blobUrl);
+          if (response.ok) {
+            const text = await response.text();
+            setVttContent(text);
+          }
         }
       } catch (e) {
         console.error("[VIP-PLAYER] VTT Fetch Error:", e);
@@ -128,7 +131,7 @@ export default function PremiumVidLinkPlayer({
   // 1. Construct parameters based on official VidLink Docs & User Request
   const playerColor = accentColor?.replace('#', '') || 'ff0000';
   const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
-  const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
+  const subParam = subtitleUrl ? `&subtitle=${encodeURIComponent(subtitleUrl)}&subtitleLabel=Kurdish` : '';
   
   // Construct URLs for VidLink Pro (FLKRD SERVER 1)
   const vidLinkBase = type === 'movie' 

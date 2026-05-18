@@ -207,21 +207,18 @@ const DetailPage: React.FC = () => {
                         : bestTrack.attributes.url;
 
                     if (downloadLink) {
-                        const blobUrl = await subtitleService.getSubtitleBlob(downloadLink);
-                        if (blobUrl) {
-                            console.log("[SUBTITLE SYNC] Kurdish Track Established:", blobUrl);
-                            setSubtitleUrl(blobUrl);
-                            
-                            // [PINNING] Boost Kurdish-ready servers
-                            const ranked = getRankedSources(true);
-                            setSources(ranked);
+                        console.log("[SUBTITLE SYNC] Kurdish Track Established:", downloadLink);
+                        setSubtitleUrl(downloadLink);
+                        
+                        // [PINNING] Boost Kurdish-ready servers
+                        const ranked = getRankedSources(true);
+                        setSources(ranked);
 
-                            addNotification({ 
-                              type: 'success', 
-                              title: 'ژێرنووسی کوردی', 
-                              message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
-                            });
-                        }
+                        addNotification({ 
+                          type: 'success', 
+                          title: 'ژێرنووسی کوردی', 
+                          message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
+                        });
                     }
                 } else {
                     addNotification({ 

@@ -124,21 +124,18 @@ const TVDetailPage: React.FC = () => {
                 : bestTrack.attributes.url;
 
             if (downloadLink) {
-              const blobUrl = await subtitleService.getSubtitleBlob(downloadLink);
-              if (blobUrl) {
-                console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, blobUrl);
-                setSubtitleUrl(blobUrl);
-                
-                // [PINNING] Boost Kurdish-ready servers
-                const ranked = getRankedSources(true);
-                setSources(ranked);
+              console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, downloadLink);
+              setSubtitleUrl(downloadLink);
+              
+              // [PINNING] Boost Kurdish-ready servers
+              const ranked = getRankedSources(true);
+              setSources(ranked);
 
-                addNotification({ 
-                  type: 'success', 
-                  title: 'ژێرنووسی کوردی', 
-                  message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
-                });
-              }
+              addNotification({ 
+                type: 'success', 
+                title: 'ژێرنووسی کوردی', 
+                message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
+              });
             }
           } else {
             addNotification({ 
