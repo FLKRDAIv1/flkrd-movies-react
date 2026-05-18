@@ -6,13 +6,27 @@
    FLKRD MOVIES — Design System & Performance CSS
    ═══════════════════════════════════════════════ */
 
-:root {
+:root, .theme-dark, .theme-premium-gradient-1, .theme-premium-gradient-2, .theme-premium-particles-galaxy, .theme-premium-particles-moon, .theme-premium-particles-stardust {
   --brand-red: #e50914;
   --brand-red-rgb: 229, 9, 20;
-  --bg-primary: #000000;
-  --text-primary: #ffffff;
+  --bg-primary-rgb: 0, 0, 0;
+  --text-primary-rgb: 255, 255, 255;
+  --text-secondary-rgb: 163, 163, 163;
+  --card-bg-rgb: 10, 10, 10;
+  --box-bg-rgb: 20, 20, 20;
+  --border-color-rgb: 38, 38, 38;
   --global-scale: 1;
-  --card-bg: #0a0a0a;
+}
+
+.light-mode {
+  --brand-red: #e50914;
+  --brand-red-rgb: 229, 9, 20;
+  --bg-primary-rgb: 248, 250, 252;
+  --text-primary-rgb: 15, 23, 42;
+  --text-secondary-rgb: 100, 116, 139;
+  --card-bg-rgb: 255, 255, 255;
+  --box-bg-rgb: 241, 245, 249;
+  --border-color-rgb: 226, 232, 240;
 }
 
 /* ── Base ── */
@@ -33,8 +47,7 @@ body {
   font-family: 'Zain', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  @apply bg-main-bg text-main-text;
   /* Force GPU composite layer for buttery scrolling */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

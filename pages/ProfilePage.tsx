@@ -12,6 +12,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Spinner from '../components/Spinner';
 import { downloadMobileConfig } from '../utils/appleProfileUtils';
+import AnimatedThemeToggler from '../components/ui/animated-theme-toggler';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
@@ -54,10 +55,10 @@ const ProfilePage: React.FC = () => {
     if (loading) return <div className="h-screen flex items-center justify-center bg-black"><Spinner /></div>;
 
     return (
-        <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 md:px-8 relative overflow-hidden">
+        <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 md:px-8 relative overflow-x-hidden">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[50vh] bg-gradient-to-b from-[var(--brand-red)]/10 via-transparent to-transparent pointer-events-none" />
             <div
-                className="absolute -top-24 -right-24 w-96 h-96 blur-[120px] rounded-full animate-pulse transition-colors duration-1000"
+                className="absolute -top-24 -right-24 w-96 h-96 blur-3xl md:blur-[120px] rounded-full animate-pulse transition-colors duration-1000"
                 style={{ backgroundColor: accentColor + '0D' }}
             />
 
@@ -124,7 +125,7 @@ const ProfilePage: React.FC = () => {
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="bg-white/[0.02] backdrop-blur-[60px] border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl relative"
+                            className="bg-white/[0.02] backdrop-blur-xl md:backdrop-blur-[60px] border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl relative"
                         >
                             <div className="flex items-center gap-4 mb-10">
                                 <div className="p-3 bg-[var(--brand-red)]/20 rounded-2xl border border-[var(--brand-red)]/20">
@@ -144,15 +145,9 @@ const ProfilePage: React.FC = () => {
                                             <p className="text-sm text-gray-500 font-bold">{theme === 'dark' ? t('dark') : t('light')} Mode Enabled</p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={toggleTheme}
-                                        className="relative w-16 h-8 rounded-full bg-white/10 border border-white/10 p-1 transition-colors duration-300"
-                                    >
-                                        <motion.div
-                                            animate={{ x: theme === 'dark' ? 32 : 0 }}
-                                            className="w-6 h-6 rounded-full bg-[var(--brand-red)] shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.6)]"
-                                        />
-                                    </button>
+                                    <div className="flex items-center justify-center p-2 rounded-full bg-black/40 border border-white/10 shadow-inner">
+                                        <AnimatedThemeToggler />
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-10 border-b border-white/5">
@@ -203,7 +198,7 @@ const ProfilePage: React.FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-gradient-to-r from-[var(--brand-red)] to-black rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-[60px] group-hover:scale-150 transition-transform duration-[2s]" />
+                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-xl md:blur-[60px] group-hover:scale-150 transition-transform duration-[2s]" />
                                 <div className="relative z-10 flex flex-col justify-between h-full">
                                     <div>
                                         <div className="flex items-center gap-2 mb-2">

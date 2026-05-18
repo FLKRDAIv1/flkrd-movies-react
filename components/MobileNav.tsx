@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Home, Tv, Search, Bookmark, Globe, Mic2, PlayCircle } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import translations from '../translations';
+import { LiquidButton } from './ui/liquid-glass-button';
 
 interface NavItem {
   id: number;
@@ -26,32 +26,36 @@ const items: NavItem[] = [
 const MobileNav: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
-      <div className="flex items-center justify-around bg-black/40 backdrop-blur-3xl rounded-[2.5rem] px-3 py-3 shadow-[0_30px_60px_rgba(0,0,0,0.6)] border border-white/10 transition-all duration-500 ring-1 ring-white/5">
+    <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
+      <div className="flex items-center justify-around bg-main-bg/60 backdrop-blur-xl rounded-[2.5rem] px-2 py-2 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-main-text/5 transition-all duration-500 ring-1 ring-main-text/10">
         {items.map((item) => (
           <NavLink
             key={item.id}
             to={item.to}
             aria-label={t(item.labelKey)}
-            className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-12 h-12 rounded-2xl transition-all relative group ${
-                isActive ? 'text-white' : 'text-gray-500 hover:text-white'
-              }`
-            }
+            className="group"
           >
             {({ isActive }) => (
-              <>
-                <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
-                   {item.icon}
+              <LiquidButton
+                variant="default"
+                size="icon"
+                className={`w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center ${
+                  isActive ? 'text-main-text' : 'text-sec-text hover:text-main-text'
+                }`}
+              >
+                <div>
+                  <div className={`transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
+                     {item.icon}
+                  </div>
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-mobile-indicator"
+                      className="absolute -bottom-1 h-1.5 w-6 bg-[var(--brand-red)] rounded-full shadow-[0_0_15px_rgba(229,9,20,0.8)]"
+                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    />
+                  )}
                 </div>
-                {isActive && (
-                  <motion.div
-                    layoutId="active-mobile-indicator"
-                    className="absolute -bottom-1.5 h-1.5 w-6 bg-brand rounded-full shadow-[0_0_15px_rgba(229,9,20,0.6)]"
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                  />
-                )}
-              </>
+              </LiquidButton>
             )}
           </NavLink>
         ))}

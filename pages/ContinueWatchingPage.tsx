@@ -8,6 +8,7 @@ import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Spinner from '../components/Spinner';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 const ContinueWatchingPage: React.FC = () => {
     const [items, setItems] = useState<WatchProgress[]>([]);
@@ -71,13 +72,14 @@ const ContinueWatchingPage: React.FC = () => {
     return (
         <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 sm:px-6 lg:px-8 relative">
             <div className={`absolute top-24 ${language === 'ku' ? 'right-8 md:right-20' : 'left-8 md:left-20'} z-50`}>
-                <button 
+                <LiquidButton 
+                  variant="secondary"
                   onClick={() => navigate(-1)} 
-                  className="flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-red-600 text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95"
+                  className="!px-5 !py-3 rounded-2xl flex items-center gap-2"
                 >
-                  {language === 'ku' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
+                  {language === 'ku' ? <ArrowLeft size={20} className="rotate-180" /> : <ArrowLeft size={20} />}
                   <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
-                </button>
+                </LiquidButton>
             </div>
 
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
@@ -94,13 +96,14 @@ const ContinueWatchingPage: React.FC = () => {
                 </div>
                 
                 {items.length > 0 && (
-                    <button 
+                    <LiquidButton 
+                        variant="destructive"
                         onClick={clearAll}
-                        className="flex items-center gap-3 bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white border border-red-600/20 px-8 py-4 rounded-2xl font-black transition-all shadow-xl uppercase italic tracking-widest text-xs"
+                        className="!px-8 !py-4 rounded-2xl flex items-center gap-3 uppercase italic tracking-widest text-xs"
                     >
                         <Trash2 size={18} />
                         Clear All Archive
-                    </button>
+                    </LiquidButton>
                 )}
             </div>
 
@@ -119,42 +122,46 @@ const ContinueWatchingPage: React.FC = () => {
                                 className="cursor-pointer group relative transform transition-all duration-500"
                                 whileHover={{ scale: 1.08, zIndex: 30 }}
                             >
-                                <div className="aspect-[2/3] overflow-hidden rounded-[2.5rem] border-2 border-white/5 group-hover:border-red-600/50 group-hover:shadow-[0_0_30px_rgba(229,9,20,0.4)] shadow-2xl transition-all relative bg-black">
+                                <div className="aspect-[2/3] overflow-hidden rounded-[2.5rem] border-2 border-white/5 group-hover:border-brand/50 shadow-2xl transition-all relative bg-black">
                                     <img
                                         src={item.poster_path?.startsWith('http') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
                                         alt={item.title}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                                     />
                                     
-                                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                        <button
+                                    {/* Liquid Glass Hover Overlay */}
+                                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10" />
+
+                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                                        <LiquidButton
+                                            variant="destructive"
                                             onClick={(e) => handleRemove(e, item.id, String(item.type))}
-                                            className="p-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-xl flex items-center justify-center transition-transform active:scale-90"
                                             title={t('removeFromProgress')}
+                                            className="!p-2.5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
                                         >
                                             <X size={18} strokeWidth={3} />
-                                        </button>
+                                        </LiquidButton>
                                     </div>
 
                                     {isDubbed && (
-                                        <div className="absolute top-3 left-3 bg-red-600 text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg">
+                                        <div className="absolute top-4 left-4 bg-brand text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg z-20">
                                             DUBBED
                                         </div>
                                     )}
 
-                                    <div className="absolute bottom-0 left-0 right-0 h-2 bg-black/60 backdrop-blur-md z-20">
+                                    <div className="absolute bottom-0 left-0 right-0 h-2 bg-black/60 backdrop-blur-md z-30">
                                         <motion.div 
                                             initial={{ width: 0 }}
                                             animate={{ width: `${progressPct}%` }}
-                                            className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_15px_#e50914]"
+                                            className="h-full bg-gradient-to-r from-brand to-brand/70 shadow-[0_0_15px_var(--brand-red)]"
                                         />
                                     </div>
 
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
+                                    <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6 pb-8 pointer-events-none">
                                         <p className="text-white text-sm font-black uppercase italic truncate mb-2">{item.title}</p>
                                         <div className="flex items-center gap-2">
-                                            <div className="bg-red-600 p-1.5 rounded-full"><Play size={10} fill="white" className="text-white" /></div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">Resume Link</span>
+                                            <div className="bg-brand p-1.5 rounded-full"><Play size={10} fill="white" className="text-white" /></div>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-sec-text">Resume Link</span>
                                         </div>
                                     </div>
                                 </div>

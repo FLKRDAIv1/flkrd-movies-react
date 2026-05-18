@@ -21,6 +21,7 @@ import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -529,9 +530,9 @@ const DetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5">
-            <motion.button ref={playButtonRef} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handlePlayClick} className="flex items-center gap-3 bg-[var(--text-primary)] text-[var(--bg-primary)] font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl transition-all"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span></motion.button>
+            <LiquidButton ref={playButtonRef} variant="default" onClick={handlePlayClick} className="font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span></LiquidButton>
             {trailerKey && (
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 bg-white/10 backdrop-blur-3xl border border-white/10 text-[var(--text-primary)] font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl transition-all"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></motion.button>
+              <LiquidButton variant="default" onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></LiquidButton>
             )}
           </div>
         </div>

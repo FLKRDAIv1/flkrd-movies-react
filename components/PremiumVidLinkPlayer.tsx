@@ -31,6 +31,7 @@ export default function PremiumVidLinkPlayer({
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const [isShieldActive, setIsShieldActive] = useState(false);
+  const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [showSubSettings, setShowSubSettings] = useState(false);
   const [activeCues, setActiveCues] = useState<any[]>([]);
@@ -134,7 +135,7 @@ export default function PremiumVidLinkPlayer({
     ? `https://vidlink.pro/movie/${tmdbId}`
     : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
   
-  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=5c4747&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=true&nextbutton=true&server=2${startAt}${subParam}`;
+  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=false&nextbutton=true${startAt}${subParam}`;
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 

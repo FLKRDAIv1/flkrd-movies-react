@@ -11,6 +11,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from './KurdishCCBadge';
+import { LiquidButton } from './ui/liquid-glass-button';
 
 interface RowProps {
   title: string;
@@ -181,9 +182,9 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
 
   if (loading) return (
     <div className="mb-12 px-8">
-        <div className="h-8 w-64 bg-white/5 rounded-full mb-8 animate-pulse" />
+        <div className="h-8 w-64 bg-main-text/5 rounded-full mb-8 animate-pulse" />
         <div className="flex gap-5 overflow-hidden">
-            {[1,2,3,4,5,6].map(i => <div key={i} className="flex-shrink-0 w-32 md:w-56 aspect-[2/3] bg-white/5 rounded-[2rem] animate-pulse" />)}
+            {[1,2,3,4,5,6].map(i => <div key={i} className="flex-shrink-0 w-32 md:w-56 aspect-[2/3] bg-main-text/5 rounded-[2rem] animate-pulse" />)}
         </div>
     </div>
   );
@@ -224,7 +225,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand bg-card-bg shadow-xl">
+                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand shadow-xl">
                   <img
                     src={(item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
                     alt={(item as Content).title || (item as Content).name}
@@ -232,37 +233,53 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                     loading="lazy"
                   />
 
+                  {/* Liquid Glass Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-main-text/10" />
+
+                  {/* IMDb Badge */}
+                  {(item as Content).vote_average !== undefined && (item as Content).vote_average > 0 && (
+                    <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F5C518] text-black px-2 py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/50">
+                      <span className="font-[1000] text-[8px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
+                      <span className="font-black text-[10px] md:text-xs leading-none">{(item as Content).vote_average.toFixed(1)}</span>
+                    </div>
+                  )}
+
                   {/* Kurdish CC Badge (Auto-detect via queue) */}
                   {!String(item.id).startsWith('custom_') && (
-                    <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType as 'movie' | 'tv'} />
+                    <div className="z-20 relative">
+                      <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType as 'movie' | 'tv'} />
+                    </div>
                   )}
 
                   <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
                       {!isProgressRow && (
-                        <button
+                        <LiquidButton
+                          variant={isAdded ? "default" : "secondary"}
                           onClick={(e) => handleToggleMyList(e, item, mediaType as 'movie' | 'tv')}
-                          className={`p-2 rounded-xl backdrop-blur-3xl border transition-all ${isAdded ? 'bg-brand text-white border-brand' : 'bg-black/60 text-white border-white/10'}`}
+                          className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${isAdded ? 'bg-brand text-white' : 'text-white'}`}
                         >
                           {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
-                        </button>
+                        </LiquidButton>
                       )}
                       
                       {isProgressRow && (
-                          <button
+                          <LiquidButton
+                              variant="default"
                               onClick={(e) => handleRemoveProgress(e, item.id, String(mediaType))}
-                              className="p-2 bg-brand border border-brand rounded-xl text-white"
+                              className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
                           >
                               <X className="w-4 h-4" strokeWidth={4} />
-                          </button>
+                          </LiquidButton>
                       )}
 
                       {isAdmin && (
-                        <button
+                        <LiquidButton
+                          variant="destructive"
                           onClick={(e) => handleBan(e, item)}
-                          className="p-2 bg-red-500 border border-red-500 rounded-xl text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]"
+                          className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </LiquidButton>
                       )}
                   </div>
 
@@ -281,7 +298,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 {loadingMore ? (
                     <Loader2 className="w-8 h-8 text-brand animate-spin" />
                 ) : (
-                    <div className="w-1 h-12 bg-white/10 rounded-full" />
+                    <div className="w-1 h-12 bg-main-text/10 rounded-full" />
                 )}
             </div>
           )}

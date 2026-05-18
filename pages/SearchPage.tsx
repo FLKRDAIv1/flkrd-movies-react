@@ -12,6 +12,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { clearTMDBCache } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
@@ -77,26 +78,28 @@ const NoResultsSuggestions = () => {
 
       <div className="flex flex-wrap justify-center gap-3 mb-10">
         {quickLinks.map((link, idx) => (
-          <button
+          <LiquidButton
             key={idx}
+            variant="secondary"
             onClick={() => navigate(link.path)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-brand hover:text-white transition-all text-[10px] font-black uppercase tracking-widest"
+            className="!px-5 !py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
           >
             {link.icon}
             {link.label}
-          </button>
+          </LiquidButton>
         ))}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {GENRES_T.slice(0, 6).map((genre) => (
-          <button
+          <LiquidButton
             key={genre.id}
+            variant="secondary"
             onClick={() => navigate(`/discover`)}
-            className="p-4 rounded-2xl bg-card-bg border border-border-color hover:border-brand/50 text-sec-text hover:text-brand transition-all text-[10px] font-black uppercase tracking-tighter italic"
+            className="!p-4 rounded-2xl text-[10px] font-black uppercase tracking-tighter italic"
           >
             {t(genre.nameKey)}
-          </button>
+          </LiquidButton>
         ))}
       </div>
     </motion.div>
@@ -198,9 +201,11 @@ const SearchPage: React.FC = () => {
 
             <AnimatePresence>
               {inputValue && (
-                <motion.button initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} type="button" onClick={handleClearInput} className="absolute right-6 text-sec-text hover:text-main-text bg-white/10 p-2 rounded-xl transition-all">
-                  <X size={20} />
-                </motion.button>
+                <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} className="absolute right-6">
+                  <LiquidButton variant="secondary" onClick={handleClearInput} className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl">
+                    <X size={20} />
+                  </LiquidButton>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
@@ -343,12 +348,25 @@ const SearchPage: React.FC = () => {
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
                     />
 
+                    {/* Liquid Glass Hover Overlay */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10" />
+
+                    {/* IMDb Badge */}
+                    {item.vote_average !== undefined && item.vote_average > 0 && (
+                      <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F5C518] text-black px-2 py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/50">
+                        <span className="font-[1000] text-[8px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
+                        <span className="font-black text-[10px] md:text-xs leading-none">{item.vote_average.toFixed(1)}</span>
+                      </div>
+                    )}
+
                     {/* Kurdish CC Badge (Auto-detect via queue) */}
                     {!String(item.id).startsWith('custom_') && (
-                      <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                      <div className="z-20 relative">
+                        <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                      </div>
                     )}
                     
-                    <div className="absolute top-4 right-4 z-30 flex flex-col gap-2">
+                    <div className="absolute top-4 right-4 z-30 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
                         {item.media_type === 'dubbed' && (
                           <motion.div
                             animate={{ scale: [1, 1.1, 1] }}
@@ -361,7 +379,8 @@ const SearchPage: React.FC = () => {
                         )}
 
                         {isAdmin && (
-                          <button
+                          <LiquidButton
+                            variant="destructive"
                             onClick={async (e) => {
                               e.stopPropagation();
                               const cleanId = String(item.id).replace('custom_', '');
@@ -379,10 +398,10 @@ const SearchPage: React.FC = () => {
                                 }
                               }
                             }}
-                            className="p-2 bg-red-500 border border-red-500 rounded-xl text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]"
+                            className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
                           >
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </LiquidButton>
                         )}
                     </div>
 

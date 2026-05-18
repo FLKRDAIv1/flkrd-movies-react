@@ -45,7 +45,7 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       '/search': () => import('../pages/SearchPage'),
       '/my-list': () => import('../pages/MyListPage'),
     };
-    if (componentMap[to]) componentMap[to]();
+    if (componentMap[to]) componentMa
   };
 
   return (
@@ -53,16 +53,16 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       to={to} 
       title={isCollapsed ? text : ""}
       onMouseEnter={handlePrefetch}
-      className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-300 overflow-hidden ${
+      className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-500 overflow-hidden border ${
         isActive 
-        ? 'bg-red-600 text-white shadow-[0_8px_20px_rgba(229,9,20,0.3)]' 
-        : 'hover:bg-white/5 text-gray-500 hover:text-white'
+        ? 'bg-brand/90 backdrop-blur-xl border-brand text-white shadow-[0_0_30px_rgba(var(--brand-red-rgb),0.5)]' 
+        : 'bg-transparent border-transparent hover:bg-main-text/5 hover:backdrop-blur-md hover:border-main-text/10 text-sec-text hover:text-main-text'
       }`}
     >
       {isActive && (
         <motion.div 
           layoutId="active-indicator"
-          className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
+          className="absolute left-0 top-1/4 bottom-1/4 w-1.5 bg-white rounded-r-full shadow-[0_0_10px_white]"
         />
       )}
       <div className={`flex-shrink-0 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
@@ -94,10 +94,10 @@ const StudioItem = memo(({ to, icon, text, location }: StudioItemProps) => {
   return (
     <NavLink 
       to={to} 
-      className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-300 ${
+      className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-500 border ${
         isActive 
-        ? 'bg-white/10 text-white font-black' 
-        : 'hover:bg-white/5 text-gray-500 hover:text-white'
+        ? 'bg-main-text/10 backdrop-blur-md border-main-text/20 text-main-text font-black shadow-[0_0_20px_rgba(var(--text-primary-rgb),0.1)]' 
+        : 'bg-transparent border-transparent hover:bg-main-text/5 hover:backdrop-blur-sm hover:border-main-text/10 text-sec-text hover:text-main-text'
       }`}
     >
       <div className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${isActive ? 'scale-110' : 'group-hover:rotate-12'}`}>
@@ -133,7 +133,7 @@ const Sidebar: React.FC = () => {
       </AnimatePresence>
 
       <motion.div
-        className="hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-[#050505]/80 backdrop-blur-3xl border-r border-white/5 text-gray-400 z-50 shadow-[20px_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+        className="hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-main-bg/40 backdrop-blur-[100px] border-r border-main-text/10 text-sec-text z-50 shadow-[20px_0_50px_rgba(0,0,0,0.4)] overflow-hidden"
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}
@@ -141,13 +141,13 @@ const Sidebar: React.FC = () => {
         onMouseLeave={() => setIsCollapsed(true)}
       >
         <div className="flex items-center justify-center h-32 flex-shrink-0 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-red-600/10 to-transparent opacity-50" />
+          <div className="absolute inset-0 bg-gradient-to-b from-brand/20 to-transparent opacity-50" />
           <motion.div 
             animate={{ 
               scale: isCollapsed ? 1 : 1.1,
               width: isCollapsed ? "4rem" : "12rem"
             }}
-            className="relative z-10 flex items-center justify-center p-3 bg-black/40 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl overflow-hidden"
+            className="relative z-10 flex items-center justify-center p-3 bg-main-text/5 rounded-2xl border border-main-text/10 shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden"
           >
              <AnimatePresence mode="wait">
                {isCollapsed ? (
@@ -193,7 +193,7 @@ const Sidebar: React.FC = () => {
               <h3 className="text-[8px] font-black text-gray-500 uppercase tracking-[0.4em] opacity-50">
                 {t('studios')}
               </h3>
-              <div className="h-px w-full bg-gradient-to-r from-white/10 to-transparent mt-2" />
+              <div className="h-px w-full bg-gradient-to-r from-main-text/10 to-transparent mt-2" />
             </motion.div>
             
             <div className="space-y-1">
@@ -210,13 +210,13 @@ const Sidebar: React.FC = () => {
           </div>
         </nav>
         
-        <div className="p-6 border-t border-white/5 bg-white/[0.02]">
+        <div className="p-6 border-t border-main-text/10 bg-main-text/[0.02] backdrop-blur-xl relative z-20">
            <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-red-600 to-red-900 flex-shrink-0 border border-white/20 shadow-lg" />
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-900 flex-shrink-0 border border-main-text/20 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]" />
               {!isCollapsed && (
                 <div className="flex flex-col min-w-0">
-                  <p className="text-[10px] font-black text-white uppercase tracking-tighter truncate">Premium Member</p>
-                  <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Global Archive Access</p>
+                  <p className="text-[10px] font-black text-main-text uppercase tracking-tighter truncate">Premium Member</p>
+                  <p className="text-[8px] font-bold text-sec-text uppercase tracking-widest">Global Archive Access</p>
                 </div>
               )}
            </div>

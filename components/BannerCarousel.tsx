@@ -10,6 +10,7 @@ import Spinner from './Spinner';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { bannedService } from '../services/bannedService';
+import { LiquidButton } from './ui/liquid-glass-button';
 
 interface ExtendedContent extends Content {
   logo?: string;
@@ -193,28 +194,31 @@ const HeroBanner: React.FC = () => {
             </p>
 
             <div className={`flex flex-wrap items-center gap-4 md:gap-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-              <button
+              <LiquidButton
+                variant="default"
                 onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                className="bg-white text-black font-[1000] px-10 md:px-24 py-5 md:py-7 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-4 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] transition-all active:scale-95 hover:bg-red-600 hover:text-white"
+                className="text-white font-[1000] px-10 md:px-24 py-5 md:py-7 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-4 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
               >
                 <Play fill="currentColor" size={20} className="md:w-9 md:h-9" /> {t('play')}
-              </button>
+              </LiquidButton>
               
               <div className="flex items-center gap-4">
-                <button
+                <LiquidButton
+                    variant="default"
                     onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                    className="bg-black/40 backdrop-blur-3xl border border-white/10 p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-white transition-all shadow-xl active:scale-95 hover:bg-white/10"
+                    className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-white shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] ring-1 ring-white/10"
                 >
                     <Info size={20} className="md:w-9 md:h-9" />
-                </button>
+                </LiquidButton>
 
                 {isAdmin && (
-                    <button
+                    <LiquidButton
+                        variant="destructive"
                         onClick={(e) => handleBan(e, currentItem)}
-                        className="bg-red-600/20 backdrop-blur-3xl border border-red-500/50 p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-red-500 transition-all shadow-xl active:scale-95 hover:bg-red-600 hover:text-white group"
+                        className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] shadow-xl group"
                     >
                         <Trash2 size={20} className="md:w-9 md:h-9 group-hover:scale-110 transition-transform" />
-                    </button>
+                    </LiquidButton>
                 )}
               </div>
             </div>

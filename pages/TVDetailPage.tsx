@@ -19,6 +19,7 @@ import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -594,10 +595,10 @@ const TVDetailPage: React.FC = () => {
             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-md"><Calendar size={14} className="text-gray-400" /><span className="text-xs font-black text-gray-400">{content.first_air_date?.split('-')[0]}</span></div>
           </div>
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-10">
-            <button onClick={() => handlePlayClick()} className="flex items-center gap-3 bg-white text-black font-black py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl hover:scale-105 transition-transform group">
-              <Play size={20} fill="black" />
+            <LiquidButton variant="default" onClick={() => handlePlayClick()} className="font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3">
+              <Play size={20} fill="currentColor" />
               <span className="text-base md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span>
-            </button>
+            </LiquidButton>
           </div>
         </div>
         <div className={`absolute top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>

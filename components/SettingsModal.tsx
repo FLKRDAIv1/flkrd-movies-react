@@ -10,6 +10,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import EnableNotificationsModal from './EnableNotificationsModal';
 import Portal from './Portal';
+import { LiquidButton } from './ui/liquid-glass-button';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -118,13 +119,13 @@ const SectionLabel: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon
   <div className="flex items-center gap-2.5 mb-4 px-1">
     <span className="text-gray-500 scale-90">{icon}</span>
     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 whitespace-nowrap">{label}</span>
-    <div className="flex-1 h-[1px] bg-gradient-to-r from-white/5 to-transparent" />
+    <div className="flex-1 h-[1px] bg-gradient-to-r from-main-text/5 to-transparent" />
   </div>
 );
 
 const Card: React.FC<{ children: React.ReactNode; className?: string; glow?: string }> = ({ children, className = '', glow }) => (
   <div 
-    className={`relative rounded-3xl border border-white/5 bg-white/[0.02] backdrop-blur-md overflow-hidden transition-all duration-500 ${className}`}
+    className={`relative rounded-3xl border border-main-text/5 bg-main-text/[0.02] backdrop-blur-md overflow-hidden transition-all duration-500 ${className}`}
     style={glow ? { boxShadow: `0 0 40px ${glow}11`, borderColor: `${glow}33` } : {}}
   >
     {children}
@@ -211,7 +212,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-lg bg-[#0a0a0a] rounded-[2.5rem] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden z-10"
+            className="relative w-full max-w-lg bg-card-bg rounded-[2.5rem] border border-main-text/10 shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden z-10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Glass Highlight Overlay */}
@@ -227,7 +228,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   <Sparkles size={20} style={{ color: accentColor }} className="animate-pulse" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-[1000] text-white uppercase italic tracking-tighter leading-none">
+                  <h2 className="text-lg font-[1000] text-main-text uppercase italic tracking-tighter leading-none">
                     {t('designSettings')}
                   </h2>
                   <div className="flex items-center gap-2 mt-1.5">
@@ -240,7 +241,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 <FPSCounter active={true} />
                 <button 
                   onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                  className="w-10 h-10 rounded-full bg-main-text/5 hover:bg-main-text/10 border border-main-text/10 flex items-center justify-center text-gray-400 hover:text-main-text transition-all active:scale-90"
                 >
                   <X size={18} />
                 </button>
@@ -299,12 +300,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                          key={th.id}
                          onClick={() => handleThemeChange(th.id)}
                          className={`group relative flex flex-col items-center gap-3 p-4 rounded-3xl border transition-all duration-300 ${
-                           active ? 'bg-white/10' : 'bg-white/5 hover:bg-white/[0.08]'
+                           active ? 'bg-main-text/10' : 'bg-main-text/5 hover:bg-main-text/[0.08]'
                          }`}
                          style={{ borderColor: active ? accentColor : 'transparent' }}
                        >
                          <div 
-                           className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-white/10"
+                           className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-main-text/10"
                            style={{ backgroundColor: th.color }}
                          >
                            {th.icon}
@@ -447,12 +448,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       `}</style>
                       <div className="flex justify-between mt-6 px-1">
                         <div className="flex flex-col items-start gap-1.5 opacity-40">
-                           <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">Minimalist</span>
-                           <div className="w-8 h-1 bg-white/10 rounded-full" />
+                           <span className="text-[9px] font-black text-main-text uppercase tracking-[0.2em]">Minimalist</span>
+                           <div className="w-8 h-1 bg-main-text/10 rounded-full" />
                         </div>
                         <div className="flex flex-col items-end gap-1.5 opacity-40">
-                           <span className="text-[9px] font-black text-white uppercase tracking-[0.2em]">Cinematic</span>
-                           <div className="w-8 h-1 bg-white/10 rounded-full" />
+                           <span className="text-[9px] font-black text-main-text uppercase tracking-[0.2em]">Cinematic</span>
+                           <div className="w-8 h-1 bg-main-text/10 rounded-full" />
                         </div>
                       </div>
                    </div>
@@ -470,7 +471,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                          key={c.value}
                          onClick={() => handleColorChange(c.value)}
                          className={`group relative flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
-                           active ? 'bg-white/10 border-white/20' : 'bg-white/5 border-transparent hover:bg-white/10'
+                           active ? 'bg-main-text/10 border-main-text/20' : 'bg-main-text/5 border-transparent hover:bg-main-text/10'
                          }`}
                        >
                          <div 
@@ -492,19 +493,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
             {/* Footer */}
             <div className="p-8 bg-white/[0.02] border-t border-white/[0.08]">
-              <motion.button
+              <LiquidButton
+                variant="default"
                 onClick={onClose}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-5 rounded-[2rem] text-[10px] font-black text-white uppercase tracking-[0.4em] shadow-xl relative overflow-hidden group"
+                className="w-full py-5 rounded-[2rem] text-[10px] font-black text-white uppercase tracking-[0.4em] shadow-xl flex items-center justify-center gap-3"
                 style={{ backgroundColor: accentColor }}
               >
-                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
-                <span className="relative flex items-center justify-center gap-3">
-                  <Activity size={14} className="stroke-[3]" />
-                  Synchronize Changes
-                </span>
-              </motion.button>
+                <Activity size={14} className="stroke-[3]" />
+                Synchronize Changes
+              </LiquidButton>
               <p className="text-[8px] text-center text-gray-600 font-extrabold uppercase tracking-[0.1em] mt-5">
                 FLKRD Cinematic Engine © 2026 • Verified v3.4.1
               </p>

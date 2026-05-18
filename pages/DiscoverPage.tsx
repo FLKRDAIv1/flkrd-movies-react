@@ -11,6 +11,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 type Selection = 'hollywood' | 'bollywood' | 'infinity' | 'country' | 'animations';
 
@@ -240,9 +241,9 @@ const DiscoverPage: React.FC = () => {
                         <div className="absolute inset-0 bg-main-bg flex flex-col items-center justify-start p-8 pt-32 overflow-y-auto">
                             <ColorMixtureDivider />
                             <div className="fixed top-24 left-8 z-50">
-                                <button onClick={() => navigate('/discover')} className="text-main-text bg-white/10 backdrop-blur-xl p-4 rounded-2xl hover:bg-brand hover:scale-110 transition-all shadow-xl border border-white/10">
+                                <LiquidButton variant="default" onClick={() => navigate('/discover')} className="!p-4 !h-auto !w-auto !min-h-0 !min-w-0 rounded-2xl">
                                     {isRtl ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
-                                </button>
+                                </LiquidButton>
                             </div>
                             <h2 className="text-4xl md:text-6xl font-[1000] text-main-text mb-8 uppercase tracking-tighter italic text-center drop-shadow-2xl relative z-10">{t('choiceCountry')}</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 w-full max-w-6xl mb-20 relative z-10">
@@ -268,10 +269,10 @@ const DiscoverPage: React.FC = () => {
                                                 <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="bg-box-bg backdrop-blur-2xl border-2 border-border-color rounded-xl text-main-text font-black uppercase py-2 px-4 text-xs">
                                                     {yearsOptions}
                                                 </select>
-                                                <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`rounded-xl text-main-text border border-border-color px-6 py-4 text-xs font-black uppercase tracking-widest transition-all ${isFilterOpen ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]' : 'bg-white/5 hover:bg-brand'}`}>GENRES</button>
-                                                <button onClick={() => activeCountry ? setActiveCountry(null) : navigate('/discover')} className="bg-white/5 text-main-text rounded-xl p-4 md:p-5 border border-border-color hover:bg-brand">
+                                                <LiquidButton variant={isFilterOpen ? "default" : "secondary"} onClick={() => setIsFilterOpen(!isFilterOpen)} className="rounded-xl px-6 py-4 text-xs font-black uppercase tracking-widest">GENRES</LiquidButton>
+                                                <LiquidButton variant="secondary" onClick={() => activeCountry ? setActiveCountry(null) : navigate('/discover')} className="!p-4 md:!p-5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl">
                                                     {isRtl ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
-                                                </button>
+                                                </LiquidButton>
                                             </div>
                                         </div>
                                         <AnimatePresence>
@@ -320,23 +321,37 @@ const DiscoverPage: React.FC = () => {
                                             <div className="relative aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-border-color group-hover:border-brand/50 transition-all duration-700 shadow-2xl">
                                               <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                                               
-                                              {/* Kurdish CC Badge */}
-                                              {!String(item.id).startsWith('custom_') && (
-                                                <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                                              {/* Liquid Glass Hover Overlay */}
+                                              <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10" />
+
+                                              {/* IMDb Badge */}
+                                              {item.vote_average !== undefined && item.vote_average > 0 && (
+                                                <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F5C518] text-black px-2 py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/50">
+                                                  <span className="font-[1000] text-[8px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
+                                                  <span className="font-black text-[10px] md:text-xs leading-none">{item.vote_average.toFixed(1)}</span>
+                                                </div>
                                               )}
 
-                                              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
+                                              {/* Kurdish CC Badge */}
+                                              {!String(item.id).startsWith('custom_') && (
+                                                <div className="z-20 relative">
+                                                  <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
+                                                </div>
+                                              )}
+
+                                              <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5 pointer-events-none">
                                                   <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
                                               </div>
 
                                               {isAdmin && (
-                                                <div className="absolute top-4 right-4 z-50 opacity-0 group-hover:opacity-100 transition-all">
-                                                    <button 
+                                                <div className="absolute top-4 right-4 z-40 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <LiquidButton 
+                                                        variant="destructive"
                                                         onClick={(e) => handleBan(e, item)}
-                                                        className="p-3 bg-red-600/80 backdrop-blur-md rounded-2xl text-white border border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:bg-red-600 hover:scale-110 active:scale-95 transition-all"
+                                                        className="!p-3 !h-auto !w-auto !min-h-0 !min-w-0 rounded-2xl"
                                                     >
                                                         <Trash2 size={16} />
-                                                    </button>
+                                                    </LiquidButton>
                                                 </div>
                                               )}
                                             </div>

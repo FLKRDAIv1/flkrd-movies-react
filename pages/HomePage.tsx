@@ -13,6 +13,8 @@ import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { API_KEY, API_BASE_URL } from '../constants';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
+import StoryReels from '../components/StoryReels';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
@@ -82,12 +84,13 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
             {item.overview}
           </p>
           <div className={`flex flex-wrap items-center gap-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
-            <button
+            <LiquidButton
+                variant="default"
                 onClick={(e) => { e.stopPropagation(); navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } }); }}
-                className="bg-white text-black font-[1000] px-14 md:px-28 py-7 md:py-9 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-5 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.1)] transition-all active:scale-95 hover:bg-red-600 hover:text-white"
+                className="text-white font-[1000] px-14 md:px-28 py-7 md:py-9 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-5 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
             >
                 <Play fill="currentColor" size={24} className="md:w-10 md:h-10" /> {t('play')}
-            </button>
+            </LiquidButton>
           </div>
         </div>
       </motion.div>
@@ -254,6 +257,9 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="pb-40 relative">
+      <div className="absolute top-24 md:top-32 left-0 right-0 z-50">
+        <StoryReels />
+      </div>
       <HeroBanner />
 
       <div className="relative z-20 -mt-12 md:-mt-24">
@@ -329,7 +335,7 @@ const HomePage: React.FC = () => {
           <Row title={t('actionMovies')} fetchUrl={requests.fetchActionMovies(langCode)} type="movie" />
           <Row title={t('comedyMovies')} fetchUrl={requests.fetchComedyMovies(langCode)} type="movie" />
 
-          <div className="py-12 bg-white/[0.02] border-y border-white/5 backdrop-blur-3xl">
+          <div className="py-12 bg-main-text/[0.02] border-y border-main-text/5 backdrop-blur-3xl">
             <Row title={t('horrorMovies')} fetchUrl={requests.fetchHorrorMovies(langCode)} type="movie" />
           </div>
 

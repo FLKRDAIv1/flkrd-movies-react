@@ -7,6 +7,7 @@ import { requests } from '../constants';
 import { fetchData } from '../services/tmdbService';
 import { Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
+import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 const TVShowsPage: React.FC = () => {
     const [headerContent, setHeaderContent] = React.useState<Content | null>(null);
@@ -39,15 +40,15 @@ const TVShowsPage: React.FC = () => {
                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
                     </div>
                 )}
-                
                 <div className={`absolute top-24 ${language === 'ku' ? 'right-8 md:right-20' : 'left-8 md:left-20'} md:top-32 z-20`}>
-                    <button 
+                    <LiquidButton 
+                      variant="secondary"
                       onClick={() => navigate(-1)} 
-                      className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-red-600 text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95"
+                      className="!px-5 !py-3 rounded-2xl flex items-center gap-2"
                     >
-                      {language === 'ku' ? <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
+                      {language === 'ku' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                       <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
-                    </button>
+                    </LiquidButton>
                 </div>
 
                 <div className={`relative z-10 flex flex-col justify-end h-full p-4 md:p-8 md:px-20 pb-12 ${language === 'ku' ? 'text-right items-end' : 'text-left items-start'}`}>
