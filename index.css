@@ -266,8 +266,13 @@ video {
 }
 
 /* ── Global Safari Backdrop Filter Support ── */
-[class*="backdrop-blur-"] {
-  -webkit-backdrop-filter: blur(var(--tw-backdrop-blur)) !important;
+[class*="backdrop-blur"] {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur) !important;
+}
+
+.backdrop-blur-20 {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
 }
 
 /* ── Professional Scrolling for Safari ── */

@@ -91,7 +91,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
           <div className="relative" ref={historyRef}>
             <button
               onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-              className={`bg-main-bg/25 dark-mode-box backdrop-blur-xl border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group ${isHistoryOpen ? 'bg-brand' : 'hover:bg-brand/20'}`}
+              className={`bg-main-bg/25 dark-mode-box backdrop-blur-20 border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group ${isHistoryOpen ? 'bg-brand' : 'hover:bg-brand/20'}`}
               aria-label="Recently Viewed"
             >
               <History className={`w-5 h-5 md:w-6 md:h-6 transition-colors ${isHistoryOpen ? 'text-white' : 'text-[var(--text-secondary)] group-hover:text-brand'}`} />
@@ -174,7 +174,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
           </div>
 
           <div
-            className="bg-main-bg/25 dark-mode-box backdrop-blur-xl border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
+            className="bg-main-bg/25 dark-mode-box backdrop-blur-20 border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
           >
             <AnimatedThemeToggler />
           </div>
@@ -184,7 +184,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
           {!isDubPage && (
             <button
               onClick={() => navigate('/profile')}
-              className="bg-main-bg/25 dark-mode-box backdrop-blur-xl border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)]"
+              className="bg-main-bg/25 dark-mode-box backdrop-blur-20 border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)]"
               aria-label={t('profile')}
             >
               <User className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)] group-hover:text-white transition-colors" />
@@ -194,7 +194,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
           {!isDubPage && (
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="bg-main-bg/25 dark-mode-box backdrop-blur-xl border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
+              className="bg-main-bg/25 dark-mode-box backdrop-blur-20 border border-main-text/10 rounded-full w-9 h-9 md:w-12 md:h-12 flex items-center justify-center transition-all shadow-lg"
               aria-label={t('settings')}
             >
               <Cog className="w-5 h-5 md:w-6 md:h-6 text-[var(--text-secondary)]" />

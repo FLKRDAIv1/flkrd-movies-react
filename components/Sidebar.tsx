@@ -133,7 +133,7 @@ const Sidebar: React.FC = () => {
       </AnimatePresence>
 
       <motion.div
-        className="hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-main-bg/40 backdrop-blur-[100px] border-r border-main-text/10 text-sec-text z-50 shadow-[20px_0_50px_rgba(0,0,0,0.4)] overflow-hidden"
+        className="hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-main-bg/25 backdrop-blur-20 border-r border-main-text/10 text-sec-text z-50 shadow-[20px_0_50px_rgba(0,0,0,0.4)] overflow-hidden"
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}
@@ -210,7 +210,7 @@ const Sidebar: React.FC = () => {
           </div>
         </nav>
         
-        <div className="p-6 border-t border-main-text/10 bg-main-text/[0.02] backdrop-blur-xl relative z-20">
+        <div className="p-6 border-t border-main-text/10 bg-main-text/[0.02] backdrop-blur-20 relative z-20">
            <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-900 flex-shrink-0 border border-main-text/20 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]" />
               {!isCollapsed && (

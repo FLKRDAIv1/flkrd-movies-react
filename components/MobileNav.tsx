@@ -27,7 +27,7 @@ const MobileNav: React.FC = () => {
   const { t } = useTranslation();
   return (
     <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
-      <div className="flex items-center justify-around bg-main-bg/60 backdrop-blur-xl rounded-[2.5rem] px-2 py-2 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-main-text/5 transition-all duration-500 ring-1 ring-main-text/10">
+      <div className="flex items-center justify-around bg-main-bg/25 backdrop-blur-20 rounded-[2.5rem] px-2 py-2 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-main-text/5 transition-all duration-500 ring-1 ring-main-text/10">
         {items.map((item) => (
           <NavLink
             key={item.id}
