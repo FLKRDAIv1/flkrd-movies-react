@@ -87,7 +87,11 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
         try {
-            const { file_id } = req.body;
+            let body = req.body;
+            if (typeof body === 'string') {
+                try { body = JSON.parse(body); } catch(e) {}
+            }
+            const { file_id } = body || {};
 
             if (!file_id) {
                 return res.status(400).json({ error: 'file_id is required' });
