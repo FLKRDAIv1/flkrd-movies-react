@@ -36,14 +36,19 @@ const MobileNav: React.FC = () => {
             className="group"
           >
             {({ isActive }) => (
-              <div
-                className="w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center text-slate-900 dark:text-white cursor-pointer"
+              <LiquidButton
+                asChild
+                variant="default"
+                size="icon"
+                className={`w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center cursor-pointer ${
+                  isActive ? 'text-slate-900 dark:text-white' : 'text-slate-900/40 dark:text-white/40 hover:text-slate-900/80 hover:dark:text-white/80'
+                }`}
               >
                 <div>
                   <div className={`transition-all duration-300 ${
                     isActive 
-                      ? 'text-slate-900 dark:text-white scale-110 drop-shadow-[0_0_8px_rgba(15,23,42,0.1)] dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] opacity-100' 
-                      : 'text-slate-900/40 dark:text-white/40 group-hover:text-slate-900/80 group-hover:dark:text-white/80 group-hover:scale-110'
+                      ? 'scale-110 drop-shadow-[0_0_8px_rgba(15,23,42,0.1)] dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] opacity-100' 
+                      : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'
                   }`}>
                      {item.icon}
                   </div>
@@ -55,7 +60,7 @@ const MobileNav: React.FC = () => {
                     />
                   )}
                 </div>
-              </div>
+              </LiquidButton>
             )}
           </NavLink>
         ))}
