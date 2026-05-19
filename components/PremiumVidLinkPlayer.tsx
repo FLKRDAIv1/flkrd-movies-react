@@ -76,6 +76,20 @@ export default function PremiumVidLinkPlayer({
   const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
   const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
 
+  // 1. Construct parameters based on official VidLink Docs & User Request
+  const playerColor = accentColor?.replace('#', '') || 'ff0000';
+  const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
+  const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
+  
+  // Construct URLs for VidLink Pro (FLKRD SERVER 1)
+  const vidLinkBase = type === 'movie' 
+    ? `https://vidlink.pro/movie/${tmdbId}`
+    : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+  
+  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=false&nextbutton=true${startAt}${subParam}`;
+
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
   // Fetch translations dynamically from TMDB
   useEffect(() => {
     const fetchAllTranslations = async () => {
@@ -229,19 +243,7 @@ export default function PremiumVidLinkPlayer({
     fetchVtt();
   }, [subtitleUrl]);
 
-  // 1. Construct parameters based on official VidLink Docs & User Request
-  const playerColor = accentColor?.replace('#', '') || 'ff0000';
-  const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
-  const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
-  
-  // Construct URLs for VidLink Pro (FLKRD SERVER 1)
-  const vidLinkBase = type === 'movie' 
-    ? `https://vidlink.pro/movie/${tmdbId}`
-    : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
-  
-  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=false&nextbutton=true${startAt}${subParam}`;
 
-  const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
   // 2. STEALTH SHIELD LOGIC
   // We utilize the Service Worker (sw.js) for stealthy, network-level ad blocking.

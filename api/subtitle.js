@@ -37,8 +37,11 @@ export default async function handler(req, res) {
                 }
                 
                 const response = await fetch(url);
+                if (!response.ok) {
+                    return res.status(200).json({ status: false, subtitles: [], _error: `SubDL returned ${response.status}` });
+                }
                 const data = await response.json();
-                return res.status(response.status).json(data);
+                return res.status(200).json(data);
             } else {
                 // OpenSubtitles GET with Key Rotation Fallback
                 let lastError = null;
@@ -75,7 +78,7 @@ export default async function handler(req, res) {
                         lastError = e;
                     }
                 }
-                return res.status(500).json({ error: lastError || 'All API keys failed' });
+                return res.status(200).json({ data: [], _error: lastError || 'All API keys failed' });
             }
         } catch (error) {
             return res.status(500).json({ error: error.message });
@@ -113,7 +116,7 @@ export default async function handler(req, res) {
                     lastError = e;
                 }
             }
-            return res.status(500).json({ error: lastError || 'All download key routes failed' });
+            return res.status(200).json({ link: null, _error: lastError || 'All download key routes failed' });
         } catch (error) {
             console.error("Vercel Subtitle Proxy Error:", error);
             return res.status(500).json({ error: error.message || 'Internal Server Error' });
