@@ -22,30 +22,14 @@ export interface SubtitleResult {
 export const subtitleService = {
     async fetchLatestKurdishMovies() {
         try {
-            // On Vercel, /api/subtitle is a real serverless function.
-            // In Vite dev, it returns the JS source file — so we check content-type first.
-            const proxyUrl = `/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
+            const baseUrl = window.location.hostname === 'localhost' 
+                ? 'https://mb-flix.vercel.app' 
+                : '';
+            const proxyUrl = `${baseUrl}/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
             const proxyRes = await fetch(proxyUrl).catch(() => null);
 
             if (proxyRes && proxyRes.ok) {
-                const ct = proxyRes.headers.get('content-type') || '';
-                if (ct.includes('application/json')) {
-                    const data = await proxyRes.json();
-                    return data.data || [];
-                }
-            }
-
-            // Fallback: direct OpenSubtitles call (works in Vite dev if not blocked)
-            const directUrl = `https://api.opensubtitles.com/api/v1/subtitles?languages=ku&order_by=download_count&order_direction=desc`;
-            const directRes = await this.fetchWithFallback(directUrl, {
-                headers: {
-                    'Api-Key': OPENSUBTITLES_API_KEY,
-                    'User-Agent': USER_AGENT,
-                    'Accept': 'application/json'
-                }
-            });
-            if (directRes && directRes.ok) {
-                const data = await directRes.json();
+                const data = await proxyRes.json();
                 return data.data || [];
             }
             return [];
@@ -175,39 +159,35 @@ export const subtitleService = {
             promises.push(fetchSubDL());
         }
 
-        // 3. OpenSubtitles REST API Strategy
-        if (OPENSUBTITLES_API_KEY && !OPENSUBTITLES_API_KEY.includes('YOUR_API_KEY')) {
-            const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
-                try {
-                    let url = `https://api.opensubtitles.com/api/v1/subtitles?imdb_id=${cleanImdbId}`;
-                    if (!allLanguages) {
-                        const langCodes = 'ku,ckb,fa,ar,en';
-                        url += `&languages=${langCodes}`;
-                    }
-                    if (type === 'tv' && season && episode) {
-                        url += `&season_number=${season}&episode_number=${episode}`;
-                    }
-
-                    const response = await this.fetchWithFallback(url, {
-                        headers: {
-                            'Api-Key': OPENSUBTITLES_API_KEY,
-                            'User-Agent': USER_AGENT,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        return (data.data || []) as SubtitleResult[];
-                    }
-                } catch (error) {
-                    console.error("[SUBTITLE SERVICE] REST API Search error:", error);
+        // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
+        const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
+            try {
+                let query = `?imdb_id=${cleanImdbId}`;
+                if (!allLanguages) {
+                    const langCodes = 'ku,ckb,fa,ar,en';
+                    query += `&languages=${langCodes}`;
                 }
-                return [];
-            };
-            promises.push(fetchOpenSubs());
-        }
+                if (type === 'tv' && season && episode) {
+                    query += `&season_number=${season}&episode_number=${episode}`;
+                }
+
+                const baseUrl = window.location.hostname === 'localhost' 
+                    ? 'https://mb-flix.vercel.app' 
+                    : '';
+                const apiUrl = `${baseUrl}/api/subtitle${query}`;
+
+                const response = await fetch(apiUrl);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return (data.data || []) as SubtitleResult[];
+                }
+            } catch (error) {
+                console.error("[SUBTITLE SERVICE] REST API Search error:", error);
+            }
+            return [];
+        };
+        promises.push(fetchOpenSubs());
 
         // Run concurrently
         const settledResults = await Promise.allSettled(promises);
@@ -269,19 +249,21 @@ export const subtitleService = {
     async searchSubDL(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku') {
         try {
             const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-            // Map common language codes to SubDL (SubDL usually likes Full names or ISO)
             const langMap: Record<string, string> = { 'ku': 'Kurdish', 'ckb': 'Kurdish', 'fa': 'Persian', 'ar': 'Arabic', 'en': 'English' };
             const subdlLang = langMap[language] || 'Kurdish';
             
-            let url = `https://api.subdl.com/api/v1/subtitles?api_key=${SUBDL_API_KEY}&imdb_id=${cleanImdbId}&languages=${subdlLang}`;
+            let query = `?engine=subdl&imdb_id=${cleanImdbId}&languages=${subdlLang}`;
             if (type === 'tv' && season && episode) {
-                url += `&season_number=${season}&episode_number=${episode}&type=tv`;
-            } else {
-                url += `&type=movie`;
+                query += `&season_number=${season}&episode_number=${episode}`;
             }
 
-            console.log("[SUBTITLE SERVICE] SubDL Search Engine Engaged:", url);
-            const response = await this.fetchWithFallback(url);
+            const baseUrl = window.location.hostname === 'localhost' 
+                ? 'https://mb-flix.vercel.app' 
+                : '';
+            const apiUrl = `${baseUrl}/api/subtitle${query}`;
+
+            console.log("[SUBTITLE SERVICE] SubDL Search Engine Engaged via Proxy:", apiUrl);
+            const response = await fetch(apiUrl);
             if (!response.ok) return [];
 
             const data = await response.json();
@@ -292,7 +274,7 @@ export const subtitleService = {
                         language: language,
                         display_name: s.release_name || `${subdlLang} Subtitle (SubDL)`,
                         url: s.url || `https://dl.subdl.com/subtitle/${s.sd_id}.zip`,
-                        file_id: 0 // SubDL uses direct URLs usually
+                        file_id: 0
                     }
                 }));
             }
