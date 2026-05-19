@@ -39,6 +39,31 @@ import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { isTauri } from './utils/tauriUtils';
 
+class ChunkErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    if (error.name === 'ChunkLoadError' || (error.message && error.message.includes('Failed to fetch dynamically imported module'))) {
+      console.warn("[VITE ROUTER] Chunk load error detected! Auto-reloading page to fetch latest deployment...");
+      window.location.reload();
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div className="h-full w-full flex items-center justify-center text-white"><SplashScreen /></div>;
+    }
+    return this.props.children;
+  }
+}
+
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { t } = useTranslation();
     const [step, setStep] = useState<'choice' | 'manual' | 'pro'>('choice');
@@ -302,28 +327,30 @@ const App: React.FC = () => {
                     <Sidebar />
                     <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pt-10 tauri-only-pt">
                         <Header scrolled={scrolled} />
-                        <React.Suspense fallback={
-                          <div className="flex flex-col items-center justify-center h-full pt-40 gap-6">
-                            <SplashScreen />
-                          </div>
-                        }>
-                            <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
-                                <Routes>
-                                    <Route path="/" element={<HomePage />} />
-                                    <Route path="/tv" element={<TVShowsPage />} />
-                                    <Route path="/dubbed" element={<DubbedMoviesPage />} />
-                                    <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
-                                    <Route path="/shorts" element={<ShortsPage />} />
-                                    <Route path="/kurdish-cc" element={<KurdishCCPage />} />
-                                    <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
-                                    <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
-                                    <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
-                                    <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
-                                    <Route path="/continue-watching" element={<ContinueWatchingPage />} />
-                                    <Route path="/profile" element={<ProfilePage />} />
-                                </Routes>
-                            </main>
-                        </React.Suspense>
+                        <ChunkErrorBoundary>
+                          <React.Suspense fallback={
+                            <div className="flex flex-col items-center justify-center h-full pt-40 gap-6">
+                              <SplashScreen />
+                            </div>
+                          }>
+                              <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
+                                  <Routes>
+                                      <Route path="/" element={<HomePage />} />
+                                      <Route path="/tv" element={<TVShowsPage />} />
+                                      <Route path="/dubbed" element={<DubbedMoviesPage />} />
+                                      <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
+                                      <Route path="/shorts" element={<ShortsPage />} />
+                                      <Route path="/kurdish-cc" element={<KurdishCCPage />} />
+                                      <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
+                                      <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
+                                      <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
+                                      <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
+                                      <Route path="/continue-watching" element={<ContinueWatchingPage />} />
+                                      <Route path="/profile" element={<ProfilePage />} />
+                                  </Routes>
+                              </main>
+                          </React.Suspense>
+                        </ChunkErrorBoundary>
                     </div>
                     <MobileNav />
                 </div>
