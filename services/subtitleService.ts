@@ -23,7 +23,7 @@ export const subtitleService = {
     async fetchLatestKurdishMovies() {
         try {
             const baseUrl = window.location.hostname === 'localhost' 
-                ? 'https://mb-flix.vercel.app' 
+                ? 'https://fkurd.vercel.app' 
                 : '';
             const proxyUrl = `${baseUrl}/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
             const proxyRes = await fetch(proxyUrl).catch(() => null);
@@ -172,7 +172,7 @@ export const subtitleService = {
                 }
 
                 const baseUrl = window.location.hostname === 'localhost' 
-                    ? 'https://mb-flix.vercel.app' 
+                    ? 'https://fkurd.vercel.app' 
                     : '';
                 const apiUrl = `${baseUrl}/api/subtitle${query}`;
 
@@ -258,7 +258,7 @@ export const subtitleService = {
             }
 
             const baseUrl = window.location.hostname === 'localhost' 
-                ? 'https://mb-flix.vercel.app' 
+                ? 'https://fkurd.vercel.app' 
                 : '';
             const apiUrl = `${baseUrl}/api/subtitle${query}`;
 
@@ -294,7 +294,7 @@ export const subtitleService = {
                 // For local, we can try to hit the deployed production endpoint if we know it, 
                 // but relative path /api/subtitle will work in prod or if using vercel dev.
                 const apiUrl = window.location.hostname === 'localhost' 
-                    ? 'https://mb-flix.vercel.app/api/subtitle' // Try prod Vercel if on localhost
+                    ? 'https://fkurd.vercel.app/api/subtitle' // Try prod Vercel if on localhost
                     : '/api/subtitle';
                 
                 const apiRes = await fetch(apiUrl, {
