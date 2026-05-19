@@ -115,105 +115,155 @@ export const subtitleService = {
     },
 
     async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false) {
-        // [STRATEGY 1] Priority Discovery: Stremio Addon Ecosystem
-        // Stremio addons provide DIRECT download links, bypassing the need for complex proxy POST requests
-        // and API keys that trigger CORS preflight blocks in the browser.
-        try {
-            const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-            // Correct Stremio URL format for TV Shows: tt1234567:1:1.json
-            const stremioPath = (type === 'tv' && season && episode) 
-                ? `${cleanImdbId}:${season}:${episode}` 
-                : cleanImdbId;
-            const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/${stremioPath}.json`;
-            console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
-            
-            const response = await this.fetchWithFallback(stremioUrl);
-            if (response.ok) {
-                const data = await response.json();
-                if (data.subtitles && data.subtitles.length > 0) {
-                    const results: SubtitleResult[] = data.subtitles
-                        .filter((s: any) => {
-                            if (allLanguages) return true;
-                            const lang = (s.lang || '').toLowerCase();
-                            // 'per' is Persian, often useful. 'ara' is Arabic.
-                            return lang === 'ku' || lang === 'ckb' || lang === 'ara' || lang === 'eng' || lang === 'per';
-                        })
-                        .map((s: any) => ({
-                            id: s.id || Math.random().toString(),
-                            attributes: {
-                                language: s.lang,
-                                display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
-                                url: s.url,
-                                file_id: s.file_id || 0 // Use existing file_id if available
-                            }
-                        }));
-                    
-                    // Filter and Sort: Prioritize true Kurdish (ku/ckb) then files with "Kurdish" in name
-                    const prioritizedResults = results.sort((a, b) => {
-                        const aName = a.attributes.display_name.toLowerCase();
-                        const bName = b.attributes.display_name.toLowerCase();
-                        const aIsKu = a.attributes.language === 'ku' || a.attributes.language === 'ckb' || aName.includes('kurd');
-                        const bIsKu = b.attributes.language === 'ku' || b.attributes.language === 'ckb' || bName.includes('kurd');
-                        if (aIsKu && !bIsKu) return -1;
-                        if (!aIsKu && bIsKu) return 1;
-                        return 0;
-                    });
+        const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+        const promises: Promise<SubtitleResult[]>[] = [];
 
-                    if (prioritizedResults.length > 0) return prioritizedResults;
-                }
-            }
-        } catch (e) {
-            console.warn("[SUBTITLE SERVICE] Stremio Discovery failed, trying SubDL.", e);
-        }
-
-        // [STRATEGY 2] SubDL Discovery Phase (Strong Kurdish availability)
-        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+        // 1. Stremio Addon Proxy Strategy
+        const fetchStremio = async (): Promise<SubtitleResult[]> => {
             try {
-                const subdlResults = await this.searchSubDL(imdbId, type, season, episode, language);
-                if (subdlResults && subdlResults.length > 0) {
-                    return subdlResults;
+                const stremioPath = (type === 'tv' && season && episode) 
+                    ? `${cleanImdbId}:${season}:${episode}` 
+                    : cleanImdbId;
+                const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/${stremioPath}.json`;
+                console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
+                
+                const response = await this.fetchWithFallback(stremioUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.subtitles && data.subtitles.length > 0) {
+                        return data.subtitles
+                            .filter((s: any) => {
+                                if (allLanguages) return true;
+                                const lang = (s.lang || '').toLowerCase();
+                                return lang === 'ku' || lang === 'ckb' || lang === 'ara' || lang === 'eng' || lang === 'per' || lang === 'fa' || lang === 'ar' || lang === 'en';
+                            })
+                            .map((s: any) => ({
+                                id: s.id || `stremio-${Math.random()}`,
+                                attributes: {
+                                    language: s.lang,
+                                    display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
+                                    url: s.url,
+                                    file_id: s.file_id || 0
+                                }
+                            }));
+                    }
                 }
             } catch (e) {
-                console.warn("[SUBTITLE SERVICE] SubDL discovery failed, trying REST fallback.", e);
+                console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
             }
-        }
-
-        // [STRATEGY 3] Fallback to OpenSubtitles.com REST API
-        if (!OPENSUBTITLES_API_KEY || OPENSUBTITLES_API_KEY.includes('YOUR_API_KEY')) {
             return [];
-        }
+        };
+        promises.push(fetchStremio());
 
-        try {
-            const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-            let url = `https://api.opensubtitles.com/api/v1/subtitles?imdb_id=${cleanImdbId}`;
-            
-            if (!allLanguages) {
-                // Search for Kurdish, Sorani, Persian (many Kurdish subs are tagged as Persian), and Arabic
-                const langCodes = 'ku,ckb,fa,ar,en';
-                url += `&languages=${langCodes}`;
-            }
-
-            if (type === 'tv' && season && episode) {
-                url += `&season_number=${season}&episode_number=${episode}`;
-            }
-
-            const response = await this.fetchWithFallback(url, {
-                headers: {
-                    'Api-Key': OPENSUBTITLES_API_KEY,
-                    'User-Agent': USER_AGENT,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+        // 2. SubDL Discovery Strategy
+        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+            const fetchSubDL = async (): Promise<SubtitleResult[]> => {
+                try {
+                    const resultsKu = await this.searchSubDL(imdbId, type, season, episode, 'ku');
+                    let resultsOther: SubtitleResult[] = [];
+                    if (allLanguages) {
+                        const otherLangs = ['en', 'fa', 'ar'];
+                        const otherRes = await Promise.all(otherLangs.map(l => this.searchSubDL(imdbId, type, season, episode, l)));
+                        resultsOther = otherRes.flat();
+                    }
+                    return [...resultsKu, ...resultsOther];
+                } catch (e) {
+                    console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
                 }
-            });
-
-            if (!response.ok) return [];
-
-            const data = await response.json();
-            return data.data as SubtitleResult[];
-        } catch (error) {
-            console.error("[SUBTITLE SERVICE] REST API Search error:", error);
-            return [];
+                return [];
+            };
+            promises.push(fetchSubDL());
         }
+
+        // 3. OpenSubtitles REST API Strategy
+        if (OPENSUBTITLES_API_KEY && !OPENSUBTITLES_API_KEY.includes('YOUR_API_KEY')) {
+            const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
+                try {
+                    let url = `https://api.opensubtitles.com/api/v1/subtitles?imdb_id=${cleanImdbId}`;
+                    if (!allLanguages) {
+                        const langCodes = 'ku,ckb,fa,ar,en';
+                        url += `&languages=${langCodes}`;
+                    }
+                    if (type === 'tv' && season && episode) {
+                        url += `&season_number=${season}&episode_number=${episode}`;
+                    }
+
+                    const response = await this.fetchWithFallback(url, {
+                        headers: {
+                            'Api-Key': OPENSUBTITLES_API_KEY,
+                            'User-Agent': USER_AGENT,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        return (data.data || []) as SubtitleResult[];
+                    }
+                } catch (error) {
+                    console.error("[SUBTITLE SERVICE] REST API Search error:", error);
+                }
+                return [];
+            };
+            promises.push(fetchOpenSubs());
+        }
+
+        // Run concurrently
+        const settledResults = await Promise.allSettled(promises);
+        const aggregatedResults: SubtitleResult[] = [];
+
+        for (const res of settledResults) {
+            if (res.status === 'fulfilled' && res.value) {
+                aggregatedResults.push(...res.value);
+            }
+        }
+
+        // Deduplicate
+        const seenUrls = new Set<string>();
+        const seenNames = new Set<string>();
+        const uniqueResults: SubtitleResult[] = [];
+
+        for (const sub of aggregatedResults) {
+            if (!sub.attributes || !sub.attributes.url) continue;
+            
+            const url = sub.attributes.url.trim().toLowerCase();
+            const name = (sub.attributes.display_name || '').trim().toLowerCase();
+
+            if (seenUrls.has(url) || (name && seenNames.has(name))) {
+                continue;
+            }
+
+            seenUrls.add(url);
+            if (name) {
+                seenNames.add(name);
+            }
+            uniqueResults.push(sub);
+        }
+
+        // Sort: Kurdish first, then Persian/Arabic, then others
+        const sortedResults = uniqueResults.sort((a, b) => {
+            const aLang = (a.attributes.language || '').toLowerCase();
+            const bLang = (b.attributes.language || '').toLowerCase();
+            const aName = (a.attributes.display_name || '').toLowerCase();
+            const bName = (b.attributes.display_name || '').toLowerCase();
+
+            const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur' || aName.includes('kurd') || aName.includes('sorani');
+            const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur' || bName.includes('kurd') || bName.includes('sorani');
+
+            if (aIsKu && !bIsKu) return -1;
+            if (!aIsKu && bIsKu) return 1;
+            
+            const aIsFaAr = aLang === 'fa' || aLang === 'per' || aLang === 'ar' || aLang === 'ara';
+            const bIsFaAr = bLang === 'fa' || bLang === 'per' || bLang === 'ar' || bLang === 'ara';
+            if (aIsFaAr && !bIsFaAr) return -1;
+            if (!aIsFaAr && bIsFaAr) return 1;
+
+            return 0;
+        });
+
+        console.log(`[SUBTITLE SERVICE] Aggregated ${sortedResults.length} unique subtitles across all active engines.`);
+        return sortedResults;
     },
 
     async searchSubDL(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku') {
@@ -352,29 +402,34 @@ export const subtitleService = {
 
     async getSubtitleBlob(url: string, offset: number = 0) {
         try {
-            let fetchUrl = url;
-            const { isTauri } = await import("../utils/tauriUtils");
-            
-            // Only use proxy for official opensubtitles.com links which have strict CORS
-            if (!isTauri() && url.includes('opensubtitles.com')) {
-                fetchUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-            }
-
-            const response = await fetch(fetchUrl);
-            if (response.ok) {
+            console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", url);
+            const response = await this.fetchWithFallback(url);
+            if (response && response.ok) {
                 const text = await response.text();
-                const result = await this.processSubtitleText(text, offset);
-                if (result) return result;
-            }
+                
+                // Process VTT (SRT-to-VTT + Offset)
+                let processedText = text;
+                if (!processedText.startsWith('WEBVTT')) {
+                    processedText = 'WEBVTT\n\n' + processedText
+                        .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
+                        .replace(/^\d+$/gm, '');
+                }
 
-            // [FALLBACK] If Data URI creation failed (too long) or fetch failed:
-            // Return a Proxied Direct URL that the player can fetch himself
-            console.log("[SUBTITLE SERVICE] Using Direct Proxy Fallback for:", url);
-            return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                if (offset !== 0) {
+                    processedText = this.shiftVtt(processedText, offset);
+                }
+
+                // Create a local memory blob URL
+                const blob = new Blob([processedText], { type: 'text/vtt' });
+                const blobUrl = URL.createObjectURL(blob);
+                return blobUrl;
+            }
         } catch (error) {
             console.error("[SUBTITLE SERVICE] Subtitle delivery error:", error);
-            return `https://corsproxy.io/?${encodeURIComponent(url)}`;
         }
+        
+        // Final fallback: return original URL
+        return url;
     },
 
     async processSubtitleText(text: string, offset: number) {
@@ -390,21 +445,11 @@ export const subtitleService = {
                 processedText = this.shiftVtt(processedText, offset);
             }
 
-            // [PERFORMANCE FIX] 
-            // Only use Data URIs for very small subtitles to avoid 414 URI Too Long errors.
-            // For large movie subtitles, we should use a direct proxied URL if available.
-            const base64Vtt = btoa(unescape(encodeURIComponent(processedText)));
-            const dataUri = `data:text/vtt;base64,${base64Vtt}`;
-            
-            // If the data URI is too long (over 4KB), it will break many servers.
-            // In that case, we return null and let the caller use a direct URL fallback.
-            if (dataUri.length > 4000) {
-                console.warn("[SUBTITLE SERVICE] Data URI too long, requiring direct URL fallback.");
-                return null; 
-            }
-            return dataUri;
+            // Create a local memory blob URL as the modern, high-performance solution
+            const blob = new Blob([processedText], { type: 'text/vtt' });
+            return URL.createObjectURL(blob);
         } catch (e) {
-            console.error("[SUBTITLE SERVICE] Error creating Data URI:", e);
+            console.error("[SUBTITLE SERVICE] Error creating Blob URL:", e);
             return null;
         }
     },

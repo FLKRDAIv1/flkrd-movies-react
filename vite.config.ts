@@ -18,6 +18,11 @@ export default defineConfig(({ mode }) => {
               'User-Agent': 'flkrd_movies_v1',
               'Accept': 'application/json'
             }
+          },
+          '/api/tmdb': {
+            target: 'https://api.themoviedb.org/3',
+            rewrite: (path) => path.replace(/^\/api\/tmdb/, ''),
+            changeOrigin: true,
           }
         },
         headers: {
@@ -30,9 +35,9 @@ export default defineConfig(({ mode }) => {
             "script-src-elem * 'self' 'unsafe-inline' 'unsafe-eval' blob: data:",
             "worker-src * blob: data:",
             "frame-src *",
-            "media-src * blob: data:",
+            "media-src * blob: data: https://*.strem.io",
             "img-src * blob: data:",
-            "connect-src *",
+            "connect-src * blob: data: https://*.strem.io",
           ].join('; '),
         },
       },

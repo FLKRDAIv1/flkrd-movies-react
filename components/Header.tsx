@@ -70,7 +70,7 @@ const Header: React.FC<{ scrolled: boolean }> = () => {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-[100] px-4 md:px-10 lg:px-14 py-4 md:py-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
+      <header className={`global-header fixed top-0 left-0 right-0 z-[100] px-4 md:px-10 lg:px-14 py-4 md:py-8 flex items-center justify-between pointer-events-none transition-all duration-500`}>
         <div className={`pointer-events-auto flex items-center gap-4 ${isDubPage ? 'transition-all duration-700 opacity-90' : ''}`}>
           {/* Logo removed - migrated to sidebar */}
         </div>

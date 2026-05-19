@@ -178,3 +178,21 @@ export const fetchExternalIds = async (id: string | number, type: 'movie' | 'tv'
   const endpoint = `/${type}/${id}/external_ids?api_key=${API_KEY}`;
   return await fetchData(endpoint, 'en');
 };
+
+export const fetchTranslations = async (id: string | number, type: 'movie' | 'tv') => {
+  const endpoint = `/${type}/${id}/translations?api_key=${API_KEY}`;
+  return await fetchData(endpoint, 'en');
+};
+
+export const fetchTmdbIdFromImdb = async (imdbId: string, type: 'movie' | 'tv') => {
+  const endpoint = `/find/${imdbId}?api_key=${API_KEY}&external_source=imdb_id`;
+  const result = await fetchData(endpoint, 'en');
+  if (result) {
+    // If the search returned a raw object, check movie_results or tv_results
+    const movieResults = result.movie_results || [];
+    const tvResults = result.tv_results || [];
+    if (type === 'movie' && movieResults.length > 0) return movieResults[0].id;
+    if (type === 'tv' && tvResults.length > 0) return tvResults[0].id;
+  }
+  return null;
+};

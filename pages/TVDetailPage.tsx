@@ -209,6 +209,17 @@ const TVDetailPage: React.FC = () => {
     return () => { if (countdownTimerRef.current) clearTimeout(countdownTimerRef.current); };
   }, [showBingeCountdown, countdown, playNextEpisode]);
 
+  useEffect(() => {
+    if (isPlayerModalOpen) {
+      document.body.classList.add('movie-player-active');
+    } else {
+      document.body.classList.remove('movie-player-active');
+    }
+    return () => {
+      document.body.classList.remove('movie-player-active');
+    };
+  }, [isPlayerModalOpen]);
+
   const updateProgress = useCallback((data: any) => {
     if (!content) return;
     const progressData = localStorage.getItem('watchProgress');
@@ -429,6 +440,7 @@ const TVDetailPage: React.FC = () => {
                   contentType="tv"
                   season={selectedSeason}
                   episode={selectedEpisode}
+                  title={content?.name}
                 />
               )}
 
@@ -598,12 +610,14 @@ const TVDetailPage: React.FC = () => {
             </LiquidButton>
           </div>
         </div>
-        <div className={`absolute top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>
-          <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl transition-all shadow-2xl group active:scale-95">
-            <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180 group-hover:translate-x-1 transition-transform' : 'group-hover:-translate-x-1 transition-transform'} />
-            <span className="text-[9px] font-black uppercase tracking-widest">{t('back')}</span>
-          </button>
-        </div>
+        {!isPlayerModalOpen && (
+          <div className={`absolute top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl transition-all shadow-2xl group active:scale-95">
+              <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180 group-hover:translate-x-1 transition-transform' : 'group-hover:-translate-x-1 transition-transform'} />
+              <span className="text-[9px] font-black uppercase tracking-widest">{t('back')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="container mx-auto px-6 lg:px-20 py-16 md:py-24 relative z-10">

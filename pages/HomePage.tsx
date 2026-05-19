@@ -262,7 +262,7 @@ const HomePage: React.FC = () => {
       </div>
       <HeroBanner />
 
-      <div className="relative z-20 -mt-12 md:-mt-24">
+      <div className="relative z-20 mt-6 md:-mt-12">
         <AnimatePresence>
           {continueWatchingItems.length > 0 && (
             <motion.div
@@ -305,7 +305,7 @@ const HomePage: React.FC = () => {
                 title={language === 'ku' ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
                 items={kurdishCCItems} 
               />
-              <div className="absolute top-2 right-6 md:right-32 flex items-center gap-2 bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-500/30">
+              <div className="absolute top-2 right-6 md:right-32 hidden md:flex items-center gap-2 bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-500/30">
                 <Subtitles size={12} className="text-red-500" />
                 <span className="text-[9px] font-black text-white uppercase tracking-wider">PREMIUM CC</span>
               </div>

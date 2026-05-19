@@ -26,8 +26,8 @@ const items: NavItem[] = [
 const MobileNav: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
-      <div className="flex items-center justify-around bg-main-bg/25 backdrop-blur-20 rounded-[2.5rem] px-2 py-2 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-main-text/5 transition-all duration-500 ring-1 ring-main-text/10">
+    <div className="global-mobilenav fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-50 md:hidden w-[94%] max-w-md">
+      <div className="flex items-center justify-around bg-white/75 dark:bg-black/75 backdrop-blur-2xl rounded-[2.5rem] px-2 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.1)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-black/[0.03] dark:border-white/[0.05] transition-all duration-500">
         {items.map((item) => (
           <NavLink
             key={item.id}
@@ -36,15 +36,15 @@ const MobileNav: React.FC = () => {
             className="group"
           >
             {({ isActive }) => (
-              <LiquidButton
-                variant="default"
-                size="icon"
-                className={`w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center ${
-                  isActive ? 'text-main-text' : 'text-sec-text hover:text-main-text'
-                }`}
+              <div
+                className="w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center text-slate-900 dark:text-white cursor-pointer"
               >
                 <div>
-                  <div className={`transition-all duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'group-hover:scale-110 opacity-70 group-hover:opacity-100'}`}>
+                  <div className={`transition-all duration-300 ${
+                    isActive 
+                      ? 'text-slate-900 dark:text-white scale-110 drop-shadow-[0_0_8px_rgba(15,23,42,0.1)] dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] opacity-100' 
+                      : 'text-slate-900/40 dark:text-white/40 group-hover:text-slate-900/80 group-hover:dark:text-white/80 group-hover:scale-110'
+                  }`}>
                      {item.icon}
                   </div>
                   {isActive && (
@@ -55,7 +55,7 @@ const MobileNav: React.FC = () => {
                     />
                   )}
                 </div>
-              </LiquidButton>
+              </div>
             )}
           </NavLink>
         ))}

@@ -5,7 +5,14 @@ import translations from './translations';
 export const API_KEY = "39ad6c4210f7e4357f3b5762fcaeb1db";
 export const OPENSUBTITLES_API_KEY = "4BixV2IOdGyewzC3a0Dvqq1MYbfZ3yFx";
 export const SUBDL_API_KEY = "subdl_s-YmuDA2wsocYnVVHrGzkUkZIWthD4F0fszNqBRfvL8";
-export const API_BASE_URL = "https://api.themoviedb.org/3";
+
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || 
+   window.location.hostname === '127.0.0.1' || 
+   window.location.hostname.startsWith('192.168.') ||
+   window.location.hostname.endsWith('.local'));
+
+export const API_BASE_URL = isLocal ? "/api/tmdb" : "https://api.themoviedb.org/3";
 export const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 export const IMAGE_BASE_URL_POSTER = "https://image.tmdb.org/t/p/w500";
 export const IMAGE_BASE_URL_LOGO = "https://image.tmdb.org/t/p/w300";

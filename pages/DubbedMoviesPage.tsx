@@ -250,7 +250,9 @@ const DubbedMoviesPage: React.FC = () => {
         videoUrl: '',
         imageBase64: '',
         bannerBase64: '',
-        level: 'NEW'
+        level: 'NEW',
+        imdb_id: '',
+        tmdb_id: ''
     });
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -262,7 +264,7 @@ const DubbedMoviesPage: React.FC = () => {
     // Edit State Handlers
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [nodeToEdit, setNodeToEdit] = useState<any | null>(null);
-    const [editData, setEditData] = useState({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW' });
+    const [editData, setEditData] = useState({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW', imdb_id: '', tmdb_id: '' });
     const [isUpdating, setIsUpdating] = useState(false);
     const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
 
@@ -806,7 +808,9 @@ const DubbedMoviesPage: React.FC = () => {
                         videoUrl: uploadData.videoUrl,
                         imageBase64: finalImage,
                         bannerBase64: uploadData.bannerBase64 || null,
-                        level: uploadData.level
+                        level: uploadData.level,
+                        imdb_id: uploadData.imdb_id ? uploadData.imdb_id.trim() : null,
+                        tmdb_id: uploadData.tmdb_id ? parseInt(uploadData.tmdb_id) : null
                     }
                 ]);
 
@@ -847,7 +851,7 @@ const DubbedMoviesPage: React.FC = () => {
             setUploadProgress(100);
             addNotification({ type: 'success', title: '🎬 Movie Added!', message: 'New movie is now live at the top of the list.' });
             setShowUploadModal(false);
-            setUploadData({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW' });
+            setUploadData({ title: '', description: '', videoUrl: '', imageBase64: '', bannerBase64: '', level: 'NEW', imdb_id: '', tmdb_id: '' });
         } catch (err: any) {
             console.error(err);
             addNotification({ type: 'error', title: 'Sync Error', message: err.message || 'Failed to sync the movie.' });
@@ -862,10 +866,12 @@ const DubbedMoviesPage: React.FC = () => {
         setEditData({
             title: movie.title || movie.kurdishTitle || '',
             description: movie.description || movie.kurdishOverview || '',
-            videoUrl: movie.customStream || '',
+            videoUrl: movie.customStream || movie.videoUrl || '',
             imageBase64: movie.imageBase64 || movie.poster_path || '',
             bannerBase64: movie.bannerBase64 || movie.backdrop_path || '',
-            level: movie.level || 'NEW'
+            level: movie.level || 'NEW',
+            imdb_id: movie.imdb_id || '',
+            tmdb_id: movie.tmdb_id ? String(movie.tmdb_id) : ''
         });
         setIsEditModalOpen(true);
     };
@@ -895,7 +901,9 @@ const DubbedMoviesPage: React.FC = () => {
                     videoUrl: editData.videoUrl,
                     imageBase64: editData.imageBase64,
                     bannerBase64: editData.bannerBase64,
-                    level: editData.level
+                    level: editData.level,
+                    imdb_id: editData.imdb_id ? editData.imdb_id.trim() : null,
+                    tmdb_id: editData.tmdb_id ? parseInt(editData.tmdb_id) : null
                 })
                 .eq('id', numericId);
 
@@ -918,11 +926,14 @@ const DubbedMoviesPage: React.FC = () => {
                             overview: editData.description,
                             kurdishOverview: editData.description,
                             customStream: editData.videoUrl,
+                            videoUrl: editData.videoUrl,
                             imageBase64: editData.imageBase64,
                             poster_path: editData.imageBase64,
                             bannerBase64: editData.bannerBase64,
                             backdrop_path: editData.bannerBase64,
-                            level: editData.level
+                            level: editData.level,
+                            imdb_id: editData.imdb_id ? editData.imdb_id.trim() : null,
+                            tmdb_id: editData.tmdb_id ? parseInt(editData.tmdb_id) : null
                         };
                     }
                     return item;
@@ -1566,6 +1577,29 @@ const DubbedMoviesPage: React.FC = () => {
                                                     </select>
                                                 </div>
 
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">IMDb ID (Optional)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={uploadData.imdb_id}
+                                                            onChange={(e) => setUploadData({ ...uploadData, imdb_id: e.target.value })}
+                                                            placeholder="e.g. tt36042156"
+                                                            className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">TMDb ID (Optional)</label>
+                                                        <input
+                                                            type="text"
+                                                            value={uploadData.tmdb_id}
+                                                            onChange={(e) => setUploadData({ ...uploadData, tmdb_id: e.target.value })}
+                                                            placeholder="e.g. 1439930"
+                                                            className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand outline-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
                                                 {isUploading ? (
                                                     <div className="bg-[#0a0a0a] border border-brand/20 rounded-xl p-5 mt-4">
                                                         <div className="flex justify-between items-center mb-2">
@@ -1776,6 +1810,29 @@ const DubbedMoviesPage: React.FC = () => {
                                                     <option value="KING">👑 KING (Premium Masterpiece)</option>
                                                     <option value="SPECIAL">✨ SPECIAL (Event/Exclusive)</option>
                                                 </select>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">IMDb ID (Optional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editData.imdb_id}
+                                                        onChange={(e) => setEditData({ ...editData, imdb_id: e.target.value })}
+                                                        placeholder="e.g. tt36042156"
+                                                        className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">TMDb ID (Optional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editData.tmdb_id}
+                                                        onChange={(e) => setEditData({ ...editData, tmdb_id: e.target.value })}
+                                                        placeholder="e.g. 1439930"
+                                                        className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"
+                                                    />
+                                                </div>
                                             </div>
 
                                             <button type="submit" disabled={isUpdating} className={`w-full bg-yellow-600 text-white font-black uppercase py-4 rounded-xl mt-4 hover:bg-yellow-500 transition-colors flex justify-center items-center gap-2 relative overflow-hidden group ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}>

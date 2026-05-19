@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2 } from 'lucide-react';
+import { Play, Maximize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
+import { supabase } from '../utils/supabaseClient';
+import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 
 interface PremiumVidLinkPlayerProps {
   tmdbId: string;
@@ -41,12 +43,90 @@ export default function PremiumVidLinkPlayer({
   const [subSearchQuery, setSubSearchQuery] = useState('');
   const [currentSubId, setCurrentSubId] = useState<number | null>(null);
 
+  const setAvailableSubsWithVirtual = useCallback((newSubs: any[]) => {
+    if (!subtitleUrl) {
+      setAvailableSubs(newSubs);
+      return;
+    }
+    const virtualSub = {
+      id: 'prop-kurdish-auto' as any,
+      attributes: {
+        language: 'ku',
+        display_name: 'Kurdish CC (Auto Established)',
+        url: subtitleUrl,
+        file_id: 0
+      }
+    };
+    const filtered = newSubs.filter(s => s.id !== 'prop-kurdish-auto' as any && s.attributes.url !== subtitleUrl);
+    setAvailableSubs([virtualSub, ...filtered]);
+  }, [subtitleUrl]);
+
   // Appearance Settings
   const [subFontSize, setSubFontSize] = useState(24);
   const [subColor, setSubColor] = useState('#ffffff');
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
+
+  // Doblaj & Multi-Language Audio States
+  const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
+  const [kurdishDub, setKurdishDub] = useState<any | null>(null);
+  const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub'>('sub');
+  const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
+  const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
+  const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
+
+  // Fetch translations dynamically from TMDB
+  useEffect(() => {
+    const fetchAllTranslations = async () => {
+      try {
+        let tmdbIdNum: number | null = null;
+        
+        // 1. Check if tmdbId prop is a number
+        if (tmdbId && !isNaN(Number(tmdbId))) {
+          tmdbIdNum = Number(tmdbId);
+        }
+        
+        // 2. If it's a multiembed URL or has video_id query parameter
+        if (!tmdbIdNum && videoUrl) {
+          try {
+            const urlObj = new URL(videoUrl);
+            const videoIdParam = urlObj.searchParams.get('video_id');
+            if (videoIdParam && !isNaN(Number(videoIdParam))) {
+              tmdbIdNum = Number(videoIdParam);
+            }
+          } catch (e) {}
+        }
+
+        // 3. Fallback to IMDb ID if we don't have TMDB ID yet
+        if (!tmdbIdNum && imdbId) {
+          const resolvedId = await fetchTmdbIdFromImdb(imdbId, type);
+          if (resolvedId) {
+            tmdbIdNum = resolvedId;
+          }
+        }
+
+        if (!tmdbIdNum) return;
+
+        const response = await fetchTranslations(tmdbIdNum, type);
+        if (response && response.translations) {
+          const titlesMap: Record<string, string> = {};
+          for (const translation of response.translations) {
+            const langCode = translation.iso_639_1;
+            if (translation.data?.title || translation.data?.name) {
+              titlesMap[langCode] = translation.data.title || translation.data.name;
+            }
+          }
+          console.log("[VIP TMDB TRANSLATIONS] Loaded translations:", titlesMap);
+          setTranslatedTitles(titlesMap);
+        }
+      } catch (err) {
+        console.error("[VIP TMDB TRANSLATIONS] Error fetching translations:", err);
+      }
+    };
+
+    fetchAllTranslations();
+  }, [tmdbId, imdbId, type, videoUrl]);
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
@@ -55,13 +135,13 @@ export default function PremiumVidLinkPlayer({
     try {
       // Use IMDB ID if available, it's MUCH more reliable for OpenSubtitles
       const results = await subtitleService.searchSubtitles(imdbId || tmdbId, type);
-      setAvailableSubs(results || []);
+      setAvailableSubsWithVirtual(results || []);
     } catch (e) {
       console.warn("[VIP-PLAYER] Sub Search Error:", e);
     } finally {
       setLoadingSubs(false);
     }
-  }, [tmdbId, type, availableSubs.length]);
+  }, [tmdbId, type, availableSubs.length, setAvailableSubsWithVirtual]);
 
   const handleSelectSub = async (sub: any) => {
     setLoadingSubs(true);
@@ -73,8 +153,8 @@ export default function PremiumVidLinkPlayer({
       if (downloadLink) {
         const result = await subtitleService.getSubtitleBlob(downloadLink);
         if (result) {
-          // If it's a direct URL (proxied), fetch its text first for overlay
-          if (result.startsWith('http')) {
+          // If it's a direct URL (proxied) or local Blob URL, fetch its text first for overlay
+          if (result.startsWith('http') || result.startsWith('blob:')) {
             const res = await fetch(result);
             const text = await res.text();
             setVttContent(text);
@@ -104,12 +184,33 @@ export default function PremiumVidLinkPlayer({
     return map[lang.toLowerCase()] || '🏳️';
   };
 
-  // Parse VTT for overlay
+  // Parse VTT for overlay and sync availableSubs
   useEffect(() => {
     if (!subtitleUrl) {
       setVttContent(null);
       return;
     }
+
+    const virtualSub = {
+      id: 'prop-kurdish-auto' as any,
+      attributes: {
+        language: 'ku',
+        display_name: 'Kurdish CC (Auto Established)',
+        url: subtitleUrl,
+        file_id: 0
+      }
+    };
+
+    // Inject into available subs list
+    setAvailableSubs(prev => {
+      if (prev.some(s => s.id === 'prop-kurdish-auto' as any || s.attributes.url === subtitleUrl)) {
+        return prev;
+      }
+      return [virtualSub, ...prev];
+    });
+
+    setCurrentSubId('prop-kurdish-auto' as any);
+    setShowSubtitles(true);
 
     const fetchVtt = async () => {
       try {
@@ -131,7 +232,7 @@ export default function PremiumVidLinkPlayer({
   // 1. Construct parameters based on official VidLink Docs & User Request
   const playerColor = accentColor?.replace('#', '') || 'ff0000';
   const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
-  const subParam = subtitleUrl ? `&subtitle=${encodeURIComponent(subtitleUrl)}&subtitleLabel=Kurdish` : '';
+  const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
   
   // Construct URLs for VidLink Pro (FLKRD SERVER 1)
   const vidLinkBase = type === 'movie' 
@@ -153,6 +254,73 @@ export default function PremiumVidLinkPlayer({
     }, 7000); // 7s ensures full provider handshake
     return () => clearTimeout(timer);
   }, []);
+
+  // Query Kurdish Dubbed movies from Supabase Cloud
+  useEffect(() => {
+    const checkKurdishDub = async () => {
+      const activeId = imdbId || tmdbId;
+      if (!activeId) return;
+      try {
+        const cleanId = activeId.toString();
+        const isImdb = cleanId.startsWith('tt');
+        
+        // 1. First, search for direct match by IMDb or TMDb ID
+        let query = supabase.from('dubbed_movies').select('id, title, kurdishTitle, videoUrl, media_type, imdb_id, tmdb_id');
+        if (isImdb) {
+          query = query.eq('imdb_id', cleanId);
+        } else {
+          const numId = parseInt(cleanId);
+          if (!isNaN(numId)) {
+            query = query.eq('tmdb_id', numId);
+          }
+        }
+        
+        const { data, error } = await query;
+        if (data && data.length > 0) {
+          console.log("[VIP-PLAYER] Kurdish Dubbed Version established via ID:", data[0]);
+          setKurdishDub(data[0]);
+          return;
+        }
+
+        // 2. Fallback: Query all dubbed movies and match by title (for older records where IDs are not set)
+        const { data: allMovies } = await supabase.from('dubbed_movies').select('id, title, kurdishTitle, videoUrl, media_type, imdb_id, tmdb_id');
+        if (allMovies && allMovies.length > 0) {
+          const cleanString = (str: string) => {
+            if (!str) return '';
+            return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+          };
+
+          const targetTitleClean = title ? cleanString(title) : '';
+          
+          const match = allMovies.find((m: any) => {
+            if (isImdb && m.imdb_id === cleanId) return true;
+            if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
+
+            if (targetTitleClean) {
+              const dbTitleClean = cleanString(m.title);
+              const dbKurdishClean = cleanString(m.kurdishTitle);
+              
+              if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+              if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+            }
+            return false;
+          });
+
+          if (match) {
+            console.log("[VIP-PLAYER] Kurdish Dubbed Version established via fallback title match:", match);
+            setKurdishDub(match);
+          } else {
+            setKurdishDub(null);
+          }
+        } else {
+          setKurdishDub(null);
+        }
+      } catch (e) {
+        console.warn("[VIP-PLAYER] Failed to query Kurdish Dub:", e);
+      }
+    };
+    checkKurdishDub();
+  }, [tmdbId, imdbId, title]);
 
   // Official VidLink Progress & Event Tracking
   useEffect(() => {
@@ -228,9 +396,8 @@ export default function PremiumVidLinkPlayer({
       <div className="relative flex-1 w-full bg-black">
         <iframe
           ref={iframeRef}
-          src={videoUrl}
+          src={overrideSrc || videoUrl}
           className="w-full h-full border-0"
-          allowFullScreen
           // We rely on sw.js (Service Worker) for stealthy ad-blocking to avoid "Bot Detection"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
           referrerPolicy="strict-origin-when-cross-origin"
@@ -286,9 +453,26 @@ export default function PremiumVidLinkPlayer({
                 </button>
               </div>
 
-              {/* APPEARANCE CONTROLS */}
-              <div className="space-y-6">
-                <div className="flex flex-col gap-3">
+              {/* Premium Segmented Control Tab Bar */}
+              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
+                <button 
+                  onClick={() => setSubStudioTab('sub')}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {language === 'ku' ? 'ژێرنووس' : 'Subtitles'}
+                </button>
+                <button 
+                  onClick={() => setSubStudioTab('dub')}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {language === 'ku' ? 'دۆبلاژ' : 'Doblaj & Audio'}
+                </button>
+              </div>
+
+              {subStudioTab === 'sub' ? (
+                <>
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-3">
                   <div className="flex justify-between items-center">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'قەبارەی نووسین' : 'Font Size'}</label>
                     <span className="text-[10px] font-bold text-red-500">{subFontSize}px</span>
@@ -415,6 +599,203 @@ export default function PremiumVidLinkPlayer({
                   )
                 )}
               </div>
+              </>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    {language === 'ku' ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
+                  </label>
+                  
+                  <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {/* 1. Kurdish Dubbed Feed */}
+                    <div className={`p-4 rounded-[20px] border flex flex-col gap-3 transition-all relative overflow-hidden ${
+                      kurdishDub 
+                        ? 'bg-gradient-to-r from-yellow-500/10 to-red-500/5 border-yellow-500/30 shadow-[0_4px_24px_rgba(234,179,8,0.15)]'
+                        : 'bg-white/[0.02] border-white/5 opacity-60'
+                    }`}>
+                      <div className="flex items-center gap-3 relative z-10">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                          kurdishDub ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/5 border-white/10'
+                        }`}>
+                          {getLanguageFlag('ku')}
+                        </div>
+                        <div className="flex flex-col flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`font-[1000] text-[9px] uppercase tracking-[0.2em] ${kurdishDub ? 'text-yellow-500' : 'text-gray-400'}`}>
+                              {language === 'ku' ? 'کوردی' : 'KURDISH'}
+                            </span>
+                            {kurdishDub && (
+                              <span className="text-[7px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(234,179,8,0.4)] uppercase tracking-tighter flex items-center gap-0.5">
+                                <Sparkles size={8} /> Premium Dub
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-white font-bold text-[11px] truncate">
+                            {language === 'ku' ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {kurdishDub ? (
+                        <button 
+                          onClick={() => {
+                            const getRashabaId = (url: string) => {
+                              if (!url) return "mKkhrFhjQr3CKwz"; 
+                              const matches = url.match(/\/([a-zA-Z0-9]{12,20})\//);
+                              if (matches) return matches[1];
+                              const parts = url.split('/');
+                              return parts[parts.length - 2] || "mKkhrFhjQr3CKwz";
+                            };
+                            let newSrc = kurdishDub.videoUrl || '';
+                            if (newSrc.includes('rashaba.com')) {
+                              const rid = getRashabaId(newSrc);
+                              newSrc = `https://rashaba.com/embed/${rid}`;
+                            }
+                            // Append dynamic dubbed title suffix
+                            const baseTitle = translatedTitles.ku || translatedTitles.ckb || title || '';
+                            const suffixTitle = baseTitle + ' Kurdish';
+                            const connector = newSrc.includes('?') ? '&' : '?';
+                            newSrc = `${newSrc}${connector}title=${encodeURIComponent(suffixTitle)}`;
+                            
+                            setOverrideSrc(newSrc);
+                            setActiveAudioTrack('ku');
+                          }}
+                          className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                            activeAudioTrack === 'ku'
+                              ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
+                              : 'bg-white/10 hover:bg-white/20 text-white'
+                          }`}
+                        >
+                          <Mic2 size={12} />
+                          {activeAudioTrack === 'ku' 
+                            ? (language === 'ku' ? 'چالاکە' : 'ACTIVE AUDIO FEED')
+                            : (language === 'ku' ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
+                        </button>
+                      ) : (
+                        <div className="w-full py-2 border border-dashed border-white/10 rounded-xl text-center text-[9px] font-bold text-gray-500">
+                          {language === 'ku' ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 2. Original English Feed */}
+                    <button 
+                      onClick={() => {
+                        setOverrideSrc(null);
+                        setActiveAudioTrack('en');
+                      }}
+                      className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
+                        activeAudioTrack === 'en'
+                          ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
+                          : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                        activeAudioTrack === 'en' ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                      }`}>
+                        {getLanguageFlag('en')}
+                      </div>
+                      <div className="flex flex-col text-left flex-1 min-w-0">
+                        <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
+                          {language === 'ku' ? 'ئینگلیزی' : 'ENGLISH'}
+                        </span>
+                        <span className="text-white font-bold text-[11px] truncate">
+                          {language === 'ku' ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
+                        </span>
+                      </div>
+                      {activeAudioTrack === 'en' && <Tv size={14} className="text-red-500 shrink-0" />}
+                    </button>
+
+                    {/* Other Multi-Language Dubbed Options */}
+                    {['ar', 'fa', 'tr'].map(lang => {
+                      const langLabelMap: Record<string, { label: string, desc: string, full: string }> = {
+                        ar: { label: 'ARABIC', desc: 'عەرەبی - دۆبلاژ', full: 'Arabic' },
+                        fa: { label: 'PERSIAN', desc: 'فارسی - دۆبلاژ', full: 'Persian' },
+                        tr: { label: 'TURKISH', desc: 'تورکی - دۆبلاژ', full: 'Turkish' },
+                      };
+                      const meta = langLabelMap[lang];
+                      
+                      return (
+                        <button 
+                          key={lang}
+                          onClick={() => {
+                            let activeId = imdbId || tmdbId || '';
+                            const isImdb = activeId.startsWith('tt');
+                            const tmdbParam = isImdb ? '' : '&tmdb=1';
+                            
+                            // Custom Dubbed Title Suffixes
+                            let baseTitle = title || '';
+                            if (lang === 'fa' && translatedTitles.fa) baseTitle = translatedTitles.fa;
+                            else if (lang === 'ar' && translatedTitles.ar) baseTitle = translatedTitles.ar;
+                            else if (lang === 'tr' && translatedTitles.tr) baseTitle = translatedTitles.tr;
+
+                            let dubbedTitle = baseTitle;
+                            if (lang === 'fa') dubbedTitle += ' Persian';
+                            else if (lang === 'ar') dubbedTitle += ' AR';
+                            else if (lang === 'tr') dubbedTitle += ' Turkish';
+
+                            let targetSrc = videoUrl;
+                            try {
+                              const cleanSrc = targetSrc.includes('<iframe')
+                                ? (targetSrc.match(/src=["'](.*?)["']/) || [])[1]
+                                : targetSrc;
+                              
+                              const urlObj = new URL(cleanSrc);
+                              urlObj.searchParams.set('title', dubbedTitle);
+                              urlObj.searchParams.set('dub', '1');
+                              
+                              if (cleanSrc.includes('multiembed.mov') && activeId) {
+                                const isImdb = activeId.startsWith('tt');
+                                if (!isImdb) urlObj.searchParams.set('tmdb', '1');
+                                if (type === 'tv') {
+                                  urlObj.searchParams.set('s', String(season || 1));
+                                  urlObj.searchParams.set('e', String(episode || 1));
+                                }
+                              }
+                              
+                              targetSrc = urlObj.toString();
+                            } catch (e) {
+                              const connector = targetSrc.includes('?') ? '&' : '?';
+                              if (targetSrc.includes('title=')) {
+                                targetSrc = targetSrc.replace(/title=[^&]*/, `title=${encodeURIComponent(dubbedTitle)}`);
+                              } else {
+                                targetSrc = `${targetSrc}${connector}title=${encodeURIComponent(dubbedTitle)}`;
+                              }
+                              if (!targetSrc.includes('dub=')) {
+                                targetSrc = `${targetSrc}&dub=1`;
+                              }
+                            }
+                            
+                            setOverrideSrc(targetSrc);
+                            setActiveAudioTrack(lang);
+                            setShowDubInfoModal(meta.full);
+                          }}
+                          className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
+                            activeAudioTrack === lang
+                              ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
+                              : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                            activeAudioTrack === lang ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                          }`}>
+                            {getLanguageFlag(lang)}
+                          </div>
+                          <div className="flex flex-col text-left flex-1 min-w-0">
+                            <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
+                              {meta.label}
+                            </span>
+                            <span className="text-white font-bold text-[11px] truncate">
+                              {meta.desc}
+                            </span>
+                          </div>
+                          <Globe size={14} className="text-gray-500 shrink-0" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <button 
                 onClick={() => setShowSubSettings(false)}
@@ -426,6 +807,51 @@ export default function PremiumVidLinkPlayer({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Elegant Glassmorphic Multi-Audio Helper Modal */}
+      <AnimatePresence>
+        {showDubInfoModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/85 backdrop-blur-2xl z-[300] flex items-center justify-center p-4 md:p-6"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-[#0c0c0c] border border-white/10 rounded-[32px] p-6 max-w-sm w-full text-center flex flex-col gap-6 shadow-[0_32px_64px_rgba(0,0,0,0.8)] relative overflow-hidden"
+              style={{ fontFamily: "'Inter', sans-serif" }}
+            >
+              {/* Curved Flag Background Glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-red-600/10 blur-[40px] rounded-full pointer-events-none" />
+
+              <div className="mx-auto w-16 h-16 rounded-full bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500 text-3xl animate-bounce">
+                <Volume2 size={32} />
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-white font-black text-lg tracking-tight uppercase">
+                  {language === 'ku' ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
+                </h4>
+                <p className="text-gray-400 text-xs leading-relaxed text-left">
+                  {language === 'ku' 
+                    ? `دۆبلاژی [${showDubInfoModal}] چالاک کرا! لەناو لیستی سێرڤەرەکان یان دوگمەی دەنگ (Audio) لە خوارەوەی ڕاستی ڤیدیۆکە، دەتوانیت زمانەکە یان سێرڤەری دۆبلاژ هەڵبژێریت.`
+                    : `The [${showDubInfoModal}] dubbed version is now active! Inside the player, you can select the Dubbed version from the server list or toggle the language track using the Audio settings button.`}
+                </p>
+              </div>
+
+              <button 
+                onClick={() => setShowDubInfoModal(null)}
+                className="py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-red-600/20"
+              >
+                {language === 'ku' ? 'باشە، تێگەیشتم' : 'Got it, let\'s play'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

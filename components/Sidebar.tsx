@@ -45,7 +45,7 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       '/search': () => import('../pages/SearchPage'),
       '/my-list': () => import('../pages/MyListPage'),
     };
-    if (componentMap[to]) componentMa
+    if (componentMap[to]) componentMap[to]();
   };
 
   return (
@@ -133,7 +133,7 @@ const Sidebar: React.FC = () => {
       </AnimatePresence>
 
       <motion.div
-        className="hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-main-bg/25 backdrop-blur-20 border-r border-main-text/10 text-sec-text z-50 shadow-[20px_0_50px_rgba(0,0,0,0.4)] overflow-hidden"
+        className="global-sidebar hidden md:flex flex-col flex-shrink-0 h-screen sticky top-0 bg-main-bg/25 backdrop-blur-20 border-r border-main-text/10 text-sec-text z-50 shadow-[20px_0_50px_rgba(0,0,0,0.4)] overflow-hidden"
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}

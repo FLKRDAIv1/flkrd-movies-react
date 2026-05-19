@@ -30,7 +30,7 @@ const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = ({ tmdbId, type }) => {
             <motion.div 
                 initial={{ opacity: 0, scale: 0.8, y: 5 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                className="absolute top-4 left-4 z-30"
+                className="absolute bottom-4 left-4 z-30"
             >
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600/90 backdrop-blur-md rounded-xl border border-red-500/50 shadow-[0_4px_15px_rgba(229,9,20,0.4)]">
                     <Subtitles size={12} className="text-white" />

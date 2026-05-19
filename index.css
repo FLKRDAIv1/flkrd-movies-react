@@ -29,6 +29,33 @@
   --border-color-rgb: 226, 232, 240;
 }
 
+/* Premium Light Mode Border/Line Fixes */
+.light-mode [class*="border-white"] {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="border-t-white"] {
+  border-top-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="border-b-white"] {
+  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="border-l-white"] {
+  border-left-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="border-r-white"] {
+  border-right-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="bg-white/10"],
+.light-mode [class*="bg-white/5"] {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+.light-mode [class*="bg-white/20"] {
+  background-color: rgba(0, 0, 0, 0.06) !important;
+}
+.light-mode [class*="bg-white/[0.02]"] {
+  background-color: rgba(0, 0, 0, 0.01) !important;
+}
+
 /* ── Base ── */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -288,5 +315,16 @@ video {
 .min-h-screen {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* ── Hide navigation & header during movie playback ── */
+body.movie-player-active .global-sidebar,
+body.movie-player-active .global-header,
+body.movie-player-active .global-mobilenav,
+body.movie-player-active #detail-nav-portal,
+body.movie-player-active [id*="nav-portal"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 

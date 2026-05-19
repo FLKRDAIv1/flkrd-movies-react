@@ -37,6 +37,7 @@ import VirtualCursor from './components/VirtualCursor';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { isTauri } from './utils/tauriUtils';
 
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const { t } = useTranslation();
@@ -165,14 +166,14 @@ const App: React.FC = () => {
                 // 1. Parallel fetch banned registry & trending
                 await Promise.all([
                     bannedService.fetchBannedList(),
-                    fetchData(requests.fetchTrending, 'en'),
+                    fetchData(requests.fetchTrending('en-US'), 'en'),
                     fetchData(requests.fetchLatestMovies('en-US'), 'en')
                 ]);
                 
                 // 2. Background prefetch secondary routes
                 setTimeout(() => {
-                    fetchData(requests.fetchNetflixOriginals, 'en');
-                    fetchData(requests.fetchTopRated, 'en');
+                    fetchData(requests.fetchNetflixOriginals('en-US'), 'en');
+                    fetchData(requests.fetchTopRatedMovies('en-US'), 'en');
                 }, 2000);
             } catch (e) {
                 console.warn("[QUANTUM PREFETCH] Sync stalled:", e);
@@ -331,7 +332,7 @@ const App: React.FC = () => {
                 <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
                 <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
                 <GamepadHints />
-                <SpeedInsights />
+                {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
             </HashRouter>
         </div>
     );

@@ -249,10 +249,18 @@ const DetailPage: React.FC = () => {
   const playButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (isPlayerModalOpen && playButtonRef.current) {
-      // Small delay to ensure modal transition finishes
-      setTimeout(() => playButtonRef.current?.focus(), 300);
+    if (isPlayerModalOpen) {
+      document.body.classList.add('movie-player-active');
+      if (playButtonRef.current) {
+        // Small delay to ensure modal transition finishes
+        setTimeout(() => playButtonRef.current?.focus(), 300);
+      }
+    } else {
+      document.body.classList.remove('movie-player-active');
     }
+    return () => {
+      document.body.classList.remove('movie-player-active');
+    };
   }, [isPlayerModalOpen]);
 
   const handlePlayClick = () => {
@@ -352,6 +360,7 @@ const DetailPage: React.FC = () => {
                   subtitleUrl={subtitleUrl || undefined}
                   imdbId={imdbId || content?.imdb_id}
                   contentType="movie"
+                  title={content?.title}
                 />
               )}
 
@@ -480,14 +489,16 @@ const DetailPage: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/20 to-transparent dark-gradient-mask"></div>
         </div>
 
-        <Portal id="detail-nav-portal">
-          <div className={`fixed top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-[110]`}>
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95">
-              <ArrowLeft size={20} className={`${language === 'ku' ? 'rotate-180' : ''}`} />
-              <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
-            </button>
-          </div>
-        </Portal>
+        {!isPlayerModalOpen && (
+          <Portal id="detail-nav-portal">
+            <div className={`fixed top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-[110]`}>
+              <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95">
+                <ArrowLeft size={20} className={`${language === 'ku' ? 'rotate-180' : ''}`} />
+                <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
+              </button>
+            </div>
+          </Portal>
+        )}
 
         <div className={`absolute bottom-8 md:bottom-24 ${language === 'ku' ? 'right-0 text-right px-6 md:px-8 lg:px-20' : 'left-0 text-left px-6 md:px-8 lg:px-20'} z-10 flex flex-col max-w-6xl items-start`}>
           <div className="flex flex-wrap items-center gap-3 mb-6">
