@@ -41,7 +41,9 @@ const MobileNav: React.FC = () => {
                 variant="default"
                 size="icon"
                 className={`w-[3rem] h-[3rem] rounded-[1.25rem] transition-all relative flex flex-col items-center justify-center cursor-pointer ${
-                  isActive ? 'text-slate-900 dark:text-white' : 'text-slate-900/40 dark:text-white/40 hover:text-slate-900/80 hover:dark:text-white/80'
+                  isActive 
+                    ? 'text-slate-900 dark:text-white shadow-[0_0_20px_rgba(255,255,255,0.4)] dark:shadow-[0_0_25px_rgba(255,255,255,0.85)] border border-black/10 dark:border-white/40' 
+                    : 'text-slate-900/40 dark:text-white/40 hover:text-slate-900/80 hover:dark:text-white/80'
                 }`}
               >
                 <div>
@@ -55,7 +57,7 @@ const MobileNav: React.FC = () => {
                   {isActive && (
                     <motion.div
                       layoutId="active-mobile-indicator"
-                      className="absolute -bottom-1 h-1.5 w-6 bg-[var(--brand-red)] rounded-full shadow-[0_0_15px_rgba(229,9,20,0.8)]"
+                      className="absolute -bottom-1 h-1 w-6 bg-slate-900 dark:bg-white rounded-full shadow-[0_0_10px_rgba(15,23,42,0.5)] dark:shadow-[0_0_15px_rgba(255,255,255,1)]"
                       transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     />
                   )}
