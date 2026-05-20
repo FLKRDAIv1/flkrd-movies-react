@@ -1,23 +1,30 @@
 
 import { isTauri } from '../utils/tauriUtils';
-import { sendNotification, requestPermission } from '@tauri-apps/plugin-notification';
-import { message, confirm } from '@tauri-apps/plugin-dialog';
-import { open } from '@tauri-apps/plugin-shell';
-import { type as osType } from '@tauri-apps/plugin-os';
 
 export const tauriService = {
   async notify(title: string, body?: string) {
     if (!isTauri()) return;
     
-    let permissionGranted = await requestPermission();
-    if (permissionGranted === 'granted') {
-      sendNotification({ title, body, icon: 'https://i.imgur.com/4HoT8Yf.png' });
+    try {
+      const { sendNotification, requestPermission } = await import('@tauri-apps/plugin-notification');
+      let permissionGranted = await requestPermission();
+      if (permissionGranted === 'granted') {
+        sendNotification({ title, body, icon: 'https://i.imgur.com/4HoT8Yf.png' });
+      }
+    } catch (e) {
+      console.error('Failed to send Tauri notification:', e);
     }
   },
 
   async alert(text: string, title: string = 'FLKRD') {
     if (isTauri()) {
-      await message(text, { title, kind: 'info' });
+      try {
+        const { message } = await import('@tauri-apps/plugin-dialog');
+        await message(text, { title, kind: 'info' });
+      } catch (e) {
+        console.error('Failed to show Tauri alert:', e);
+        alert(text);
+      }
     } else {
       alert(text);
     }
@@ -25,7 +32,13 @@ export const tauriService = {
 
   async confirm(text: string, title: string = 'FLKRD'): Promise<boolean> {
     if (isTauri()) {
-      return await confirm(text, { title, kind: 'warning' });
+      try {
+        const { confirm } = await import('@tauri-apps/plugin-dialog');
+        return await confirm(text, { title, kind: 'warning' });
+      } catch (e) {
+        console.error('Failed to show Tauri confirm:', e);
+        return window.confirm(text);
+      }
     } else {
       return window.confirm(text);
     }
@@ -33,7 +46,13 @@ export const tauriService = {
 
   async openExternal(url: string) {
     if (isTauri()) {
-      await open(url);
+      try {
+        const { open } = await import('@tauri-apps/plugin-shell');
+        await open(url);
+      } catch (e) {
+        console.error('Failed to open external Tauri URL:', e);
+        window.open(url, '_blank');
+      }
     } else {
       window.open(url, '_blank');
     }
@@ -41,7 +60,12 @@ export const tauriService = {
 
   async getOS() {
     if (isTauri()) {
-      return await osType();
+      try {
+        const { type: osType } = await import('@tauri-apps/plugin-os');
+        return await osType();
+      } catch (e) {
+        console.error('Failed to get Tauri OS type:', e);
+      }
     }
     return 'web';
   }

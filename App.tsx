@@ -206,7 +206,8 @@ const App: React.FC = () => {
         };
 
         prefetchCore();
-        const timer = setTimeout(() => setLoading(false), 0);
+        // Show splash for 3.5s minimum so the animation completes
+        const timer = setTimeout(() => setLoading(false), 3500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -316,7 +317,11 @@ const App: React.FC = () => {
         }
     }, []);
 
-    if (loading) return <SplashScreen />;
+    if (loading) return (
+        <AnimatePresence mode="wait">
+            <SplashScreen key="splash" />
+        </AnimatePresence>
+    );
 
     return (
         <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>

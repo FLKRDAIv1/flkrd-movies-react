@@ -1,118 +1,278 @@
-
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SplashScreen: React.FC = () => {
-  const text1 = "Created by Zana Faroq or more";
-  const text2 = "درووستکراوە لەلایەن زانا فارۆق";
-
-  const [displayedText1, setDisplayedText1] = useState("");
-  const [displayedText2, setDisplayedText2] = useState("");
+  const [phase, setPhase] = useState<'logo' | 'text' | 'done'>('logo');
+  const [progress, setProgress] = useState(0);
+  const [displayedTagline, setDisplayedTagline] = useState('');
+  const tagline = 'STREAM KURDISH · INTERNATIONAL · CINEMA';
 
   useEffect(() => {
-    let index1 = 0;
-    let index2 = 0;
-    let timer1: number;
-    let timer2: number;
+    // Phase 1: Logo appears (0–800ms)
+    // Phase 2: Tagline types in (800–2200ms)
+    const textTimer = setTimeout(() => setPhase('text'), 800);
 
-    // Typing effect for English Text
-    timer1 = window.setInterval(() => {
-      if (index1 < text1.length) {
-        setDisplayedText1(text1.substring(0, index1 + 1));
-        index1++;
-      } else {
-        clearInterval(timer1);
-
-        // Start typing Kurdish Text after English finishes
-        timer2 = window.setInterval(() => {
-          if (index2 < text2.length) {
-            setDisplayedText2(text2.substring(0, index2 + 1));
-            index2++;
-          } else {
-            clearInterval(timer2);
-          }
-        }, 80);
-      }
-    }, 80);
+    // Progress bar
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) { clearInterval(progressInterval); return 100; }
+        return prev + 100 / 30; // ~3s to fill
+      });
+    }, 100);
 
     return () => {
-      clearInterval(timer1);
-      if (timer2) clearInterval(timer2);
+      clearTimeout(textTimer);
+      clearInterval(progressInterval);
     };
   }, []);
 
+  // Typewriter for tagline
+  useEffect(() => {
+    if (phase !== 'text') return;
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < tagline.length) {
+        setDisplayedTagline(tagline.slice(0, i + 1));
+        i++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 40);
+    return () => clearInterval(interval);
+  }, [phase]);
+
   return (
     <motion.div
-      exit={{ opacity: 0 }}
-      transition={{ duration: 1 }}
-      className="fixed inset-0 bg-black z-[200] overflow-hidden"
+      initial={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+      className="fixed inset-0 z-[500] flex flex-col items-center justify-center overflow-hidden"
+      style={{ background: '#000000' }}
     >
-      {/* Desktop Video */}
-      <div className="hidden md:block absolute inset-0 w-full h-full pointer-events-none">
-        <iframe
-          src="https://player.vimeo.com/video/1143775404?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1&controls=0"
-          className="w-full h-full"
-          frameBorder="0"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-          style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-          title="Desktop Splash Video"
-        />
-      </div>
+      {/* Ambient glow behind logo */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 0.15, scale: 1.4 }}
+        transition={{ duration: 1.5, ease: 'easeOut' }}
+        style={{
+          position: 'absolute',
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, #e50914 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }}
+      />
 
-      {/* Mobile Video */}
-      <div className="block md:hidden absolute inset-0 w-full h-full pointer-events-none">
-        <iframe
-          src="https://player.vimeo.com/video/1143775443?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1&controls=0"
-          className="w-full h-full"
-          frameBorder="0"
-          sandbox="allow-scripts allow-same-origin allow-presentation"
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-          style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
-          title="Mobile Splash Video"
-        />
-      </div>
+      {/* Scanline overlay for cinematic effect */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)',
+          pointerEvents: 'none',
+          zIndex: 2,
+        }}
+      />
 
-      {/* Interaction Blocker Overlay */}
-      <div className="absolute inset-0 z-40 bg-transparent cursor-default"></div>
-
-      {/* Bottom Gradient for Text Readability */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-40 pointer-events-none"></div>
-
-      {/* Content Container - Bottom Left */}
-      <div className="absolute bottom-8 left-6 sm:left-10 z-50 flex flex-col gap-3">
-
-        {/* Typing Text Container */}
-        <div className="flex flex-col gap-1.5">
-          <div className="h-6 flex items-center">
-            <span className="text-white font-mono text-sm md:text-base font-bold tracking-wider shadow-black drop-shadow-md">
-              {displayedText1}
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 1, 0] }}
-                transition={{ repeat: Infinity, duration: 0.8 }}
-                className="inline-block w-0.5 h-4 ml-1 bg-red-600 align-middle"
-              />
-            </span>
-          </div>
-          <div className="h-6 flex items-center">
-            <span className="text-gray-300 font-mono text-xs md:text-sm font-semibold tracking-wide shadow-black drop-shadow-md" dir="rtl">
-              {displayedText2}
-            </span>
-          </div>
-        </div>
-
-        {/* Professional Loading Line */}
-        <div className="w-56 sm:w-64 h-1 bg-gray-800/50 rounded-full overflow-hidden backdrop-blur-sm border border-white/10 mt-1">
+      {/* Main logo container */}
+      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
+        
+        {/* Logo mark */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          style={{ position: 'relative' }}
+        >
+          {/* Outer ring pulse */}
           <motion.div
-            className="h-full bg-gradient-to-r from-red-600 to-red-400"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 8, ease: "linear" }}
+            animate={{ scale: [1, 1.18, 1], opacity: [0.4, 0, 0.4] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+            style={{
+              position: 'absolute',
+              inset: -16,
+              borderRadius: '30%',
+              border: '1.5px solid rgba(229, 9, 20, 0.5)',
+              pointerEvents: 'none',
+            }}
           />
-        </div>
 
+          {/* Icon card */}
+          <motion.div
+            style={{
+              width: 110,
+              height: 110,
+              borderRadius: 26,
+              background: 'linear-gradient(135deg, #e50914 0%, #7b0000 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 60px rgba(229, 9, 20, 0.45), 0 20px 60px rgba(0,0,0,0.8)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Shimmer sweep */}
+            <motion.div
+              initial={{ x: -150 }}
+              animate={{ x: 200 }}
+              transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: 80,
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)',
+                transform: 'skewX(-20deg)',
+                pointerEvents: 'none',
+              }}
+            />
+            {/* FLKRD "F" mark */}
+            <span style={{
+              fontSize: 56,
+              fontWeight: 900,
+              color: '#ffffff',
+              letterSpacing: -3,
+              lineHeight: 1,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+              userSelect: 'none',
+            }}>
+              F
+            </span>
+          </motion.div>
+        </motion.div>
+
+        {/* FLKRD MOVIES wordmark */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}
+        >
+          <span style={{
+            fontSize: 32,
+            fontWeight: 900,
+            color: '#ffffff',
+            letterSpacing: 12,
+            textTransform: 'uppercase',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            userSelect: 'none',
+          }}>
+            FLKRD
+          </span>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.5)',
+            letterSpacing: 6,
+            textTransform: 'uppercase',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            userSelect: 'none',
+          }}>
+            MOVIES
+          </span>
+        </motion.div>
+
+        {/* Tagline typewriter */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: phase === 'text' ? 1 : 0 }}
+          transition={{ duration: 0.4 }}
+          style={{
+            height: 20,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <span style={{
+            fontSize: 9,
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.35)',
+            letterSpacing: 4,
+            fontFamily: 'monospace',
+            userSelect: 'none',
+          }}>
+            {displayedTagline}
+          </span>
+          {phase === 'text' && displayedTagline.length < tagline.length && (
+            <motion.span
+              animate={{ opacity: [1, 0] }}
+              transition={{ duration: 0.5, repeat: Infinity }}
+              style={{
+                display: 'inline-block',
+                width: 1,
+                height: 10,
+                backgroundColor: '#e50914',
+              }}
+            />
+          )}
+        </motion.div>
       </div>
+
+      {/* Bottom progress bar */}
+      <div style={{
+        position: 'absolute',
+        bottom: 48,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 200,
+        height: 2,
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        borderRadius: 2,
+        overflow: 'hidden',
+        zIndex: 10,
+      }}>
+        <motion.div
+          style={{
+            height: '100%',
+            width: `${progress}%`,
+            background: 'linear-gradient(90deg, #e50914, #ff4d4d)',
+            borderRadius: 2,
+          }}
+          transition={{ ease: 'linear' }}
+        />
+      </div>
+
+      {/* Bottom signature */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.5 }}
+        style={{
+          position: 'absolute',
+          bottom: 20,
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 2,
+        }}
+      >
+        <span style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: 'rgba(255,255,255,0.2)',
+          letterSpacing: 3,
+          fontFamily: 'monospace',
+          userSelect: 'none',
+        }}>
+          CREATED BY ZANA FAROQ
+        </span>
+        <span style={{
+          fontSize: 9,
+          fontWeight: 600,
+          color: 'rgba(255,255,255,0.15)',
+          letterSpacing: 2,
+          fontFamily: 'monospace',
+          userSelect: 'none',
+          direction: 'rtl',
+        }}>
+          درووستکراوە لەلایەن زانا فارۆق
+        </span>
+      </motion.div>
     </motion.div>
   );
 };
