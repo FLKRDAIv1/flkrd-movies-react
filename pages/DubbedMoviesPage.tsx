@@ -257,9 +257,93 @@ const DubbedMoviesPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
-    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive'>('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned'>('upload');
     const [adminSearchQuery, setAdminSearchQuery] = useState('');
     const [movieToDelete, setMovieToDelete] = useState<string | null>(null);
+
+    // TMDB Autocomplete Engine States and Handlers
+    const [tmdbSearchQuery, setTmdbSearchQuery] = useState('');
+    const [tmdbSearchResults, setTmdbSearchResults] = useState<any[]>([]);
+    const [isTmdbSearching, setIsTmdbSearching] = useState(false);
+
+    const fetchFromTmdb = async (endpoint: string) => {
+        const primaryUrl = API_BASE_URL.startsWith('http') 
+            ? `${API_BASE_URL}${endpoint}` 
+            : `${window.location.origin}${API_BASE_URL}${endpoint}`;
+        
+        try {
+            const res = await fetch(primaryUrl);
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn("Primary TMDB fetch failed, trying direct endpoint:", e);
+        }
+        
+        const fallbackUrl = `https://api.themoviedb.org/3${endpoint}`;
+        const res = await fetch(fallbackUrl);
+        if (!res.ok) throw new Error(`TMDB call failed: ${res.statusText}`);
+        return await res.json();
+    };
+
+    const searchTmdbMovies = async (query: string) => {
+        if (!query.trim()) return;
+        setIsTmdbSearching(true);
+        try {
+            const data = await fetchFromTmdb(`/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=en-US`);
+            setTmdbSearchResults(data.results || []);
+        } catch (err: any) {
+            console.error("TMDB search failed:", err);
+            addNotification({ type: 'error', title: 'TMDB Search Failed', message: err.message || 'Could not connect to TMDB services.' });
+        } finally {
+            setIsTmdbSearching(false);
+        }
+    };
+
+    const handleSelectTmdbMovie = async (movie: any, target: 'upload' | 'edit') => {
+        try {
+            addNotification({ type: 'info', title: 'Fetching Data', message: 'Pulling details and IDs from TMDB...' });
+            
+            const [details, extIds] = await Promise.all([
+                fetchFromTmdb(`/movie/${movie.id}?api_key=${API_KEY}&language=en-US`),
+                fetchFromTmdb(`/movie/${movie.id}/external_ids?api_key=${API_KEY}`)
+            ]);
+
+            const title = details.title || '';
+            const description = details.overview || '';
+            const verticalPoster = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : '';
+            const horizontalBanner = details.backdrop_path ? `https://image.tmdb.org/t/p/original${details.backdrop_path}` : '';
+            const imdbId = extIds.imdb_id || '';
+            const tmdbId = String(details.id) || '';
+
+            if (target === 'upload') {
+                setUploadData(prev => ({
+                    ...prev,
+                    title: `فیلمی دۆبلاژکراوی کوردی ${title}`,
+                    description: description,
+                    imageBase64: verticalPoster,
+                    bannerBase64: horizontalBanner,
+                    imdb_id: imdbId,
+                    tmdb_id: tmdbId
+                }));
+            } else {
+                setEditData(prev => ({
+                    ...prev,
+                    title: `فیلمی دۆبلاژکراوی کوردی ${title}`,
+                    description: description,
+                    imageBase64: verticalPoster,
+                    bannerBase64: horizontalBanner,
+                    imdb_id: imdbId,
+                    tmdb_id: tmdbId
+                }));
+            }
+
+            setTmdbSearchQuery('');
+            setTmdbSearchResults([]);
+            addNotification({ type: 'success', title: 'Fields Populated', message: `Imported "${title}" successfully!` });
+        } catch (err: any) {
+            console.error("Failed to populate TMDB fields:", err);
+            addNotification({ type: 'error', title: 'Import Failed', message: err.message || 'Could not fetch detailed metadata.' });
+        }
+    };
 
     // Edit State Handlers
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -680,7 +764,7 @@ const DubbedMoviesPage: React.FC = () => {
     };
 
     useEffect(() => {
-        if (activeAdminTab === ('banned' as any)) {
+        if (activeAdminTab === 'banned') {
             fetchBannedItems();
         }
     }, [activeAdminTab]);
@@ -810,7 +894,7 @@ const DubbedMoviesPage: React.FC = () => {
                         bannerBase64: uploadData.bannerBase64 || null,
                         level: uploadData.level,
                         imdb_id: uploadData.imdb_id ? uploadData.imdb_id.trim() : null,
-                        tmdb_id: uploadData.tmdb_id ? parseInt(uploadData.tmdb_id) : null
+                        tmdb_id: uploadData.tmdb_id && !isNaN(Number(uploadData.tmdb_id)) ? parseInt(uploadData.tmdb_id, 10) : null
                     }
                 ]);
 
@@ -903,7 +987,7 @@ const DubbedMoviesPage: React.FC = () => {
                     bannerBase64: editData.bannerBase64,
                     level: editData.level,
                     imdb_id: editData.imdb_id ? editData.imdb_id.trim() : null,
-                    tmdb_id: editData.tmdb_id ? parseInt(editData.tmdb_id) : null
+                    tmdb_id: editData.tmdb_id && !isNaN(Number(editData.tmdb_id)) ? parseInt(editData.tmdb_id, 10) : null
                 })
                 .eq('id', numericId);
 
@@ -981,21 +1065,36 @@ const DubbedMoviesPage: React.FC = () => {
 
             console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${numericId}`);
 
-            // 2. Database Execution (RPC Call to bypass DELETE CORS)
-            const { error, status } = await supabase
-                .rpc('delete_dubbed_movie', { target_id: numericId });
-
-            if (error) {
-                console.error('[SUPABASE ERROR]', error);
-                if (status === 403 || error.message?.includes('permission')) {
-                    addNotification({ 
-                        type: 'error', 
-                        title: 'Permission Denied', 
-                        message: 'The database is protected by RLS. Run the SQL fix in the implementation plan to allow "anon" deletions.' 
-                    });
-                    return;
+            // 2. Database Execution (Try RPC Call first, fallback to direct DELETE if it fails)
+            console.log(`[ZANA PROTOCOL] Executing deletion RPC for Node: ${numericId}`);
+            let deleteSuccess = false;
+            
+            try {
+                const { error: rpcError } = await supabase
+                    .rpc('delete_dubbed_movie', { target_id: numericId });
+                
+                if (!rpcError) {
+                    deleteSuccess = true;
+                    console.log('[ZANA PROTOCOL] RPC deletion completed successfully.');
+                } else {
+                    console.warn('[ZANA PROTOCOL] RPC deletion failed, attempting standard table delete fallback:', rpcError);
                 }
-                throw error;
+            } catch (rpcErr) {
+                console.warn('[ZANA PROTOCOL] RPC call threw exception, trying direct table delete:', rpcErr);
+            }
+
+            if (!deleteSuccess) {
+                console.log(`[ZANA PROTOCOL] Falling back to standard direct deletion on 'dubbed_movies' table for ID: ${numericId}`);
+                const { error: directError } = await supabase
+                    .from('dubbed_movies')
+                    .delete()
+                    .eq('id', numericId);
+                
+                if (directError) {
+                    console.error('[SUPABASE DIRECT DELETE ERROR]', directError);
+                    throw new Error(`Direct deletion failed: ${directError.message}`);
+                }
+                console.log('[ZANA PROTOCOL] Direct table deletion completed successfully.');
             }
 
             // --- Synchronization Protocols ---
@@ -1503,14 +1602,98 @@ const DubbedMoviesPage: React.FC = () => {
                                         <button onClick={() => setActiveAdminTab('archive')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ListVideo size={16} /> Movies List
                                         </button>
-                                        <button onClick={() => setActiveAdminTab('banned' as any)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === ('banned' as any) ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                        <button onClick={() => setActiveAdminTab('banned')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
                                     </div>
 
                                     <div className="overflow-y-auto pr-2 custom-scrollbar">
-                                        {activeAdminTab === 'upload' ? (
+                                        {activeAdminTab === 'upload' && (
                                             <form onSubmit={handleUploadMovie} className="space-y-5 pb-4 pl-1">
+                                                {/* TMDB Autocomplete Search Engine */}
+                                                <div className="space-y-2 relative">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-brand flex items-center gap-1.5">
+                                                        <Sparkles size={12} className="text-brand animate-pulse" />
+                                                        TMDb Search Autocomplete / گەڕانی خێرا لە TMDb
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <div className="relative flex-1">
+                                                            <input
+                                                                type="text"
+                                                                value={tmdbSearchQuery}
+                                                                onChange={(e) => setTmdbSearchQuery(e.target.value)}
+                                                                placeholder="Search TMDB for metadata & assets... e.g. Gladiator"
+                                                                className="w-full bg-black/60 border border-brand/20 rounded-xl px-4 py-3 text-white focus:border-brand outline-none transition-all placeholder:text-gray-600 text-sm"
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        e.preventDefault();
+                                                                        searchTmdbMovies(tmdbSearchQuery);
+                                                                    }
+                                                                }}
+                                                            />
+                                                            {tmdbSearchQuery && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setTmdbSearchQuery('');
+                                                                        setTmdbSearchResults([]);
+                                                                    }}
+                                                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white hover:scale-110 transition-transform"
+                                                                >
+                                                                    <X size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => searchTmdbMovies(tmdbSearchQuery)}
+                                                            disabled={isTmdbSearching}
+                                                            className="px-6 bg-brand hover:bg-red-600 text-white font-black uppercase text-xs rounded-xl transition-all flex items-center gap-2 shrink-0 active:scale-95 disabled:opacity-50 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.3)]"
+                                                        >
+                                                            {isTmdbSearching ? (
+                                                                <RefreshCw size={14} className="animate-spin" />
+                                                            ) : (
+                                                                <Search size={14} />
+                                                            )}
+                                                            Search
+                                                        </button>
+                                                    </div>
+
+                                                    {/* TMDB Search Dropdown Results */}
+                                                    {tmdbSearchResults.length > 0 && (
+                                                        <div className="absolute z-50 left-0 right-0 mt-2 bg-[#161616] border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1 backdrop-blur-xl">
+                                                            {tmdbSearchResults.map((movie: any) => {
+                                                                const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
+                                                                return (
+                                                                    <button
+                                                                        key={movie.id}
+                                                                        type="button"
+                                                                        onClick={() => handleSelectTmdbMovie(movie, 'upload')}
+                                                                        className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 text-left transition-colors group"
+                                                                    >
+                                                                        <div className="w-10 h-14 rounded-lg bg-white/5 overflow-hidden shrink-0 border border-white/5">
+                                                                            {movie.poster_path ? (
+                                                                                <img
+                                                                                    src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
+                                                                                    alt=""
+                                                                                    className="w-full h-full object-cover"
+                                                                                />
+                                                                            ) : (
+                                                                                <div className="w-full h-full flex items-center justify-center text-gray-600 text-[10px] font-bold">NO IMG</div>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <h4 className="text-white font-bold text-sm truncate group-hover:text-brand transition-colors">{movie.title}</h4>
+                                                                            <p className="text-xs text-gray-500 font-medium mt-0.5">{year} • ⭐ {movie.vote_average?.toFixed(1) || '0.0'}</p>
+                                                                        </div>
+                                                                        <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors mr-2 shrink-0" />
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+
                                                 <div className="space-y-2">
                                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Movie Title / فیلمی دۆبلاژکراو</label>
                                                     <input type="text" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand outline-none"
@@ -1625,7 +1808,9 @@ const DubbedMoviesPage: React.FC = () => {
                                                     </button>
                                                 )}
                                             </form>
-                                        ) : (
+                                        )}
+
+                                        {activeAdminTab === 'archive' && (
                                             <div className="space-y-4 pb-4">
                                                 {/* Admin Search Bar */}
                                                 <div className="relative group">
@@ -1673,7 +1858,10 @@ const DubbedMoviesPage: React.FC = () => {
                                                         </div>
                                                     ))
                                                 )}
-                                                {activeAdminTab === ('banned' as any) && (
+                                            </div>
+                                        )}
+
+                                        {activeAdminTab === 'banned' && (
                                             <div className="space-y-4 pb-4">
                                                 {isLoadingBanned ? (
                                                     <div className="py-20 flex justify-center"><RefreshCw className="animate-spin text-red-500" /></div>
@@ -1700,8 +1888,6 @@ const DubbedMoviesPage: React.FC = () => {
                                             </div>
                                         )}
                                     </div>
-                                        )}
-                                    </div>
                                 </motion.div>
                             </motion.div>
                         )
@@ -1726,6 +1912,90 @@ const DubbedMoviesPage: React.FC = () => {
 
                                     <div className="overflow-y-auto pr-2 custom-scrollbar">
                                         <form onSubmit={handleUpdateMovieSubmit} className="space-y-5 pb-4 pl-1">
+                                            {/* TMDB Autocomplete Search Engine */}
+                                            <div className="space-y-2 relative">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-yellow-500 flex items-center gap-1.5">
+                                                    <Sparkles size={12} className="text-yellow-500 animate-pulse" />
+                                                    TMDb Search Autocomplete / گەڕانی خێرا لە TMDb
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    <div className="relative flex-1">
+                                                        <input
+                                                            type="text"
+                                                            value={tmdbSearchQuery}
+                                                            onChange={(e) => setTmdbSearchQuery(e.target.value)}
+                                                            placeholder="Search TMDB for metadata & assets... e.g. Gladiator"
+                                                            className="w-full bg-black/60 border border-yellow-500/20 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none transition-all placeholder:text-gray-600 text-sm"
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    searchTmdbMovies(tmdbSearchQuery);
+                                                                }
+                                                            }}
+                                                        />
+                                                        {tmdbSearchQuery && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setTmdbSearchQuery('');
+                                                                    setTmdbSearchResults([]);
+                                                                }}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white hover:scale-110 transition-transform"
+                                                            >
+                                                                <X size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => searchTmdbMovies(tmdbSearchQuery)}
+                                                        disabled={isTmdbSearching}
+                                                        className="px-6 bg-yellow-600 hover:bg-yellow-500 text-white font-black uppercase text-xs rounded-xl transition-all flex items-center gap-2 shrink-0 active:scale-95 disabled:opacity-50 shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                                                    >
+                                                        {isTmdbSearching ? (
+                                                            <RefreshCw size={14} className="animate-spin" />
+                                                        ) : (
+                                                            <Search size={14} />
+                                                        )}
+                                                        Search
+                                                    </button>
+                                                </div>
+
+                                                {/* TMDB Search Dropdown Results */}
+                                                {tmdbSearchResults.length > 0 && (
+                                                    <div className="absolute z-50 left-0 right-0 mt-2 bg-[#161616] border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1 backdrop-blur-xl">
+                                                        {tmdbSearchResults.map((movie: any) => {
+                                                            const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
+                                                            return (
+                                                                <button
+                                                                    key={movie.id}
+                                                                    type="button"
+                                                                    onClick={() => handleSelectTmdbMovie(movie, 'edit')}
+                                                                    className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 text-left transition-colors group"
+                                                                >
+                                                                    <div className="w-10 h-14 rounded-lg bg-white/5 overflow-hidden shrink-0 border border-white/5">
+                                                                        {movie.poster_path ? (
+                                                                            <img
+                                                                                src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
+                                                                                alt=""
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center text-gray-600 text-[10px] font-bold">NO IMG</div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <h4 className="text-white font-bold text-sm truncate group-hover:text-yellow-500 transition-colors">{movie.title}</h4>
+                                                                        <p className="text-xs text-gray-500 font-medium mt-0.5">{year} • ⭐ {movie.vote_average?.toFixed(1) || '0.0'}</p>
+                                                                    </div>
+                                                                    <ChevronRight size={16} className="text-gray-600 group-hover:text-white transition-colors mr-2 shrink-0" />
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">Movie Title / فیلمی دۆبلاژکراو</label>
                                                 <input type="text" className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white focus:border-yellow-500 outline-none"

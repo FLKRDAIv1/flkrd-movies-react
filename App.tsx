@@ -21,6 +21,7 @@ import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import SplashScreen from './components/SplashScreen';
+import Spinner from './components/Spinner';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
 import { useNotification } from './contexts/NotificationContext';
@@ -206,9 +207,6 @@ const App: React.FC = () => {
         };
 
         prefetchCore();
-        // Show splash for 3.5s minimum so the animation completes
-        const timer = setTimeout(() => setLoading(false), 3500);
-        return () => clearTimeout(timer);
     }, []);
 
     useEffect(() => {
@@ -317,14 +315,11 @@ const App: React.FC = () => {
         }
     }, []);
 
-    if (loading) return (
-        <AnimatePresence mode="wait">
-            <SplashScreen key="splash" />
-        </AnimatePresence>
-    );
-
     return (
         <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
+            <AnimatePresence mode="wait">
+                {loading && <SplashScreen key="splash" onComplete={() => setLoading(false)} />}
+            </AnimatePresence>
             <DesktopTitleBar />
             <PremiumBackground />
             <HashRouter>
@@ -334,8 +329,8 @@ const App: React.FC = () => {
                         <Header scrolled={scrolled} />
                         <ChunkErrorBoundary>
                           <React.Suspense fallback={
-                            <div className="flex flex-col items-center justify-center h-full pt-40 gap-6">
-                              <SplashScreen />
+                            <div className="flex-1 flex flex-col items-center justify-center h-[70vh] gap-6">
+                              <Spinner size="lg" />
                             </div>
                           }>
                               <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">

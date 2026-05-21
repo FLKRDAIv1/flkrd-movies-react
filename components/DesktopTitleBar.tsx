@@ -69,12 +69,12 @@ const DesktopTitleBar: React.FC = () => {
             {/* Left side: macOS traffic lights OR app logo */}
             {isMac ? (
                 // macOS: traffic lights on the left (matching system style)
-                <div className="flex items-center gap-[6px] pointer-events-auto pl-1">
+                <div className="group flex items-center gap-[6px] pointer-events-auto pl-1">
                     {/* Red close */}
                     <button
                         onClick={handleClose}
                         title="Close"
-                        className="group w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all"
+                        className="w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all active:scale-[0.85] active:brightness-90"
                         style={{ background: '#ff5f57', border: '0.5px solid rgba(0,0,0,0.2)' }}
                     >
                         <X size={7} className="text-[#7a0000] opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
@@ -83,7 +83,7 @@ const DesktopTitleBar: React.FC = () => {
                     <button
                         onClick={handleMinimize}
                         title="Minimize"
-                        className="group w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all"
+                        className="w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all active:scale-[0.85] active:brightness-90"
                         style={{ background: '#febc2e', border: '0.5px solid rgba(0,0,0,0.2)' }}
                     >
                         <Minus size={7} className="text-[#7a4800] opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
@@ -92,7 +92,7 @@ const DesktopTitleBar: React.FC = () => {
                     <button
                         onClick={handleMaximize}
                         title={isFullscreen ? 'Exit Full Screen' : 'Enter Full Screen'}
-                        className="group w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all"
+                        className="w-[13px] h-[13px] rounded-full flex items-center justify-center transition-all active:scale-[0.85] active:brightness-90"
                         style={{ background: '#28c840', border: '0.5px solid rgba(0,0,0,0.2)' }}
                     >
                         {isFullscreen
@@ -152,24 +152,24 @@ const DesktopTitleBar: React.FC = () => {
                     <button
                         onClick={handleMinimize}
                         title="Minimize"
-                        className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all"
                     >
-                        <Minus size={14} className="text-white/60" />
+                        <Minus size={14} className="text-white/60 hover:text-white transition-colors" />
                     </button>
                     <button
                         onClick={handleMaximize}
                         title={isMaximized ? 'Restore' : 'Maximize'}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors"
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all"
                     >
                         {isMaximized
-                            ? <Minimize2 size={12} className="text-white/60" />
-                            : <Maximize2 size={12} className="text-white/60" />
+                            ? <Minimize2 size={12} className="text-white/60 hover:text-white transition-colors" />
+                            : <Maximize2 size={12} className="text-white/60 hover:text-white transition-colors" />
                         }
                     </button>
                     <button
                         onClick={handleClose}
                         title="Close"
-                        className="w-10 h-10 flex items-center justify-center hover:bg-red-600 transition-colors group"
+                        className="w-10 h-10 flex items-center justify-center hover:bg-red-600 active:scale-90 transition-all group"
                     >
                         <X size={14} className="text-white/60 group-hover:text-white transition-colors" />
                     </button>
