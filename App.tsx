@@ -34,13 +34,14 @@ import DesktopTitleBar from './components/DesktopTitleBar';
 import { fetchData } from './services/tmdbService';
 import { requests } from './constants';
 import GamepadHints from './components/GamepadHints';
-import VirtualCursor from './components/VirtualCursor';
+import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { isTauri } from './utils/tauriUtils';
+import { updateService } from './services/updateService';
 
-class ChunkErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class ChunkErrorBoundary extends React.Component<any, any> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false };
@@ -314,6 +315,31 @@ const App: React.FC = () => {
             console.warn("Apple detection logic failure", e);
         }
     }, []);
+
+    // Background Update Check Engine
+    useEffect(() => {
+        const checkAppUpdates = async () => {
+            try {
+                const result = await updateService.checkForUpdates();
+                if (result.updateAvailable) {
+                    // Elegantly toast notification to the user
+                    addNotification({
+                        type: 'info',
+                        title: language === 'ku' ? 'نوێکاری گرنگ بەردەستە' : 'System Update Available',
+                        message: language === 'ku' 
+                            ? `وەشانی ${result.latestVersion} بەردەستە. بۆ جێبەجێکردنی نوێکاری سەردانی ڕێکخستن بکە.`
+                            : `Version ${result.latestVersion} is ready. Visit Settings to execute the system update.`
+                    });
+                }
+            } catch (e) {
+                console.warn("[BACKGROUND UPDATER] Update check failed:", e);
+            }
+        };
+
+        // Delay checking to let core database query and splash screen animations run smoothly
+        const timer = setTimeout(checkAppUpdates, 5000);
+        return () => clearTimeout(timer);
+    }, [language, addNotification]);
 
     return (
         <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>

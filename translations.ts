@@ -191,7 +191,16 @@ const translations = {
     profileTitle: "Your Profile",
     userRank: "Member",
     memberSince: "Member Since",
-    totalWatched: "Total Watched"
+    totalWatched: "Total Watched",
+
+    // System Update
+    systemUpdate: "System Updates",
+    checkUpdates: "Check for Updates",
+    checkingUpdates: "Checking system nodes...",
+    upToDate: "System is fully updated",
+    updateAvailable: "Software Update Available",
+    updateNow: "Update Now",
+    updateDescription: "A new version of FLKRD Cinematic Engine is ready for installation."
   },
   ku: {
     // Header & Nav
@@ -385,7 +394,16 @@ const translations = {
     profileTitle: "پڕۆفایلی تۆ",
     userRank: "ئەندام",
     memberSince: "ئەندامە لە",
-    totalWatched: "کۆی بینراو"
+    totalWatched: "کۆی بینراو",
+
+    // System Update
+    systemUpdate: "نوێکردنەوەی سیستم",
+    checkUpdates: "پشکنینی نوێکارییەکان",
+    checkingUpdates: "پشکنینی نۆدەکان...",
+    upToDate: "سیستمەکە بە تەواوی نوێیە",
+    updateAvailable: "وەشانی نوێ بەردەستە",
+    updateNow: "ئێستا نوێ بکەرەوە",
+    updateDescription: "وەشانێکی نوێی مەکینەی سینەمایی فڵکرد ئامادەیە بۆ دامەزراندن."
   }
 };
 

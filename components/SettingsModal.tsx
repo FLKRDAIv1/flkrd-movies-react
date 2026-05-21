@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Languages, Bell, Check, Palette, Sparkles, Moon, Sun,
   Maximize2, Minimize2, Type, Zap, Info, Monitor, Gauge,
-  ChevronRight, Activity, Cpu
+  ChevronRight, Activity, Cpu, RefreshCw, Download
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -11,6 +11,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import EnableNotificationsModal from './EnableNotificationsModal';
 import Portal from './Portal';
 import { LiquidButton } from './ui/liquid-glass-button';
+import { updateService, UpdateCheckResult } from '../services/updateService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -147,12 +148,68 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [isEnableNotificationsModalOpen, setIsEnableNotificationsModalOpen] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
 
+  // System update checking states
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+
   // Performance monitoring logic
   useEffect(() => {
     const start = Date.now();
     const timer = setInterval(() => setSessionTime(Math.floor((Date.now() - start) / 1000)), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleCheckForUpdates = async () => {
+    setCheckingUpdate(true);
+    setUpdateError(null);
+    try {
+      const result = await updateService.checkForUpdates();
+      setUpdateResult(result);
+      if (result.updateAvailable) {
+        addNotification({
+          type: 'info',
+          title: language === 'ku' ? 'نوێکاری بەردەستە' : 'Update Available',
+          message: language === 'ku' ? `وەشانی ${result.latestVersion} ئامادەیە بۆ دابەزاندن` : `Version ${result.latestVersion} is ready for installation.`
+        });
+      } else {
+        addNotification({
+          type: 'success',
+          title: language === 'ku' ? 'سیستم نوێیە' : 'System Up-to-Date',
+          message: language === 'ku' ? 'تۆ دوایین وەشانی سیستم بەکاردێنیت' : 'You are running the latest version.'
+        });
+      }
+    } catch (err) {
+      console.error('[UPDATE UI] Error checking for updates:', err);
+      setUpdateError(language === 'ku' ? 'پەیوەندی سەرنەکەوت' : 'Failed to reach update servers.');
+      addNotification({
+        type: 'error',
+        title: language === 'ku' ? 'هەڵە لە پشکنین' : 'Update Check Failed',
+        message: language === 'ku' ? 'تکایە هێڵی ئینتەرنێتەکەت بپشکنە' : 'Please check your internet connection.'
+      });
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleExecuteUpdate = async () => {
+    if (!updateResult) return;
+    try {
+      await updateService.executeUpdate(updateResult);
+      addNotification({
+        type: 'info',
+        title: language === 'ku' ? 'دەستپێکردنی نوێکاری' : 'Initiating Update',
+        message: language === 'ku' ? 'پرۆسەی نوێکردنەوە دەستی پێکرد' : 'Updating protocol initiated.'
+      });
+    } catch (err) {
+      console.error('[UPDATE UI] Error executing update:', err);
+      addNotification({
+        type: 'error',
+        title: language === 'ku' ? 'نوێکاری سەرنەکەوت' : 'Update Execution Failed',
+        message: language === 'ku' ? 'کێشەیەک ڕوویدا لە کاتی جێبەجێکردندا' : 'An error occurred while launching update.'
+      });
+    }
+  };
 
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission);
@@ -357,6 +414,131 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         ))}
                      </motion.div>
                    )}
+                </Card>
+              </Section>
+
+              {/* System Updates Section */}
+              <Section delay={0.35}>
+                <SectionLabel icon={<RefreshCw size={14} className={checkingUpdate ? 'animate-spin' : ''} />} label={t('systemUpdate')} />
+                <Card className="p-6" glow={updateResult?.updateAvailable ? accentColor : undefined}>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${
+                            updateResult?.updateAvailable 
+                              ? 'animate-pulse' 
+                              : 'bg-white/5 text-gray-500'
+                          }`}
+                          style={updateResult?.updateAvailable ? { color: accentColor, backgroundColor: `${accentColor}20` } : {}}
+                        >
+                          <RefreshCw size={22} className={checkingUpdate ? 'animate-spin' : ''} />
+                        </div>
+                        <div>
+                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">
+                            {t('systemUpdate')}
+                          </h3>
+                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">
+                            {checkingUpdate 
+                              ? t('checkingUpdates') 
+                              : updateResult 
+                              ? (updateResult.updateAvailable ? t('updateAvailable') : t('upToDate'))
+                              : (language === 'ku' ? 'پشکنین بکە بۆ نوێترین وەشان' : 'Check for the latest version')}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={handleCheckForUpdates}
+                        disabled={checkingUpdate}
+                        className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-black text-white uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {checkingUpdate && <RefreshCw size={10} className="animate-spin" />}
+                        {t('checkUpdates')}
+                      </button>
+                    </div>
+
+                    {/* Show results if checked */}
+                    {updateResult && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="border-t border-white/5 pt-4 mt-2 space-y-4"
+                      >
+                        {updateResult.updateAvailable ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between bg-white/5 p-3 rounded-2xl border border-white/5">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Version Status</span>
+                                <div className="flex items-center gap-1.5 font-mono text-xs font-black">
+                                  <span className="text-gray-400">{updateResult.currentVersion}</span>
+                                  <span className="text-gray-600">→</span>
+                                  <span style={{ color: accentColor }}>{updateResult.latestVersion}</span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Platform</span>
+                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-md">
+                                  {updateResult.platform}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                {language === 'ku' ? 'چی نوێیە لەم وەشانەدا:' : "What's new in this version:"}
+                              </span>
+                              <div className="bg-white/[0.01] border border-white/5 p-4 rounded-2xl max-h-[120px] overflow-y-auto space-y-1.5 scrollbar-hide">
+                                {updateResult.changelog.length > 0 ? (
+                                  updateResult.changelog.map((log, index) => (
+                                    <div key={index} className="flex items-start gap-2 text-[10px] text-gray-400 font-medium">
+                                      <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ backgroundColor: accentColor }} />
+                                      <p className="leading-relaxed">{log}</p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">
+                                    {language === 'ku' ? 'زانیاری نوێکاری بەردەست نییە' : 'No changelog provided.'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={handleExecuteUpdate}
+                              className="w-full py-4 rounded-[1.8rem] text-[10px] font-[1000] text-white uppercase tracking-[0.3em] flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-95 shadow-lg"
+                              style={{ backgroundColor: accentColor }}
+                            >
+                              <Download size={14} className="stroke-[2.5]" />
+                              {t('updateNow')}
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 p-4 rounded-2xl text-green-500">
+                            <div className="w-8 h-8 rounded-xl bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                              <Check size={16} strokeWidth={3} />
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[10px] font-black uppercase tracking-wider">{t('upToDate')}</span>
+                              <span className="text-[9px] font-bold text-green-500/70 uppercase">Version {updateResult.currentVersion} • Verified Secure</span>
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+
+                    {updateError && (
+                      <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-red-500">
+                        <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                          <Activity size={16} className="stroke-[2.5]" />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider">Update Failed</span>
+                          <span className="text-[9px] font-bold text-red-500/70 uppercase">{updateError}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Card>
               </Section>
 

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL } from '../constants';
+import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, API_BASE_URL } from '../constants';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
