@@ -71,7 +71,7 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
 
     case 'FLKRD SERVER 1': // VidLink Pro (TOP 2)
-      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startAt=${Math.floor(progress)}` : ''}${subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : ''}`;
+      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startTime=${Math.floor(progress)}` : ''}${subtitleUrl ? `&subtitles=${encodeURIComponent(subtitleUrl)}&subLabel=Kurdish` : ''}`;
       return isTv
         ? `https://vidlink.pro/tv/${id}/${season}/${episode}${vlParams}`
         : `https://vidlink.pro/movie/${id}${vlParams}`;

@@ -42,6 +42,8 @@ export default function PremiumVidLinkPlayer({
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [subSearchQuery, setSubSearchQuery] = useState('');
   const [currentSubId, setCurrentSubId] = useState<number | null>(null);
+  const [resolvedTmdbId, setResolvedTmdbId] = useState<string | null>(null);
+  const [isResolvingId, setIsResolvingId] = useState(true);
 
   const setAvailableSubsWithVirtual = useCallback((newSubs: any[]) => {
     if (!subtitleUrl) {
@@ -76,17 +78,67 @@ export default function PremiumVidLinkPlayer({
   const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
   const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
 
-  // 1. Construct parameters based on official VidLink Docs & User Request
+  // 1. Dynamic TMDb ID resolution for IMDb IDs (tt...)
+  useEffect(() => {
+    let isMounted = true;
+    const resolveId = async () => {
+      setIsResolvingId(true);
+      try {
+        if (tmdbId && tmdbId.startsWith('tt')) {
+          console.log("[VIP-PLAYER] tmdbId is an IMDb ID, resolving to TMDB ID:", tmdbId);
+          const resolved = await fetchTmdbIdFromImdb(tmdbId, type);
+          if (isMounted) {
+            if (resolved) {
+              console.log("[VIP-PLAYER] Successfully resolved to TMDB ID:", resolved);
+              setResolvedTmdbId(String(resolved));
+            } else {
+              console.warn("[VIP-PLAYER] Failed to resolve IMDb ID, falling back to raw tmdbId:", tmdbId);
+              setResolvedTmdbId(tmdbId);
+            }
+          }
+        } else if (!tmdbId && imdbId && imdbId.startsWith('tt')) {
+          console.log("[VIP-PLAYER] tmdbId is empty, resolving from imdbId prop:", imdbId);
+          const resolved = await fetchTmdbIdFromImdb(imdbId, type);
+          if (isMounted) {
+            if (resolved) {
+              setResolvedTmdbId(String(resolved));
+            } else {
+              setResolvedTmdbId(imdbId);
+            }
+          }
+        } else {
+          if (isMounted) {
+            setResolvedTmdbId(tmdbId);
+          }
+        }
+      } catch (error) {
+        console.error("[VIP-PLAYER] Error in ID resolution:", error);
+        if (isMounted) {
+          setResolvedTmdbId(tmdbId);
+        }
+      } finally {
+        if (isMounted) {
+          setIsResolvingId(false);
+        }
+      }
+    };
+    resolveId();
+    return () => {
+      isMounted = false;
+    };
+  }, [tmdbId, imdbId, type]);
+
+  // 2. Construct parameters based on official VidLink Docs & User Request
   const playerColor = accentColor?.replace('#', '') || 'ff0000';
-  const startAt = initialProgress && initialProgress > 10 ? `&startAt=${Math.floor(initialProgress)}` : '';
-  const subParam = subtitleUrl ? `&sub_file=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish` : '';
+  const startTimeParam = initialProgress && initialProgress > 10 ? `&startTime=${Math.floor(initialProgress)}` : '';
+  const subParam = subtitleUrl ? `&subtitles=${encodeURIComponent(subtitleUrl)}&subLabel=Kurdish` : '';
   
   // Construct URLs for VidLink Pro (FLKRD SERVER 1)
   const vidLinkBase = type === 'movie' 
-    ? `https://vidlink.pro/movie/${tmdbId}`
-    : `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+    ? `https://vidlink.pro/movie/${resolvedTmdbId || tmdbId}`
+    : `https://vidlink.pro/tv/${resolvedTmdbId || tmdbId}/${season}/${episode}`;
   
-  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=default&title=true&poster=true&autoplay=false&nextbutton=true${startAt}${subParam}`;
+  const videoUrl = `${vidLinkBase}?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${startTimeParam}${subParam}`;
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
@@ -96,24 +148,11 @@ export default function PremiumVidLinkPlayer({
       try {
         let tmdbIdNum: number | null = null;
         
-        // 1. Check if tmdbId prop is a number
-        if (tmdbId && !isNaN(Number(tmdbId))) {
+        if (resolvedTmdbId && !isNaN(Number(resolvedTmdbId))) {
+          tmdbIdNum = Number(resolvedTmdbId);
+        } else if (tmdbId && !isNaN(Number(tmdbId))) {
           tmdbIdNum = Number(tmdbId);
-        }
-        
-        // 2. If it's a multiembed URL or has video_id query parameter
-        if (!tmdbIdNum && videoUrl) {
-          try {
-            const urlObj = new URL(videoUrl);
-            const videoIdParam = urlObj.searchParams.get('video_id');
-            if (videoIdParam && !isNaN(Number(videoIdParam))) {
-              tmdbIdNum = Number(videoIdParam);
-            }
-          } catch (e) {}
-        }
-
-        // 3. Fallback to IMDb ID if we don't have TMDB ID yet
-        if (!tmdbIdNum && imdbId) {
+        } else if (imdbId) {
           const resolvedId = await fetchTmdbIdFromImdb(imdbId, type);
           if (resolvedId) {
             tmdbIdNum = resolvedId;
@@ -139,8 +178,10 @@ export default function PremiumVidLinkPlayer({
       }
     };
 
-    fetchAllTranslations();
-  }, [tmdbId, imdbId, type, videoUrl]);
+    if (resolvedTmdbId || tmdbId) {
+      fetchAllTranslations();
+    }
+  }, [resolvedTmdbId, tmdbId, imdbId, type]);
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
@@ -396,6 +437,14 @@ export default function PremiumVidLinkPlayer({
       </div>
 
       <div className="relative flex-1 w-full bg-black">
+        {(isResolvingId || isPlayerLoading) && (
+          <div className="absolute inset-0 bg-[#060606] flex flex-col items-center justify-center gap-4 z-50">
+            <Loader2 className="w-12 h-12 text-red-600 animate-spin" />
+            <p className="text-white text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">
+              {isResolvingId ? "Resolving Stream Node..." : "Initializing Security Shield..."}
+            </p>
+          </div>
+        )}
         <iframe
           ref={iframeRef}
           src={overrideSrc || videoUrl}
