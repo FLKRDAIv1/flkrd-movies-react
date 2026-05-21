@@ -9,7 +9,13 @@ export const tauriService = {
       const { sendNotification, requestPermission } = await import('@tauri-apps/plugin-notification');
       let permissionGranted = await requestPermission();
       if (permissionGranted === 'granted') {
-        sendNotification({ title, body });
+        sendNotification({ 
+          title, 
+          body,
+          icon: 'ic_notification',
+          largeIcon: 'ic_launcher',
+          iconColor: '#e50914'
+        });
       }
     } catch (e) {
       console.error('Failed to send Tauri notification:', e);
