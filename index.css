@@ -328,3 +328,24 @@ body.movie-player-active [id*="nav-portal"] {
   pointer-events: none !important;
 }
 
+/* ── Premium Hardware Composition & CSS Containment Layer ── */
+.sidebar-container, .movie-grid-card, .global-sidebar, .global-header {
+  contain: layout paint style; /* Isolates layout changes */
+  will-change: transform, opacity; /* Hard-allocates GPU resources */
+}
+
+/* Eradicate delayed tap response & lock layout bounds */
+html, body {
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  background-color: #000000;
+  overflow-x: hidden;
+}
+
+/* Ensure images render with high visual fidelity without straining memory */
+img {
+  image-rendering: -webkit-optimize-contrast;
+  content-visibility: auto; /* Web engine drops rendering offscreen images completely */
+}
+

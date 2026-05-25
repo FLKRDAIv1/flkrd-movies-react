@@ -210,7 +210,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
             onClick={onNavigate}
         >
           <div className="w-12 h-12 md:w-20 md:h-20 rounded-full border-2 border-brand/50 p-0.5 bg-black overflow-hidden shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.3)] group-hover:border-brand transition-colors">
-             <img src={movie.poster_path ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` : "https://i.imgur.com/4HoT8Yf.png"} alt="" className="w-full h-full object-cover rounded-full" />
+             <img src={movie.poster_path ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` : "/flkrd-icon.png"} alt="" className="w-full h-full object-cover rounded-full" />
           </div>
           <button className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-brand text-white rounded-full p-1 border-2 border-black shadow-xl">
             <Plus className="w-3 h-3" strokeWidth={3} />

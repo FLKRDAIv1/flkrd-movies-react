@@ -1,0 +1,1107 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Tv, 
+  Users, 
+  Lock, 
+  ArrowLeft, 
+  Copy, 
+  Check, 
+  Share2, 
+  Play, 
+  Sparkles, 
+  ShieldAlert, 
+  CheckCircle,
+  Delete,
+  Maximize2
+} from 'lucide-react';
+import { supabase } from '../utils/supabaseClient';
+import { useLocalUser } from '../hooks/useLocalUser';
+import { useTranslation } from '../contexts/LanguageContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { CoWatchVideoPlayer } from '../components/CoWatchVideoPlayer';
+import { WatchChatSidebar } from '../components/WatchChatSidebar';
+import { WatchPartyTicketModal } from '../components/WatchPartyTicketModal';
+import Spinner from '../components/Spinner';
+import { fetchData } from '../services/tmdbService';
+import { API_KEY } from '../constants';
+
+interface TicketRecord {
+  id: string;
+  movie_id: string;
+  host_id: string;
+  guest_id: string | null;
+  pin_code: string;
+  status: 'waiting' | 'active' | 'finished';
+  created_at: string;
+}
+
+interface MovieDetails {
+  id: number;
+  title: string;
+  poster_path: string;
+  backdrop_path?: string;
+  runtime?: number;
+  vote_average?: number;
+  release_date?: string;
+}
+
+// Custom High-Fidelity Audio Synth Chime using Web Audio API for immersive, tactile feedback
+let sharedAudioCtx: AudioContext | null = null;
+
+export const playSyncChime = (type: 'join' | 'sync' | 'error') => {
+  try {
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const audioCtx = sharedAudioCtx;
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    
+    if (type === 'join') {
+      // Warm Sub-bass chord note for cinematic depth (C4)
+      const subOsc = audioCtx.createOscillator();
+      const subGain = audioCtx.createGain();
+      subOsc.connect(subGain);
+      subGain.connect(audioCtx.destination);
+      subOsc.type = 'triangle';
+      subOsc.frequency.setValueAtTime(261.63, audioCtx.currentTime);
+      
+      subGain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      subGain.gain.exponentialRampToValueAtTime(0.7, audioCtx.currentTime + 0.1);
+      subGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+      
+      subOsc.start();
+      subOsc.stop(audioCtx.currentTime + 1.2);
+
+      // Glorious 3-note ascending chord (C5 - E5 - G5) with dual-harmonics (sine + triangle)
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          // Principal sine wave
+          const oscSine = audioCtx.createOscillator();
+          const gainSine = audioCtx.createGain();
+          oscSine.connect(gainSine);
+          gainSine.connect(audioCtx.destination);
+          oscSine.type = 'sine';
+          oscSine.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          
+          gainSine.gain.setValueAtTime(0.001, audioCtx.currentTime);
+          gainSine.gain.exponentialRampToValueAtTime(0.8, audioCtx.currentTime + 0.08);
+          gainSine.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+          
+          oscSine.start();
+          oscSine.stop(audioCtx.currentTime + 0.8);
+
+          // Warm harmonic triangle wave
+          const oscTri = audioCtx.createOscillator();
+          const gainTri = audioCtx.createGain();
+          oscTri.connect(gainTri);
+          gainTri.connect(audioCtx.destination);
+          oscTri.type = 'triangle';
+          oscTri.frequency.setValueAtTime(freq * 0.995, audioCtx.currentTime); // slight detune for chorus warmth
+          
+          gainTri.gain.setValueAtTime(0.001, audioCtx.currentTime);
+          gainTri.gain.exponentialRampToValueAtTime(0.45, audioCtx.currentTime + 0.08);
+          gainTri.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+          
+          oscTri.start();
+          oscTri.stop(audioCtx.currentTime + 0.8);
+        }, idx * 150);
+      });
+    } else if (type === 'sync') {
+      // Gentle, clean 2-note ascending chord (F5 - A5) with detuned Chorus
+      const notes = [698.46, 880.00];
+      notes.forEach((freq, idx) => {
+        setTimeout(() => {
+          const osc1 = audioCtx.createOscillator();
+          const osc2 = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(audioCtx.destination);
+          
+          osc1.type = 'sine';
+          osc2.type = 'triangle';
+          
+          osc1.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          osc2.frequency.setValueAtTime(freq * 1.002, audioCtx.currentTime);
+          
+          gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+          
+          osc1.start();
+          osc2.start();
+          osc1.stop(audioCtx.currentTime + 0.5);
+          osc2.stop(audioCtx.currentTime + 0.5);
+        }, idx * 120);
+      });
+    } else if (type === 'error') {
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc1.type = 'sawtooth';
+      osc2.type = 'triangle';
+      
+      osc1.frequency.setValueAtTime(120, audioCtx.currentTime);
+      osc2.frequency.setValueAtTime(118, audioCtx.currentTime);
+      
+      gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+      
+      osc1.start();
+      osc2.start();
+      osc1.stop(audioCtx.currentTime + 0.4);
+      osc2.stop(audioCtx.currentTime + 0.4);
+    }
+  } catch (err) {
+    console.warn('AudioContext not allowed or not supported yet:', err);
+  }
+};
+
+
+export default function WatchRoomPage() {
+  const { ticket_id } = useParams<{ ticket_id: string }>();
+  const navigate = useNavigate();
+  
+  const { language } = useTranslation();
+  const { addNotification } = useNotification();
+  const { localUserId, localUserName } = useLocalUser();
+
+  const location = useLocation();
+
+  // Page States — instantly hydrate from router state if available (no loading screen!)
+  const [ticket, setTicket] = useState<TicketRecord | null>(() => location.state?.ticket || null);
+  const [movie, setMovie] = useState<MovieDetails | null>(() => location.state?.movie || null);
+  const [loading, setLoading] = useState(() => !(location.state?.ticket && location.state?.movie));
+  const [error, setError] = useState<string | null>(null);
+  const [roomFullError, setRoomFullError] = useState(false);
+
+  // Guest PIN entry states
+  const [pinVerified, setPinVerified] = useState(false);
+  const [pinInputs, setPinInputs] = useState(['', '', '', '']);
+  const [isShaking, setIsShaking] = useState(false);
+  const [verifyingPin, setVerifyingPin] = useState(false);
+  const [pinSuccess, setPinSuccess] = useState(false);
+
+  // Transition States for Synchronized Room Entry
+  const [isTransitioningToActive, setIsTransitioningToActive] = useState(false);
+  const [activeRoomReady, setActiveRoomReady] = useState(false);
+
+  // Spatial Navigation & Dynamic Nicknames Map
+  const [memberNames, setMemberNames] = useState<Record<string, string>>({});
+  const pinRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null)
+  ];
+  
+  const presenceChannelRef = useRef<any>(null);
+
+  // Determine user role
+  const isHost = ticket ? localUserId?.toLowerCase() === ticket.host_id?.toLowerCase() : false;
+
+  // Spatial Navigation & Dynamic Nicknames Map Helpers - Declared here at the top to prevent TDZ (Temporal Dead Zone) errors inside early return screens
+  const getMemberName = (userId: string | null) => {
+    if (!userId) return '';
+    const lowerId = userId.toLowerCase();
+    const matchKey = Object.keys(memberNames).find((k) => k.toLowerCase() === lowerId);
+    return matchKey ? memberNames[matchKey] : '';
+  };
+
+  const hostName = ticket ? (getMemberName(ticket.host_id) || (isHost ? localUserName : (language === 'ku' ? 'پێشکەشکار' : 'Host'))) : '';
+  const guestName = ticket && ticket.guest_id ? (getMemberName(ticket.guest_id) || (!isHost ? localUserName : (language === 'ku' ? 'میوان' : 'Guest'))) : '';
+
+  // Helper: derive back-route from a ticket's movie_id
+  const getBackRoute = (movieId: string) => {
+    if (movieId.startsWith('tv_')) return `/details/tv/${movieId.replace('tv_', '')}`;
+    if (movieId.startsWith('custom_')) return `/dubbed-details/${movieId}`;
+    return `/details/movie/${movieId}`;
+  };
+
+  // Helper: resolve any image — base64 data URI, full http URL, or TMDB relative path
+  const getImageUrl = (path: string | null | undefined, size: 'w500' | 'w1280' = 'w1280'): string => {
+    if (!path) return '';
+    if (path.startsWith('data:') || path.startsWith('http')) return path;
+    return `https://image.tmdb.org/t/p/${size}${path}`;
+  };
+
+
+  // 1. Fetch Ticket details & register database realtime listener
+  useEffect(() => {
+    if (!ticket_id) return;
+
+    // If we already have ticket + movie from router state, skip the initial fetch
+    const alreadyHydrated = !!(location.state?.ticket && location.state?.movie);
+
+    const fetchTicket = async () => {
+      try {
+        const { data, error: dbError } = await supabase
+          .from('watch_tickets')
+          .select('*')
+          .eq('id', ticket_id)
+          .single();
+
+        if (dbError || !data) {
+          throw new Error(language === 'ku' ? 'تیکت نەدۆزرایەوە' : 'Ticket not found');
+        }
+
+        const ticketData = data as TicketRecord;
+        setTicket(ticketData);
+
+        // Restore active room session if already active
+        if (ticketData.status === 'active') {
+          setActiveRoomReady(true);
+          if (ticketData.guest_id?.toLowerCase() === localUserId?.toLowerCase()) {
+            setPinVerified(true);
+          }
+        }
+
+        // Fetch Movie Details — handle tv_ and custom_ prefixed IDs
+        const rawMovieId = String(ticketData.movie_id);
+        let movieData: any = null;
+
+        if (rawMovieId.startsWith('tv_')) {
+          // TV Show: fetch /tv/{id}
+          const cleanId = rawMovieId.replace('tv_', '');
+          movieData = await fetchData(`/tv/${cleanId}?api_key=${API_KEY}&language=en-US`, language);
+          if (movieData) {
+            setMovie({
+              id: movieData.id,
+              title: movieData.name || movieData.title,
+              poster_path: movieData.poster_path,
+              backdrop_path: movieData.backdrop_path,
+              runtime: movieData.episode_run_time?.[0],
+              vote_average: movieData.vote_average,
+              release_date: movieData.first_air_date
+            });
+          }
+        } else if (rawMovieId.startsWith('custom_')) {
+          // Dubbed Movie: fetch from Supabase dubbed_movies table
+          const cleanId = rawMovieId.replace('custom_', '');
+          const { data: dubData } = await supabase.from('dubbed_movies').select('*').eq('id', cleanId).single();
+          if (dubData) {
+            setMovie({
+              id: dubData.id,
+              title: dubData.title || dubData.kurdishTitle || 'Dubbed Movie',
+              poster_path: dubData.imageBase64 || dubData.poster_path || '',
+              backdrop_path: dubData.bannerBase64 || dubData.imageBase64 || '',
+              vote_average: dubData.vote_average,
+              release_date: dubData.created_at
+            });
+          }
+        } else {
+          // Standard movie
+          movieData = await fetchData(`/movie/${rawMovieId}?api_key=${API_KEY}&language=en-US`, language);
+          if (movieData) {
+            setMovie({
+              id: movieData.id,
+              title: movieData.title,
+              poster_path: movieData.poster_path,
+              backdrop_path: movieData.backdrop_path,
+              runtime: movieData.runtime,
+              vote_average: movieData.vote_average,
+              release_date: movieData.release_date
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to load co-watch session.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!alreadyHydrated) {
+      fetchTicket();
+    }
+
+    // Polling fallback to retrieve the ticket state directly from DB
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data, error: pollError } = await supabase
+          .from('watch_tickets')
+          .select('*')
+          .eq('id', ticket_id)
+          .single();
+
+        if (data && !pollError) {
+          const updated = data as TicketRecord;
+          setTicket((prev) => {
+            if (!prev) return updated;
+            if (prev.status !== updated.status || prev.guest_id !== updated.guest_id) {
+              return updated;
+            }
+            return prev;
+          });
+
+          if (updated.status === 'active') {
+            const isLocalHost = localUserId?.toLowerCase() === updated.host_id?.toLowerCase();
+            if (isLocalHost) {
+              setIsTransitioningToActive((prevTransitioning) => {
+                if (!prevTransitioning) {
+                  // Fallback join chime when detected via polling to ensure "be loud" chime always plays!
+                  playSyncChime('join');
+                  addNotification({
+                    type: 'success',
+                    title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+                    message: language === 'ku'
+                      ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
+                      : 'The guest has successfully entered the cinema hall!',
+                  });
+                  setTimeout(() => {
+                    setActiveRoomReady(true);
+                  }, 2000);
+                  return true;
+                }
+                return prevTransitioning;
+              });
+            } else if (updated.guest_id?.toLowerCase() === localUserId?.toLowerCase()) {
+              setPinVerified(true);
+              setActiveRoomReady(true);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 2000);
+
+    // Subscribe to ticket changes
+    const subscription = supabase
+      .channel(`watch_tickets_${ticket_id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'watch_tickets',
+          filter: `id=eq.${ticket_id}`,
+        },
+        (payload) => {
+          if (payload.new) {
+            const updated = payload.new as TicketRecord;
+            setTicket(updated);
+
+            // Only trigger synchronized transition animations for Host when guest is accepted
+            if (updated.status === 'active' && updated.host_id?.toLowerCase() === localUserId?.toLowerCase()) {
+              setIsTransitioningToActive((prev) => {
+                if (!prev) {
+                  // Play cinematic join chime when state updates in DB changes subscription
+                  playSyncChime('join');
+                  addNotification({
+                    type: 'success',
+                    title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+                    message: language === 'ku'
+                      ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
+                      : 'The guest has successfully entered the cinema hall!',
+                  });
+                  setTimeout(() => {
+                    setActiveRoomReady(true);
+                  }, 2000);
+                  return true;
+                }
+                return prev;
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+      clearInterval(pollInterval);
+    };
+  }, [ticket_id, language, localUserId]);
+
+  // 2. Realtime dynamic nickname syncing (Ping-Pong & Guest Join Broadcast)
+  useEffect(() => {
+    if (!ticket_id || !localUserId || !localUserName) return;
+
+    const presenceChannel = supabase.channel(`presence-${ticket_id}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+
+    presenceChannel
+      .on('broadcast', { event: 'ping' }, (response) => {
+        const { userId, userName } = response.payload;
+        setMemberNames((prev) => ({ ...prev, [userId]: userName }));
+        // Reply with pong
+        presenceChannel.send({
+          type: 'broadcast',
+          event: 'pong',
+          payload: { userId: localUserId, userName: localUserName }
+        });
+      })
+      .on('broadcast', { event: 'pong' }, (response) => {
+        const { userId, userName } = response.payload;
+        setMemberNames((prev) => ({ ...prev, [userId]: userName }));
+      })
+      .on('broadcast', { event: 'guest_joined' }, (response) => {
+        const { guestId, guestName: joinedGuestName } = response.payload;
+        setMemberNames((prev) => ({ ...prev, [guestId]: joinedGuestName }));
+        
+        // Host receives the guest joined event in real-time! Play audio chime and trigger premium transition!
+        playSyncChime('join');
+        
+        addNotification({
+          type: 'success',
+          title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+          message: language === 'ku'
+            ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
+            : 'The guest has successfully entered the cinema hall!',
+        });
+
+        setTicket((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            status: 'active',
+            guest_id: guestId
+          };
+        });
+
+        setIsTransitioningToActive(true);
+        setTimeout(() => {
+          setActiveRoomReady(true);
+        }, 2000);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Announce presence
+          presenceChannel.send({
+            type: 'broadcast',
+            event: 'ping',
+            payload: { userId: localUserId, userName: localUserName }
+          });
+        }
+      });
+
+    presenceChannelRef.current = presenceChannel;
+
+    return () => {
+      supabase.removeChannel(presenceChannel);
+      presenceChannelRef.current = null;
+    };
+  }, [ticket_id, localUserId, localUserName, ticket]);
+
+
+
+  // 4. Update Database Ticket and notify chat on join
+  const executeGuestJoin = async () => {
+    if (!ticket_id || !localUserId || !localUserName) return;
+
+    try {
+      // Set status to active & register guest ID using RPC (bypasses PATCH preflight CORS issues)
+      const { error: patchError } = await supabase.rpc('join_watch_party', {
+        p_ticket_id: ticket_id,
+        p_guest_id: localUserId
+      });
+
+      if (patchError) throw patchError;
+
+      // Broadcast join event to Host instantly over the open presenceChannel node
+      if (presenceChannelRef.current) {
+        presenceChannelRef.current.send({
+          type: 'broadcast',
+          event: 'guest_joined',
+          payload: { guestId: localUserId, guestName: localUserName }
+        });
+      }
+
+      // Send join notice to Chat Sidebar
+      const systemMessage = JSON.stringify({
+        sender: 'System',
+        text: language === 'ku' 
+          ? `میوان ${localUserName} بەشداربوو لە تەماشاکردنەکە!` 
+          : `${localUserName} joined the cinema room!`,
+        isSystem: true
+      });
+
+      await supabase.from('room_messages').insert({
+        ticket_id: ticket_id,
+        user_id: localUserId,
+        message: systemMessage
+      });
+
+      addNotification({
+        type: 'success',
+        title: language === 'ku' ? 'بەستراوەتەوە' : 'Session Synced',
+        message: language === 'ku' 
+          ? 'هاوکاتبوون لەگەڵ پێشکەشکار چالاک کرا!' 
+          : 'Co-watching synchronized with the host!',
+      });
+    } catch (err) {
+      console.error('Failed to update ticket status on join:', err);
+    }
+  };
+
+  // Keyboard Navigation / Autoshifting PIN Digits
+  const handlePinInputChange = (index: number, val: string) => {
+    if (!/^\d*$/.test(val)) return; // Only numbers allowed
+    const cleanVal = val.slice(-1); // Only take last character
+
+    const newInputs = [...pinInputs];
+    newInputs[index] = cleanVal;
+    setPinInputs(newInputs);
+
+    // Auto-focus next box
+    if (cleanVal !== '' && index < 3) {
+      pinRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && pinInputs[index] === '' && index > 0) {
+      pinRefs[index - 1].current?.focus();
+    }
+  };
+
+  // Custom key pad triggers
+  const handleKeypadPress = (num: string) => {
+    const firstEmptyIdx = pinInputs.findIndex((c) => c === '');
+    const targetIdx = firstEmptyIdx === -1 ? 3 : firstEmptyIdx;
+
+    const newInputs = [...pinInputs];
+    newInputs[targetIdx] = num;
+    setPinInputs(newInputs);
+
+    if (targetIdx < 3) {
+      pinRefs[targetIdx + 1].current?.focus();
+    }
+  };
+
+  const handleKeypadBackspace = () => {
+    const lastFilledIdx = [...pinInputs].reverse().findIndex((c) => c !== '');
+    if (lastFilledIdx === -1) return; // All slots empty
+    const targetIdx = 3 - lastFilledIdx;
+
+    const newInputs = [...pinInputs];
+    newInputs[targetIdx] = '';
+    setPinInputs(newInputs);
+    pinRefs[targetIdx].current?.focus();
+  };
+
+  // Watch for full PIN completion to trigger verify
+  useEffect(() => {
+    const completed = pinInputs.every((char) => char !== '');
+    if (completed && ticket && !isHost && !pinVerified) {
+      verifyManualPin();
+    }
+  }, [pinInputs, ticket, isHost, pinVerified]);
+
+  const verifyManualPin = async () => {
+    if (!ticket) return;
+
+    const enteredPin = pinInputs.join('');
+    setVerifyingPin(true);
+
+    if (enteredPin === ticket.pin_code) {
+      // 8-user limit check (memberNames contains other active users in the room)
+      const currentSpectatorCount = Object.keys(memberNames).length;
+      if (currentSpectatorCount >= 8) {
+        setVerifyingPin(false);
+        playSyncChime('error');
+        addNotification({
+          type: 'error',
+          title: language === 'ku' ? 'تیکتەکە پڕبووە' : 'Ticket Full',
+          message: language === 'ku' 
+            ? 'تیکتەکە تەنها پشتگیری ٨ بەکارهێنەر دەکات. هۆڵەکە پڕبووە، جارێکی تر تاقی بکەرەوە.'
+            : 'Ticket is full. Ticket supports a maximum of 8 users. Try another time.',
+        });
+        setRoomFullError(true);
+        return;
+      }
+
+      // Correct! Play premium success checkmark animation and sound
+      setPinSuccess(true);
+      playSyncChime('join');
+      
+      // Update database status immediately so Host sees "GUEST ACCEPTED" in real-time
+      await executeGuestJoin();
+
+      // Keep the Guest on the ACCEPTED screen for 2 seconds to match Host's transition time
+      setTimeout(() => {
+        setPinVerified(true);
+        setVerifyingPin(false);
+        setActiveRoomReady(true);
+      }, 2000);
+    } else {
+      // Incorrect! Trigger locks-screen iOS shake animation and audio error buzz
+      playSyncChime('error');
+      setTimeout(() => {
+        setIsShaking(true);
+        setVerifyingPin(false);
+        addNotification({
+          type: 'error',
+          title: language === 'ku' ? 'کۆدی نادروست' : 'Verification Failed',
+          message: language === 'ku' ? 'تکایە کۆدی چوونەژوورەوەی دروست بنووسە.' : 'Incorrect entry PIN code.',
+        });
+
+        // Buzz feedback and reset fields after shake
+        setTimeout(() => {
+          setIsShaking(false);
+          setPinInputs(['', '', '', '']);
+          pinRefs[0].current?.focus();
+        }, 500);
+      }, 600);
+    }
+  };
+
+  // Render Loader screen (only shown if neither ticket nor movie are available yet)
+  if (loading) {
+    return (
+      <div className="flex-1 w-full h-[70vh] flex flex-col items-center justify-center gap-6">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  // Render Error screen
+  if (error || !ticket || !movie) {
+    return (
+      <div className="flex-1 w-full h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
+        <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center text-red-500 mb-6 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
+          {language === 'ku' ? 'هەڵەی سێرڤەر' : 'ROOM STALLED'}
+        </h2>
+        <p className="text-sm font-bold text-zinc-400 uppercase tracking-wide leading-relaxed mb-8">
+          {error || (language === 'ku' ? 'تیکتی تەماشا چالاک نییە یان هەڵوەشاوەتەوە.' : 'The requested Watch Party session could not be synchronized.')}
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-8 py-3.5 bg-zinc-900 border border-white/10 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
+        >
+          <ArrowLeft size={16} /> {language === 'ku' ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
+        </button>
+      </div>
+    );
+  }
+
+  // Render Room Full screen
+  if (roomFullError) {
+    return (
+      <div className="flex-1 w-full h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
+        <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center text-red-500 mb-6 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+          <ShieldAlert size={32} />
+        </div>
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
+          {language === 'ku' ? 'هۆڵەکە پڕبووە' : 'CINEMA HALL FULL'}
+        </h2>
+        <p className="text-sm font-bold text-zinc-400 uppercase tracking-wide leading-relaxed mb-8">
+          {language === 'ku'
+            ? 'ببورە، ئەم تیکتە تەنها پشتگیری ٨ بەکارهێنەر دەکات. هۆڵەکە پڕبووە، جارێکی تر تاقی بکەرەوە.'
+            : 'Sorry, this ticket supports a maximum of 8 users. The room is currently full. Please try another time.'}
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-8 py-3.5 bg-zinc-900 border border-white/10 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
+        >
+          <ArrowLeft size={16} /> {language === 'ku' ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
+        </button>
+      </div>
+    );
+  }
+
+  // A. Host View: Waiting for Guest Room (Renders Digital Ticket directly on page)
+  if (isHost && (ticket.status === 'waiting' || (isTransitioningToActive && !activeRoomReady))) {
+    if (isTransitioningToActive) {
+      return (
+        <div className="relative w-full min-h-[85vh] flex flex-col items-center justify-center p-6 bg-black overflow-hidden">
+          {/* Giant Ambient Blurred Poster Backdrop */}
+          <div className="absolute inset-0 z-0 opacity-20 filter blur-[80px] scale-110">
+            <img
+              src={getImageUrl(movie.backdrop_path || movie.poster_path)}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative z-10 w-full max-w-[420px] bg-zinc-950/80 border border-green-500/30 backdrop-blur-3xl rounded-[2.5rem] p-10 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center flex flex-col items-center"
+          >
+            <div className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 mb-6 shadow-xl relative overflow-hidden">
+              <CheckCircle className="w-10 h-10 animate-bounce text-green-400" />
+              <div className="absolute inset-0 bg-green-500/5 blur-md" />
+            </div>
+
+            <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
+              {language === 'ku' ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
+            </h1>
+            <p className="text-sm font-bold text-green-500 uppercase tracking-widest leading-relaxed mb-6 animate-pulse">
+              {language === 'ku' ? 'میوان قبوڵکرا' : 'GUEST ACCEPTED'}
+            </p>
+            
+            <div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-2 mb-6">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'پێشکەشکار:' : 'HOST:'}</span>
+                <span className="text-white font-bold">{localUserName}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'میوان:' : 'GUEST:'}</span>
+                <span className="text-white font-bold">{guestName || (language === 'ku' ? 'میوان' : 'Guest')}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-green-500 animate-spin" />
+              <span className="text-[10px] font-black uppercase text-green-500 tracking-[0.25em]">
+                {language === 'ku' ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative w-full min-h-[85vh] flex items-center justify-center p-6 bg-black overflow-hidden">
+        {/* Giant Ambient Blurred Poster Backdrop */}
+        <div className="absolute inset-0 z-0 opacity-15 filter blur-[60px] scale-110">
+          <img
+            src={getImageUrl(movie.backdrop_path || movie.poster_path)}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+
+        {/* Embedded Ticket component */}
+        <div className="relative z-10 w-full flex flex-col items-center">
+          <div className="text-center mb-6 max-w-sm px-4">
+            <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
+              {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
+            </h1>
+            <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-relaxed">
+              {language === 'ku' 
+                ? 'هاوڕێکەت بانگهێشت بکە بە ناردنی ئەم تیکتە ئەلیکترۆنییە بۆ بەشداریکردن!' 
+                : 'Send this digital invitation ticket to your guest to establish cinema synchronization.'}
+            </p>
+          </div>
+          
+          <WatchPartyTicketModal
+            isOpen={true}
+            onClose={() => navigate(getBackRoute(ticket.movie_id))}
+            movie={{
+              id: movie.id,
+              title: movie.title,
+              poster_path: movie.poster_path,
+              backdrop_path: movie.backdrop_path,
+              runtime: movie.runtime,
+              vote_average: movie.vote_average,
+              release_date: movie.release_date
+            }}
+            ticketId={ticket.id}
+            pinCode={ticket.pin_code}
+            status={ticket.status}
+          />
+
+          <button
+            onClick={() => playSyncChime('join')}
+            className="mt-6 px-6 py-3 bg-zinc-950 border border-white/5 hover:border-orange-500/30 hover:bg-orange-950/10 text-zinc-400 hover:text-orange-500 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-all cursor-pointer z-20"
+          >
+            <Sparkles size={14} className="text-orange-500 animate-pulse" />
+            {language === 'ku' ? 'تاقیکردنەوەی دەنگی هۆڵ' : 'TEST THEATRE BELL'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // B. Guest View: PIN Entry verification overlay (Glassmorphism + custom visual keyboard)
+  if (!isHost && !pinVerified) {
+    if (pinSuccess) {
+      return (
+        <div className="relative w-full min-h-[85vh] flex flex-col items-center justify-center p-6 bg-black overflow-hidden">
+          {/* Giant Ambient Blurred Poster Backdrop */}
+          <div className="absolute inset-0 z-0 opacity-20 filter blur-[80px] scale-110">
+            <img
+              src={getImageUrl(movie.backdrop_path || movie.poster_path)}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative z-10 w-full max-w-[420px] bg-zinc-950/80 border border-green-500/30 backdrop-blur-3xl rounded-[2.5rem] p-10 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center flex flex-col items-center animate-pulse"
+          >
+            <div className="w-20 h-20 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-500 mb-6 shadow-xl relative overflow-hidden">
+              <CheckCircle className="w-10 h-10 animate-bounce text-green-400" />
+              <div className="absolute inset-0 bg-green-500/5 blur-md" />
+            </div>
+
+            <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
+              {language === 'ku' ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
+            </h1>
+            <p className="text-sm font-bold text-green-500 uppercase tracking-widest leading-relaxed mb-6 animate-pulse">
+              {language === 'ku' ? 'پەیوەست بوویت' : 'SUCCESSFULLY JOINED'}
+            </p>
+            
+            <div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-2 mb-6">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'پێشکەشکار:' : 'HOST:'}</span>
+                <span className="text-white font-bold">{hostName || (language === 'ku' ? 'پێشکەشکار' : 'Host')}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'میوان (تۆ):' : 'GUEST (YOU):'}</span>
+                <span className="text-white font-bold">{localUserName}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-green-500 animate-spin" />
+              <span className="text-[10px] font-black uppercase text-green-500 tracking-[0.25em]">
+                {language === 'ku' ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative w-full min-h-[85vh] flex items-center justify-center p-4 overflow-hidden bg-black">
+        
+        {/* Giant Blurred Ambient Light Poster Backdrop */}
+        <div className="absolute inset-0 z-0 opacity-10 filter blur-[80px] scale-110">
+          <img
+            src={getImageUrl(movie.poster_path)}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/80" />
+        </div>
+
+        {/* Floating Translucent Verification Card with iOS/Tauri shake ability */}
+        <motion.div
+          animate={isShaking ? { x: [-12, 12, -12, 12, -6, 6, 0] } : {}}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 w-full max-w-[400px] bg-zinc-950/80 border border-white/5 backdrop-blur-3xl rounded-[2.5rem] p-8 md:p-10 shadow-[0_0_80px_rgba(0,0,0,0.8)] text-center flex flex-col items-center"
+        >
+          {/* Animated Header */}
+          <div className="w-16 h-16 rounded-[1.75rem] bg-orange-600/10 border border-orange-500/20 flex items-center justify-center text-orange-500 mb-6 shadow-xl relative overflow-hidden">
+            <Lock className="w-6 h-6 animate-pulse" />
+            <div className="absolute inset-0 bg-orange-500/5 blur-md" />
+          </div>
+
+          <h2 className="text-[22px] font-black uppercase italic tracking-wider text-white mb-2">
+            {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'WATCH ROOM SECURE'}
+          </h2>
+          
+          <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-relaxed mb-8 max-w-xs">
+            {language === 'ku'
+              ? 'کۆدی ٤ ژمارەیی پێشکەشکار بنووسە بۆ چوونە ژوورەوە.'
+              : 'Enter the 4-digit entry PIN generated by the party host.'}
+          </p>
+
+          {/* Interactive PIN inputs boxes */}
+          <div className="flex gap-3 justify-center mb-8 relative" dir="ltr">
+            <AnimatePresence>
+              {pinSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-zinc-950 rounded-2xl border border-green-500"
+                >
+                  <CheckCircle size={28} className="text-green-500 mr-2 animate-bounce" />
+                  <span className="text-xs font-black uppercase tracking-widest text-green-500 animate-pulse">
+                    {language === 'ku' ? 'قبوڵکرا' : 'ACCEPTED'}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {pinInputs.map((char, index) => (
+              <input
+                key={index}
+                ref={pinRefs[index]}
+                type="text"
+                pattern="[0-9]*"
+                inputMode="numeric"
+                maxLength={1}
+                value={char}
+                onChange={(e) => handlePinInputChange(index, e.target.value)}
+                onKeyDown={(e) => handlePinKeyDown(index, e)}
+                disabled={verifyingPin || pinSuccess}
+                className="w-12 h-14 bg-zinc-900 border border-white/10 rounded-2xl text-center text-2xl font-black font-mono text-white outline-none focus:border-orange-500 focus:shadow-[0_0_15px_rgba(234,88,12,0.25)] transition-all uppercase leading-none shadow-inner"
+              />
+            ))}
+          </div>
+
+          {/* Verification Status Loader */}
+          {verifyingPin && (
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="w-3 h-3 rounded-full border-t border-orange-500 animate-spin" />
+              <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider">
+                {language === 'ku' ? 'پشکنینی کۆد...' : 'VERIFYING KEY...'}
+              </span>
+            </div>
+          )}
+
+          {/* Sleek Touchscreen & Gamepad Keypad */}
+          <div className="grid grid-cols-3 gap-2 w-full max-w-[280px] mb-8 shrink-0" dir="ltr">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+              <button
+                key={num}
+                type="button"
+                disabled={verifyingPin || pinSuccess}
+                onClick={() => handleKeypadPress(num)}
+                className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-orange-500/20 active:scale-95 rounded-2xl py-3 text-lg font-black text-white transition-all shadow-md shrink-0 select-none"
+              >
+                {num}
+              </button>
+            ))}
+            <div className="flex items-center justify-center py-3 text-gray-600 select-none shrink-0 font-black">
+              •
+            </div>
+            <button
+              type="button"
+              disabled={verifyingPin || pinSuccess}
+              onClick={() => handleKeypadPress('0')}
+              className="bg-white/5 border border-white/5 hover:bg-white/10 hover:border-orange-500/20 active:scale-95 rounded-2xl py-3 text-lg font-black text-white transition-all shadow-md shrink-0 select-none"
+            >
+              0
+            </button>
+            <button
+              type="button"
+              disabled={verifyingPin || pinSuccess}
+              onClick={handleKeypadBackspace}
+              className="bg-orange-600/10 border border-orange-500/10 hover:bg-orange-600/20 hover:border-orange-500/20 active:scale-95 rounded-2xl py-3 flex items-center justify-center text-orange-500 transition-all shadow-md shrink-0 select-none"
+            >
+              <Delete size={20} />
+            </button>
+          </div>
+
+          {/* Quick Exit back to detail */}
+          <button
+            onClick={() => navigate(getBackRoute(ticket.movie_id))}
+            className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest mt-1 active:scale-95"
+          >
+            <ArrowLeft size={12} /> {language === 'ku' ? 'گەڕانەوە بۆ دواوە' : 'QUIT WATCH PARTY'}
+          </button>
+
+        </motion.div>
+      </div>
+    );
+  }
+
+  // C. Full Active Room: Double column widescreen layouts (Player + Chat Sidebar)
+
+  return (
+    <div className="relative w-full h-[calc(100vh-40px)] flex flex-col bg-black text-white overflow-hidden">
+      
+      {/* Dynamic blurred color flow backdrop */}
+      <div className="absolute inset-0 z-0 opacity-5 pointer-events-none filter blur-[80px] scale-110">
+        <img
+          src={getImageUrl(movie.backdrop_path || movie.poster_path)}
+          alt=""
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Cinematic Top Bar panel */}
+      <div className="relative z-10 px-6 py-4 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur-md flex items-center justify-between shrink-0 select-none">
+        
+        {/* Movie Identity */}
+        <div className="flex items-center gap-4">
+          <div className="w-8 h-11 bg-zinc-900 rounded border border-white/10 overflow-hidden shadow flex-shrink-0">
+            <img
+              src={getImageUrl(movie.poster_path, 'w500')}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-black tracking-widest text-orange-500 uppercase bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded">
+                {language === 'ku' ? 'چالاکە' : 'LIVE'}
+              </span>
+              <span className="text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[200px] md:max-w-md">
+                {movie.title}
+              </span>
+            </div>
+            {/* Active spectators indicator */}
+            <div className="flex items-center gap-1.5 mt-0.5 text-zinc-500">
+              <Users size={12} className="text-zinc-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">
+                {localUserName} {Object.values(memberNames).length > 0 ? `+ ${Object.values(memberNames).join(' + ')}` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Exit & actions */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => playSyncChime('join')}
+            className="px-4 py-2 border border-zinc-800 hover:border-orange-500/40 hover:bg-orange-950/10 text-zinc-400 hover:text-orange-500 rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer"
+          >
+            <Sparkles size={12} className="text-orange-500 animate-pulse" />
+            {language === 'ku' ? 'دەنگ بەکاربخە' : 'SOUND CHECK'}
+          </button>
+
+          <button
+            onClick={() => navigate(getBackRoute(ticket.movie_id))}
+            className="px-4 py-2 border border-zinc-800 hover:border-red-500/40 hover:bg-red-950/10 text-zinc-400 hover:text-red-500 rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer"
+          >
+            <ArrowLeft size={12} /> {language === 'ku' ? 'جێهێشتن' : 'LEAVE PARTY'}
+          </button>
+        </div>
+
+      </div>
+
+      {/* Main Theatre Split-Screen viewport */}
+      <div className="relative z-10 flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-hidden">
+        
+        {/* Left side: Synced Video Player */}
+        <div className="flex-1 h-full min-w-0 p-4 lg:p-6 flex items-stretch">
+          <CoWatchVideoPlayer
+            ticketId={ticket.id}
+            movieId={String(movie.id)}
+            movieTitle={movie.title}
+            isHost={isHost}
+            localUserId={localUserId}
+            localUserName={localUserName}
+            partnerName={isHost ? guestName : hostName}
+          />
+        </div>
+
+        {/* Right side: Cinematic Live Chat Sidebar */}
+        <div className="w-full lg:w-[350px] xl:w-[380px] h-[300px] lg:h-full border-t lg:border-t-0 border-zinc-900 shrink-0">
+          <WatchChatSidebar
+            ticketId={ticket.id}
+            localUserId={localUserId}
+            localUserName={localUserName}
+            isHost={isHost}
+            guestName={guestName || 'Guest'}
+            hostName={hostName || 'Host'}
+          />
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

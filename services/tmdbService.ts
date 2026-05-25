@@ -13,7 +13,7 @@ export const clearTMDBCache = () => {
   console.log("[TMDB SERVICE] Quantum Cache Purged.");
 };
 
-export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boolean = false): boolean => {
+export const isForbidden = (item: Content, language: 'en' | 'ku' | 'badini', isAdmin: boolean = false): boolean => {
   if (isAdmin) return false;
   if (item.adult) return true;
   
@@ -24,7 +24,7 @@ export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boole
   const itemGenreIds = item.genre_ids || item.genres?.map(g => g.id) || [];
   if (itemGenreIds.some(id => FORBIDDEN_GENRE_IDS.includes(id))) return true;
 
-  const currentLangKeywords = language === 'ku' ? FORBIDDEN_KEYWORDS_KU : FORBIDDEN_KEYWORDS_EN;
+  const currentLangKeywords = (language === 'ku' || language === 'badini') ? FORBIDDEN_KEYWORDS_KU : FORBIDDEN_KEYWORDS_EN;
   const allKeywords = [...new Set([...currentLangKeywords, ...FORBIDDEN_KEYWORDS_EN])];
 
   const title = (item.title || item.name || '').toLowerCase();
@@ -38,7 +38,7 @@ export const isForbidden = (item: Content, language: 'en' | 'ku', isAdmin: boole
   });
 };
 
-const filterContent = (data: any, language: 'en' | 'ku'): any => {
+const filterContent = (data: any, language: 'en' | 'ku' | 'badini'): any => {
     if (!data) return null;
     if (Array.isArray(data)) {
         return data.filter((item: Content) => !isForbidden(item, language));
@@ -46,7 +46,7 @@ const filterContent = (data: any, language: 'en' | 'ku'): any => {
     return isForbidden(data, language) ? null : data;
 };
 
-export const fetchData = async (endpoint: string, language: 'en' | 'ku') => {
+export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // 1. Instant Memory Access
@@ -108,7 +108,7 @@ export interface PaginatedResponse {
   total_pages: number;
 }
 
-export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'): Promise<PaginatedResponse | null> => {
+export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku' | 'badini'): Promise<PaginatedResponse | null> => {
   const cacheKey = `tmdb_pag_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // 1. Memory Check

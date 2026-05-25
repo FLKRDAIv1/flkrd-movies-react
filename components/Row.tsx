@@ -225,7 +225,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
               >
-                <div className="relative rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand shadow-xl">
+                <div className="relative aspect-[2/3] w-full rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand shadow-xl bg-neutral-950/80">
                   <img
                     src={(item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
                     alt={(item as Content).title || (item as Content).name}

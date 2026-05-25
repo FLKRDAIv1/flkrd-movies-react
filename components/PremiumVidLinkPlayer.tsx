@@ -17,6 +17,7 @@ interface PremiumVidLinkPlayerProps {
   accentColor?: string;
   subtitleUrl?: string;
   onProgress?: (data: any) => void;
+  peerSyncTrigger?: { currentTime: number; paused: boolean; timestamp: number } | null;
 }
 
 export default function PremiumVidLinkPlayer({
@@ -29,7 +30,8 @@ export default function PremiumVidLinkPlayer({
   initialProgress,
   subtitleUrl,
   imdbId,
-  onProgress
+  onProgress,
+  peerSyncTrigger
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const [isShieldActive, setIsShieldActive] = useState(false);
@@ -38,12 +40,17 @@ export default function PremiumVidLinkPlayer({
   const [showSubSettings, setShowSubSettings] = useState(false);
   const [activeCues, setActiveCues] = useState<any[]>([]);
   const [vttContent, setVttContent] = useState<string | null>(null);
+  // Ref so the VidLink postMessage handler always reads the latest vttContent
+  // (avoids stale closure — the handler was only re-registered on [onProgress] change)
+  const vttContentRef = React.useRef<string | null>(null);
   const [availableSubs, setAvailableSubs] = useState<any[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [subSearchQuery, setSubSearchQuery] = useState('');
   const [currentSubId, setCurrentSubId] = useState<number | null>(null);
   const [resolvedTmdbId, setResolvedTmdbId] = useState<string | null>(null);
   const [isResolvingId, setIsResolvingId] = useState(true);
+  // Keep ref in sync with state
+  useEffect(() => { vttContentRef.current = vttContent; }, [vttContent]);
 
   const setAvailableSubsWithVirtual = useCallback((newSubs: any[]) => {
     if (!subtitleUrl) {
@@ -374,9 +381,9 @@ export default function PremiumVidLinkPlayer({
       if (event.data?.type === 'PLAYER_EVENT') {
         const { event: eventType, currentTime, duration } = event.data.data;
         
-        // SYNC SUBTITLES
-        if (vttContent && currentTime !== undefined) {
-          const cues = parseVttCues(vttContent);
+        // SYNC SUBTITLES — use ref to avoid stale closure
+        if (vttContentRef.current && currentTime !== undefined) {
+          const cues = parseVttCues(vttContentRef.current);
           const active = cues.filter(c => currentTime >= c.start && currentTime <= c.end);
           setActiveCues(active);
         }
@@ -406,6 +413,48 @@ export default function PremiumVidLinkPlayer({
     window.addEventListener('message', handleVidLinkMessage);
     return () => window.removeEventListener('message', handleVidLinkMessage);
   }, [onProgress]);
+
+  // 3. SUPPRESS TAURI NATIVE DIALOGS from VidLink's built-in subtitle failure alerts
+  // Tauri intercepts window.alert/confirm/prompt as native macOS dialogs — block them
+  // so VidLink subtitle errors never block the UI.
+  useEffect(() => {
+    if (!(window as any).__TAURI_INTERNALS__) return;
+    const originalAlert = window.alert;
+    const originalConfirm = window.confirm;
+    const originalPrompt = window.prompt;
+    // Silently swallow dialog calls so subtitle-load failures don't freeze the UI
+    window.alert = () => {};
+    window.confirm = () => false;
+    window.prompt = () => null;
+    return () => {
+      window.alert = originalAlert;
+      window.confirm = originalConfirm;
+      window.prompt = originalPrompt;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!peerSyncTrigger || !iframeRef.current?.contentWindow) return;
+
+    console.log("[PEER SYNC EFFECT] Applying peer sync update in PremiumVidLinkPlayer:", peerSyncTrigger);
+    const win = iframeRef.current.contentWindow;
+    const targetTime = peerSyncTrigger.currentTime;
+    const targetPaused = peerSyncTrigger.paused;
+
+    try {
+      // Post standard Player.js / JWPlayer / Video.js postMessage commands to control seek & play/pause
+      win.postMessage(JSON.stringify({ event: 'setCurrentTime', value: targetTime }), '*');
+      win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+      win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+      win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+
+      win.postMessage(JSON.stringify({ event: targetPaused ? 'pause' : 'play' }), '*');
+      win.postMessage(JSON.stringify({ context: 'player.js', method: targetPaused ? 'pause' : 'play' }), '*');
+      win.postMessage(JSON.stringify({ method: targetPaused ? 'pause' : 'play' }), '*');
+    } catch (err) {
+      console.warn("[PEER SYNC EFFECT] Error posting message to Premium iframe:", err);
+    }
+  }, [peerSyncTrigger]);
 
   return (
     <div className="w-full h-full bg-black relative flex flex-col overflow-hidden">
@@ -449,9 +498,11 @@ export default function PremiumVidLinkPlayer({
           ref={iframeRef}
           src={overrideSrc || videoUrl}
           className="w-full h-full border-0"
-          // We rely on sw.js (Service Worker) for stealthy ad-blocking to avoid "Bot Detection"
+          // NOTE: sandbox attribute intentionally omitted — VidLink Pro detects
+          // sandboxed iframes and blocks playback with "Please Disable Sandbox".
+          // Tauri's WKWebView security handles isolation at the process level.
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
-          referrerPolicy="strict-origin-when-cross-origin"
+          referrerPolicy="no-referrer-when-downgrade"
           // @ts-ignore
           scrolling="no"
           onLoad={() => setIsPlayerLoading(false)}

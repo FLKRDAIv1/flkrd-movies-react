@@ -49,13 +49,13 @@ const calculateSearchRelevance = (query: string, item: Content): number => {
   return score;
 };
 
-export const useSearchEngine = (language: 'en' | 'ku') => {
+export const useSearchEngine = (language: 'en' | 'ku' | 'badini') => {
   const [results, setResults] = useState<Content[]>([]);
   const [loading, setLoading] = useState(false);
   const [isBlockedQuery, setIsBlockedQuery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const langCode = language === 'ku' ? 'ku' : 'en-US';
+  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
   const executeSearch = useCallback(async (searchTerm: string) => {
     const trimmed = searchTerm.trim();
@@ -68,7 +68,7 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
     }
 
     const queryLower = trimmed.toLowerCase();
-    const keywords = language === 'ku' ? FORBIDDEN_KEYWORDS_KU : FORBIDDEN_KEYWORDS_EN;
+    const keywords = (language === 'ku' || language === 'badini') ? FORBIDDEN_KEYWORDS_KU : FORBIDDEN_KEYWORDS_EN;
     const isBlocked = keywords.some(keyword => queryLower.includes(keyword));
 
     if (isBlocked) {
@@ -116,7 +116,7 @@ export const useSearchEngine = (language: 'en' | 'ku') => {
       }
 
       // Pass A-2: High-Performance Merge (Always fetch English results in Kurdish mode to maximize coverage of all regions)
-      if (language === 'ku') {
+      if (language === 'ku' || language === 'badini') {
         const engEndpoint = `/search/multi?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
         const engData = await fetchData(engEndpoint, 'en');
         if (engData && Array.isArray(engData)) {

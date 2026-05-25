@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import translations from '../translations';
 
-type Language = 'en' | 'ku';
+type Language = 'en' | 'ku' | 'badini';
 type Translations = typeof translations;
 
 interface LanguageContextType {
@@ -21,7 +21,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   useEffect(() => {
     localStorage.setItem('language', language);
     document.documentElement.lang = language;
-    document.documentElement.dir = language === 'ku' ? 'rtl' : 'ltr';
+    document.documentElement.dir = (language === 'ku' || language === 'badini') ? 'rtl' : 'ltr';
   }, [language]);
 
   const setLanguage = (lang: Language) => {
@@ -29,7 +29,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   const t = (key: keyof Translations['en'], replacements?: { [key: string]: string | number }): string => {
-    let str = translations[language][key] || translations['en'][key] || String(key);
+    let str = (translations[language] && translations[language][key]) || translations['en'][key] || String(key);
     
     if (replacements) {
         Object.entries(replacements).forEach(([placeholder, value]) => {

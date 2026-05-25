@@ -19,7 +19,10 @@ import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
+import { bannedService } from '../services/bannedService';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
+import { supabase } from '../utils/supabaseClient';
+import { useLocalUser } from '../hooks/useLocalUser';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -63,6 +66,8 @@ const TVDetailPage: React.FC = () => {
   const { t, language } = useTranslation();
   const { theme, accentColor } = useUI();
   const { addNotification } = useNotification();
+  const { localUserId, localUserName } = useLocalUser();
+  const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
   const [content, setContent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -344,6 +349,54 @@ const TVDetailPage: React.FC = () => {
     if (s && s !== selectedSeason) fetchSeasonDetails(s);
   };
 
+  const handleCreateWatchParty = async () => {
+    if (!content || !localUserId) return;
+    setIsCreatingTicket(true);
+    try {
+      const pin = String(Math.floor(1000 + Math.random() * 9000));
+      const tvMovieId = `tv_${content.id}`;
+      const { data, error: insertError } = await supabase
+        .from('watch_tickets')
+        .insert({
+          movie_id: tvMovieId,
+          host_id: localUserId,
+          pin_code: pin,
+          status: 'waiting'
+        })
+        .select()
+        .single();
+
+      if (insertError || !data) throw insertError;
+
+      addNotification({
+        type: 'success',
+        title: language === 'ku' ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
+        message: language === 'ku' ? 'هاوڕێکەت بانگهێشت بکە بۆ بەشداریکردن!' : 'Invite your guest to join the cinema hall!'
+      });
+
+      const movieState = {
+        id: content.id,
+        title: content.name,
+        poster_path: content.poster_path,
+        backdrop_path: content.backdrop_path,
+        runtime: content.episode_run_time?.[0],
+        vote_average: content.vote_average,
+        release_date: content.first_air_date
+      };
+
+      navigate(`/watch/${data.id}`, { state: { ticket: data, movie: movieState } });
+    } catch (err: any) {
+      console.error('Watch party creation error:', err);
+      addNotification({
+        type: 'error',
+        title: language === 'ku' ? 'هەڵە' : 'Error',
+        message: language === 'ku' ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
+      });
+    } finally {
+      setIsCreatingTicket(false);
+    }
+  };
+
   if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
   if (!content) return null;
 
@@ -503,7 +556,11 @@ const TVDetailPage: React.FC = () => {
                             <div className="flex items-center justify-between relative z-10">
                               <div className="flex items-center gap-4">
                                 <div className="relative flex items-center justify-center w-10 h-10">
-                                  {iconPath ? (
+                                  {s.name === 'FLKRD SERVER 4' ? (
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#1d9bf0] drop-shadow-[0_2px_8px_rgba(29,155,240,0.4)]">
+                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                    </svg>
+                                  ) : iconPath ? (
                                     <img src={iconPath} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
                                   ) : (
                                     <span className={`text-lg font-black italic ${isActive ? 'text-red-500' : 'text-gray-700'}`}>
@@ -527,9 +584,12 @@ const TVDetailPage: React.FC = () => {
                                       {speed}
                                     </span>
                                     {s.badge === 'ku' && (
-                                      <div className="flex items-center gap-1 opacity-60">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px]" alt="" />
-                                        <span className="text-[7px] font-black text-green-500 uppercase">KU</span>
+                                      <div className="flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-[0_4px_12px_rgba(29,155,240,0.15)] shrink-0 scale-90">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
+                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-[#1d9bf0] shrink-0">
+                                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78-3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                        </svg>
+                                        <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">VERIFIED</span>
                                       </div>
                                     )}
                                   </div>
@@ -608,6 +668,21 @@ const TVDetailPage: React.FC = () => {
               <Play size={20} fill="currentColor" />
               <span className="text-base md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span>
             </LiquidButton>
+
+            {/* CO-WATCH PARTY Button */}
+            <button
+              onClick={handleCreateWatchParty}
+              disabled={isCreatingTicket}
+              className="group relative px-6 md:px-10 py-4 md:py-5 rounded-xl md:rounded-[1.5rem] font-[1000] uppercase italic tracking-tighter text-base md:text-lg flex items-center gap-3 transition-all active:scale-95 disabled:opacity-60 overflow-hidden border border-orange-500/40 hover:border-orange-500 bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 hover:text-orange-300 shadow-[0_0_30px_rgba(234,88,12,0.1)] hover:shadow-[0_0_40px_rgba(234,88,12,0.3)]"
+            >
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-r from-orange-600/5 to-transparent transition-opacity duration-300" />
+              {isCreatingTicket ? (
+                <div className="w-5 h-5 rounded-full border-2 border-t-transparent border-orange-500 animate-spin" />
+              ) : (
+                <Sparkles size={20} className="text-orange-500 animate-pulse" />
+              )}
+              <span className="relative">{language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}</span>
+            </button>
           </div>
         </div>
         {!isPlayerModalOpen && (

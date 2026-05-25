@@ -6,6 +6,34 @@
 
 // IMPORTANT: User must generate their own API key at https://www.opensubtitles.com/en/consumers
 import { OPENSUBTITLES_API_KEY, SUBDL_API_KEY } from '../constants';
+import JSZip from 'jszip';
+
+/**
+ * Resolve the base URL for API calls.
+ * - In Tauri (DMG/desktop): window.location.protocol is 'tauri:',
+ *   so relative paths like '/api/subtitle' resolve to tauri://localhost/api/subtitle (dead end).
+ *   We must always use the absolute Vercel URL.
+ * - In local dev (http://localhost): use relative paths (proxied by Vite).
+ * - In production web (https://fkurd.vercel.app): use empty string (relative paths work).
+ */
+const getSubApiBase = (): string => {
+  if (typeof window === 'undefined') return 'https://fkurd.vercel.app';
+  const proto = window.location.protocol;
+  // Tauri uses 'tauri:' protocol — always hit Vercel
+  if (proto === 'tauri:' || (window as any).__TAURI_INTERNALS__) {
+    return 'https://fkurd.vercel.app';
+  }
+  // Local dev — Vite proxy handles /api routes
+  if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.')
+  ) {
+    return 'https://fkurd.vercel.app'; // Always use Vercel to avoid CORS
+  }
+  // Production web — use relative paths
+  return '';
+};
 
 const USER_AGENT = 'flkrd_movies_v1';
 
@@ -22,9 +50,7 @@ export interface SubtitleResult {
 export const subtitleService = {
     async fetchLatestKurdishMovies() {
         try {
-            const baseUrl = window.location.hostname === 'localhost' 
-                ? 'https://fkurd.vercel.app' 
-                : '';
+            const baseUrl = getSubApiBase();
             const proxyUrl = `${baseUrl}/api/subtitle?languages=ku&order_by=download_count&order_direction=desc`;
             const proxyRes = await fetch(proxyUrl).catch(() => null);
 
@@ -171,9 +197,7 @@ export const subtitleService = {
                     query += `&season_number=${season}&episode_number=${episode}`;
                 }
 
-                const baseUrl = window.location.hostname === 'localhost' 
-                    ? 'https://fkurd.vercel.app' 
-                    : '';
+                const baseUrl = getSubApiBase();
                 const apiUrl = `${baseUrl}/api/subtitle${query}`;
 
                 const response = await fetch(apiUrl);
@@ -257,9 +281,7 @@ export const subtitleService = {
                 query += `&season_number=${season}&episode_number=${episode}`;
             }
 
-            const baseUrl = window.location.hostname === 'localhost' 
-                ? 'https://fkurd.vercel.app' 
-                : '';
+            const baseUrl = getSubApiBase();
             const apiUrl = `${baseUrl}/api/subtitle${query}`;
 
             console.log("[SUBTITLE SERVICE] SubDL Search Engine Engaged via Proxy:", apiUrl);
@@ -288,9 +310,7 @@ export const subtitleService = {
     async getDownloadLink(fileId: number) {
         if (fileId === 0) return null;
         try {
-            const apiUrl = window.location.hostname === 'localhost' 
-                ? 'https://fkurd.vercel.app/api/subtitle'
-                : '/api/subtitle';
+            const apiUrl = `${getSubApiBase()}/api/subtitle`;
             
             const response = await fetch(apiUrl, {
                 method: 'POST',
@@ -330,17 +350,13 @@ export const subtitleService = {
             if (contentType.includes('zip') || link.endsWith('.zip')) {
                 const blob = await response.blob();
                 
-                // Dynamic Load JSZip from CDN to avoid npm install as requested
-                const JSZipModule = await import('https://esm.sh/jszip@3.10.1');
-                const JSZip = JSZipModule.default;
-                
                 const zip = new JSZip();
                 const zipContent = await zip.loadAsync(blob);
                 
                 // Find first .srt or .vtt file
-                const srtFile = Object.values(zipContent.files).find(f => 
+                const srtFile = Object.values(zipContent.files).find((f: any) => 
                     !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
-                );
+                ) as any;
                 
                 if (srtFile) {
                     console.log("[SUBTITLE SERVICE] Extracted subtitle from SubDL ZIP:", srtFile.name);

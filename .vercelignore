@@ -1,0 +1,27 @@
+# Dependency directories
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+
+# Rust/Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+src-tauri/binaries/
+
+# Environment files
+.env
+.env.*
+.env*.local
+
+# Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Temporary / backup folders and artifacts
+data movie restored/
+dubbed_movies_backup.json
+*.apk
+*.mobileconfig

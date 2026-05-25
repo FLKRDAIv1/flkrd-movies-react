@@ -47,9 +47,12 @@ const ProfilePage: React.FC = () => {
         addNotification({ type: 'success', title: 'Profile Updated', message: 'User identity synchronized.' });
     };
 
-    const handleLanguageChange = (lang: 'en' | 'ku') => {
+    const handleLanguageChange = (lang: 'en' | 'ku' | 'badini') => {
         setLanguage(lang);
-        addNotification({ type: 'info', title: 'Language Sync', message: `Interface language set to ${lang === 'en' ? 'English' : 'Kurdish'}.` });
+        let langName = 'English';
+        if (lang === 'ku') langName = 'Kurdish Sorani';
+        if (lang === 'badini') langName = 'Kurdish Badini';
+        addNotification({ type: 'info', title: 'Language Sync', message: `Interface language set to ${langName}.` });
     };
 
     if (loading) return <div className="h-screen flex items-center justify-center bg-black"><Spinner /></div>;
@@ -163,15 +166,21 @@ const ProfilePage: React.FC = () => {
                                     <div className="flex p-1 bg-black/40 rounded-2xl border border-white/5">
                                         <button
                                             onClick={() => handleLanguageChange('en')}
-                                            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
                                         >
                                             {t('english')}
                                         </button>
                                         <button
                                             onClick={() => handleLanguageChange('ku')}
-                                            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${language === 'ku' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'ku' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
                                         >
-                                            {t('kurdish')}
+                                            سۆرانی
+                                        </button>
+                                        <button
+                                            onClick={() => handleLanguageChange('badini')}
+                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'badini' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                        >
+                                            بادینی
                                         </button>
                                     </div>
                                 </div>

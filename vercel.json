@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/watch/:ticket_id",
+      "destination": "/api/watch?ticket_id=:ticket_id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

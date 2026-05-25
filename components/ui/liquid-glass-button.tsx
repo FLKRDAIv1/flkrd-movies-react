@@ -285,7 +285,7 @@ export const MetalButton = React.forwardRef<HTMLButtonElement, MetalButtonProps>
   }, []);
  
   const buttonText = children || "Button";
-  const variants = metalButtonVariants(variant, isPressed, isHovered, isTouchDevice);
+  const variants = metalButtonVariants(variant as ColorVariant, isPressed, isHovered, isTouchDevice);
  
   const handleInternalMouseDown = () => setIsPressed(true);
   const handleInternalMouseUp = () => setIsPressed(false);

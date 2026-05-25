@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useId } from "react";
+import React, { useEffect, useRef, useId } from "react";
 import { motion } from "framer-motion";
 import { useUI } from "../../contexts/UIContext";
 

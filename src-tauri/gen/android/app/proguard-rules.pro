@@ -1,21 +1,23 @@
 # Add project specific ProGuard rules here.
 # You can control the set of applied configuration files using the
 # proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep all classes in the app.tauri package and all subpackages
+-keep class app.tauri.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Keep all classes in the com.tauri package and all subpackages
+-keep class com.tauri.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep Wry / JNI generated classes and local app classes
+-keep class com.flkrdmovies.app.** { *; }
+
+# Keep all native method declarations across all classes
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Preserve WebView Javascript interfaces and standard reflection attributes
+-keepattributes JavascriptInterface
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes SourceFile,LineNumberTable

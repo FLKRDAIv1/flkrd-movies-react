@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Star, Mic2, Info, Share, Zap, Activity, MessageSquare, Calendar, Monitor, Clock, Globe, User, Film, Layers, ShieldCheck, Maximize, ArrowLeft, Check, Layers as LayersIcon, ExternalLink, Link as LinkIcon, Send, Facebook, ArrowRight, Shield, PlayCircle
+    Star, Mic2, Info, Share, Zap, Activity, MessageSquare, Calendar, Monitor, Clock, Globe, User, Film, Layers, ShieldCheck, Maximize, ArrowLeft, Check, Layers as LayersIcon, ExternalLink, Link as LinkIcon, Send, Facebook, ArrowRight, Shield, PlayCircle, Sparkles
 } from 'lucide-react';
 import { Content, WatchProgress } from '../types';
 import { fetchData } from '../services/tmdbService';
+import { bannedService } from '../services/bannedService';
 import { API_KEY, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, CUSTOM_DUBBED_ARCHIVE } from '../constants';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -13,6 +14,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
+import { useLocalUser } from '../hooks/useLocalUser';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import Portal from '../components/Portal';
 
@@ -23,6 +25,8 @@ const DubbedDetailPage: React.FC = () => {
     const { t, language } = useTranslation();
     const { theme, accentColor } = useUI();
     const { addNotification } = useNotification();
+    const { localUserId } = useLocalUser();
+    const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
     const [content, setContent] = useState<Content | null>(null);
     const [loading, setLoading] = useState(!location.state?.customData);
@@ -231,6 +235,55 @@ const handlePlayerLoad = useCallback(() => {
     setIsPlayerLoading(false);
 }, []);
 
+const handleCreateWatchParty = async () => {
+    if (!localUserId) return;
+    setIsCreatingTicket(true);
+    try {
+        const pin = String(Math.floor(1000 + Math.random() * 9000));
+        const cleanId = id?.replace('custom_', '') || '';
+        const ticketMovieId = `custom_${cleanId}`;
+
+        const { data, error: insertError } = await supabase
+            .from('watch_tickets')
+            .insert({
+                movie_id: ticketMovieId,
+                host_id: localUserId,
+                pin_code: pin,
+                status: 'waiting'
+            })
+            .select()
+            .single();
+
+        if (insertError || !data) throw insertError;
+
+        addNotification({
+            type: 'success',
+            title: language === 'ku' ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
+            message: language === 'ku' ? 'هاوڕێکەت بانگهێشت بکە!' : 'Invite your guest to join!'
+        });
+
+        const movieState = {
+            id: cleanId,
+            title: dubbedData?.kurdishTitle || dubbedData?.title || displayTitle,
+            poster_path: dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '',
+            backdrop_path: dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path || '',
+            vote_average: dubbedData?.vote_average || content?.vote_average,
+            release_date: dubbedData?.created_at || content?.release_date
+        };
+
+        navigate(`/watch/${data.id}`, { state: { ticket: data, movie: movieState } });
+    } catch (err: any) {
+        console.error('Watch party creation error:', err);
+        addNotification({
+            type: 'error',
+            title: language === 'ku' ? 'هەڵە' : 'Error',
+            message: language === 'ku' ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
+        });
+    } finally {
+        setIsCreatingTicket(false);
+    }
+};
+
 if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
 
 // Strict Data Boundary Logic to prevent Black Screen / Crash
@@ -302,6 +355,20 @@ const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.
                                 {dubbedData.level} RANK
                             </div>
                         )}
+
+                        {/* CO-WATCH PARTY Button */}
+                        <button
+                            onClick={handleCreateWatchParty}
+                            disabled={isCreatingTicket}
+                            className="group relative px-5 py-2.5 rounded-full font-black text-[9px] md:text-[11px] flex items-center gap-2 uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-60 border border-orange-500/50 hover:border-orange-400 bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 hover:text-orange-300 shadow-[0_0_20px_rgba(234,88,12,0.1)] hover:shadow-[0_0_30px_rgba(234,88,12,0.25)]"
+                        >
+                            {isCreatingTicket ? (
+                                <div className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent border-orange-500 animate-spin" />
+                            ) : (
+                                <Sparkles size={14} className="text-orange-500 animate-pulse" />
+                            )}
+                            {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
+                        </button>
                     </div>
                     <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-[calc(-0.04em)] leading-[0.85] text-[var(--text-primary)] text-right max-w-5xl drop-shadow-2xl mb-10">
                         {displayTitle}

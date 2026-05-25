@@ -167,7 +167,7 @@ self.addEventListener('push', event => {
   let data = {
     title: 'New Transmission',
     body: 'Synchronizing new content archive.',
-    icon: 'https://i.imgur.com/DF1UZL3.png'
+    icon: self.location.origin + '/flkrd-icon.png'
   };
 
   if (event.data) {
@@ -189,8 +189,8 @@ self.addEventListener('push', event => {
 
   const options = {
     body: data.body,
-    icon: data.icon || 'https://i.imgur.com/DF1UZL3.png',
-    badge: 'https://i.imgur.com/DF1UZL3.png',
+    icon: data.icon || self.location.origin + '/flkrd-icon.png',
+    badge: self.location.origin + '/flkrd-icon.png',
     vibrate: [200, 100, 200, 100, 400],
     data: {
       url: data.url || '/'

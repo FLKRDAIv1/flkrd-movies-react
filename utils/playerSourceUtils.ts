@@ -12,6 +12,7 @@ const INITIAL_SOURCES: Omit<PlayerSource, 'score'>[] = [
   { name: 'FLKRD SERVER 1' }, // VidLink Pro (TOP 2)
   { name: 'FLKRD SERVER 2' }, // VidSrc (TOP 3)
   { name: 'FLKRD SERVER 3' }, // SuperEmbed
+  { name: 'FLKRD SERVER 4' }, // CinePro
   { name: 'FLKRD SERVER 5' },
   { name: 'FLKRD SERVER 6' },
 ];
@@ -30,6 +31,7 @@ const getScores = (): { [key: string]: number } => {
     'FLKRD SERVER 1': 480, // VidLink Pro
     'FLKRD SERVER 2': 460, // VidSrc
     'FLKRD SERVER 3': 440, // SuperEmbed
+    'FLKRD SERVER 4': 420, // CinePro
     'FLKRD SERVER 5': 150,
     'FLKRD SERVER 6': 140,
   };
@@ -43,7 +45,7 @@ export const getRankedSources = (hasKurdishSub: boolean = false): EnhancedPlayer
 
     // Pinning Logic: If Kurdish sub is found, boost specific servers that handle it best
     if (hasKurdishSub) {
-      if (source.name === 'FLKRD SERVER' || source.name === 'FLKRD SERVER 1') {
+      if (source.name === 'FLKRD SERVER' || source.name === 'FLKRD SERVER 1' || source.name === 'FLKRD SERVER 4') {
         score += 1000; // Force to top
         badge = 'ku';
       }
@@ -87,6 +89,41 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
       return isTv
         ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${season}&e=${episode}`
         : `https://multiembed.mov/?video_id=${id}${tmdbParam}`;
+
+    case 'FLKRD SERVER 4': // CinePro (FLKRD SERVER 4)
+      const cpSubParams = subtitleUrl 
+        ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}&subtitles=${encodeURIComponent(subtitleUrl)}&sub_file=${encodeURIComponent(subtitleUrl)}&subtitleUrl=${encodeURIComponent(subtitleUrl)}&sub_label=Kurdish&subLabel=Kurdish` 
+        : '';
+      const cpBaseParams = `color=${playerColor}&autoplay=1&playsinline=1${cpSubParams}`;
+      
+      // Intelligent Port & Domain Resolver: 
+      // Prevents loading the main Fkurd React app recursively inside the iframe.
+      // - Defaults to port 3001 if the React app is on port 3000 (Vite default or local build).
+      // - Defaults to port 3000 if the React app is on port 3001 or 5173.
+      // - Allows full customization via localStorage.setItem('cinepro_base_url', 'YOUR_URL').
+      let cpBaseUrl = 'http://localhost:3001';
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('cinepro_base_url');
+        if (stored) {
+          cpBaseUrl = stored;
+        } else {
+          const currentPort = window.location.port;
+          const currentHostname = window.location.hostname;
+          if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+            if (currentPort === '3000') {
+              cpBaseUrl = 'http://localhost:3001';
+            } else if (currentPort === '3001') {
+              cpBaseUrl = 'http://localhost:3000';
+            } else if (currentPort === '5173') {
+              cpBaseUrl = 'http://localhost:3000';
+            }
+          }
+        }
+      }
+
+      return isTv
+        ? `${cpBaseUrl}/tv/${id}/${season}/${episode}?${cpBaseParams}`
+        : `${cpBaseUrl}/movie/${id}?${cpBaseParams}`;
 
     case 'FLKRD SERVER 5':
       return isTv

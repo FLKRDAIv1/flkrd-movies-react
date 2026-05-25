@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Share, Play, X, Check, Plus, Star, Sparkles, Monitor,
+  Share, Play, X, Check, Plus, Star, Sparkles, Monitor, Tv,
   Layers, Info, Clapperboard, Calendar, PlayCircle,
   Clock, Globe, ShieldCheck, Zap, User, ArrowRight,
   Download, MessageSquare, Maximize, Activity, List, LayoutGrid,
@@ -22,6 +22,9 @@ import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
+import { useLocalUser } from '../hooks/useLocalUser';
+import { supabase } from '../utils/supabaseClient';
+import { bannedService } from '../services/bannedService';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -89,6 +92,48 @@ const DetailPage: React.FC = () => {
   };
 
   const [initialProgress, setInitialProgress] = useState(0);
+
+  const { localUserId } = useLocalUser();
+  const [isCreatingParty, setIsCreatingParty] = useState(false);
+
+  const handleCreateWatchParty = async () => {
+    if (!content || isCreatingParty) return;
+    setIsCreatingParty(true);
+    try {
+      const pin = Math.floor(1000 + Math.random() * 9000).toString();
+      const ticketId = crypto.randomUUID();
+
+      const { error } = await supabase.from('watch_tickets').insert({
+        id: ticketId,
+        movie_id: String(content.id),
+        host_id: localUserId,
+        pin_code: pin,
+        status: 'waiting'
+      });
+
+      if (error) throw error;
+
+      addNotification({
+        type: 'success',
+        title: language === 'ku' ? 'ئاهەنگی تەماشا دروستکرا' : 'Watch Party Created',
+        message: language === 'ku' 
+          ? 'بلیتەکە بە سەرکەوتوویی دروستکرا. بەستەرەکە هاوبەش بکە لەگەڵ هاوڕێیەکەت!'
+          : 'Ticket generated successfully. Share the link with a friend!',
+      });
+
+      // Redirect host directly to the watch room page
+      navigate(`/watch/${ticketId}`);
+    } catch (e: any) {
+      console.error('Failed to create watch party:', e);
+      addNotification({
+        type: 'error',
+        title: language === 'ku' ? 'هەڵەیەک ڕوویدا' : 'Creation Failed',
+        message: e.message || 'Could not connect to ticketing service.',
+      });
+    } finally {
+      setIsCreatingParty(false);
+    }
+  };
 
   const updateProgress = useCallback((time: number, duration: number) => {
     if (!content || !content.id) return;
@@ -423,7 +468,11 @@ const DetailPage: React.FC = () => {
                             <div className="flex items-center justify-between relative z-10">
                               <div className="flex items-center gap-4">
                                 <div className="relative flex items-center justify-center w-10 h-10">
-                                  {iconPath ? (
+                                  {s.name === 'FLKRD SERVER 4' ? (
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#1d9bf0] drop-shadow-[0_2px_8px_rgba(29,155,240,0.4)]">
+                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                    </svg>
+                                  ) : iconPath ? (
                                     <img src={iconPath} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
                                   ) : (
                                     <span className={`text-lg font-black italic ${isActive ? 'text-red-500' : 'text-gray-700'}`}>
@@ -447,9 +496,12 @@ const DetailPage: React.FC = () => {
                                       {speed}
                                     </span>
                                     {s.badge === 'ku' && (
-                                      <div className="flex items-center gap-1 opacity-60">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px]" alt="" />
-                                        <span className="text-[7px] font-black text-green-500 uppercase">KU</span>
+                                      <div className="flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-[0_4px_12px_rgba(29,155,240,0.15)] shrink-0 scale-90">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
+                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-[#1d9bf0] shrink-0">
+                                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                        </svg>
+                                        <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">VERIFIED</span>
                                       </div>
                                     )}
                                   </div>
@@ -542,6 +594,19 @@ const DetailPage: React.FC = () => {
             {trailerKey && (
               <LiquidButton variant="default" onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></LiquidButton>
             )}
+            <LiquidButton
+              variant="default"
+              onClick={handleCreateWatchParty}
+              disabled={isCreatingParty}
+              className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl border border-orange-500/20 hover:border-orange-500/40 text-orange-500 hover:text-white"
+            >
+              <Tv size={20} />
+              <span className="text-sm md:text-xl uppercase italic tracking-tighter">
+                {isCreatingParty 
+                  ? (language === 'ku' ? 'دروست دەکرێت...' : 'CREATING...') 
+                  : (language === 'ku' ? 'ئاهەنگی تەماشا' : 'CO-WATCH')}
+              </span>
+            </LiquidButton>
           </div>
         </div>
       </div>
@@ -563,7 +628,7 @@ const DetailPage: React.FC = () => {
                   {cast.map(person => (
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
                       <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-[var(--border-color)] shadow-2xl relative">
-                        <img src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : 'https://i.imgur.com/4HoT8Yf.png'} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" />
+                        <img src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" />
                       </div>
                       <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-[var(--text-primary)]">{person.name}</p>
                     </div>
@@ -580,6 +645,7 @@ const DetailPage: React.FC = () => {
           </div>
         )}
       </div>
+
     </div>
   );
 };

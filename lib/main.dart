@@ -92,7 +92,7 @@ class _MainShellState extends State<MainShell> {
         child: Column(
           children: [
             const SizedBox(height: 40),
-            Image.network('https://i.imgur.com/DF1UZL3.png', height: 40),
+            Image.network('https://fkurd.vercel.app/flkrd-icon.png', height: 40),
             const SizedBox(height: 40),
             _navItem(Icons.home_filled, "HOME", 0),
             _navItem(Icons.play_circle_outline, "SHORTS", 1),
@@ -201,7 +201,7 @@ class _NeuralPortalState extends State<NeuralPortal> {
     return Row(
       children: [
         const SizedBox(width: 5),
-        ClipOval(child: Image.network('https://i.imgur.com/4HoT8Yf.png', width: 60, height: 60)),
+        ClipOval(child: Image.network('https://fkurd.vercel.app/flkrd-icon.png', width: 60, height: 60)),
         const SizedBox(width: 15),
         Expanded(
           child: Column(

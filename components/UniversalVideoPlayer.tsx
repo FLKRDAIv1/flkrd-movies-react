@@ -20,6 +20,7 @@ interface UniversalVideoPlayerProps {
     season?: number;
     episode?: number;
     title?: string;
+    peerSyncTrigger?: { currentTime: number; paused: boolean; timestamp: number } | null;
 }
 
 declare global {
@@ -118,13 +119,13 @@ const getLanguageFlag = (langCode: string) => {
     return defaultFlag;
 };
 
-const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode, title }) => {
+const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode, title, peerSyncTrigger }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [isHls, setIsHls] = useState(false);
     const [isIframe, setIsIframe] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
@@ -135,6 +136,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [isSearchingSubs, setIsSearchingSubs] = useState(false);
     const [localSubtitleUrl, setLocalSubtitleUrl] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(0);
+    const currentTimeRef = useRef(0);
+    useEffect(() => {
+        currentTimeRef.current = currentTime;
+    }, [currentTime]);
     const [subtitleCues, setSubtitleCues] = useState<{start: number, end: number, text: string}[]>([]);
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
@@ -163,6 +168,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
     // Doblaj & Multi-Language Audio States
     const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
+    const [isScraping, setIsScraping] = useState(false);
+    const [scrapingError, setScrapingError] = useState<string | null>(null);
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
     const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub'>('sub');
     const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
@@ -622,6 +629,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             // console.log("[PLAYER MESSAGE]", payload);
 
             let newTime = undefined;
+            let paused = undefined;
+            let eventName = undefined;
+
+            // Parse playback state / event type
+            const msgEvent = (payload.event || payload.type || payload.method || '').toLowerCase();
+            
+            if (msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play') {
+                paused = false;
+                eventName = 'play';
+            } 
+            else if (msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause') {
+                paused = true;
+                eventName = 'pause';
+            } 
+            else if (msgEvent === 'seek' || msgEvent === 'seeking' || msgEvent === 'seeked' || msgEvent === 'vjs-seek') {
+                eventName = 'seek';
+            }
 
             // Comprehensive postMessage event parser for all embed sources
             if (payload.type === 'timeupdate' || payload.type === 'vjs-timeupdate') {
@@ -648,14 +672,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             else if (payload.value !== undefined) {
                 newTime = payload.value;
             }
+            else if (payload.position !== undefined) {
+                newTime = payload.position;
+            }
+            else if (payload.data?.position !== undefined) {
+                newTime = payload.data.position;
+            }
 
-            if (newTime !== undefined) {
-                const timeAsNum = Number(newTime);
-                if (!isNaN(timeAsNum)) {
-                    setCurrentTime(timeAsNum);
-                    if (onProgressRef.current) {
-                        onProgressRef.current({ currentTime: timeAsNum });
-                    }
+            const timeAsNum = newTime !== undefined ? Number(newTime) : undefined;
+
+            if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
+                setCurrentTime(timeAsNum);
+                if (onProgressRef.current) {
+                    onProgressRef.current({
+                        currentTime: timeAsNum,
+                        paused: paused,
+                        event: eventName
+                    });
+                }
+            } else if (eventName !== undefined) {
+                if (onProgressRef.current) {
+                    onProgressRef.current({
+                        currentTime: currentTimeRef.current,
+                        paused: paused,
+                        event: eventName
+                    });
                 }
             }
         } catch (e) { }
@@ -673,6 +714,153 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     }, []);
 
     useEffect(() => {
+        if (!peerSyncTrigger) return;
+
+        console.log("[PEER SYNC EFFECT] Applying peer sync update in UniversalVideoPlayer:", peerSyncTrigger);
+
+        if (isHls && videoRef.current) {
+            const timeDiff = Math.abs(videoRef.current.currentTime - peerSyncTrigger.currentTime);
+            if (timeDiff > 2) {
+                videoRef.current.currentTime = peerSyncTrigger.currentTime;
+            }
+            if (peerSyncTrigger.paused && !videoRef.current.paused) {
+                videoRef.current.pause();
+            } else if (!peerSyncTrigger.paused && videoRef.current.paused) {
+                videoRef.current.play().catch((err) => {
+                    console.warn("[PEER SYNC EFFECT] Failed to play video on sync:", err);
+                });
+            }
+        } else if (isIframe && iframeRef.current?.contentWindow) {
+            const win = iframeRef.current.contentWindow;
+            const targetTime = peerSyncTrigger.currentTime;
+            const targetPaused = peerSyncTrigger.paused;
+
+            try {
+                // Post standard Player.js / JWPlayer / Video.js postMessage commands to control seek & play/pause
+                win.postMessage(JSON.stringify({ event: 'setCurrentTime', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+
+                win.postMessage(JSON.stringify({ event: targetPaused ? 'pause' : 'play' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: targetPaused ? 'pause' : 'play' }), '*');
+                win.postMessage(JSON.stringify({ method: targetPaused ? 'pause' : 'play' }), '*');
+            } catch (err) {
+                console.warn("[PEER SYNC EFFECT] Error posting message to iframe:", err);
+            }
+        }
+    }, [peerSyncTrigger, isHls, isIframe]);
+
+    // ----------------------------------------------------
+    // TAURI BYPASS SCRAPER FOR LOCAL CINEPRO (FLKRD SERVER 4)
+    // ----------------------------------------------------
+    useEffect(() => {
+        const activeSrc = src;
+        if (!activeSrc) return;
+
+        const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
+        const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
+
+        if (isCinePro && isTauri) {
+            let isMounted = true;
+            setLoading(true);
+            setIsScraping(true);
+            setScrapingError(null);
+
+            const scrapeStream = async () => {
+                try {
+                    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+                    console.log("[TAURI SCRAPER] Initiating Tauri HTTP bypass fetch for:", activeSrc);
+                    
+                    const response = await tauriFetch(activeSrc, {
+                        method: 'GET',
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                            'Referer': 'https://vidlink.pro',
+                            'Accept': 'application/json, text/html, */*'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Server returned HTTP ${response.status}`);
+                    }
+
+                    const contentType = response.headers.get('content-type') || '';
+                    let directUrl = '';
+
+                    if (contentType.includes('application/json')) {
+                        const data = await response.json();
+                        directUrl = data.streamUrl || data.url || data.stream || (data.sources && data.sources[0]?.url);
+                    } else {
+                        const text = await response.text();
+                        
+                        // Parse config JSON if embedded in html script
+                        const jsonMatch = text.match(/const\s+config\s*=\s*({.*?});/s) || text.match(/window\.config\s*=\s*({.*?});/s);
+                        if (jsonMatch) {
+                            try {
+                                const config = JSON.parse(jsonMatch[1]);
+                                directUrl = config.streamUrl || config.url || config.stream;
+                            } catch (e) {}
+                        }
+
+                        if (!directUrl) {
+                            // Find standard .m3u8 HLS URLs
+                            const hlsMatch = text.match(/(https?:\/\/[^\s"'`]+\.m3u8[^\s"'`]*)/i);
+                            if (hlsMatch) {
+                                directUrl = hlsMatch[1];
+                            } else {
+                                // Find relative m3u8 path
+                                const relativeHls = text.match(/["'](\/[^\s"'`]+\.m3u8[^\s"'`]*)["']/i);
+                                if (relativeHls) {
+                                    directUrl = relativeHls[1];
+                                } else {
+                                    // Find standard mp4 links
+                                    const mp4Match = text.match(/(https?:\/\/[^\s"'`]+\.mp4[^\s"'`]*)/i);
+                                    if (mp4Match) {
+                                        directUrl = mp4Match[1];
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (directUrl && isMounted) {
+                        console.log("[TAURI SCRAPER] Successfully resolved direct stream URL:", directUrl);
+                        let cleanUrl = directUrl.replace(/\\/g, '');
+                        if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+                            try {
+                                const origin = new URL(activeSrc).origin;
+                                cleanUrl = origin + (cleanUrl.startsWith('/') ? '' : '/') + cleanUrl;
+                            } catch (e) {}
+                        }
+                        setOverrideSrc(cleanUrl);
+                    } else if (isMounted) {
+                        throw new Error("No direct streaming source could be extracted from CinePro response.");
+                    }
+                } catch (err: any) {
+                    console.error("[TAURI SCRAPER] Scraping failed:", err);
+                    if (isMounted) {
+                        setScrapingError(err.message || 'Scraping failed');
+                    }
+                } finally {
+                    if (isMounted) {
+                        setIsScraping(false);
+                        setLoading(false);
+                    }
+                }
+            };
+
+            scrapeStream();
+            return () => {
+                isMounted = false;
+            };
+        } else {
+            // Reset overrideSrc if switching to a non-CinePro source
+            setOverrideSrc(null);
+        }
+    }, [src]);
+
+    useEffect(() => {
         const activeSrc = overrideSrc || src;
         if (!activeSrc) {
             setLoading(false);
@@ -681,7 +869,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
         if (activeSrc !== lastSrc.current) {
             lastSrc.current = activeSrc;
-            setLoading(true);
+            setLoading(false);
             setHlsError(false);
 
             const isDirect =
@@ -692,8 +880,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 activeSrc.includes('_av1.m3u8') ||
                 activeSrc.includes('_h264.m3u8');
 
+            const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
+            const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
+
             setIsHls(isDirect);
-            setIsIframe(!isDirect);
+
+            // If we are on Tauri and loading CinePro, don't show standard iframe yet
+            if (isCinePro && isTauri && !isDirect) {
+                setIsIframe(false);
+                setLoading(true);
+            } else {
+                setIsIframe(!isDirect);
+            }
 
             // Safety timeout — hide loader after 6s regardless
             if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
@@ -1065,8 +1263,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                                 {sub?.attributes?.language || 'UNKNOWN'}
                                                                             </span>
                                                                             {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
-                                                                                <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(229,9,20,0.5)] uppercase tracking-tighter flex items-center gap-1">
-                                                                                    <Sparkles size={8} /> Verified
+                                                                                <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
+                                                                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
+                                                                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                                                                    </svg>
+                                                                                    Verified
                                                                                 </span>
                                                                             )}
                                                                         </div>
@@ -1427,8 +1628,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     playsInline
                     preload="auto"
                     crossOrigin="anonymous"
-                    onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                    onTimeUpdate={(e) => {
+                        const time = e.currentTarget.currentTime;
+                        setCurrentTime(time);
+                        onProgressRef.current?.({ currentTime: time, paused: e.currentTarget.paused });
+                    }}
                     onPlaying={() => setLoading(false)}
+                    onPlay={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: false, event: 'play' })}
+                    onPause={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: true, event: 'pause' })}
+                    onSeeking={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: e.currentTarget.paused, event: 'seek' })}
                 >
                     {(localSubtitleUrl || subtitleUrl) && (
                         <track 

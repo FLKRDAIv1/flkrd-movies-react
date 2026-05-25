@@ -13,9 +13,9 @@ export interface UpdateCheckResult {
 }
 
 const CURRENT_VERSIONS = {
-  macos: '0.1.0',
-  android: '0.1.0',
-  web: '3.4.1'
+  macos: '5.5.1.25',
+  android: '5.5.1.25',
+  web: '5.5.1.25'
 };
 
 /**

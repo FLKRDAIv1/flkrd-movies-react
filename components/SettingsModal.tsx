@@ -3,7 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Languages, Bell, Check, Palette, Sparkles, Moon, Sun,
   Maximize2, Minimize2, Type, Zap, Info, Monitor, Gauge,
-  ChevronRight, Activity, Cpu, RefreshCw, Download
+  ChevronRight, Activity, Cpu, RefreshCw, Download,
+  Smartphone, Laptop, ArrowUpRight, Apple,
+  BookOpen, Layers, HelpCircle, FileText, ShieldCheck
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -153,6 +155,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [updateResult, setUpdateResult] = useState<UpdateCheckResult | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
+  // Dynamic Platform Detection State
+  type Platform = 'ios' | 'android' | 'macos' | 'windows' | 'web';
+  const [detectedPlatform, setDetectedPlatform] = useState<Platform>('web');
+  const [showAllPlatforms, setShowAllPlatforms] = useState(false);
+
+  useEffect(() => {
+    const getDevicePlatform = (): Platform => {
+      if (typeof window === 'undefined') return 'web';
+      const ua = navigator.userAgent;
+      if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+      if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 0) return 'ios';
+      if (/Android/i.test(ua)) return 'android';
+      if (/Macintosh/i.test(ua)) return 'macos';
+      if (/Windows/i.test(ua)) return 'windows';
+      return 'web';
+    };
+    setDetectedPlatform(getDevicePlatform());
+  }, []);
+
   // Performance monitoring logic
   useEffect(() => {
     const start = Date.now();
@@ -290,7 +311,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   </h2>
                   <div className="flex items-center gap-2 mt-1.5">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" />
-                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">FLKRD CORE 3.0</span>
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">FLKRD CORE v5.5.1.25</span>
                   </div>
                 </div>
               </div>
@@ -642,6 +663,170 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </Card>
               </Section>
 
+              {/* FLKRD Native Ecosystem Downloads Section */}
+              <Section delay={0.45}>
+                <SectionLabel 
+                  icon={
+                    detectedPlatform === 'ios' ? <Apple size={14} /> :
+                    detectedPlatform === 'android' ? <Smartphone size={14} /> :
+                    detectedPlatform === 'macos' ? <Laptop size={14} /> :
+                    detectedPlatform === 'windows' ? <Monitor size={14} /> :
+                    <Download size={14} />
+                  } 
+                  label={language === 'ku' ? 'پاکێجەکانی فڵکرد' : 'FLKRD Native Ecosystem'} 
+                />
+                <Card className="p-6">
+                  <div className="flex flex-col gap-5">
+                    {/* Platform Grid */}
+                    <div className="grid grid-cols-1 gap-5">
+                      {/* iOS WebClip Card */}
+                      {((detectedPlatform === 'ios' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" style={{ boxShadow: detectedPlatform === 'ios' ? `0 0 15px ${accentColor}33` : 'none' }}>
+                                <Apple size={20} className="text-white" />
+                              </div>
+                              <div>
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider">iOS Standalone Edition</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white tracking-wide uppercase">v5.5.1.25</span>
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 tracking-wide uppercase">iOS 15 - 26+</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">WebClip</span>
+                          </div>
+                          <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
+                            Installs a verified premium WebClip profile config. Unlocks full standalone experience, locked 60+ FPS playback speed, and persistent real-time notifications.
+                          </p>
+                          <a
+                            href="/webclip.mobileconfig"
+                            download="webclip.mobileconfig"
+                            className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
+                            style={{ backgroundColor: accentColor }}
+                          >
+                            <Download size={12} strokeWidth={2.5} />
+                            Install iOS WebClip
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Android APK Card */}
+                      {((detectedPlatform === 'android' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" style={{ boxShadow: detectedPlatform === 'android' ? `0 0 15px ${accentColor}33` : 'none' }}>
+                                <Smartphone size={20} className="text-white" />
+                              </div>
+                              <div>
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider">Android Universal Package</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white tracking-wide uppercase">v5.5.1.25</span>
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 tracking-wide uppercase">Universal APK</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">Verified</span>
+                          </div>
+                          <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
+                            Universal Android build signed and production ready. Built-in high-performance rendering pipelines and offline-capable subtitle support.
+                          </p>
+                          <a
+                            href="/app-universal-release-signed.apk"
+                            download="app-universal-release-signed.apk"
+                            className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
+                            style={{ backgroundColor: accentColor }}
+                          >
+                            <Download size={12} strokeWidth={2.5} />
+                            Download Android APK
+                          </a>
+                        </div>
+                      )}
+
+                      {/* macOS DMG Card */}
+                      {((detectedPlatform === 'macos' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" style={{ boxShadow: detectedPlatform === 'macos' ? `0 0 15px ${accentColor}33` : 'none' }}>
+                                <Laptop size={20} className="text-white" />
+                              </div>
+                              <div>
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider">macOS Native App</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white tracking-wide uppercase">v5.5.1.25</span>
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 tracking-wide uppercase">Apple & Intel</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">DMG Bundle</span>
+                          </div>
+                          <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
+                            Native macOS package powered by Tauri. Complete with premium hardware-accelerated video decoding and system-level shortcuts.
+                          </p>
+                          <a
+                            href="/FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
+                            download="FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
+                            className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
+                            style={{ backgroundColor: accentColor }}
+                          >
+                            <Download size={12} strokeWidth={2.5} />
+                            Download macOS DMG
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Windows Coming Soon Card */}
+                      {((detectedPlatform === 'windows' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.01] border border-white/5 opacity-70 select-none">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                                <Monitor size={20} className="text-white opacity-40" />
+                              </div>
+                              <div>
+                                <h4 className="text-[10px] font-black text-white/50 uppercase tracking-wider">Windows Desktop</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white/30 tracking-wide uppercase">v5.5.1.25</span>
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500/70 tracking-wide uppercase">Coming Soon</span>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="text-[7.5px] font-bold text-gray-600 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">Teaser</span>
+                          </div>
+                          <p className="text-[9.5px] text-gray-500 font-medium leading-relaxed">
+                            Windows native app package optimized with custom DirectX rendering support. Undergoing final performance benchmarking.
+                          </p>
+                          <button
+                            disabled
+                            className="w-full py-3.5 rounded-xl text-[9px] font-black text-white/30 bg-white/5 uppercase tracking-widest text-center cursor-not-allowed border border-white/5 flex items-center justify-center gap-2"
+                          >
+                            Coming Soon
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Escape Hatch Button */}
+                    {detectedPlatform !== 'web' && (
+                      <div className="flex justify-center border-t border-white/5 pt-4">
+                        <button
+                          onClick={() => setShowAllPlatforms(!showAllPlatforms)}
+                          className="text-[9px] font-black uppercase text-gray-500 hover:text-white transition-all flex items-center gap-1.5 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/5"
+                        >
+                          {showAllPlatforms 
+                            ? (language === 'ku' ? 'پیشاندانی تەنها وەشانی من' : 'Show only my platform') 
+                            : (language === 'ku' ? 'پیشاندانی هەموو وەشانەکان' : 'Looking for another device? Show all platforms')}
+                          <ArrowUpRight size={10} className="stroke-[2.5]" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </Section>
+
               {/* Accent Color */}
               <Section delay={0.5}>
                 <SectionLabel icon={<Palette size={14} />} label="Neural Theme Core" />
@@ -671,6 +856,74 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
               </Section>
 
+              {/* Resources & Legal Hub Section */}
+              <Section delay={0.55}>
+                <SectionLabel icon={<BookOpen size={14} />} label={language === 'ku' || language === 'badini' ? 'سەرچاوەکان و بەشە یاساییەکان' : 'Resources & Documentation'} />
+                <Card className="p-5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <a 
+                      href="/#/doc?tab=flow" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Layers size={14} style={{ color: accentColor }} />
+                        <span className="text-[9px] font-black uppercase text-white tracking-wider">
+                          {language === 'ku' ? 'نەخشەی ڕێڕەو' : language === 'badini' ? 'نەخشێ ڕێڕەوی' : 'System Flow Map'}
+                        </span>
+                      </div>
+                      <ArrowUpRight size={10} className="text-gray-500" />
+                    </a>
+
+                    <a 
+                      href="/#/doc?tab=tutorials" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <HelpCircle size={14} style={{ color: accentColor }} />
+                        <span className="text-[9px] font-black uppercase text-white tracking-wider">
+                          {language === 'ku' ? 'فێرکارییەکان' : language === 'badini' ? 'فێرکاریێن تەکنیکی' : 'System Tutorials'}
+                        </span>
+                      </div>
+                      <ArrowUpRight size={10} className="text-gray-500" />
+                    </a>
+
+                    <a 
+                      href="/#/doc?tab=terms" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <FileText size={14} style={{ color: accentColor }} />
+                        <span className="text-[9px] font-black uppercase text-white tracking-wider">
+                          {language === 'ku' ? 'مەرجەکان' : language === 'badini' ? 'مەرجێن بکارئینانێ' : 'Terms of Service'}
+                        </span>
+                      </div>
+                      <ArrowUpRight size={10} className="text-gray-500" />
+                    </a>
+
+                    <a 
+                      href="/#/doc?tab=license" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <ShieldCheck size={14} style={{ color: accentColor }} />
+                        <span className="text-[9px] font-black uppercase text-white tracking-wider">
+                          {language === 'ku' ? 'مۆڵەت و DMCA' : language === 'badini' ? 'مۆڵەت و DMCA' : 'Licenses & DMCA'}
+                        </span>
+                      </div>
+                      <ArrowUpRight size={10} className="text-gray-500" />
+                    </a>
+                  </div>
+                </Card>
+              </Section>
+
             </div>
 
             {/* Footer */}
@@ -685,8 +938,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 Synchronize Changes
               </LiquidButton>
               <p className="text-[8px] text-center text-gray-600 font-extrabold uppercase tracking-[0.1em] mt-5">
-                FLKRD Cinematic Engine © 2026 • Verified v3.4.1
+                FLKRD Cinematic Engine © 2026 • Verified v5.5.1.25
               </p>
+              <div className="flex items-center justify-center gap-3 mt-4 text-[7.5px] font-black uppercase tracking-[0.2em] text-gray-500">
+                <a href="/#/doc?tab=terms" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Terms</a>
+                <span>•</span>
+                <a href="/#/doc?tab=privacy" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Privacy</a>
+                <span>•</span>
+                <a href="/#/doc?tab=license" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">DMCA</a>
+                <span>•</span>
+                <a href="/#/doc?tab=flow" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Ecosystem Map</a>
+              </div>
             </div>
 
           </motion.div>
