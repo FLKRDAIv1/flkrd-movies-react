@@ -16,6 +16,7 @@ import { LiquidButton } from './ui/liquid-glass-button';
 import { updateService, UpdateCheckResult } from '../services/updateService';
 import { isTauri } from '../utils/tauriUtils';
 import { tauriService } from '../services/tauriService';
+import { supabase } from '../utils/supabaseClient';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -167,6 +168,35 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   type Platform = 'ios' | 'android' | 'macos' | 'windows' | 'web';
   const [detectedPlatform, setDetectedPlatform] = useState<Platform>('web');
   const [showAllPlatforms, setShowAllPlatforms] = useState(false);
+
+  // Dynamic Download URLs from Supabase Registry
+  const [macDownloadUrl, setMacDownloadUrl] = useState('https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg');
+  const [androidDownloadUrl, setAndroidDownloadUrl] = useState('https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk');
+
+  useEffect(() => {
+    const fetchDownloadUrls = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_updates')
+          .select('platform, download_url');
+        
+        if (error) throw error;
+        
+        if (data) {
+          const mac = data.find(item => item.platform === 'macos');
+          const android = data.find(item => item.platform === 'android');
+          if (mac?.download_url) setMacDownloadUrl(mac.download_url);
+          if (android?.download_url) setAndroidDownloadUrl(android.download_url);
+        }
+      } catch (e) {
+        console.warn('[SETTINGS MODAL] Failed to fetch download URLs from Supabase:', e);
+      }
+    };
+
+    if (isOpen) {
+      fetchDownloadUrls();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const getDevicePlatform = (): Platform => {
@@ -746,10 +776,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             Universal Android build signed and production ready. Built-in high-performance rendering pipelines and native video player support.
                           </p>
                           <a
-                            href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk"
+                            href={androidDownloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => handleDownloadClick(e, "https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk")}
+                            onClick={(e) => handleDownloadClick(e, androidDownloadUrl)}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
@@ -785,10 +815,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             Native macOS package powered by Tauri. Premium hardware-accelerated video, glassmorphic UI, and native macOS window controls.
                           </p>
                           <a
-                            href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
+                            href={macDownloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => handleDownloadClick(e, "https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg")}
+                            onClick={(e) => handleDownloadClick(e, macDownloadUrl)}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
