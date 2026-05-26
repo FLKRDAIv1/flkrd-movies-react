@@ -5,7 +5,7 @@ import {
   Maximize2, Minimize2, Type, Zap, Info, Monitor, Gauge,
   ChevronRight, Activity, Cpu, RefreshCw, Download,
   Smartphone, Laptop, ArrowUpRight, Apple,
-  BookOpen, Layers, HelpCircle, FileText, ShieldCheck
+  BookOpen, Layers, HelpCircle, FileText, ShieldCheck, Copy
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -172,6 +172,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   // Dynamic Download URLs from Supabase Registry
   const [macDownloadUrl, setMacDownloadUrl] = useState('https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg');
   const [androidDownloadUrl, setAndroidDownloadUrl] = useState('https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk');
+
+  // macOS Installation Guide States
+  const [isMacTutorialOpen, setIsMacTutorialOpen] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState(false);
 
   useEffect(() => {
     const fetchDownloadUrls = async () => {
@@ -818,7 +822,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             href={macDownloadUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => handleDownloadClick(e, macDownloadUrl)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setIsMacTutorialOpen(true);
+                            }}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
@@ -1005,6 +1012,145 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         </div>
       )}
     </AnimatePresence>
+    
+    {/* macOS Installation Guide Tutorial Modal */}
+    <AnimatePresence>
+      {isMacTutorialOpen && (
+        <Portal id="macos-tutorial-portal">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            {/* Backdrop with premium glassmorphism blur */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMacTutorialOpen(false)}
+              className="absolute inset-0 bg-black/85 backdrop-blur-[16px] z-0"
+              style={{ pointerEvents: 'auto' }}
+            />
+
+            {/* Modal Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-2xl bg-[#080808]/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden z-10 p-6 md:p-8 flex flex-col gap-6"
+              style={{ pointerEvents: 'auto' }}
+            >
+              {/* Top premium breathing gradient glow bar */}
+              <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: accentColor, boxShadow: `0 0 20px ${accentColor}` }} />
+
+              {/* Title Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                    <Laptop className="text-white animate-pulse" size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-[11px] md:text-xs font-black text-white uppercase tracking-wider">
+                      {language === 'ku' ? 'ڕێنمایی دامەزراندنی فەرمی مەکینتۆش' : 'macOS Safe Installation Guide'}
+                    </h3>
+                    <p className="text-[8px] text-gray-500 font-extrabold uppercase tracking-widest mt-0.5">
+                      Bypass macOS Gatekeeper Warning Safely
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMacTutorialOpen(false)}
+                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center border border-white/5 text-gray-400 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Embedded Vimeo Player */}
+              <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                <iframe 
+                  src="https://player.vimeo.com/video/1195564555?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&amp;autoplay=1&amp;loop=1" 
+                  frameBorder="0" 
+                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                  referrerPolicy="strict-origin-when-cross-origin" 
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                  title="toturials for install fkurd movies on mac safe ly"
+                />
+              </div>
+
+              {/* Bilingual Descriptive Context */}
+              <div className="flex flex-col gap-3 text-right" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+                <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
+                  {language === 'ku' ? 'چۆنیەتی کارپێکردنی ئەپەکە بە سەلامەتی:' : 'How to open the app safely:'}
+                </h4>
+                <p className="text-[9.5px] text-gray-400 font-semibold leading-relaxed">
+                  {language === 'ku' 
+                    ? 'ئەم ئەپە بە تەواوی سەلامەتە بەڵام بەهۆی نەبوونی باجی ساڵانەی ئەپڵ، مەک کەرەنتینەی دەکات. تکایە بۆ یەکەمجار لە بری دوو کلیک، بە کلیکی ڕاست (Right Click ➡️ Open) ئەپەکە بکەرەوە. ئەگەر پەیامی تێکچوون (Damaged) هات، فەرمانی خوارەوە کۆپی بکە و لەناو ئەپی Terminalـی مەکەکەتدا جێبەجێی بکە:' 
+                    : 'This app is 100% safe. To bypass macOS unidentified developer security block, right-click the app and choose Open. If the "Damaged" security error appears, copy and run the terminal command below inside the Terminal app:'
+                  }
+                </p>
+              </div>
+
+              {/* Copyable Terminal Command Widget */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">
+                  Bypass Command (Terminal):
+                </span>
+                <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-3 relative group hover:border-white/10 transition-all">
+                  <code className="text-[10px] font-mono text-gray-300 select-all tracking-tight break-all">
+                    xattr -cr /Applications/flkrd-movies.app
+                  </code>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText('xattr -cr /Applications/flkrd-movies.app');
+                        setCopiedCommand(true);
+                        setTimeout(() => setCopiedCommand(false), 2000);
+                        addNotification({
+                          type: 'success',
+                          title: 'Command Copied',
+                          message: 'Terminal bypass command successfully copied to clipboard.'
+                        });
+                      } catch (e) {
+                        console.error('Clipboard copy failed:', e);
+                      }
+                    }}
+                    className="flex-shrink-0 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-md active:scale-95"
+                    style={{ backgroundColor: copiedCommand ? '#34c759' : accentColor }}
+                  >
+                    {copiedCommand ? <Check size={10} className="stroke-[3]" /> : <Copy size={10} className="stroke-[3]" />}
+                    {copiedCommand ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Responsive Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                <button
+                  onClick={() => setIsMacTutorialOpen(false)}
+                  className="w-full py-4 rounded-[1.5rem] text-[9px] font-black text-gray-400 bg-white/5 border border-white/5 uppercase tracking-widest text-center hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                >
+                  Dismiss Guide
+                </button>
+                <a
+                  href={macDownloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    setIsMacTutorialOpen(false);
+                    handleDownloadClick(e, macDownloadUrl);
+                  }}
+                  className="w-full py-4 rounded-[1.5rem] text-[9px] font-black text-white uppercase tracking-[0.2em] text-center transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  <Download size={12} strokeWidth={2.5} />
+                  Download DMG Anyway
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        </Portal>
+      )}
+    </AnimatePresence>
+
     <EnableNotificationsModal 
       isOpen={isEnableNotificationsModalOpen} 
       onClose={() => setIsEnableNotificationsModalOpen(false)} 
