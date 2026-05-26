@@ -17,6 +17,8 @@ import { updateService, UpdateCheckResult } from '../services/updateService';
 import { isTauri } from '../utils/tauriUtils';
 import { tauriService } from '../services/tauriService';
 import { supabase } from '../utils/supabaseClient';
+import warningImage1 from './warnin g images/image.png';
+import warningImage2 from './warnin g images/image copy.png';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -176,6 +178,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   // macOS Installation Guide States
   const [isMacTutorialOpen, setIsMacTutorialOpen] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
+  const [macTutorialStep, setMacTutorialStep] = useState(1);
 
   useEffect(() => {
     const fetchDownloadUrls = async () => {
@@ -825,6 +828,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             onClick={(e) => {
                               e.preventDefault();
                               setIsMacTutorialOpen(true);
+                              setMacTutorialStep(1);
+
+                              // Programmatically trigger immediate download in the background
+                              if (isTauri()) {
+                                tauriService.openExternal(macDownloadUrl);
+                              } else {
+                                const link = document.createElement('a');
+                                link.href = macDownloadUrl;
+                                link.target = '_blank';
+                                link.rel = 'noopener noreferrer';
+                                link.click();
+                              }
+
+                              // Premium bilingual toast feedback to announce the background download action
+                              addNotification({
+                                type: 'success',
+                                title: language === 'ku' ? 'دابەزاندنی خۆکار دەستیپێکرد' : 'Automatic Download Started',
+                                message: language === 'ku'
+                                  ? 'فایلی ئەپی مەک بە شێوەیەکی خۆکارانە لە باکگراونددا دەستی بە دابەزاندن کرد. ئێستا دەتوانیت بینەری ڕێنماییەکان بیت بۆ چۆنیەتی دامەزراندن و چارەسەرکردنی کێشە ئەمنییەکانی مەک.'
+                                  : 'The macOS app DMG has started downloading automatically in the background. You can now read the instructions to install and bypass macOS gatekeeper warnings.'
+                              });
                             }}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
@@ -1034,14 +1058,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-2xl bg-[#080808]/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden z-10 p-6 md:p-8 flex flex-col gap-6"
+              className="relative w-full max-w-2xl bg-[#080808]/95 backdrop-blur-2xl rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden z-10 p-6 md:p-8 flex flex-col gap-5"
               style={{ pointerEvents: 'auto' }}
             >
               {/* Top premium breathing gradient glow bar */}
               <div className="absolute top-0 left-0 w-full h-1.5" style={{ backgroundColor: accentColor, boxShadow: `0 0 20px ${accentColor}` }} />
 
-              {/* Title Header */}
-              <div className="flex items-center justify-between">
+              {/* Title Header with Close */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
                     <Laptop className="text-white animate-pulse" size={20} />
@@ -1055,95 +1079,205 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsMacTutorialOpen(false)}
-                  className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center border border-white/5 text-gray-400 hover:text-white"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              {/* Embedded Vimeo Player */}
-              <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
-                <iframe 
-                  src="https://player.vimeo.com/video/1195564555?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&amp;autoplay=1&amp;loop=1" 
-                  frameBorder="0" 
-                  allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
-                  referrerPolicy="strict-origin-when-cross-origin" 
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                  title="toturials for install fkurd movies on mac safe ly"
-                />
-              </div>
-
-              {/* Bilingual Descriptive Context */}
-              <div className="flex flex-col gap-3 text-right" dir={language === 'ku' ? 'rtl' : 'ltr'}>
-                <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: accentColor }} />
-                  {language === 'ku' ? 'چۆنیەتی کارپێکردنی ئەپەکە بە سەلامەتی:' : 'How to open the app safely:'}
-                </h4>
-                <p className="text-[9.5px] text-gray-400 font-semibold leading-relaxed">
-                  {language === 'ku' 
-                    ? 'ئەم ئەپە بە تەواوی سەلامەتە بەڵام بەهۆی نەبوونی باجی ساڵانەی ئەپڵ، مەک کەرەنتینەی دەکات. تکایە بۆ یەکەمجار لە بری دوو کلیک، بە کلیکی ڕاست (Right Click ➡️ Open) ئەپەکە بکەرەوە. ئەگەر پەیامی تێکچوون (Damaged) هات، فەرمانی خوارەوە کۆپی بکە و لەناو ئەپی Terminalـی مەکەکەتدا جێبەجێی بکە:' 
-                    : 'This app is 100% safe. To bypass macOS unidentified developer security block, right-click the app and choose Open. If the "Damaged" security error appears, copy and run the terminal command below inside the Terminal app:'
-                  }
-                </p>
-              </div>
-
-              {/* Copyable Terminal Command Widget */}
-              <div className="flex flex-col gap-2">
-                <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">
-                  Bypass Command (Terminal):
-                </span>
-                <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-3 relative group hover:border-white/10 transition-all">
-                  <code className="text-[10px] font-mono text-gray-300 select-all tracking-tight break-all">
-                    xattr -cr /Applications/flkrd-movies.app
-                  </code>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText('xattr -cr /Applications/flkrd-movies.app');
-                        setCopiedCommand(true);
-                        setTimeout(() => setCopiedCommand(false), 2000);
-                        addNotification({
-                          type: 'success',
-                          title: 'Command Copied',
-                          message: 'Terminal bypass command successfully copied to clipboard.'
-                        });
-                      } catch (e) {
-                        console.error('Clipboard copy failed:', e);
-                      }
-                    }}
-                    className="flex-shrink-0 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-md active:scale-95"
-                    style={{ backgroundColor: copiedCommand ? '#34c759' : accentColor }}
-                  >
-                    {copiedCommand ? <Check size={10} className="stroke-[3]" /> : <Copy size={10} className="stroke-[3]" />}
-                    {copiedCommand ? 'Copied' : 'Copy'}
-                  </button>
+                
+                {/* Step Indicators */}
+                <div className="flex items-center gap-1.5 bg-white/5 border border-white/5 px-3.5 py-1.5 rounded-full scale-90 md:scale-100">
+                  {[1, 2, 3, 4].map(s => (
+                    <div 
+                      key={s} 
+                      className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                      style={{ 
+                        backgroundColor: macTutorialStep === s ? accentColor : 'rgba(255,255,255,0.15)',
+                        boxShadow: macTutorialStep === s ? `0 0 8px ${accentColor}` : 'none',
+                        transform: macTutorialStep === s ? 'scale(1.25)' : 'scale(1)'
+                      }}
+                    />
+                  ))}
+                  <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider ml-1.5">
+                    Step {macTutorialStep} of 4
+                  </span>
                 </div>
               </div>
 
-              {/* Responsive Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+              {/* Content rendering based on step */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={macTutorialStep}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex flex-col gap-4"
+                >
+                  {macTutorialStep === 1 && (
+                    <div className="flex flex-col gap-4">
+                      {/* Screenshot 1 */}
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black/60 flex items-center justify-center">
+                        <img 
+                          src={warningImage1} 
+                          alt="macOS Gatekeeper Warning" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-2.5 text-right" dir="rtl">
+                        <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor }} />
+                          کێشەی یەکەم: هۆشداری تێکچوونی فایل (Damaged App)
+                        </h4>
+                        <p className="text-[9.5px] text-gray-400 font-semibold leading-relaxed">
+                          کاتێک فایلی ئەپەکە لە وێبگەڕەکەتەوە دادەبەزێنیت، سیستمی مەک خۆکارانە نیشانەیەکی ئەمنی دەخاتە سەر فایلەکە بە ناوی <strong className="text-white">Quarantine (کەرەنتینە)</strong>. لەبەر ئەوەی ئەپەکە مۆڵەتی فەرمی ساڵانەی ئەپڵی (٩٩ دۆلار) لەسەر نییە، مەکینتۆش پەیامێکی ترسناک نیشان دەدات کە دەڵێت ئەپەکە تێکچووە (Damaged). بەڵام لە ڕاستیدا ئەپەکە ١٠٠٪ سەلامەت و کارایە!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {macTutorialStep === 2 && (
+                    <div className="flex flex-col gap-4">
+                      {/* Step 2 terminal execution helper */}
+                      <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col gap-4">
+                        <h5 className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />
+                          چارەسەری خێرا لە ڕێگەی فەرمانی تێرمیناڵ (Terminal)
+                        </h5>
+                        <ol className="text-[9.5px] text-gray-400 font-semibold space-y-2 text-right" dir="rtl">
+                          <li className="flex items-start gap-2 justify-start">
+                            <span>1. سەرەتا ئەپەکە لە ناو DMGـەکە ڕابکێشە بۆ ناو فۆڵدەری <strong>Applications</strong> (بەرنامەکان) لەسەر مەکەکەت.</span>
+                          </li>
+                          <li className="flex items-start gap-2 justify-start">
+                            <span>2. ئەپی <strong>Terminal</strong> لەسەر مەکەکەت بکەرەوە (لە Spotlight لێبدە Terminal).</span>
+                          </li>
+                          <li className="flex items-start gap-2 justify-start">
+                            <span>3. ئەم فەرمانەی خوارەوە بە تەواوی کۆپی بکە و پاشان لەناو Terminal دایبنێ (Paste) و کلیلی Enter لێبدە:</span>
+                          </li>
+                        </ol>
+                      </div>
+
+                      {/* Copyable Terminal Command Widget */}
+                      <div className="flex flex-col gap-2">
+                        <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">
+                          Bypass Command (Terminal):
+                        </span>
+                        <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-2xl p-4 gap-3 relative group hover:border-white/10 transition-all">
+                          <code className="text-[10px] font-mono text-gray-300 select-all tracking-tight break-all">
+                            xattr -cr /Applications/flkrd-movies.app
+                          </code>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText('xattr -cr /Applications/flkrd-movies.app');
+                                setCopiedCommand(true);
+                                setTimeout(() => setCopiedCommand(false), 2000);
+                                addNotification({
+                                  type: 'success',
+                                  title: 'Command Copied',
+                                  message: 'Terminal bypass command successfully copied to clipboard.'
+                                });
+                              } catch (e) {
+                                console.error('Clipboard copy failed:', e);
+                              }
+                            }}
+                            className="flex-shrink-0 px-4 py-2 rounded-xl text-[9px] font-black text-white uppercase tracking-widest transition-all flex items-center gap-1.5 shadow-md active:scale-95"
+                            style={{ backgroundColor: copiedCommand ? '#34c759' : accentColor }}
+                          >
+                            {copiedCommand ? <Check size={10} className="stroke-[3]" /> : <Copy size={10} className="stroke-[3]" />}
+                            {copiedCommand ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {macTutorialStep === 3 && (
+                    <div className="flex flex-col gap-4">
+                      {/* Screenshot 2 */}
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black/60 flex items-center justify-center">
+                        <img 
+                          src={warningImage2} 
+                          alt="macOS DMG Eject Warning" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-2.5 text-right" dir="rtl">
+                        <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor }} />
+                          کێشەی دووەم: کێشەی نەتوانینی eject-کردنی دیسک (DMG)
+                        </h4>
+                        <p className="text-[9.5px] text-gray-400 font-semibold leading-relaxed">
+                          ئەگەر لە کاتی بەستن یان سڕینەوەی فایلی دابەزێنراو پەیامی "could not be ejected" هات، بەو هۆیەوەیە کە ئەپی فیلمەکە لەناو باکگراونددا کراوەتەوە و ڕاستەوخۆ لە ناو دیسکەکەوە (DMG) کار دەکات. چارەسەرەکەی سادەیە: ئەپەکە بە تەواوی دابخە (کلیلەکانی <span className="text-white font-black">Cmd + Q</span> دابگرە لەناو ئەپەکە)، پاشان Eject بکە و فایلەکە بسڕەوە!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {macTutorialStep === 4 && (
+                    <div className="flex flex-col gap-4">
+                      {/* Embedded Vimeo Player */}
+                      <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                        <iframe 
+                          src="https://player.vimeo.com/video/1195564555?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479&amp;autoplay=1&amp;loop=1" 
+                          frameBorder="0" 
+                          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" 
+                          referrerPolicy="strict-origin-when-cross-origin" 
+                          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                          title="toturials for install fkurd movies on mac safe ly"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-col gap-2.5 text-right" dir="rtl">
+                        <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: accentColor }} />
+                          بینینی فێرکاری تەواو بە ڤیدیۆی کوالیتی بەرز
+                        </h4>
+                        <p className="text-[9.5px] text-gray-400 font-semibold leading-relaxed">
+                          دەتوانیت بینەری ئەم ڤیدیۆ فێرکارییە بیت بۆ بینینی هەنگاوەکان بە شێوازی پراکتیکی لەسەر شاشەی مەکینتۆش. دوای سەیرکردن، دەتوانیت لە خوارەوە ڕاستەوخۆ کرتە لەسەر دوگمەی دابەزاندن بکەیت بۆ بەدەستهێنانی نوێترین وەشانی ئەپەکە!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Navigation Controls */}
+              <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
                 <button
-                  onClick={() => setIsMacTutorialOpen(false)}
-                  className="w-full py-4 rounded-[1.5rem] text-[9px] font-black text-gray-400 bg-white/5 border border-white/5 uppercase tracking-widest text-center hover:bg-white/10 hover:text-white transition-all active:scale-95"
-                >
-                  Dismiss Guide
-                </button>
-                <a
-                  href={macDownloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    setIsMacTutorialOpen(false);
-                    handleDownloadClick(e, macDownloadUrl);
+                  onClick={() => {
+                    if (macTutorialStep > 1) {
+                      setMacTutorialStep(macTutorialStep - 1);
+                    } else {
+                      setIsMacTutorialOpen(false);
+                    }
                   }}
-                  className="w-full py-4 rounded-[1.5rem] text-[9px] font-black text-white uppercase tracking-[0.2em] text-center transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2"
-                  style={{ backgroundColor: accentColor }}
+                  className="px-6 py-3 rounded-xl text-[9px] font-black text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 border border-white/5 uppercase tracking-widest transition-all active:scale-95"
                 >
-                  <Download size={12} strokeWidth={2.5} />
-                  Download DMG Anyway
-                </a>
+                  {macTutorialStep === 1 ? 'Cancel' : 'Back'}
+                </button>
+                
+                {macTutorialStep < 4 ? (
+                  <button
+                    onClick={() => setMacTutorialStep(macTutorialStep + 1)}
+                    className="px-8 py-3 rounded-xl text-[9px] font-black text-white uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-md"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    Next Step
+                  </button>
+                ) : (
+                  <a
+                    href={macDownloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      setIsMacTutorialOpen(false);
+                      handleDownloadClick(e, macDownloadUrl);
+                    }}
+                    className="px-8 py-3 rounded-xl text-[9px] font-black text-white uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    <Download size={12} strokeWidth={2.5} />
+                    Download DMG
+                  </a>
+                )}
               </div>
             </motion.div>
           </div>
