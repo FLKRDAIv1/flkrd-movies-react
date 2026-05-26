@@ -149,8 +149,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [kuCCNotificationVisible, setKuCCNotificationVisible] = useState(true);
 
     const setAvailableSubsWithVirtual = useCallback((newSubs: SubtitleResult[]) => {
+        const safeSubs = Array.isArray(newSubs) ? newSubs : [];
         if (!subtitleUrl) {
-            setAvailableSubs(newSubs);
+            setAvailableSubs(safeSubs);
             return;
         }
         const virtualSub: SubtitleResult = {
@@ -162,7 +163,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 file_id: 0
             }
         };
-        const filtered = newSubs.filter(s => s.id !== 'prop-kurdish-auto' as any && s.attributes.url !== subtitleUrl);
+        const filtered = safeSubs.filter(s => s && s.id !== 'prop-kurdish-auto' as any && s.attributes && s.attributes.url !== subtitleUrl);
         setAvailableSubs([virtualSub, ...filtered]);
     }, [subtitleUrl]);
 
@@ -410,8 +411,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             if (!imdbId || !contentType) return;
             try {
                 const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
-                if (results && results.length > 0) {
-                    const foundKu = results.find(sub => {
+                const safeResults = Array.isArray(results) ? results : [];
+                if (safeResults.length > 0) {
+                    const foundKu = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
                         return lang === 'ku' || lang === 'ckb' || lang === 'kur';
                     });
@@ -434,8 +436,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 } else {
                                     setKuCCNotificationVisible(true);
                                 }
-                            } catch (err) {
-                                console.error("[UNIVERSAL-PLAYER] Background CC auto-apply failed:", err);
+                            } catch (err: any) {
+                                console.warn("[UNIVERSAL-PLAYER] Background CC auto-apply failed:", err?.message || err);
                                 setKuCCNotificationVisible(true);
                             }
                         } else {
@@ -444,9 +446,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         }
                     }
                 }
-                setAvailableSubsWithVirtual(results);
-            } catch (e) {
-                console.error("[UNIVERSAL-PLAYER] Background Kurdish CC search failed:", e);
+                setAvailableSubsWithVirtual(safeResults);
+            } catch (e: any) {
+                console.warn("[UNIVERSAL-PLAYER] Background Kurdish CC search failed gracefully:", e?.message || e);
+                setAvailableSubsWithVirtual([]);
             }
         };
 
@@ -534,8 +537,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 setLocalSubtitleUrl(blobUrl);
                 setKuCCNotificationVisible(false);
             }
-        } catch (e) {
-            console.error("[UNIVERSAL-PLAYER] Auto Kurdish CC download failed:", e);
+        } catch (e: any) {
+            console.warn("[UNIVERSAL-PLAYER] Auto Kurdish CC download failed gracefully:", e?.message || e);
         } finally {
             setIsDownloadingKu(false);
         }
@@ -1061,10 +1064,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-2">
                         <button 
                             onClick={() => {
+                                if (availableSubs.length === 0) return;
                                 setShowSubSettings(!showSubSettings);
-                                if (!showSubSettings && availableSubs.length === 0) handleSearchAllSubs();
+                                if (!showSubSettings) handleSearchAllSubs();
                             }}
-                            className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white hover:bg-white/20 transition-all shadow-2xl"
+                            disabled={availableSubs.length === 0}
+                            className={`p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl ${
+                                availableSubs.length === 0 
+                                ? 'opacity-40 cursor-not-allowed text-gray-500' 
+                                : 'hover:bg-white/20 hover:scale-105 active:scale-95'
+                            }`}
+                            title={availableSubs.length === 0 ? (language === 'ku' ? 'ژێرنووس بەردەست نییە' : 'No Subtitles Available') : (language === 'ku' ? 'ژێرنووس' : 'Subtitles')}
                         >
                             <Subtitles size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
                         </button>

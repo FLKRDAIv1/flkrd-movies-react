@@ -268,13 +268,18 @@ html.console-mode-active .web-only {
    ════════════════════════════════════════════════ */
 
 .is-tauri .tauri-only-pt {
-  padding-top: 2.5rem !important; /* Matches TitleBar height (10) */
+  padding-top: 2.5rem !important; /* Matches TitleBar height (h-10 = 40px) */
 }
 
-/* Ensure nothing covers the title bar controls */
-.is-tauri #desktop-title-bar-portal {
-  position: relative;
-  z-index: 9999;
+/* Push header below the native title bar in the Tauri desktop app */
+.is-tauri .global-header {
+  top: 2.5rem !important; /* h-10 = 40px, below the DesktopTitleBar */
+  z-index: 9998 !important; /* below DesktopTitleBar z-[9999] but above page content */
+}
+
+/* Ensure the DesktopTitleBar is always on top */
+.is-tauri [data-tauri-drag-region] {
+  z-index: 9999 !important;
 }
 
 /* Fix for transparent window backgrounds */
@@ -329,7 +334,7 @@ body.movie-player-active [id*="nav-portal"] {
 }
 
 /* ── Premium Hardware Composition & CSS Containment Layer ── */
-.sidebar-container, .movie-grid-card, .global-sidebar, .global-header {
+.sidebar-container, .movie-grid-card, .global-sidebar {
   contain: layout paint style; /* Isolates layout changes */
   will-change: transform, opacity; /* Hard-allocates GPU resources */
 }

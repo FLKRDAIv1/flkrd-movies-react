@@ -688,7 +688,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 <Apple size={20} className="text-white" />
                               </div>
                               <div>
-                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider">iOS Standalone Edition</h4>
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-wider">FLKRD Movies .webclip</h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white tracking-wide uppercase">v5.5.1.25</span>
                                   <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-green-500/10 text-green-500 tracking-wide uppercase">iOS 15 - 26+</span>
@@ -702,19 +702,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           </p>
                           <a
                             href="/webclip.mobileconfig"
-                            download="webclip.mobileconfig"
+                            download="FLKRD Movies .webclip"
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
                             <Download size={12} strokeWidth={2.5} />
-                            Install iOS WebClip
+                            Install FLKRD Movies WebClip
                           </a>
                         </div>
                       )}
 
                       {/* Android APK Card */}
                       {((detectedPlatform === 'android' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
-                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all relative overflow-hidden">
+                          {/* NEW Badge */}
+                          <div className="absolute top-3 right-3 z-10">
+                            <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 0 12px ${accentColor}66` }}>NEW</span>
+                          </div>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" style={{ boxShadow: detectedPlatform === 'android' ? `0 0 15px ${accentColor}33` : 'none' }}>
@@ -731,11 +735,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">Verified</span>
                           </div>
                           <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
-                            Universal Android build signed and production ready. Built-in high-performance rendering pipelines and offline-capable subtitle support.
+                            Universal Android build signed and production ready. Built-in high-performance rendering pipelines and native video player support.
                           </p>
                           <a
-                            href="/app-universal-release-signed.apk"
-                            download="app-universal-release-signed.apk"
+                            href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk"
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
@@ -747,7 +750,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
                       {/* macOS DMG Card */}
                       {((detectedPlatform === 'macos' && !showAllPlatforms) || detectedPlatform === 'web' || showAllPlatforms) && (
-                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all">
+                        <div className="flex flex-col gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all relative overflow-hidden">
+                          {/* NEW Badge */}
+                          <div className="absolute top-3 right-3 z-10">
+                            <span className="text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest" style={{ backgroundColor: accentColor, color: '#fff', boxShadow: `0 0 12px ${accentColor}66` }}>NEW</span>
+                          </div>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10" style={{ boxShadow: detectedPlatform === 'macos' ? `0 0 15px ${accentColor}33` : 'none' }}>
@@ -757,18 +764,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 <h4 className="text-[10px] font-black text-white uppercase tracking-wider">macOS Native App</h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                   <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-white/10 text-white tracking-wide uppercase">v5.5.1.25</span>
-                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 tracking-wide uppercase">Apple & Intel</span>
+                                  <span className="text-[7.5px] font-extrabold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 tracking-wide uppercase">Apple Silicon & Intel</span>
                                 </div>
                               </div>
                             </div>
                             <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-md">DMG Bundle</span>
                           </div>
                           <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
-                            Native macOS package powered by Tauri. Complete with premium hardware-accelerated video decoding and system-level shortcuts.
+                            Native macOS package powered by Tauri. Premium hardware-accelerated video, glassmorphic UI, and native macOS window controls.
                           </p>
                           <a
-                            href="/FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
-                            download="FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
+                            href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >

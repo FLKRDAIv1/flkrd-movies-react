@@ -49,8 +49,26 @@ const filterContent = (data: any, language: 'en' | 'ku' | 'badini'): any => {
 export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  // 1. Instant Memory Access
+  // 1. Instant Memory Access + Purely In-Memory SWR (Stale-While-Revalidate)
   if (sessionCache.has(cacheKey)) {
+    // Await the banned list loading so we can instantly and accurately filter out banned IDs
+    await bannedService.fetchBannedList();
+
+    // Silently revalidate in the background
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        if (response && response.ok) {
+          const rawData = await response.json();
+          const result = rawData.results || rawData;
+          sessionCache.set(cacheKey, result);
+        }
+      } catch (e) {
+        console.warn("[TMDB SWR] Silent revalidation failed:", e);
+      }
+    })();
+
+    // Instantly return the stale content from memory
     return filterContent(sessionCache.get(cacheKey), language);
   }
 
@@ -61,35 +79,18 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
 
   const fetchPromise = (async () => {
     try {
-      // 3. Persistent Disk Access
-      const { db } = await import('../utils/db');
-      const persistentData = await db.getCache(cacheKey);
-      
-      if (persistentData) {
-        sessionCache.set(cacheKey, persistentData);
-        // Trigger background revalidation for next visit
-        fetch(`${API_BASE_URL}${endpoint}`).then(async res => {
-          if (res.ok) {
-            const fresh = await res.json();
-            const result = fresh.results || fresh;
-            sessionCache.set(cacheKey, result);
-            db.setCache(cacheKey, result);
-          }
-        }).catch(() => {});
-        
-        return filterContent(persistentData, language);
-      }
+      // 3. Network Fallback - Fetch TMDB data and Supabase blocked IDs simultaneously
+      const [response, _bannedList] = await Promise.all([
+        fetch(`${API_BASE_URL}${endpoint}`),
+        bannedService.fetchBannedList()
+      ]);
 
-      // 4. Network Fallback
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
       if (!response || !response.ok) return null;
       
       const rawData = await response.json();
       const result = rawData.results || rawData;
       
       sessionCache.set(cacheKey, result);
-      db.setCache(cacheKey, result);
-      
       return filterContent(result, language);
     } catch (error) {
       return null;
@@ -111,9 +112,26 @@ export interface PaginatedResponse {
 export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku' | 'badini'): Promise<PaginatedResponse | null> => {
   const cacheKey = `tmdb_pag_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  // 1. Memory Check
+  // 1. Memory Check + Purely In-Memory SWR
   if (sessionCache.has(cacheKey)) {
     const data = sessionCache.get(cacheKey);
+
+    // Await the banned list loading so we can instantly and accurately filter out banned IDs
+    await bannedService.fetchBannedList();
+
+    // Background revalidation
+    (async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        if (response && response.ok) {
+          const fresh = await response.json();
+          sessionCache.set(cacheKey, fresh);
+        }
+      } catch (e) {
+        console.warn("[TMDB SWR] Silent revalidation failed:", e);
+      }
+    })();
+
     return {
       results: filterContent(data.results, language),
       page: data.page,
@@ -128,35 +146,16 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
 
   const fetchPromise = (async () => {
     try {
-      // 3. Disk Check
-      const { db } = await import('../utils/db');
-      const persistentData = await db.getCache(cacheKey);
-      
-      if (persistentData) {
-        sessionCache.set(cacheKey, persistentData);
-        // Background Refresh
-        fetch(`${API_BASE_URL}${endpoint}`).then(async res => {
-            if (res.ok) {
-                const fresh = await res.json();
-                sessionCache.set(cacheKey, fresh);
-                db.setCache(cacheKey, fresh);
-            }
-        }).catch(() => {});
-        
-        return {
-          results: filterContent(persistentData.results, language),
-          page: persistentData.page,
-          total_pages: persistentData.total_pages
-        };
-      }
+      // 3. Network Fetch - Fetch TMDB data and Supabase blocked IDs simultaneously
+      const [response, _bannedList] = await Promise.all([
+        fetch(`${API_BASE_URL}${endpoint}`),
+        bannedService.fetchBannedList()
+      ]);
 
-      // 4. Network
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
       if (!response || !response.ok) return null;
       
       const data = await response.json();
       sessionCache.set(cacheKey, data);
-      db.setCache(cacheKey, data);
 
       return {
         results: filterContent(data.results, language),

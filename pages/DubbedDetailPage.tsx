@@ -226,7 +226,10 @@ const DubbedDetailPage: React.FC = () => {
     };
 
     loadContent();
-    window.scrollTo(0, 0);
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'instant' });
+    }
 
     return () => { isMounted = false; };
 }, [id, language]);
@@ -294,7 +297,7 @@ const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.
     const isReady = !!(embedUrl || dubbedData || content);
 
     return (
-        <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-32 transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+        <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
             <AnimatePresence mode="wait">
                 {!isReady && (
                     <motion.div 

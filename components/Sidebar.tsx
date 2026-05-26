@@ -176,7 +176,7 @@ const Sidebar: React.FC = () => {
           </motion.div>
         </div>
 
-        <nav className="flex-grow flex flex-col space-y-1.5 mt-4 overflow-y-auto scrollbar-hide py-4">
+        <nav className="flex-grow flex flex-col space-y-3.5 mt-4 overflow-y-auto scrollbar-hide py-4">
           <NavItem to="/" icon={<Home size={20} />} text={t('home')} location={location} isCollapsed={isCollapsed} />
           <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday')} location={location} isCollapsed={isCollapsed} />
           <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows')} location={location} isCollapsed={isCollapsed} />

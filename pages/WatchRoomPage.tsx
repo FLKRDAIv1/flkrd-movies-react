@@ -187,6 +187,34 @@ export default function WatchRoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [roomFullError, setRoomFullError] = useState(false);
 
+  const [season, setSeason] = useState<number | undefined>(() => {
+    const t = location.state?.ticket;
+    if (t && String(t.movie_id).startsWith('tv_')) {
+      const cleanId = String(t.movie_id).replace('tv_', '');
+      if (cleanId.includes('_s_')) {
+        return parseInt(cleanId.split('_s_')[1].split('_e_')[0]) || 1;
+      }
+      if (cleanId.includes('_')) {
+        return parseInt(cleanId.split('_')[1]) || 1;
+      }
+    }
+    return undefined;
+  });
+
+  const [episode, setEpisode] = useState<number | undefined>(() => {
+    const t = location.state?.ticket;
+    if (t && String(t.movie_id).startsWith('tv_')) {
+      const cleanId = String(t.movie_id).replace('tv_', '');
+      if (cleanId.includes('_s_')) {
+        return parseInt(cleanId.split('_s_')[1].split('_e_')[1]) || 1;
+      }
+      if (cleanId.includes('_')) {
+        return parseInt(cleanId.split('_')[2]) || 1;
+      }
+    }
+    return undefined;
+  });
+
   // Guest PIN entry states
   const [pinVerified, setPinVerified] = useState(false);
   const [pinInputs, setPinInputs] = useState(['', '', '', '']);
@@ -225,7 +253,15 @@ export default function WatchRoomPage() {
 
   // Helper: derive back-route from a ticket's movie_id
   const getBackRoute = (movieId: string) => {
-    if (movieId.startsWith('tv_')) return `/details/tv/${movieId.replace('tv_', '')}`;
+    if (movieId.startsWith('tv_')) {
+      let cleanId = movieId.replace('tv_', '');
+      if (cleanId.includes('_s_')) {
+        cleanId = cleanId.split('_s_')[0];
+      } else if (cleanId.includes('_')) {
+        cleanId = cleanId.split('_')[0];
+      }
+      return `/details/tv/${cleanId}`;
+    }
     if (movieId.startsWith('custom_')) return `/dubbed-details/${movieId}`;
     return `/details/movie/${movieId}`;
   };
@@ -268,13 +304,29 @@ export default function WatchRoomPage() {
           }
         }
 
-        // Fetch Movie Details — handle tv_ and custom_ prefixed IDs
         const rawMovieId = String(ticketData.movie_id);
         let movieData: any = null;
 
         if (rawMovieId.startsWith('tv_')) {
           // TV Show: fetch /tv/{id}
-          const cleanId = rawMovieId.replace('tv_', '');
+          let cleanId = rawMovieId.replace('tv_', '');
+          let seasonNum = 1;
+          let episodeNum = 1;
+          if (cleanId.includes('_s_')) {
+            const parts = cleanId.split('_s_');
+            cleanId = parts[0];
+            const epParts = parts[1].split('_e_');
+            seasonNum = parseInt(epParts[0]) || 1;
+            episodeNum = parseInt(epParts[1]) || 1;
+          } else if (cleanId.includes('_')) {
+            const parts = cleanId.split('_');
+            cleanId = parts[0];
+            seasonNum = parseInt(parts[1]) || 1;
+            episodeNum = parseInt(parts[2]) || 1;
+          }
+          setSeason(seasonNum);
+          setEpisode(episodeNum);
+
           movieData = await fetchData(`/tv/${cleanId}?api_key=${API_KEY}&language=en-US`, language);
           if (movieData) {
             setMovie({
@@ -1039,7 +1091,7 @@ export default function WatchRoomPage() {
                 {language === 'ku' ? 'چالاکە' : 'LIVE'}
               </span>
               <span className="text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[200px] md:max-w-md">
-                {movie.title}
+                {movie.title} {season !== undefined && episode !== undefined ? ` • S${season} E${episode}` : ''}
               </span>
             </div>
             {/* Active spectators indicator */}
@@ -1085,6 +1137,9 @@ export default function WatchRoomPage() {
             localUserId={localUserId}
             localUserName={localUserName}
             partnerName={isHost ? guestName : hostName}
+            contentType={ticket.movie_id.startsWith('tv_') ? 'tv' : 'movie'}
+            season={season}
+            episode={episode}
           />
         </div>
 

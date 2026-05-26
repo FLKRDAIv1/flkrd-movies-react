@@ -341,11 +341,12 @@ const SearchPage: React.FC = () => {
                   whileTap={{ scale: 0.95 }}
                   whileHover={{ y: -10 }}
                 >
-                  <div className="aspect-[2/3] relative overflow-hidden bg-white/5">
+                   <div className="aspect-[2/3] relative overflow-hidden bg-white/5">
                     <img 
                       src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
                       alt={item.title || item.name} 
                       className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
+                      loading="lazy"
                     />
 
                     {/* Liquid Glass Hover Overlay */}
@@ -353,9 +354,9 @@ const SearchPage: React.FC = () => {
 
                     {/* IMDb Badge */}
                     {item.vote_average !== undefined && item.vote_average > 0 && (
-                      <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F5C518] text-black px-2 py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/50">
-                        <span className="font-[1000] text-[8px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
-                        <span className="font-black text-[10px] md:text-xs leading-none">{item.vote_average.toFixed(1)}</span>
+                      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
+                        <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
+                        <span className="font-black text-[8px] md:text-xs leading-none">{item.vote_average.toFixed(1)}</span>
                       </div>
                     )}
 

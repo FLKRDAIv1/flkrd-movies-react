@@ -215,10 +215,20 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
               const hasProgress = 'progress' in item;
               const progressPct = hasProgress ? Math.min(100, ((item as WatchProgress).progress / ((item as WatchProgress).duration || 3600)) * 100) : 0;
               
+              const handlePrefetch = () => {
+                if (String(item.id).startsWith('custom_') || mediaType === 'dubbed') {
+                  import('../pages/DubbedDetailPage');
+                } else {
+                  import('../pages/DetailPage');
+                  import('../pages/TVDetailPage');
+                }
+              };
+              
               return (
               <motion.div
                 key={`${item.id}-${index}-${mediaType}`}
                 onClick={() => navigateToDetail(item)}
+                onMouseEnter={handlePrefetch}
                 className="flex-shrink-0 w-36 md:w-64 group/card relative cursor-pointer"
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0 }}
@@ -238,9 +248,9 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
 
                   {/* IMDb Badge */}
                   {(item as Content).vote_average !== undefined && (item as Content).vote_average > 0 && (
-                    <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 bg-[#F5C518] text-black px-2 py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/50">
-                      <span className="font-[1000] text-[8px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
-                      <span className="font-black text-[10px] md:text-xs leading-none">{(item as Content).vote_average.toFixed(1)}</span>
+                    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
+                      <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
+                      <span className="font-black text-[8px] md:text-xs leading-none">{(item as Content).vote_average.toFixed(1)}</span>
                     </div>
                   )}
 

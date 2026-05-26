@@ -29,3 +29,8 @@ dubbed_movies_backup.json
 !.env.example
 .vercel
 .env*.local
+
+# Large binary release artifacts (distributed via GitHub Releases)
+public/*.dmg
+public/*.apk
+src-tauri/target/

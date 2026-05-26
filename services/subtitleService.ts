@@ -188,13 +188,13 @@ export const subtitleService = {
         // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
         const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
             try {
-                let query = `?imdb_id=${cleanImdbId}`;
+                let query = `?imdb_id=${encodeURIComponent(cleanImdbId)}`;
                 if (!allLanguages) {
                     const langCodes = 'ku,ckb,fa,ar,en';
-                    query += `&languages=${langCodes}`;
+                    query += `&languages=${encodeURIComponent(langCodes)}`;
                 }
                 if (type === 'tv' && season && episode) {
-                    query += `&season_number=${season}&episode_number=${episode}`;
+                    query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
                 }
 
                 const baseUrl = getSubApiBase();
@@ -206,8 +206,8 @@ export const subtitleService = {
                     const data = await response.json();
                     return (data.data || []) as SubtitleResult[];
                 }
-            } catch (error) {
-                console.error("[SUBTITLE SERVICE] REST API Search error:", error);
+            } catch (error: any) {
+                console.warn("[SUBTITLE SERVICE] REST API Search failed gracefully:", error?.message);
             }
             return [];
         };
@@ -276,9 +276,9 @@ export const subtitleService = {
             const langMap: Record<string, string> = { 'ku': 'Kurdish', 'ckb': 'Kurdish', 'fa': 'Persian', 'ar': 'Arabic', 'en': 'English' };
             const subdlLang = langMap[language] || 'Kurdish';
             
-            let query = `?engine=subdl&imdb_id=${cleanImdbId}&languages=${subdlLang}`;
+            let query = `?engine=subdl&imdb_id=${encodeURIComponent(cleanImdbId)}&languages=${encodeURIComponent(subdlLang)}`;
             if (type === 'tv' && season && episode) {
-                query += `&season_number=${season}&episode_number=${episode}`;
+                query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
             }
 
             const baseUrl = getSubApiBase();
@@ -301,8 +301,8 @@ export const subtitleService = {
                 }));
             }
             return [];
-        } catch (e) {
-            console.error("[SUBTITLE SERVICE] SubDL search error:", e);
+        } catch (e: any) {
+            console.warn("[SUBTITLE SERVICE] SubDL search failed gracefully:", e?.message);
             return [];
         }
     },
@@ -325,8 +325,8 @@ export const subtitleService = {
                  console.warn("[SUBTITLE SERVICE] Backend reported an error:", data.error || data._error);
             }
             return data.link || null;
-        } catch (error) {
-            console.error("[SUBTITLE SERVICE] Custom proxy download failed:", error);
+        } catch (error: any) {
+            console.warn("[SUBTITLE SERVICE] Custom proxy download failed gracefully:", error?.message);
             throw error;
         }
     },

@@ -72,8 +72,8 @@ const StoryReels: React.FC = () => {
   if (users.length === 0) return null;
 
   return (
-    <div className="w-full relative z-30 pt-6 pb-2 px-4 md:px-8 max-w-[100vw]">
-      <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+    <div className="w-full relative z-30 pt-6 pb-2 max-w-[100vw]">
+      <div className="flex gap-6 md:gap-8 overflow-x-auto pb-4 px-6 md:px-20 scrollbar-hide snap-x">
         {users.map((user) => (
           <div key={user.username} className="snap-start shrink-0">
             <StoryViewer

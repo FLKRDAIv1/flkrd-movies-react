@@ -143,6 +143,9 @@ interface CoWatchVideoPlayerProps {
   partnerName: string;
   subtitleUrl?: string;
   imdbId?: string;
+  contentType?: 'movie' | 'tv';
+  season?: number;
+  episode?: number;
 }
 
 export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
@@ -155,6 +158,9 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   partnerName,
   subtitleUrl,
   imdbId,
+  contentType,
+  season,
+  episode,
 }) => {
   const { language } = useTranslation();
   const { accentColor } = useUI();
@@ -274,11 +280,14 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
 
   // Render Co-Watching Video Player with bidirectional control
   const getPlayerComponent = () => {
+    const type = contentType || 'movie';
     return activeSource === 'FLKRD SERVER 1' ? (
       <PremiumPlayer
         key={`${activeSource}-${playerKey}`}
         tmdbId={movieId}
-        type="movie"
+        type={type}
+        season={season}
+        episode={episode}
         title={movieTitle}
         initialProgress={currentTime}
         accentColor={accentColor}
@@ -290,13 +299,15 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     ) : (
       <UniversalVideoPlayer
         key={`${activeSource}-${playerKey}`}
-        src={getSourceUrl(activeSource, movieId, 'movie', undefined, undefined, currentTime, accentColor, subtitleUrl)}
+        src={getSourceUrl(activeSource, movieId, type, season, episode, currentTime, accentColor, subtitleUrl)}
         accentColor={accentColor}
         language={language}
         onProgress={handlePlayerProgress}
         subtitleUrl={subtitleUrl}
         imdbId={imdbId}
-        contentType="movie"
+        contentType={type}
+        season={season}
+        episode={episode}
         title={movieTitle}
         peerSyncTrigger={peerSyncTrigger}
       />

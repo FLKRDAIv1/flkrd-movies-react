@@ -138,7 +138,10 @@ const StudioPage: React.FC = () => {
         };
 
         fetchStudioContent();
-        window.scrollTo(0, 0);
+        const mainEl = document.querySelector('main');
+        if (mainEl) {
+            mainEl.scrollTo({ top: 0, behavior: 'instant' });
+        }
     }, [id, langCode, language]);
 
     const getBrandIcon = () => {

@@ -332,7 +332,10 @@ const TVDetailPage: React.FC = () => {
       } catch (error) { console.error(error); } finally { setLoading(false); }
     };
     fetchContentDetails();
-    window.scrollTo(0, 0);
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'instant' });
+    }
   }, [id, language, fetchSeasonDetails]);
 
   const handlePlayClick = (s?: number, e?: number) => {
@@ -354,7 +357,7 @@ const TVDetailPage: React.FC = () => {
     setIsCreatingTicket(true);
     try {
       const pin = String(Math.floor(1000 + Math.random() * 9000));
-      const tvMovieId = `tv_${content.id}`;
+      const tvMovieId = `tv_${content.id}_s_${selectedSeason}_e_${selectedEpisode}`;
       const { data, error: insertError } = await supabase
         .from('watch_tickets')
         .insert({
@@ -401,7 +404,7 @@ const TVDetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-32 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={language === 'ku' ? 'rtl' : 'ltr'}>
       <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
         <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} className="w-full h-full object-cover blur-[120px]" alt="" />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
