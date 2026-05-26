@@ -14,6 +14,8 @@ import EnableNotificationsModal from './EnableNotificationsModal';
 import Portal from './Portal';
 import { LiquidButton } from './ui/liquid-glass-button';
 import { updateService, UpdateCheckResult } from '../services/updateService';
+import { isTauri } from '../utils/tauriUtils';
+import { tauriService } from '../services/tauriService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -139,6 +141,12 @@ const Card: React.FC<{ children: React.ReactNode; className?: string; glow?: str
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { t, language } = useTranslation();
+  const handleDownloadClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
+    if (isTauri()) {
+      e.preventDefault();
+      await tauriService.openExternal(url);
+    }
+  };
   const { 
     theme, setTheme, 
     accentColor, setAccentColor, 
@@ -739,6 +747,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           </p>
                           <a
                             href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => handleDownloadClick(e, "https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_Movies_v5.5.1.25_Universal.apk")}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
@@ -775,6 +786,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           </p>
                           <a
                             href="https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => handleDownloadClick(e, "https://github.com/FLKRDAIv1/flkrd-movies-react/releases/download/v5.5.1.25/FLKRD_MOVIES_Mac_v5.5.1.25.dmg")}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
