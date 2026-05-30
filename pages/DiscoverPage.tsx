@@ -258,20 +258,20 @@ const DiscoverPage: React.FC = () => {
                     )}
                     {(selection && (selection !== 'country' || activeCountry)) && (
                         <div className="flex flex-col">
-                            <div className={`sticky top-20 md:top-24 z-[45] mb-12 transition-all duration-500 ease-in-out`}>
-                                <div className={`relative transition-all duration-500 overflow-hidden backdrop-blur-[100px] ${isSticky ? 'rounded-[2rem] bg-black/80 border-white/10 p-4 shadow-2xl' : 'rounded-[3rem] bg-card-bg/80 border-border-color p-8 shadow-2xl'}`}>
-                                    <div className={`relative z-10 flex flex-col ${isRtl ? 'items-end' : 'items-start'} gap-6`}>
-                                        <div className={`w-full flex flex-col md:flex-row items-center justify-between gap-4 ${isRtl ? 'md:flex-row-reverse text-right' : 'text-left'}`}>
-                                            <h2 className={`font-[1000] text-main-text uppercase italic tracking-tighter leading-none transition-all ${isSticky ? 'text-xl md:text-3xl' : 'text-4xl md:text-7xl'}`}>
+                            <div className={`sticky top-20 md:top-24 z-[45] mb-6 transition-all duration-500 ease-in-out`}>
+                                <div className={`relative transition-all duration-500 overflow-hidden backdrop-blur-[100px] ${isSticky ? 'rounded-2xl bg-black/80 border-white/10 p-3 shadow-2xl' : 'rounded-[2rem] bg-card-bg/75 border-border-color py-4 px-6 md:px-8 shadow-2xl'}`}>
+                                    <div className={`relative z-10 flex flex-col gap-3`}>
+                                        <div className={`w-full flex items-center justify-between gap-4 ${isRtl ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
+                                            <h2 className={`font-[1000] text-main-text uppercase italic tracking-tighter leading-none transition-all ${isSticky ? 'text-lg md:text-2xl' : 'text-2xl md:text-4xl'}`}>
                                                 {displayTitle}
                                             </h2>
-                                            <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                                                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="bg-box-bg backdrop-blur-2xl border-2 border-border-color rounded-xl text-main-text font-black uppercase py-2 px-4 text-xs">
+                                            <div className={`flex items-center gap-1.5 md:gap-2.5 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="bg-box-bg backdrop-blur-2xl border border-border-color rounded-xl text-main-text font-black uppercase py-1.5 px-3 md:py-2 md:px-4 text-[10px] md:text-xs outline-none cursor-pointer">
                                                     {yearsOptions}
                                                 </select>
-                                                <LiquidButton variant={isFilterOpen ? "default" : "secondary"} onClick={() => setIsFilterOpen(!isFilterOpen)} className="rounded-xl px-6 py-4 text-xs font-black uppercase tracking-widest">GENRES</LiquidButton>
-                                                <LiquidButton variant="secondary" onClick={() => activeCountry ? setActiveCountry(null) : navigate('/discover')} className="!p-4 md:!p-5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl">
-                                                    {isRtl ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
+                                                <LiquidButton variant={isFilterOpen ? "default" : "secondary"} onClick={() => setIsFilterOpen(!isFilterOpen)} className="rounded-xl px-3.5 py-2 md:px-5 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider">GENRES</LiquidButton>
+                                                <LiquidButton variant="secondary" onClick={() => activeCountry ? setActiveCountry(null) : navigate('/discover')} className="!p-2 md:!p-2.5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl flex items-center justify-center">
+                                                    {isRtl ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
                                                 </LiquidButton>
                                             </div>
                                         </div>
