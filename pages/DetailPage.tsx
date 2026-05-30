@@ -217,6 +217,14 @@ const DetailPage: React.FC = () => {
 
         if (data) {
           setContent(data);
+          
+          // Update browser window title dynamically for optimal search engine crawl and index representation
+          const year = data.release_date ? ` (${data.release_date.split('-')[0]})` : '';
+          const movieName = data.title || data.original_title || 'Movie';
+          document.title = language === 'ku'
+            ? `سەیرکردنی فیلمی ${movieName}${year} بە ژێرنووسی کوردی | FLKRD`
+            : `Watch ${movieName}${year} with Kurdish Subtitles | FLKRD`;
+
           setCast(data.credits?.cast?.slice(0, 10) || []);
           let recs = [...(data.recommendations?.results || []), ...(data.similar?.results || [])];
           setRecommendations(recs.filter(r => r.id !== Number(id) && !isForbidden(r, language)));

@@ -202,6 +202,11 @@ const DubbedDetailPage: React.FC = () => {
             ]);
 
             if (supabaseResult && isMounted) {
+                const titleStr = supabaseResult.title || 'Kurdish Dubbed Movie';
+                document.title = language === 'ku'
+                  ? `سەیرکردنی فیلمی دۆبلاژکراوی کوردی ${titleStr} | FLKRD`
+                  : `Watch ${titleStr} Kurdish Dubbed Movie | FLKRD`;
+
                 setSupabaseData({
                     ...supabaseResult,
                     id: `custom_${supabaseResult.id}`,

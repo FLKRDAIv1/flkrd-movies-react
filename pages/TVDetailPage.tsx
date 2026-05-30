@@ -304,6 +304,14 @@ const TVDetailPage: React.FC = () => {
         const data = await fetchData(endpoint, language);
         if (data) {
           setContent(data);
+          
+          // Update browser window title dynamically for optimal search engine crawl and index representation
+          const year = data.first_air_date ? ` (${data.first_air_date.split('-')[0]})` : '';
+          const showName = data.name || data.original_name || 'Series';
+          document.title = language === 'ku'
+            ? `سەیرکردنی زنجیرەی ${showName}${year} بە ژێرنووسی کوردی | FLKRD`
+            : `Watch ${showName}${year} with Kurdish Subtitles | FLKRD`;
+
           setCast(data.credits?.cast?.slice(0, 15) || []);
           let recs = [...(data.recommendations?.results || []), ...(data.similar?.results || [])];
           setRecommendations(recs.filter(r => r.id !== Number(id) && !isForbidden(r, language)));

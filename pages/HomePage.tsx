@@ -106,6 +106,13 @@ const HomePage: React.FC = () => {
   const [dubbedItems, setDubbedItems] = useState<Content[]>([]);
   const [kurdishCCItems, setKurdishCCItems] = useState<Content[]>([]);
 
+  // Update browser window title dynamically back to the premium brand identity on landing
+  useEffect(() => {
+    document.title = language === 'ku'
+      ? 'FLKRD MOVIES | تەماشای نوێترین فیلم و زنجیرە بە ژێرنووسی کوردی بکە'
+      : 'FLKRD MOVIES | Watch Latest Movies & TV Shows with Kurdish Subtitles';
+  }, [language]);
+
   const loadHistory = useCallback(() => {
     try {
       const data = localStorage.getItem('watchProgress');
