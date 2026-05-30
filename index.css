@@ -354,3 +354,13 @@ img {
   content-visibility: auto; /* Web engine drops rendering offscreen images completely */
 }
 
+/* ── Sidebar Layout Alignment Fix for 100% Zoom & Tauri ── */
+.global-sidebar {
+  padding-top: 4.5rem !important; /* Clears fixed global-header (72px on desktop) */
+  height: 100vh !important;
+}
+
+.is-tauri .global-sidebar {
+  padding-top: 7.0rem !important; /* Clears DesktopTitleBar (40px) + Header (72px) */
+}
+

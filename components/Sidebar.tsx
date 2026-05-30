@@ -185,29 +185,39 @@ const Sidebar: React.FC = () => {
           <NavItem to="/search" icon={<Search size={20} />} text={t('search')} location={location} isCollapsed={isCollapsed} />
           <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList')} location={location} isCollapsed={isCollapsed} />
 
-          <div className="pt-10 px-2">
-            <motion.div
-              variants={textVariants}
-              className="px-4 mb-4"
-            >
-              <h3 className="text-[8px] font-black text-gray-500 uppercase tracking-[0.4em] opacity-50">
-                {t('studios')}
-              </h3>
-              <div className="h-px w-full bg-gradient-to-r from-main-text/10 to-transparent mt-2" />
-            </motion.div>
-            
-            <div className="space-y-1">
-              {STUDIOS.map(studio => (
-                <StudioItem
-                  key={studio.id}
-                  to={`/studio/${studio.id}/${encodeURIComponent(studio.name)}`}
-                  icon={<Film size={16} />}
-                  text={studio.name}
-                  location={location}
-                />
-              ))}
-            </div>
-          </div>
+          <AnimatePresence>
+            {!isCollapsed && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.3 }}
+                className="pt-10 px-2 overflow-hidden"
+              >
+                <motion.div
+                  variants={textVariants}
+                  className="px-4 mb-4"
+                >
+                  <h3 className="text-[8px] font-black text-gray-500 uppercase tracking-[0.4em] opacity-50">
+                    {t('studios')}
+                  </h3>
+                  <div className="h-px w-full bg-gradient-to-r from-main-text/10 to-transparent mt-2" />
+                </motion.div>
+                
+                <div className="space-y-1">
+                  {STUDIOS.map(studio => (
+                    <StudioItem
+                      key={studio.id}
+                      to={`/studio/${studio.id}/${encodeURIComponent(studio.name)}`}
+                      icon={<Film size={16} />}
+                      text={studio.name}
+                      location={location}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
         
         <div className="p-6 border-t border-main-text/10 bg-main-text/[0.02] backdrop-blur-20 relative z-20">
