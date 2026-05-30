@@ -13,32 +13,25 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
   useEffect(() => {
     const video = videoRef.current;
     if (video) {
-      // 1. Attempt to play UNMUTED first (full audio experience on macOS, Android, iOS, etc.)
-      video.muted = false;
+      // Always start muted to guarantee 100% instant, stutter-free GPU-accelerated autoplay across all devices (macOS, iOS, Android)
+      video.muted = true;
+      setIsMuted(true);
       video.play()
         .then(() => {
-          console.log("[SPLASH VIDEO] Unmuted autoplay succeeded!");
-          setIsMuted(false);
+          console.log("[SPLASH VIDEO] Instant GPU-accelerated autoplay started successfully.");
         })
         .catch(err => {
-          console.warn("[SPLASH VIDEO] Unmuted autoplay blocked by browser policy. Falling back to muted autoplay...", err);
-          
-          // 2. Muted fallback to guarantee seamless startup on Web (fkurd.pro)
-          video.muted = true;
-          setIsMuted(true);
-          video.play().catch(e => {
-            console.error("[SPLASH VIDEO] Muted autoplay also failed:", e);
-          });
+          console.error("[SPLASH VIDEO] Autoplay request failed:", err);
         });
     }
   }, []);
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const videoDuration = e.currentTarget.duration;
-    // Calculate fallback safety timer based on actual video duration + 1.2s buffer
+    // Calculate fallback safety timer based on actual video duration + 50ms buffer to prevent hangs
     const fallbackTime = (videoDuration && !isNaN(videoDuration)) 
-      ? videoDuration * 1000 + 1200 
-      : 6000; // 6 seconds default safety fallback
+      ? videoDuration * 1000 + 50 
+      : 4000; // 4 seconds default safety fallback
 
     console.log(`[SPLASH VIDEO] Video loaded. Duration: ${videoDuration}s. Setting fallback safety timer to: ${fallbackTime / 1000}s`);
 
@@ -86,7 +79,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         ref={videoRef}
         src="/splash.mp4"
         autoPlay
+        muted
         playsInline
+        webkit-playsinline="true"
+        preload="auto"
         controls={false}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleComplete}
