@@ -23,7 +23,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         .catch(err => {
           console.warn("[SPLASH VIDEO] Unmuted autoplay blocked by browser policy. Falling back to muted autoplay...", err);
           
-          // 2. Muted fallback to guarantee seamless startup on Web (fkurd.vercel.app)
+          // 2. Muted fallback to guarantee seamless startup on Web (fkurd.pro)
           video.muted = true;
           setIsMuted(true);
           video.play().catch(e => {

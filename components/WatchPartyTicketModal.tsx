@@ -23,7 +23,7 @@ interface WatchPartyTicketModalProps {
   status?: 'waiting' | 'active' | 'finished';
 }
 
-const PRODUCTION_BASE = 'https://fkurd.vercel.app';
+const PRODUCTION_BASE = 'https://fkurd.pro';
 
 const getPublicShareUrl = (ticketId: string): string => {
   const host = window.location.hostname;
@@ -427,7 +427,7 @@ export const WatchPartyTicketModal: React.FC<WatchPartyTicketModalProps> = ({
                   dir="ltr"
                 >
                   <span className="text-[8px] font-mono text-zinc-600 truncate flex-1">
-                    fkurd.vercel.app/watch/{ticketId.slice(0, 8)}…
+                    fkurd.pro/watch/{ticketId.slice(0, 8)}…
                   </span>
                 </div>
               </div>

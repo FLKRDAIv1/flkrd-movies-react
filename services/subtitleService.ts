@@ -14,14 +14,14 @@ import JSZip from 'jszip';
  *   so relative paths like '/api/subtitle' resolve to tauri://localhost/api/subtitle (dead end).
  *   We must always use the absolute Vercel URL.
  * - In local dev (http://localhost): use relative paths (proxied by Vite).
- * - In production web (https://fkurd.vercel.app): use empty string (relative paths work).
+ * - In production web (https://fkurd.pro): use empty string (relative paths work).
  */
 const getSubApiBase = (): string => {
-  if (typeof window === 'undefined') return 'https://fkurd.vercel.app';
+  if (typeof window === 'undefined') return 'https://fkurd.pro';
   const proto = window.location.protocol;
   // Tauri uses 'tauri:' protocol — always hit Vercel
   if (proto === 'tauri:' || (window as any).__TAURI_INTERNALS__) {
-    return 'https://fkurd.vercel.app';
+    return 'https://fkurd.pro';
   }
   // Local dev — Vite proxy handles /api routes
   if (
@@ -29,7 +29,7 @@ const getSubApiBase = (): string => {
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname.startsWith('192.168.')
   ) {
-    return 'https://fkurd.vercel.app'; // Always use Vercel to avoid CORS
+    return 'https://fkurd.pro'; // Always use Vercel to avoid CORS
   }
   // Production web — use relative paths
   return '';

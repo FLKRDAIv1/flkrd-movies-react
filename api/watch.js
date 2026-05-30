@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         const pinCode = ticket.pin_code;
         let title = 'FLKRD Co-Watch Cinema';
         let description = `🔑 Entry PIN: ${pinCode} | Join us to watch together!`;
-        let image = 'https://fkurd.vercel.app/flkrd-icon.png';
+        let image = 'https://fkurd.pro/flkrd-icon.png';
 
         if (rawMovieId.startsWith('tv_')) {
             const cleanId = rawMovieId.replace('tv_', '');
@@ -92,7 +92,7 @@ export default async function handler(req, res) {
         }
 
         // Point social media open graph previews to the dynamic Watch Party Ticket image generator
-        image = `https://fkurd.vercel.app/api/watch-image?ticket_id=${ticket_id}`;
+        image = `https://fkurd.pro/api/watch-image?ticket_id=${ticket_id}`;
 
         // Return a beautiful HTML page with rich open graph properties and immediate client redirect
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
     
     <!-- Open Graph Meta Tags for beautiful rich social shares -->
     <meta property="og:type" content="video.movie">
-    <meta property="og:url" content="https://fkurd.vercel.app/watch/${ticket_id}">
+    <meta property="og:url" content="https://fkurd.pro/watch/${ticket_id}">
     <meta property="og:title" content="${title}">
     <meta property="og:description" content="${description}">
     <meta property="og:image" content="${image}">

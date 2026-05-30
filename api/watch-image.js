@@ -80,8 +80,8 @@ export default async function handler(req, res) {
         }
     }
 
-    const defaultPoster = 'https://fkurd.vercel.app/flkrd-icon.png';
-    const defaultBackdrop = 'https://fkurd.vercel.app/flkrd-icon.png';
+    const defaultPoster = 'https://fkurd.pro/flkrd-icon.png';
+    const defaultBackdrop = 'https://fkurd.pro/flkrd-icon.png';
     const posterUrl = posterPath || defaultPoster;
     const backdropUrl = backdropPath || defaultBackdrop;
 
@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     const rowLetter = String.fromCharCode(64 + ((parseInt(pinCode[2]) % 8) + 1));
     const hallNumber = ((parseInt(pinCode[3]) % 6) + 1);
 
-    const shareUrl = `https://fkurd.vercel.app/watch/${ticket_id}`;
+    const shareUrl = `https://fkurd.pro/watch/${ticket_id}`;
     const isWaiting = !ticket || ticket.status === 'waiting';
     const statusDotColor = isWaiting ? '#ea580c' : '#22c55e';
     const statusText = isWaiting ? 'WAITING FOR GUEST' : 'ACTIVE ✓';
