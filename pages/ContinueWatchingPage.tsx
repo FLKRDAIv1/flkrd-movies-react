@@ -71,13 +71,13 @@ const ContinueWatchingPage: React.FC = () => {
 
     return (
         <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <div className={`absolute top-24 ${language === 'ku' ? 'right-8 md:right-20' : 'left-8 md:left-20'} z-50`}>
+            <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'right-8 md:right-20' : 'left-8 md:left-20'} z-50`}>
                 <LiquidButton 
                   variant="secondary"
                   onClick={() => navigate(-1)} 
                   className="!px-5 !py-3 rounded-2xl flex items-center gap-2"
                 >
-                  {language === 'ku' ? <ArrowLeft size={20} className="rotate-180" /> : <ArrowLeft size={20} />}
+                  {(language === 'ku' || language === 'badini') ? <ArrowLeft size={20} className="rotate-180" /> : <ArrowLeft size={20} />}
                   <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
                 </LiquidButton>
             </div>

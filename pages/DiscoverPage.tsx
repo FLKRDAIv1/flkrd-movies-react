@@ -66,13 +66,13 @@ const DiscoverPage: React.FC = () => {
     const { t, language } = useTranslation();
     const { theme, isAdmin } = useUI();
     const { addNotification } = useNotification();
-    const langCode = language === 'ku' ? 'ku' : 'en-US';
-    const isRtl = language === 'ku';
+    const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
+    const isRtl = (language === 'ku' || language === 'badini');
     const observer = useRef<IntersectionObserver | null>(null);
 
     const countries: Country[] = [
         { name: t('kurdistan'), code: 'KURDISTAN', flagUrl: 'https://i.imgur.com/t3yYQyv.jpeg', special: true },
-        { name: language === 'ku' ? 'یۆنان (Yonan)' : 'Greece', code: 'GR', flagUrl: 'https://flagcdn.com/w640/gr.png' },
+        { name: (language === 'ku' || language === 'badini') ? 'یۆنان (Yonan)' : 'Greece', code: 'GR', flagUrl: 'https://flagcdn.com/w640/gr.png' },
         { name: 'USA', code: 'US', flagUrl: 'https://flagcdn.com/w640/us.png' },
         { name: 'United Kingdom', code: 'GB', flagUrl: 'https://flagcdn.com/w640/gb.png' },
         { name: 'India', code: 'IN', flagUrl: 'https://flagcdn.com/w640/in.png' },
@@ -212,12 +212,12 @@ const DiscoverPage: React.FC = () => {
             </motion.div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-8 w-full max-w-7xl relative z-10">
-                <CategoryButton title={language === 'ku' ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-red-600" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
+                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-red-600" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
                 <CategoryButton title={t('hollywood')} onClick={() => navigate('/discover/hollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-blue-600" />
                 <CategoryButton title={t('bollywood')} onClick={() => navigate('/discover/bollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-orange-600" />
                 <CategoryButton title={t('animations')} onClick={() => navigate('/discover/animations')} icon={<Zap className="w-6 h-6 md:w-8 md:h-8" />} color="bg-yellow-600" />
                 <CategoryButton title={t('choiceCountry')} onClick={() => navigate('/discover/country')} icon={<Globe className="w-6 h-6 md:w-8 md:h-8" />} color="bg-green-600" />
-                <CategoryButton title={language === 'ku' ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-purple-600" />
+                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-purple-600" />
             </div>
         </div>
     );

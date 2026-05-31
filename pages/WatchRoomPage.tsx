@@ -271,8 +271,8 @@ export default function WatchRoomPage() {
     return matchKey ? memberNames[matchKey] : '';
   };
 
-  const hostName = ticket ? (getMemberName(ticket.host_id) || (isHost ? localUserName : (language === 'ku' ? 'پێشکەشکار' : 'Host'))) : '';
-  const guestName = ticket && ticket.guest_id ? (getMemberName(ticket.guest_id) || (!isHost ? localUserName : (language === 'ku' ? 'میوان' : 'Guest'))) : '';
+  const hostName = ticket ? (getMemberName(ticket.host_id) || (isHost ? localUserName : ((language === 'ku' || language === 'badini') ? 'پێشکەشکار' : 'Host'))) : '';
+  const guestName = ticket && ticket.guest_id ? (getMemberName(ticket.guest_id) || (!isHost ? localUserName : ((language === 'ku' || language === 'badini') ? 'میوان' : 'Guest'))) : '';
 
   // Helper: derive back-route from a ticket's movie_id
   const getBackRoute = (movieId: string) => {
@@ -313,7 +313,7 @@ export default function WatchRoomPage() {
           .single();
 
         if (dbError || !data) {
-          throw new Error(language === 'ku' ? 'تیکت نەدۆزرایەوە' : 'Ticket not found');
+          throw new Error((language === 'ku' || language === 'badini') ? 'تیکت نەدۆزرایەوە' : 'Ticket not found');
         }
 
         const ticketData = data as TicketRecord;
@@ -431,8 +431,8 @@ export default function WatchRoomPage() {
                   playSyncChime('join');
                   addNotification({
                     type: 'success',
-                    title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
-                    message: language === 'ku'
+                    title: (language === 'ku' || language === 'badini') ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+                    message: (language === 'ku' || language === 'badini')
                       ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
                       : 'The guest has successfully entered the cinema hall!',
                   });
@@ -478,8 +478,8 @@ export default function WatchRoomPage() {
                   playSyncChime('join');
                   addNotification({
                     type: 'success',
-                    title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
-                    message: language === 'ku'
+                    title: (language === 'ku' || language === 'badini') ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+                    message: (language === 'ku' || language === 'badini')
                       ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
                       : 'The guest has successfully entered the cinema hall!',
                   });
@@ -536,8 +536,8 @@ export default function WatchRoomPage() {
         
         addNotification({
           type: 'success',
-          title: language === 'ku' ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
-          message: language === 'ku'
+          title: (language === 'ku' || language === 'badini') ? '🎉 میوان هاتە ژوورەوە!' : '🎉 GUEST ENTERED!',
+          message: (language === 'ku' || language === 'badini')
             ? 'میوانەکە چوو کاتەکەی هاوڕێکەت هاوکات کراوەتەوە!'
             : 'The guest has successfully entered the cinema hall!',
         });
@@ -602,7 +602,7 @@ export default function WatchRoomPage() {
       // Send join notice to Chat Sidebar
       const systemMessage = JSON.stringify({
         sender: 'System',
-        text: language === 'ku' 
+        text: (language === 'ku' || language === 'badini') 
           ? `میوان ${localUserName} بەشداربوو لە تەماشاکردنەکە!` 
           : `${localUserName} joined the cinema room!`,
         isSystem: true
@@ -616,8 +616,8 @@ export default function WatchRoomPage() {
 
       addNotification({
         type: 'success',
-        title: language === 'ku' ? 'بەستراوەتەوە' : 'Session Synced',
-        message: language === 'ku' 
+        title: (language === 'ku' || language === 'badini') ? 'بەستراوەتەوە' : 'Session Synced',
+        message: (language === 'ku' || language === 'badini') 
           ? 'هاوکاتبوون لەگەڵ پێشکەشکار چالاک کرا!' 
           : 'Co-watching synchronized with the host!',
       });
@@ -694,8 +694,8 @@ export default function WatchRoomPage() {
         playSyncChime('error');
         addNotification({
           type: 'error',
-          title: language === 'ku' ? 'تیکتەکە پڕبووە' : 'Ticket Full',
-          message: language === 'ku' 
+          title: (language === 'ku' || language === 'badini') ? 'تیکتەکە پڕبووە' : 'Ticket Full',
+          message: (language === 'ku' || language === 'badini') 
             ? 'تیکتەکە تەنها پشتگیری ٨ بەکارهێنەر دەکات. هۆڵەکە پڕبووە، جارێکی تر تاقی بکەرەوە.'
             : 'Ticket is full. Ticket supports a maximum of 8 users. Try another time.',
         });
@@ -724,8 +724,8 @@ export default function WatchRoomPage() {
         setVerifyingPin(false);
         addNotification({
           type: 'error',
-          title: language === 'ku' ? 'کۆدی نادروست' : 'Verification Failed',
-          message: language === 'ku' ? 'تکایە کۆدی چوونەژوورەوەی دروست بنووسە.' : 'Incorrect entry PIN code.',
+          title: (language === 'ku' || language === 'badini') ? 'کۆدی نادروست' : 'Verification Failed',
+          message: (language === 'ku' || language === 'badini') ? 'تکایە کۆدی چوونەژوورەوەی دروست بنووسە.' : 'Incorrect entry PIN code.',
         });
 
         // Buzz feedback and reset fields after shake
@@ -755,16 +755,16 @@ export default function WatchRoomPage() {
           <ShieldAlert size={32} />
         </div>
         <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
-          {language === 'ku' ? 'هەڵەی سێرڤەر' : 'ROOM STALLED'}
+          {(language === 'ku' || language === 'badini') ? 'هەڵەی سێرڤەر' : 'ROOM STALLED'}
         </h2>
         <p className="text-sm font-bold text-zinc-400 uppercase tracking-wide leading-relaxed mb-8">
-          {error || (language === 'ku' ? 'تیکتی تەماشا چالاک نییە یان هەڵوەشاوەتەوە.' : 'The requested Watch Party session could not be synchronized.')}
+          {error || ((language === 'ku' || language === 'badini') ? 'تیکتی تەماشا چالاک نییە یان هەڵوەشاوەتەوە.' : 'The requested Watch Party session could not be synchronized.')}
         </p>
         <button
           onClick={() => navigate('/')}
           className="px-8 py-3.5 bg-zinc-900 border border-white/10 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
         >
-          <ArrowLeft size={16} /> {language === 'ku' ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
+          <ArrowLeft size={16} /> {(language === 'ku' || language === 'badini') ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
         </button>
       </div>
     );
@@ -778,10 +778,10 @@ export default function WatchRoomPage() {
           <ShieldAlert size={32} />
         </div>
         <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
-          {language === 'ku' ? 'هۆڵەکە پڕبووە' : 'CINEMA HALL FULL'}
+          {(language === 'ku' || language === 'badini') ? 'هۆڵەکە پڕبووە' : 'CINEMA HALL FULL'}
         </h2>
         <p className="text-sm font-bold text-zinc-400 uppercase tracking-wide leading-relaxed mb-8">
-          {language === 'ku'
+          {(language === 'ku' || language === 'badini')
             ? 'ببورە، ئەم تیکتە تەنها پشتگیری ٨ بەکارهێنەر دەکات. هۆڵەکە پڕبووە، جارێکی تر تاقی بکەرەوە.'
             : 'Sorry, this ticket supports a maximum of 8 users. The room is currently full. Please try another time.'}
         </p>
@@ -789,7 +789,7 @@ export default function WatchRoomPage() {
           onClick={() => navigate('/')}
           className="px-8 py-3.5 bg-zinc-900 border border-white/10 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
         >
-          <ArrowLeft size={16} /> {language === 'ku' ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
+          <ArrowLeft size={16} /> {(language === 'ku' || language === 'badini') ? 'گەڕانەوە بۆ سەرەکی' : 'BACK TO LOBBY'}
         </button>
       </div>
     );
@@ -820,27 +820,27 @@ export default function WatchRoomPage() {
             </div>
 
             <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
-              {language === 'ku' ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
+              {(language === 'ku' || language === 'badini') ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
             </h1>
             <p className="text-sm font-bold text-green-500 uppercase tracking-widest leading-relaxed mb-6 animate-pulse">
-              {language === 'ku' ? 'میوان قبوڵکرا' : 'GUEST ACCEPTED'}
+              {(language === 'ku' || language === 'badini') ? 'میوان قبوڵکرا' : 'GUEST ACCEPTED'}
             </p>
             
             <div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-2 mb-6">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'پێشکەشکار:' : 'HOST:'}</span>
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{(language === 'ku' || language === 'badini') ? 'پێشکەشکار:' : 'HOST:'}</span>
                 <span className="text-white font-bold">{localUserName}</span>
               </div>
               <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'میوان:' : 'GUEST:'}</span>
-                <span className="text-white font-bold">{guestName || (language === 'ku' ? 'میوان' : 'Guest')}</span>
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{(language === 'ku' || language === 'badini') ? 'میوان:' : 'GUEST:'}</span>
+                <span className="text-white font-bold">{guestName || ((language === 'ku' || language === 'badini') ? 'میوان' : 'Guest')}</span>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-green-500 animate-spin" />
               <span className="text-[10px] font-black uppercase text-green-500 tracking-[0.25em]">
-                {language === 'ku' ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
+                {(language === 'ku' || language === 'badini') ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
               </span>
             </div>
           </motion.div>
@@ -864,10 +864,10 @@ export default function WatchRoomPage() {
         <div className="relative z-10 w-full flex flex-col items-center">
           <div className="text-center mb-6 max-w-sm px-4">
             <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
-              {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
+              {(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
             </h1>
             <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-relaxed">
-              {language === 'ku' 
+              {(language === 'ku' || language === 'badini') 
                 ? 'هاوڕێکەت بانگهێشت بکە بە ناردنی ئەم تیکتە ئەلیکترۆنییە بۆ بەشداریکردن!' 
                 : 'Send this digital invitation ticket to your guest to establish cinema synchronization.'}
             </p>
@@ -895,7 +895,7 @@ export default function WatchRoomPage() {
             className="mt-6 px-6 py-3 bg-zinc-950 border border-white/5 hover:border-orange-500/30 hover:bg-orange-950/10 text-zinc-400 hover:text-orange-500 rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-all cursor-pointer z-20"
           >
             <Sparkles size={14} className="text-orange-500 animate-pulse" />
-            {language === 'ku' ? 'تاقیکردنەوەی دەنگی هۆڵ' : 'TEST THEATRE BELL'}
+            {(language === 'ku' || language === 'badini') ? 'تاقیکردنەوەی دەنگی هۆڵ' : 'TEST THEATRE BELL'}
           </button>
         </div>
       </div>
@@ -927,19 +927,19 @@ export default function WatchRoomPage() {
             </div>
 
             <h1 className="text-3xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
-              {language === 'ku' ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
+              {(language === 'ku' || language === 'badini') ? 'هاوکات بوو!' : 'CINEMA SYNCED!'}
             </h1>
             <p className="text-sm font-bold text-green-500 uppercase tracking-widest leading-relaxed mb-6 animate-pulse">
-              {language === 'ku' ? 'پەیوەست بوویت' : 'SUCCESSFULLY JOINED'}
+              {(language === 'ku' || language === 'badini') ? 'پەیوەست بوویت' : 'SUCCESSFULLY JOINED'}
             </p>
             
             <div className="w-full bg-zinc-900/50 border border-white/5 rounded-2xl p-4 flex flex-col gap-2 mb-6">
               <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'پێشکەشکار:' : 'HOST:'}</span>
-                <span className="text-white font-bold">{hostName || (language === 'ku' ? 'پێشکەشکار' : 'Host')}</span>
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{(language === 'ku' || language === 'badini') ? 'پێشکەشکار:' : 'HOST:'}</span>
+                <span className="text-white font-bold">{hostName || ((language === 'ku' || language === 'badini') ? 'پێشکەشکار' : 'Host')}</span>
               </div>
               <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                <span className="text-zinc-500 uppercase font-black tracking-wider">{language === 'ku' ? 'میوان (تۆ):' : 'GUEST (YOU):'}</span>
+                <span className="text-zinc-500 uppercase font-black tracking-wider">{(language === 'ku' || language === 'badini') ? 'میوان (تۆ):' : 'GUEST (YOU):'}</span>
                 <span className="text-white font-bold">{localUserName}</span>
               </div>
             </div>
@@ -947,7 +947,7 @@ export default function WatchRoomPage() {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-green-500 animate-spin" />
               <span className="text-[10px] font-black uppercase text-green-500 tracking-[0.25em]">
-                {language === 'ku' ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
+                {(language === 'ku' || language === 'badini') ? 'چوونە ژوورەوە بۆ هۆڵ...' : 'ENTERING CINEMA HALL...'}
               </span>
             </div>
           </motion.div>
@@ -981,11 +981,11 @@ export default function WatchRoomPage() {
           </div>
 
           <h2 className="text-[22px] font-black uppercase italic tracking-wider text-white mb-2">
-            {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'WATCH ROOM SECURE'}
+            {(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'WATCH ROOM SECURE'}
           </h2>
           
           <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest leading-relaxed mb-8 max-w-xs">
-            {language === 'ku'
+            {(language === 'ku' || language === 'badini')
               ? 'کۆدی ٤ ژمارەیی پێشکەشکار بنووسە بۆ چوونە ژوورەوە.'
               : 'Enter the 4-digit entry PIN generated by the party host.'}
           </p>
@@ -1002,7 +1002,7 @@ export default function WatchRoomPage() {
                 >
                   <CheckCircle size={28} className="text-green-500 mr-2 animate-bounce" />
                   <span className="text-xs font-black uppercase tracking-widest text-green-500 animate-pulse">
-                    {language === 'ku' ? 'قبوڵکرا' : 'ACCEPTED'}
+                    {(language === 'ku' || language === 'badini') ? 'قبوڵکرا' : 'ACCEPTED'}
                   </span>
                 </motion.div>
               )}
@@ -1030,7 +1030,7 @@ export default function WatchRoomPage() {
             <div className="flex items-center justify-center gap-2 mb-6">
               <div className="w-3 h-3 rounded-full border-t border-orange-500 animate-spin" />
               <span className="text-[10px] font-black uppercase text-orange-500 tracking-wider">
-                {language === 'ku' ? 'پشکنینی کۆد...' : 'VERIFYING KEY...'}
+                {(language === 'ku' || language === 'badini') ? 'پشکنینی کۆد...' : 'VERIFYING KEY...'}
               </span>
             </div>
           )}
@@ -1074,7 +1074,7 @@ export default function WatchRoomPage() {
             onClick={() => navigate(getBackRoute(ticket.movie_id))}
             className="flex items-center gap-1.5 text-zinc-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest mt-1 active:scale-95"
           >
-            <ArrowLeft size={12} /> {language === 'ku' ? 'گەڕانەوە بۆ دواوە' : 'QUIT WATCH PARTY'}
+            <ArrowLeft size={12} /> {(language === 'ku' || language === 'badini') ? 'گەڕانەوە بۆ دواوە' : 'QUIT WATCH PARTY'}
           </button>
 
         </motion.div>
@@ -1084,7 +1084,7 @@ export default function WatchRoomPage() {
 
   // C. Full Active Room: Double column widescreen layouts (Player + Chat Sidebar)
 
-  const isRtl = language === 'ku';
+  const isRtl = (language === 'ku' || language === 'badini');
   const headerSpacingClass = isChatOpen 
     ? isRtl 
       ? 'left-4 right-4 md:left-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:right-4' // Chat is on the left, so left has offset
@@ -1144,7 +1144,7 @@ export default function WatchRoomPage() {
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-[7px] sm:text-[9px] font-black tracking-widest text-orange-500 uppercase bg-orange-600/10 border border-orange-500/20 px-1.5 py-0.5 rounded leading-none shrink-0">
-                {language === 'ku' ? 'چالاکە' : 'LIVE'}
+                {(language === 'ku' || language === 'badini') ? 'چالاکە' : 'LIVE'}
               </span>
               <span className="text-[11px] sm:text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[120px] md:max-w-md">
                 {movie.title} {season !== undefined && episode !== undefined ? ` • S${season} E${episode}` : ''}
@@ -1174,7 +1174,7 @@ export default function WatchRoomPage() {
             }`}
           >
             <MessageSquare size={13} className={isChatOpen ? 'animate-pulse text-orange-500' : ''} />
-            <span className="hidden sm:inline">{language === 'ku' ? 'چات' : 'CHAT'}</span>
+            <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'چات' : 'CHAT'}</span>
           </button>
 
           <button
@@ -1182,7 +1182,7 @@ export default function WatchRoomPage() {
             className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-orange-500 hover:border-orange-500/40 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
           >
             <Sparkles size={13} className="text-orange-500 animate-pulse" />
-            <span className="hidden sm:inline">{language === 'ku' ? 'دەنگ' : 'SOUND'}</span>
+            <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'دەنگ' : 'SOUND'}</span>
           </button>
 
           <button
@@ -1190,7 +1190,7 @@ export default function WatchRoomPage() {
             className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-red-500 hover:border-red-500/40 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
           >
             <ArrowLeft size={13} />
-            <span className="hidden sm:inline">{language === 'ku' ? 'جێهێشتن' : 'LEAVE'}</span>
+            <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'جێهێشتن' : 'LEAVE'}</span>
           </button>
         </div>
 

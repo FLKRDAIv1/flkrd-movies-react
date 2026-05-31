@@ -57,9 +57,9 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
         
-        <div className={`absolute bottom-10 md:bottom-20 ${language === 'ku' ? 'right-8 md:right-32' : 'left-8 md:left-32'} z-20 flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-5xl`}>
+        <div className={`absolute bottom-10 md:bottom-20 ${(language === 'ku' || language === 'badini') ? 'right-8 md:right-32' : 'left-8 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-5xl`}>
           {/* Metadata Grid (Corner-Style) */}
-          <div className={`hidden md:flex flex-col gap-6 mb-12 ${language === 'ku' ? 'items-end' : 'items-start'}`}>
+          <div className={`hidden md:flex flex-col gap-6 mb-12 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-4">
                   <div className="p-3 bg-red-600 rounded-2xl shadow-[0_0_30px_#e50914] flex items-center gap-2">
                     <Sparkles className="text-white animate-pulse" size={16} />
@@ -72,18 +72,18 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
           </div>
 
           {/* Mobile Spotlight Badge */}
-          <div className={`md:hidden p-2.5 bg-red-600 rounded-2xl shadow-lg flex items-center gap-2 mb-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+          <div className={`md:hidden p-2.5 bg-red-600 rounded-2xl shadow-lg flex items-center gap-2 mb-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
              <Sparkles className="text-white" size={12} />
              <span className="text-[8px] font-black text-white uppercase tracking-[0.2em]">{t('weeklySpotlight')}</span>
           </div>
 
-          <h3 className={`text-5xl md:text-9xl font-[1000] text-white uppercase italic tracking-tighter mb-8 line-clamp-1 leading-[0.85] drop-shadow-[0_20px_40px_rgba(0,0,0,1)] ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+          <h3 className={`text-5xl md:text-9xl font-[1000] text-white uppercase italic tracking-tighter mb-8 line-clamp-1 leading-[0.85] drop-shadow-[0_20px_40px_rgba(0,0,0,1)] ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
             {item.title || item.name}
           </h3>
-          <p className={`text-gray-300 text-sm md:text-2xl line-clamp-3 mb-14 font-bold italic leading-relaxed opacity-90 drop-shadow-lg max-w-3xl ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+          <p className={`text-gray-300 text-sm md:text-2xl line-clamp-3 mb-14 font-bold italic leading-relaxed opacity-90 drop-shadow-lg max-w-3xl ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
             {item.overview}
           </p>
-          <div className={`flex flex-wrap items-center gap-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+          <div className={`flex flex-wrap items-center gap-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
             <LiquidButton
                 variant="default"
                 onClick={(e) => { e.stopPropagation(); navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } }); }}
@@ -100,7 +100,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
 
 const HomePage: React.FC = () => {
   const { language, t } = useTranslation();
-  const langCode = language === 'ku' ? 'ku' : 'en-US';
+  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
   const [continueWatchingItems, setContinueWatchingItems] = useState<WatchProgress[]>([]);
   const [recentlyViewedItems, setRecentlyViewedItems] = useState<WatchProgress[]>([]);
   const [dubbedItems, setDubbedItems] = useState<Content[]>([]);
@@ -108,7 +108,7 @@ const HomePage: React.FC = () => {
 
   // Update browser window title dynamically back to the premium brand identity on landing
   useEffect(() => {
-    document.title = language === 'ku'
+    document.title = (language === 'ku' || language === 'badini')
       ? 'FLKRD MOVIES | تەماشای نوێترین فیلم و زنجیرە بە ژێرنووسی کوردی بکە'
       : 'FLKRD MOVIES | Watch Latest Movies & TV Shows with Kurdish Subtitles';
   }, [language]);
@@ -309,7 +309,7 @@ const HomePage: React.FC = () => {
           >
             <div className="relative">
               <Row 
-                title={language === 'ku' ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
+                title={(language === 'ku' || language === 'badini') ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
                 items={kurdishCCItems} 
               />
               <div className="absolute top-2 right-6 md:right-32 hidden md:flex items-center gap-2 bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-500/30">
@@ -325,14 +325,14 @@ const HomePage: React.FC = () => {
         {dubbedItems.length > 0 && (
           <div className="relative">
             <Row 
-              title={language === 'ku' ? 'دۆبلاژکراوە تاقانەکان' : 'Exclusive Dubbed Movies'} 
+              title={(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوە تاقانەکان' : 'Exclusive Dubbed Movies'} 
               items={dubbedItems} 
               type="dubbed"
             />
           </div>
         )}
 
-        <Row title={language === 'ku' ? 'تۆپ ١٠ فیلمی ئەمڕۆ' : 'Top 10 Today'} fetchUrl={requests.fetchTrendingMoviesDay(langCode)} type="movie" limit={10} />
+        <Row title={(language === 'ku' || language === 'badini') ? 'تۆپ ١٠ فیلمی ئەمڕۆ' : 'Top 10 Today'} fetchUrl={requests.fetchTrendingMoviesDay(langCode)} type="movie" limit={10} />
         <Row title={t('topRatedMovies')} fetchUrl={requests.fetchTopRatedMovies(langCode)} type="movie" />
 
         <WeeklySpotlight fetchUrl={requests.fetchTrendingMovies(langCode)} />

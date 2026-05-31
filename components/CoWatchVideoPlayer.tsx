@@ -227,8 +227,8 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
 
         addNotification({
           type: 'info',
-          title: language === 'ku' ? 'هاوکات کرا' : 'Playback Synced',
-          message: language === 'ku'
+          title: (language === 'ku' || language === 'badini') ? 'هاوکات کرا' : 'Playback Synced',
+          message: (language === 'ku' || language === 'badini')
             ? `${senderName} پەخشی هۆڵەکەی هاوکات کردەوە!`
             : `${senderName} synchronized the cinema screen!`,
         });
@@ -289,7 +289,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
       // Post audit message to Supabase chat
       const syncNotice = JSON.stringify({
         sender: 'System',
-        text: language === 'ku'
+        text: (language === 'ku' || language === 'badini')
           ? `🔴 ${localUserName} پەخشی ژوورەکەی گواستەوە بۆ [${timeStr}]!`
           : `🔴 ${localUserName} seeked the playback to [${timeStr}]!`,
         isSystem: true
@@ -348,7 +348,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
       // 3. Post dynamic system/audit notice to supabase room messages
       const syncNotice = JSON.stringify({
         sender: 'System',
-        text: language === 'ku'
+        text: (language === 'ku' || language === 'badini')
           ? `🔴 ${localUserName} پەخشی ژوورەکەی هاوکات کرد بۆ کاتی [${timeStr}]!`
           : `🔴 ${localUserName} synchronized the room playback to [${timeStr}]!`,
         isSystem: true
@@ -362,8 +362,8 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
 
       addNotification({
         type: 'success',
-        title: language === 'ku' ? 'هاوکات کرا' : 'Room Synced',
-        message: language === 'ku'
+        title: (language === 'ku' || language === 'badini') ? 'هاوکات کرا' : 'Room Synced',
+        message: (language === 'ku' || language === 'badini')
           ? `هۆڵەکەت هاوکات کرد بۆ کاتی [${timeStr}]!`
           : `You successfully synchronized the room to [${timeStr}]!`,
       });
@@ -425,8 +425,8 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
 
     addNotification({
       type: 'success',
-      title: language === 'ku' ? 'سێرڤەر گۆڕدرا' : 'Server Switched',
-      message: language === 'ku'
+      title: (language === 'ku' || language === 'badini') ? 'سێرڤەر گۆڕدرا' : 'Server Switched',
+      message: (language === 'ku' || language === 'badini')
         ? `سێرڤەری تەماشاکردن گۆڕدرا بۆ ${serverName}`
         : `Cinema server changed to ${serverName}`,
     });
@@ -488,10 +488,10 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
               </div>
               <div className="flex flex-col text-left">
                 <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
-                  {language === 'ku' ? 'دۆخی هۆڵ' : 'THEATRE STATUS'}
+                  {(language === 'ku' || language === 'badini') ? 'دۆخی هۆڵ' : 'THEATRE STATUS'}
                 </span>
                 <span className="text-[10px] font-bold text-white uppercase tracking-tight">
-                  {language === 'ku' ? 'تەلار کراوەیە و چات چالاکە' : 'THEATRE OPEN & CHAT ACTIVE'}
+                  {(language === 'ku' || language === 'badini') ? 'تەلار کراوەیە و چات چالاکە' : 'THEATRE OPEN & CHAT ACTIVE'}
                 </span>
               </div>
             </div>
@@ -503,7 +503,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
               className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50`}
             >
               <Sparkles size={11} className={syncing ? "animate-spin" : "animate-pulse"} />
-              <span>{language === 'ku' ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
+              <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
             </button>
 
             {/* Server Selector Ribbon */}
@@ -527,7 +527,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
                           <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
                         </svg>
-                        <span>{language === 'ku' ? 'تەواو' : 'VERIFIED'}</span>
+                        <span>{(language === 'ku' || language === 'badini') ? 'تەواو' : 'VERIFIED'}</span>
                       </span>
                     )}
                   </button>
@@ -556,17 +556,17 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
                 <div className="absolute inset-0 bg-orange-500/5 blur-xl rounded-full" />
               </motion.div>
               <h2 className="text-3xl md:text-5xl font-black uppercase italic tracking-tighter text-white mb-3">
-                {language === 'ku' ? 'فیلمەکە کۆتایی هات!' : 'CINEMA TICKET REDEEMED'}
+                {(language === 'ku' || language === 'badini') ? 'فیلمەکە کۆتایی هات!' : 'CINEMA TICKET REDEEMED'}
               </h2>
               <p className="text-zinc-400 max-w-md font-bold text-xs uppercase tracking-widest mb-8 leading-relaxed">
-                {language === 'ku'
+                {(language === 'ku' || language === 'badini')
                   ? 'ئەم ئاهەنگی تەماشا کردنە بە سەرکەوتوویی تەواو بوو. سوپاس بۆ بەکارهێنانی خزمەتگوزارییەکانمان!'
                   : 'This synchronized viewing party has concluded. Thank you for sharing the magic of cinema!'}
               </p>
               <div className="flex items-center gap-2 bg-orange-600/15 border border-orange-500/30 px-5 py-2 rounded-2xl shadow-xl">
                 <Award size={14} className="text-orange-500" />
                 <span className="text-[10px] font-black uppercase text-orange-500 tracking-widest">
-                  {language === 'ku' ? 'فیلمەکە تەواو بوو' : 'PARTY FINISHED'}
+                  {(language === 'ku' || language === 'badini') ? 'فیلمەکە تەواو بوو' : 'PARTY FINISHED'}
                 </span>
               </div>
             </motion.div>

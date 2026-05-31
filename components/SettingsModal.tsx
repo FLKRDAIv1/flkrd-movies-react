@@ -57,7 +57,7 @@ const AnimatedToggle: React.FC<{
   color?: string;
   language?: string;
 }> = ({ checked, onChange, color = '#e50914', language = 'en' }) => {
-  const isRTL = language === 'ku';
+  const isRTL = (language === 'ku' || language === 'badini') || language === 'badini';
   return (
     <motion.button
       onClick={(e) => {
@@ -237,23 +237,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       if (result.updateAvailable) {
         addNotification({
           type: 'info',
-          title: language === 'ku' ? 'نوێکاری بەردەستە' : 'Update Available',
-          message: language === 'ku' ? `وەشانی ${result.latestVersion} ئامادەیە بۆ دابەزاندن` : `Version ${result.latestVersion} is ready for installation.`
+          title: (language === 'ku' || language === 'badini') ? 'نوێکاری بەردەستە' : 'Update Available',
+          message: (language === 'ku' || language === 'badini') ? `وەشانی ${result.latestVersion} ئامادەیە بۆ دابەزاندن` : `Version ${result.latestVersion} is ready for installation.`
         });
       } else {
         addNotification({
           type: 'success',
-          title: language === 'ku' ? 'سیستم نوێیە' : 'System Up-to-Date',
-          message: language === 'ku' ? 'تۆ دوایین وەشانی سیستم بەکاردێنیت' : 'You are running the latest version.'
+          title: (language === 'ku' || language === 'badini') ? 'سیستم نوێیە' : 'System Up-to-Date',
+          message: (language === 'ku' || language === 'badini') ? 'تۆ دوایین وەشانی سیستم بەکاردێنیت' : 'You are running the latest version.'
         });
       }
     } catch (err) {
       console.error('[UPDATE UI] Error checking for updates:', err);
-      setUpdateError(language === 'ku' ? 'پەیوەندی سەرنەکەوت' : 'Failed to reach update servers.');
+      setUpdateError((language === 'ku' || language === 'badini') ? 'پەیوەندی سەرنەکەوت' : 'Failed to reach update servers.');
       addNotification({
         type: 'error',
-        title: language === 'ku' ? 'هەڵە لە پشکنین' : 'Update Check Failed',
-        message: language === 'ku' ? 'تکایە هێڵی ئینتەرنێتەکەت بپشکنە' : 'Please check your internet connection.'
+        title: (language === 'ku' || language === 'badini') ? 'هەڵە لە پشکنین' : 'Update Check Failed',
+        message: (language === 'ku' || language === 'badini') ? 'تکایە هێڵی ئینتەرنێتەکەت بپشکنە' : 'Please check your internet connection.'
       });
     } finally {
       setCheckingUpdate(false);
@@ -266,15 +266,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       await updateService.executeUpdate(updateResult);
       addNotification({
         type: 'info',
-        title: language === 'ku' ? 'دەستپێکردنی نوێکاری' : 'Initiating Update',
-        message: language === 'ku' ? 'پرۆسەی نوێکردنەوە دەستی پێکرد' : 'Updating protocol initiated.'
+        title: (language === 'ku' || language === 'badini') ? 'دەستپێکردنی نوێکاری' : 'Initiating Update',
+        message: (language === 'ku' || language === 'badini') ? 'پرۆسەی نوێکردنەوە دەستی پێکرد' : 'Updating protocol initiated.'
       });
     } catch (err) {
       console.error('[UPDATE UI] Error executing update:', err);
       addNotification({
         type: 'error',
-        title: language === 'ku' ? 'نوێکاری سەرنەکەوت' : 'Update Execution Failed',
-        message: language === 'ku' ? 'کێشەیەک ڕوویدا لە کاتی جێبەجێکردندا' : 'An error occurred while launching update.'
+        title: (language === 'ku' || language === 'badini') ? 'نوێکاری سەرنەکەوت' : 'Update Execution Failed',
+        message: (language === 'ku' || language === 'badini') ? 'کێشەیەک ڕوویدا لە کاتی جێبەجێکردندا' : 'An error occurred while launching update.'
       });
     }
   };
@@ -308,8 +308,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       type: next ? 'success' : 'info',
       title: next ? '⚡ 60 FPS Turbo ON' : '🎨 High Quality ON',
       message: next 
-        ? (language === 'ku' ? 'دۆخی خێرا چالاک کرا' : 'Visual suppression active for maximum performance.')
-        : (language === 'ku' ? 'دۆخی ئاسایی گەڕێندرایەوە' : 'Full visual fidelity restored.')
+        ? ((language === 'ku' || language === 'badini') ? 'دۆخی خێرا چالاک کرا' : 'Visual suppression active for maximum performance.')
+        : ((language === 'ku' || language === 'badini') ? 'دۆخی ئاسایی گەڕێندرایەوە' : 'Full visual fidelity restored.')
     });
   };
 
@@ -457,7 +457,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                            <Zap size={22} fill={isPerformanceMode ? 'currentColor' : 'none'} />
                         </div>
                         <div>
-                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">{language === 'ku' ? 'مۆدی ٦٠ FPS' : '60 FPS Turbo Mode'}</h3>
+                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'مۆدی ٦٠ FPS' : '60 FPS Turbo Mode'}</h3>
                           <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Suppress Blurs & Effects</p>
                         </div>
                       </div>
@@ -511,7 +511,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               ? t('checkingUpdates') 
                               : updateResult 
                               ? (updateResult.updateAvailable ? t('updateAvailable') : t('upToDate'))
-                              : (language === 'ku' ? 'پشکنین بکە بۆ نوێترین وەشان' : 'Check for the latest version')}
+                              : ((language === 'ku' || language === 'badini') ? 'پشکنین بکە بۆ نوێترین وەشان' : 'Check for the latest version')}
                           </p>
                         </div>
                       </div>
@@ -554,7 +554,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
                             <div className="space-y-2">
                               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                                {language === 'ku' ? 'چی نوێیە لەم وەشانەدا:' : "What's new in this version:"}
+                                {(language === 'ku' || language === 'badini') ? 'چی نوێیە لەم وەشانەدا:' : "What's new in this version:"}
                               </span>
                               <div className="bg-white/[0.01] border border-white/5 p-4 rounded-2xl max-h-[120px] overflow-y-auto space-y-1.5 scrollbar-hide">
                                 {updateResult.changelog.length > 0 ? (
@@ -566,7 +566,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                   ))
                                 ) : (
                                   <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">
-                                    {language === 'ku' ? 'زانیاری نوێکاری بەردەست نییە' : 'No changelog provided.'}
+                                    {(language === 'ku' || language === 'badini') ? 'زانیاری نوێکاری بەردەست نییە' : 'No changelog provided.'}
                                   </p>
                                 )}
                               </div>
@@ -720,7 +720,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                     detectedPlatform === 'windows' ? <Monitor size={14} /> :
                     <Download size={14} />
                   } 
-                  label={language === 'ku' ? 'پاکێجەکانی فڵکرد' : 'FLKRD Native Ecosystem'} 
+                  label={(language === 'ku' || language === 'badini') ? 'پاکێجەکانی فڵکرد' : 'FLKRD Native Ecosystem'} 
                 />
                 <Card className="p-6">
                   <div className="flex flex-col gap-5">
@@ -846,8 +846,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               // Premium bilingual toast feedback to announce the background download action
                               addNotification({
                                 type: 'success',
-                                title: language === 'ku' ? 'دابەزاندنی خۆکار دەستیپێکرد' : 'Automatic Download Started',
-                                message: language === 'ku'
+                                title: (language === 'ku' || language === 'badini') ? 'دابەزاندنی خۆکار دەستیپێکرد' : 'Automatic Download Started',
+                                message: (language === 'ku' || language === 'badini')
                                   ? 'فایلی ئەپی مەک بە شێوەیەکی خۆکارانە لە باکگراونددا دەستی بە دابەزاندن کرد. ئێستا دەتوانیت بینەری ڕێنماییەکان بیت بۆ چۆنیەتی دامەزراندن و چارەسەرکردنی کێشە ئەمنییەکانی مەک.'
                                   : 'The macOS app DMG has started downloading automatically in the background. You can now read the instructions to install and bypass macOS gatekeeper warnings.'
                               });
@@ -900,8 +900,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           className="text-[9px] font-black uppercase text-gray-500 hover:text-white transition-all flex items-center gap-1.5 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/5"
                         >
                           {showAllPlatforms 
-                            ? (language === 'ku' ? 'پیشاندانی تەنها وەشانی من' : 'Show only my platform') 
-                            : (language === 'ku' ? 'پیشاندانی هەموو وەشانەکان' : 'Looking for another device? Show all platforms')}
+                            ? ((language === 'ku' || language === 'badini') ? 'پیشاندانی تەنها وەشانی من' : 'Show only my platform') 
+                            : ((language === 'ku' || language === 'badini') ? 'پیشاندانی هەموو وەشانەکان' : 'Looking for another device? Show all platforms')}
                           <ArrowUpRight size={10} className="stroke-[2.5]" />
                         </button>
                       </div>
@@ -1074,7 +1074,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   </div>
                   <div>
                     <h3 className="text-[11px] md:text-xs font-black text-white uppercase tracking-wider">
-                      {language === 'ku' ? 'ڕێنمایی دامەزراندنی فەرمی مەکینتۆش' : 'macOS Safe Installation Guide'}
+                      {(language === 'ku' || language === 'badini') ? 'ڕێنمایی دامەزراندنی فەرمی مەکینتۆش' : 'macOS Safe Installation Guide'}
                     </h3>
                     <p className="text-[8px] text-gray-500 font-extrabold uppercase tracking-widest mt-0.5">
                       Bypass macOS Gatekeeper Warning Safely

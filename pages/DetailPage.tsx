@@ -115,8 +115,8 @@ const DetailPage: React.FC = () => {
 
       addNotification({
         type: 'success',
-        title: language === 'ku' ? 'ئاهەنگی تەماشا دروستکرا' : 'Watch Party Created',
-        message: language === 'ku' 
+        title: (language === 'ku' || language === 'badini') ? 'ئاهەنگی تەماشا دروستکرا' : 'Watch Party Created',
+        message: (language === 'ku' || language === 'badini') 
           ? 'بلیتەکە بە سەرکەوتوویی دروستکرا. بەستەرەکە هاوبەش بکە لەگەڵ هاوڕێیەکەت!'
           : 'Ticket generated successfully. Share the link with a friend!',
       });
@@ -127,7 +127,7 @@ const DetailPage: React.FC = () => {
       console.error('Failed to create watch party:', e);
       addNotification({
         type: 'error',
-        title: language === 'ku' ? 'هەڵەیەک ڕوویدا' : 'Creation Failed',
+        title: (language === 'ku' || language === 'badini') ? 'هەڵەیەک ڕوویدا' : 'Creation Failed',
         message: e.message || 'Could not connect to ticketing service.',
       });
     } finally {
@@ -221,7 +221,7 @@ const DetailPage: React.FC = () => {
           // Update browser window title dynamically for optimal search engine crawl and index representation
           const year = data.release_date ? ` (${data.release_date.split('-')[0]})` : '';
           const movieName = data.title || data.original_title || 'Movie';
-          document.title = language === 'ku'
+          document.title = (language === 'ku' || language === 'badini')
             ? `سەیرکردنی فیلمی ${movieName}${year} بە ژێرنووسی کوردی | FLKRD`
             : `Watch ${movieName}${year} with Kurdish Subtitles | FLKRD`;
 
@@ -349,7 +349,7 @@ const DetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
         <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} className="w-full h-full object-cover blur-[140px] scale-150" alt="" />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
@@ -384,7 +384,7 @@ const DetailPage: React.FC = () => {
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center justify-center gap-2 mb-1 bg-blue-600/20 px-3 py-1 rounded-full border border-blue-600/30">
                   <Shield size={12} className="text-blue-500" />
-                  <p className="text-[8px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">{language === 'ku' ? 'پەیوەندی پارێزراوە' : 'SECURE NODE ACTIVE'}</p>
+                  <p className="text-[8px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">{(language === 'ku' || language === 'badini') ? 'پەیوەندی پارێزراوە' : 'SECURE NODE ACTIVE'}</p>
                 </div>
                 <h2 className="text-xs md:sm font-bold uppercase tracking-tight italic line-clamp-1 text-white">{content.title}</h2>
               </div>
@@ -554,16 +554,16 @@ const DetailPage: React.FC = () => {
 
         {!isPlayerModalOpen && (
           <Portal id="detail-nav-portal">
-            <div className={`fixed top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-[110]`}>
+            <div className={`fixed top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-[110]`}>
               <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95">
-                <ArrowLeft size={20} className={`${language === 'ku' ? 'rotate-180' : ''}`} />
+                <ArrowLeft size={20} className={`${(language === 'ku' || language === 'badini') ? 'rotate-180' : ''}`} />
                 <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
               </button>
             </div>
           </Portal>
         )}
 
-        <div className={`absolute bottom-8 md:bottom-24 ${language === 'ku' ? 'right-0 text-right px-6 md:px-8 lg:px-20' : 'left-0 text-left px-6 md:px-8 lg:px-20'} z-10 flex flex-col max-w-6xl items-start`}>
+        <div className={`absolute bottom-8 md:bottom-24 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right px-6 md:px-8 lg:px-20' : 'left-0 text-left px-6 md:px-8 lg:px-20'} z-10 flex flex-col max-w-6xl items-start`}>
           <div className="flex flex-wrap items-center gap-3 mb-6">
             <div className="bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-blue-600/30 flex items-center gap-1.5"><Shield size={12} /> SECURE MODULE</div>
             {content.status === 'Released' && <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-green-500/30">Available</div>}
@@ -601,7 +601,7 @@ const DetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5">
-            <LiquidButton ref={playButtonRef} variant="default" onClick={handlePlayClick} className="font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span></LiquidButton>
+            <LiquidButton ref={playButtonRef} variant="default" onClick={handlePlayClick} className="font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}</span></LiquidButton>
             {trailerKey && (
               <LiquidButton variant="default" onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></LiquidButton>
             )}
@@ -614,8 +614,8 @@ const DetailPage: React.FC = () => {
               <Tv size={20} />
               <span className="text-sm md:text-xl uppercase italic tracking-tighter">
                 {isCreatingParty 
-                  ? (language === 'ku' ? 'دروست دەکرێت...' : 'CREATING...') 
-                  : (language === 'ku' ? 'ئاهەنگی تەماشا' : 'CO-WATCH')}
+                  ? ((language === 'ku' || language === 'badini') ? 'دروست دەکرێت...' : 'CREATING...') 
+                  : ((language === 'ku' || language === 'badini') ? 'ئاهەنگی تەماشا' : 'CO-WATCH')}
               </span>
             </LiquidButton>
           </div>
@@ -628,13 +628,13 @@ const DetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 md:gap-20">
           <div className="lg:col-span-2">
             <div className="mb-20">
-              <div className="flex items-center gap-4 mb-10"><div className="w-1.5 h-10 bg-[var(--brand-red)] rounded-full shadow-[0_0_20px_var(--brand-red)]"></div><h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--text-secondary)] italic">{language === 'ku' ? 'کورتەی فیلم' : 'OVERVIEW'}</h3></div>
+              <div className="flex items-center gap-4 mb-10"><div className="w-1.5 h-10 bg-[var(--brand-red)] rounded-full shadow-[0_0_20px_var(--brand-red)]"></div><h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--text-secondary)] italic">{(language === 'ku' || language === 'badini') ? 'کورتەی فیلم' : 'OVERVIEW'}</h3></div>
               <p className="text-[var(--text-primary)] text-lg md:text-2xl leading-relaxed italic font-bold">{content.overview}</p>
             </div>
 
             {cast.length > 0 && (
               <div className="mb-24">
-                <div className="flex items-center gap-4 mb-12"><h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{language === 'ku' ? 'ئەکتەرەکان' : 'ACTORS'}</h2><div className="h-[2px] flex-grow bg-white/5 rounded-full"></div></div>
+                <div className="flex items-center gap-4 mb-12"><h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{(language === 'ku' || language === 'badini') ? 'ئەکتەرەکان' : 'ACTORS'}</h2><div className="h-[2px] flex-grow bg-white/5 rounded-full"></div></div>
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8">
                   {cast.map(person => (
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
@@ -652,7 +652,7 @@ const DetailPage: React.FC = () => {
 
         {recommendations.length > 0 && (
           <div className="mt-20">
-            <Row title={language === 'ku' ? 'زیاتر لەم جۆرە' : 'MORE LIKE THIS'} items={recommendations} type="movie" />
+            <Row title={(language === 'ku' || language === 'badini') ? 'زیاتر لەم جۆرە' : 'MORE LIKE THIS'} items={recommendations} type="movie" />
           </div>
         )}
       </div>

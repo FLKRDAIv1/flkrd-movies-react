@@ -1,9 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageSquare, Shield, Sparkles, X, Smile, Settings } from 'lucide-react';
+import { Send, MessageSquare, Shield, Sparkles, X, Smile, Settings, AlertTriangle } from 'lucide-react';
+import { SearchComponent } from 'stipop-react-sdk';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
+
+class StickerErrorBoundary extends React.Component<{ children: React.ReactNode; language: string }, { hasError: boolean }> {
+  state: { hasError: boolean };
+  props: { children: React.ReactNode; language: string };
+
+  constructor(props: { children: React.ReactNode; language: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.warn("Caught Stipop SDK render exception:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      const isKurdish = this.props.language === 'ku' || this.props.language === 'badini';
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center bg-zinc-950/80 rounded-[1.25rem] border border-zinc-800 m-2 h-[220px]">
+          <AlertTriangle className="text-orange-500 mb-3 animate-pulse" size={24} />
+          <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-2">
+            {isKurdish ? 'ستیکەرەکان بەردەست نین' : 'Stickers Unavailable'}
+          </p>
+          <p className="text-[8px] font-bold text-zinc-500 leading-relaxed max-w-[200px] uppercase">
+            {isKurdish 
+              ? 'تکایە دڵنیابەرەوە کە کلیلی API لە فایلی کۆنفیگ بە شێوەیەکی دروست دانراوە.' 
+              : 'Please verify that your Stipop API Key is correctly configured in your Dashboard.'}
+          </p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 interface WatchChatSidebarProps {
   ticketId: string;
@@ -90,100 +129,34 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const [showControls, setShowControls] = useState(true);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [stipopStickers, setStipopStickers] = useState<any[]>([]);
-  const [stipopSearch, setStipopSearch] = useState('');
-  const [stipopLoading, setStipopLoading] = useState(false);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [stickerError, setStickerError] = useState(false);
 
-  const isAdultContent = (text: string): boolean => {
-    const SENSITIVE_KEYWORDS = [
-      'sex', 'porn', 'xxx', 'adult', 'naked', 'nsfw', 'erotic', 'butt', 'dick', 
-      'boobs', 'vagina', 'hentai', 'breast', 'penis', 'weed', 'cigar', 'alcohol', 
-      'sensual', 'vulgar', 'orgasm', 'nude', 'lingerie', 'condom', 'sexy', 'hot',
-      'underwear', 'bra', 'strip', 'naughty', 'playboy', 'slut', 'bitch', 'ass'
-    ];
-    const lower = text.toLowerCase().trim();
-    return SENSITIVE_KEYWORDS.some(k => lower.includes(k));
-  };
-
-  const fetchStipopStickers = async (query = '') => {
-    // Proactively block adult search queries instantly
-    if (isAdultContent(query)) {
-      setStipopStickers([]);
-      setStipopLoading(false);
-      return;
-    }
-
-    setStipopLoading(true);
-    try {
-      let url = '';
-      if (query.trim()) {
-        url = `https://messenger.stipop.io/v1/search?q=${encodeURIComponent(query)}&userId=${localUserId}&limit=100`;
-      } else {
-        url = `https://messenger.stipop.io/v1/package?userId=${localUserId}&limit=12`;
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      if (reason && (
+        String(reason).includes('stipop') || 
+        String(reason.message).includes('401') || 
+        String(reason.message).includes('stipop') ||
+        String(reason).includes('401')
+      )) {
+        console.warn("Caught Stipop promise rejection:", reason);
+        setStickerError(true);
+        event.preventDefault(); // Stop from logging uncaught exception
       }
-
-      const res = await fetch(url, {
-        headers: {
-          apikey: '3bb06c03-2293-435e-a2bb-49898c9ca7d4'
-        }
-      });
-      const data = await res.json();
-      
-      if (data && data.body) {
-        if (query.trim()) {
-          const list = data.body.stickerList || data.body.stickers || [];
-          
-          // Strict client-side filter to scan returned keywords and image URLs
-          const filtered = list.filter((s: any) => {
-            const keyword = (s.keyword || '').toString();
-            const imageUrl = (s.stickerImg || '').toString();
-            return !isAdultContent(keyword) && !isAdultContent(imageUrl);
-          });
-
-          // Limit display to exactly 50 stickers
-          setStipopStickers(filtered.slice(0, 50).map((s: any) => ({
-            stickerId: s.stickerId,
-            stickerImg: s.stickerImg
-          })));
-        } else {
-          const packs = data.body.packageList || data.body.packages || [];
-          const allStickers: any[] = [];
-          
-          packs.forEach((p: any) => {
-            const packageName = (p.packageName || '').toString();
-            if (isAdultContent(packageName)) return; // Skip adult packages
-
-            if (p.stickers) {
-              p.stickers.forEach((s: any) => {
-                const keyword = (s.keyword || '').toString();
-                const imageUrl = (s.stickerImg || '').toString();
-                if (!isAdultContent(keyword) && !isAdultContent(imageUrl)) {
-                  allStickers.push({
-                    stickerId: s.stickerId,
-                    stickerImg: s.stickerImg
-                  });
-                }
-              });
-            }
-          });
-          
-          // Limit display to exactly 50 stickers
-          setStipopStickers(allStickers.slice(0, 50));
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load Stipop stickers:', err);
-    } finally {
-      setStipopLoading(false);
-    }
-  };
+    };
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, []);
 
   useEffect(() => {
     if (showStickers) {
-      fetchStipopStickers(stipopSearch);
+      setStickerError(false);
     }
-  }, [showStickers, stipopSearch]);
+  }, [showStickers]);
+
+  const STIPOP_API_KEY = 'c186cd75c25d5975d1edf3e8fef69234';
 
   const resetHeaderTimer = () => {
     setShowControls(true);
@@ -221,7 +194,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     }
   }, [isInputFocused, showStickers, showSettings]);
 
-  const isRtl = language === 'ku';
+  const isRtl = (language === 'ku' || language === 'badini');
 
   // 1. Fetch initial messages
   useEffect(() => {
@@ -311,8 +284,8 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             const isSenderHost = sender === hostName;
             addNotification({
               type: 'info',
-              title: language === 'ku' ? '💬 پەیامی نوێ' : '💬 New Message',
-              message: language === 'ku'
+              title: (language === 'ku' || language === 'badini') ? '💬 پەیامی نوێ' : '💬 New Message',
+              message: (language === 'ku' || language === 'badini')
                 ? `نامەیەکی نوێ لە لایەن [${isSenderHost ? 'پێشکەشکار' : 'بینەر'}] (${sender})`
                 : `New chat from [${isSenderHost ? 'Host' : 'Watcher'}] (${sender})`,
             });
@@ -383,8 +356,8 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       console.error('Failed to send message:', err);
       addNotification({
         type: 'error',
-        title: language === 'ku' ? 'نامەکە نەنێردرا' : 'Send Failed',
-        message: language === 'ku' ? 'کێشەیەک لە پەیوەندی هەیە.' : 'Connection failure in database relay.',
+        title: (language === 'ku' || language === 'badini') ? 'نامەکە نەنێردرا' : 'Send Failed',
+        message: (language === 'ku' || language === 'badini') ? 'کێشەیەک لە پەیوەندی هەیە.' : 'Connection failure in database relay.',
       });
     } finally {
       setSending(false);
@@ -540,7 +513,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-orange-500" />
                 <h3 className="text-xs font-black uppercase tracking-widest text-white italic">
-                  {language === 'ku' ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
+                  {(language === 'ku' || language === 'badini') ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
                 </h3>
               </div>
               
@@ -548,7 +521,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                 <div className="flex items-center gap-1.5 bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
                   <Shield size={10} className="text-orange-500" />
                   <span className="text-[7px] font-black uppercase text-orange-500 tracking-wider">
-                    {language === 'ku' ? 'پارێزراوە' : 'SECURE'}
+                    {(language === 'ku' || language === 'badini') ? 'پارێزراوە' : 'SECURE'}
                   </span>
                 </div>
                 <button
@@ -575,7 +548,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             {showSettings && onChatWidthChange && (
               <div className="flex items-center gap-2 mt-2 px-1 py-1 border-t border-zinc-900 w-full select-none">
                 <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
-                  {language === 'ku' ? 'قەبارەی چات:' : 'CHAT SIZE:'}
+                  {(language === 'ku' || language === 'badini') ? 'قەبارەی چات:' : 'CHAT SIZE:'}
                 </span>
                 <input
                   type="range"
@@ -596,7 +569,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
         <div className="text-center py-2 shrink-0">
           <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-[0.2em] bg-zinc-900/50 border border-zinc-800 px-3 py-1 rounded-full">
-            {language === 'ku' ? 'ئاهەنگی تەماشا دەستیپێکرد' : 'CO-WATCH INITIATED'}
+            {(language === 'ku' || language === 'badini') ? 'ئاهەنگی تەماشا دەستیپێکرد' : 'CO-WATCH INITIATED'}
           </span>
         </div>
 
@@ -617,7 +590,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[7px] font-[1000] tracking-[0.25em] text-white/80 uppercase">
-                      {language === 'ku' ? 'هاوکاتکردنی پەخش' : 'CINEMA SYNC ALERT'}
+                      {(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'CINEMA SYNC ALERT'}
                     </span>
                     <Sparkles size={10} className="text-white animate-pulse" />
                   </div>
@@ -643,7 +616,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                       ? 'bg-red-600/20 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
                       : 'bg-orange-600/20 text-orange-500 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.15)]'
                   }`}>
-                    {isHostUser ? (language === 'ku' ? 'پێشکەشکار' : 'HOST') : (language === 'ku' ? 'ئەندام' : 'MEMBER')}
+                    {isHostUser ? ((language === 'ku' || language === 'badini') ? 'پێشکەشکار' : 'HOST') : ((language === 'ku' || language === 'badini') ? 'ئەندام' : 'MEMBER')}
                   </span>
 
                   {/* Nickname with YouTube highlight */}
@@ -679,76 +652,87 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Floating Sticker drawer overlay */}
+      {/* Official Stipop SDK Sticker Drawer */}
       <AnimatePresence>
         {showStickers && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: 12, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-20 left-4 right-4 bg-zinc-950/95 border border-zinc-900 rounded-[1.75rem] p-3 shadow-2xl z-50 flex flex-col gap-1.5 backdrop-blur-md"
+            exit={{ opacity: 0, y: 12, scale: 0.96 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            className="absolute bottom-20 left-2 right-2 z-50 rounded-[1.75rem] overflow-hidden shadow-2xl border border-zinc-800"
           >
-            <div className="flex justify-between items-center px-1">
-              <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">
-                {language === 'ku' ? 'ستیکەرەکانی ئاهەنگ' : 'THEATRE STICKERS'}
+            {/* Header row */}
+            <div className="flex justify-between items-center px-3 py-2 bg-zinc-950/98 border-b border-zinc-800/60">
+              <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest flex items-center gap-1.5">
+                <Sparkles size={9} className="text-orange-500" />
+                {(language === 'ku' || language === 'badini') ? 'ستیکەرەکانی ئاهەنگ' : 'STIPOP STICKERS'}
               </span>
               <button
                 type="button"
                 onClick={() => setShowStickers(false)}
-                className="text-zinc-500 hover:text-white cursor-pointer p-0.5 rounded-lg hover:bg-white/5 transition-colors"
+                className="text-zinc-500 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <X size={12} />
               </button>
             </div>
 
-            {/* Sticker search bar */}
-            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1 my-0.5 shrink-0">
-              <input
-                type="text"
-                placeholder={language === 'ku' ? 'گەڕان بۆ ستیکەر...' : 'Search stickers...'}
-                value={stipopSearch}
-                onChange={(e) => setStipopSearch(e.target.value)}
-                className="flex-1 bg-transparent text-[10px] text-white outline-none font-bold placeholder-zinc-500"
-              />
-              {stipopSearch && (
-                <button 
-                  type="button"
-                  onClick={() => setStipopSearch('')}
-                  className="text-zinc-500 hover:text-white"
-                >
-                  <X size={10} />
-                </button>
-              )}
-            </div>
-
-            {/* Sticker grid */}
-            <div className="max-h-[150px] overflow-y-auto grid grid-cols-4 gap-1.5 custom-scrollbar pr-0.5 shrink-0">
-              {stipopLoading ? (
-                <div className="col-span-4 py-8 flex flex-col items-center justify-center gap-1.5">
-                  <div className="w-4 h-4 rounded-full border-t border-orange-500 animate-spin" />
-                  <span className="text-[7px] font-black text-zinc-500 tracking-wider uppercase">
-                    {language === 'ku' ? 'بارکردنی ستیکەر...' : 'LOADING STICKERS...'}
-                  </span>
-                </div>
-              ) : stipopStickers.length === 0 ? (
-                <div className="col-span-4 py-8 text-center text-zinc-500 text-[8px] font-bold uppercase tracking-wider">
-                  {language === 'ku' ? 'هیچ ستیکەرێک نەدۆزرایەوە' : 'NO STICKERS FOUND'}
+            {/* Stipop SDK SearchComponent — handles auth, search, pagination, grid natively */}
+            <div className="stipop-sdk-wrapper" dir="ltr">
+              {stickerError ? (
+                <div className="flex flex-col items-center justify-center p-6 text-center bg-zinc-950/80 rounded-[1.25rem] border border-zinc-800 m-2 h-[220px]">
+                  <AlertTriangle className="text-orange-500 mb-3 animate-pulse" size={24} />
+                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-2">
+                    {(language === 'ku' || language === 'badini') ? 'ستیکەرەکان بەردەست نین' : 'Stickers Unavailable'}
+                  </p>
+                  <p className="text-[8px] font-bold text-zinc-500 leading-relaxed max-w-[200px] uppercase">
+                    {(language === 'ku' || language === 'badini')
+                      ? 'تکایە دڵنیابەرەوە کە کلیلی API لە فایلی کۆنفیگ بە شێوەیەکی دروست دانراوە.' 
+                      : 'Please verify that your Stipop API Key is correctly configured in your Dashboard.'}
+                  </p>
                 </div>
               ) : (
-                stipopStickers.map((sticker) => (
-                  <button
-                    key={sticker.stickerId}
-                    type="button"
-                    onClick={() => handleSendStipopSticker(sticker.stickerImg)}
-                    className="flex items-center justify-center p-1 rounded-xl bg-white/5 border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5 active:scale-90 transition-all cursor-pointer overflow-hidden group h-12"
-                  >
-                    <img
-                      src={sticker.stickerImg}
-                      alt="Sticker"
-                      className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform select-none"
-                    />
-                  </button>
-                ))
+                <StickerErrorBoundary language={language}>
+                  <SearchComponent
+                    params={{
+                      apikey: STIPOP_API_KEY,
+                      userId: localUserId || 'flkrd-guest',
+                      lang: (language === 'ku' || language === 'badini') ? 'ar' : 'en',
+                      countryCode: (language === 'ku' || language === 'badini') ? 'IQ' : 'US',
+                      limit: 50,
+                    }}
+                    mainLanguage={(language === 'ku' || language === 'badini') ? 'ar' : 'en'}
+                    size={{ width: undefined, height: 220, imgSize: 80 }}
+                    backgroundColor="#09090b"
+                    column={4}
+                    scroll={true}
+                    scrollHover="#f97316"
+                    preview={false}
+                    loadingColor="#f97316"
+                    shadow="none"
+                    border={{
+                      border: 'none',
+                      radius: { all: 0 },
+                    }}
+                    input={{
+                      border: '1px solid #27272a',
+                      radius: 12,
+                      backgroundColor: '#18181b',
+                      color: '#ffffff',
+                      width: undefined,
+                      height: 34,
+                      focus: '#f97316',
+                      search: (language === 'ku' || language === 'badini') ? 'گەڕان...' : 'Search stickers...',
+                    }}
+                    stickerClick={(sticker: any) => {
+                      // SDK passes the sticker object — url is the image URL
+                      const imgUrl = sticker?.url || sticker?.imgUrl || sticker?.stickerImg || sticker?.img || '';
+                      if (imgUrl) {
+                        handleSendStipopSticker(imgUrl);
+                      }
+                    }}
+                  />
+                </StickerErrorBoundary>
               )}
             </div>
           </motion.div>
@@ -780,7 +764,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
               
               <input
                 type="text"
-                placeholder={language === 'ku' ? 'نامەیەک بنووسە...' : 'Type a message...'}
+                placeholder={(language === 'ku' || language === 'badini') ? 'نامەیەک بنووسە...' : 'Type a message...'}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onFocus={() => setIsInputFocused(true)}

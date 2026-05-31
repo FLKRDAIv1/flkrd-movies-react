@@ -35,7 +35,7 @@ const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = ({ tmdbId, type }) => {
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600/90 backdrop-blur-md rounded-xl border border-red-500/50 shadow-[0_4px_15px_rgba(229,9,20,0.4)]">
                     <Subtitles size={12} className="text-white" />
                     <span className="text-[9px] font-black text-white uppercase tracking-wider">
-                        {language === 'ku' ? 'کوردی' : 'KU CC'}
+                        {(language === 'ku' || language === 'badini') ? 'کوردی' : 'KU CC'}
                     </span>
                 </div>
             </motion.div>

@@ -1220,7 +1220,7 @@ const DubbedMoviesPage: React.FC = () => {
                                     </div>
 
                                     <div className="flex flex-col gap-2">
-                                        {language === 'ku' && heroMovies[currentHeroIndex]?.title && (
+                                        {(language === 'ku' || language === 'badini') && heroMovies[currentHeroIndex]?.title && (
                                             <motion.span
                                                 initial={{ opacity: 0, x: -20 }}
                                                 animate={{ opacity: 1, x: 0 }}
@@ -1231,7 +1231,7 @@ const DubbedMoviesPage: React.FC = () => {
                                             </motion.span>
                                         )}
                                         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[5rem] font-[1000] uppercase italic tracking-tighter leading-[0.9] drop-shadow-[0_15px_40px_rgba(0,0,0,0.8)] text-white max-w-4xl selection:bg-white selection:text-black">
-                                            {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishTitle : heroMovies[currentHeroIndex]?.title}
+                                            {(language === 'ku' || language === 'badini') ? heroMovies[currentHeroIndex]?.kurdishTitle : heroMovies[currentHeroIndex]?.title}
                                         </h1>
                                     </div>
 
@@ -1253,7 +1253,7 @@ const DubbedMoviesPage: React.FC = () => {
                                     </div>
 
                                     <p className="text-gray-300 text-sm md:text-lg font-medium italic line-clamp-3 max-w-2xl drop-shadow-xl leading-relaxed mt-1 bg-black/40 p-6 rounded-3xl backdrop-blur-[30px] border border-white/10 shadow-2xl">
-                                        {language === 'ku' ? heroMovies[currentHeroIndex]?.kurdishOverview : heroMovies[currentHeroIndex]?.overview}
+                                        {(language === 'ku' || language === 'badini') ? heroMovies[currentHeroIndex]?.kurdishOverview : heroMovies[currentHeroIndex]?.overview}
                                     </p>
 
                                     <div className="flex flex-wrap items-center gap-4 mt-2 pb-20">
@@ -1469,7 +1469,7 @@ const DubbedMoviesPage: React.FC = () => {
                                         {movie.release_date?.split('-')[0] || '2025'} • {t('dubbedMovies')}
                                     </div>
                                     <h3 className="text-sm md:text-2xl font-[1000] text-gray-200 group-hover:text-white transition-colors duration-300 line-clamp-1 uppercase tracking-tighter italic">
-                                        {language === 'ku' ? movie.kurdishTitle : movie.title}
+                                        {(language === 'ku' || language === 'badini') ? movie.kurdishTitle : movie.title}
                                     </h3>
                                 </div>
                             </motion.div>

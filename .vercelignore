@@ -5,10 +5,8 @@ node_modules/
 dist/
 dist-ssr/
 
-# Rust/Tauri build artifacts
-src-tauri/target/
-src-tauri/gen/
-src-tauri/binaries/
+# Rust/Tauri desktop code & build artifacts
+src-tauri/
 
 # Environment files
 .env
@@ -20,8 +18,15 @@ src-tauri/binaries/
 .idea/
 .DS_Store
 
-# Temporary / backup folders and artifacts
+# Temporary / backup folders, logs and installer packages
 data movie restored/
+migrated_prompt_history/
+new file for new webclip file /
 dubbed_movies_backup.json
 *.apk
+*.dmg
 *.mobileconfig
+public/FLKRD_MOVIES_Mac_v5.5.1.25.dmg
+public/FLKRD_MOVIES_Mac_v5.5.1.dmg
+public/fkurd.apk
+app-universal-release-signed.apk

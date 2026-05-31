@@ -23,6 +23,15 @@ export default defineConfig(({ mode }) => {
             target: 'https://api.themoviedb.org/3',
             rewrite: (path) => path.replace(/^\/api\/tmdb/, ''),
             changeOrigin: true,
+            configure: (proxy, _options) => {
+              proxy.on('error', (err, _req, res) => {
+                console.warn('[Vite Proxy Error] Failed to reach TMDB API:', err.message);
+                if (!res.headersSent) {
+                  res.writeHead(502, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({ error: 'TMDB API is currently unreachable. Please check your internet connection or DNS settings.' }));
+                }
+              });
+            }
           }
         },
         headers: {
@@ -43,8 +52,8 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || '')
       },
       resolve: {
         alias: {

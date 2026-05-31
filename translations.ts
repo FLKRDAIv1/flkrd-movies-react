@@ -404,6 +404,7 @@ const translations = {
     checkingUpdates: "پشکنینی نۆدەکان...",
     upToDate: "سیستمەکە بە تەواوی نوێیە",
     updateAvailable: "وەشانی نوێ بەردەستە",
+    updateNow: "ئێستا نوێ بکەرەوە",
     updateDescription: "وەشانێکی نوێی مەکینەی سینەمایی فڵکرد ئامادەیە بۆ دامەزراندن."
   },
   badini: {
@@ -551,6 +552,9 @@ const translations = {
     enableNotificationsModalStep1: "کرتە ل ئایکۆنی قفڵێ بکە د شریتا ناونیشانێ دا.",
     enableNotificationsModalStep2: "ڕێکخستنێن سایتی دا ل 'ئاگاداریان' بگەڕی.",
     enableNotificationsModalStep3: "بگۆڕە بۆ 'ڕێگەپێدان' (Allow).",
+    enableNotificationsModalStep1Safari: "بچۆ بۆ Safari > Settings for This Website.",
+    enableNotificationsModalStep2Safari: "دڵنیابە کو ئاگاداری نەهاتینە بلۆککرن.",
+    enableNotificationsModalStep3Safari: "پەڕەیێ نوێ بکە بۆ جێبەجێکرنا گۆڕانکاریان.",
     welcomePromptTitle: "چالاککرنا ئاگاداریان",
     welcomePromptBody: "ئاگاداری نوێترین فیلم و زنجیرێن فڵکرد ببە.",
     welcomePromptEnable: "چالاککرن",
@@ -582,6 +586,7 @@ const translations = {
     choiceCountry: "وڵاتەک هەڵبژێرە",
     discoverPrompt: "دەتەوێت سەیری چی بکەیت؟",
     allYears: "هەموو ساڵەکان",
+    infinityMovie: "پەخشا بێ دوماهی",
     theme: "ڕووکار",
     light: "ڕووناک",
     dark: "تاریک",

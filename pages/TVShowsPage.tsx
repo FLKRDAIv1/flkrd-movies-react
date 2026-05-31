@@ -12,7 +12,7 @@ import { LiquidButton } from '../components/ui/liquid-glass-button';
 const TVShowsPage: React.FC = () => {
     const [headerContent, setHeaderContent] = React.useState<Content | null>(null);
     const { t, language } = useTranslation();
-    const langCode = language === 'ku' ? 'ku' : 'en-US';
+    const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
     const navigate = useNavigate();
 
     React.useEffect(() => {
@@ -40,20 +40,20 @@ const TVShowsPage: React.FC = () => {
                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
                     </div>
                 )}
-                <div className={`absolute top-24 ${language === 'ku' ? 'right-8 md:right-20' : 'left-8 md:left-20'} md:top-32 z-20`}>
+                <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'right-8 md:right-20' : 'left-8 md:left-20'} md:top-32 z-20`}>
                     <LiquidButton 
                       variant="secondary"
                       onClick={() => navigate(-1)} 
                       className="!px-5 !py-3 rounded-2xl flex items-center gap-2"
                     >
-                      {language === 'ku' ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+                      {(language === 'ku' || language === 'badini') ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
                       <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
                     </LiquidButton>
                 </div>
 
-                <div className={`relative z-10 flex flex-col justify-end h-full p-4 md:p-8 md:px-20 pb-12 ${language === 'ku' ? 'text-right items-end' : 'text-left items-start'}`}>
+                <div className={`relative z-10 flex flex-col justify-end h-full p-4 md:p-8 md:px-20 pb-12 ${(language === 'ku' || language === 'badini') ? 'text-right items-end' : 'text-left items-start'}`}>
                     <h1 className="text-4xl md:text-7xl font-black uppercase italic tracking-tighter leading-none mb-4">{t('tvShows')}</h1>
-                    <p className={`max-w-2xl text-gray-300 font-medium text-sm md:text-base line-clamp-2 italic ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+                    <p className={`max-w-2xl text-gray-300 font-medium text-sm md:text-base line-clamp-2 italic ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
                         {t('tvShowsDescription')}
                     </p>
                 </div>

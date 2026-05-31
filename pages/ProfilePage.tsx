@@ -70,7 +70,7 @@ const ProfilePage: React.FC = () => {
                     onClick={() => navigate(-1)}
                     className="mb-8 flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-xl group w-fit"
                 >
-                    {language === 'ku' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
+                    {language === 'ku' || language === 'badini' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
                     <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
                 </button>
 

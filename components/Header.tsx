@@ -189,7 +189,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     initial={{ opacity: 0, y: 15, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    className={`absolute ${language === 'ku' ? 'left-0' : 'right-0'} mt-4 w-72 md:w-96 bg-black/90 border border-white/10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden z-50 backdrop-blur-3xl`}
+                    className={`absolute ${(language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'} mt-4 w-72 md:w-96 bg-black/90 border border-white/10 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden z-50 backdrop-blur-3xl`}
                   >
                     <div className="p-5 border-b border-white/5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -308,12 +308,12 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
             {/* Glassmorphic Side Panel */}
             <motion.div
-              initial={{ x: language === 'ku' ? '-100%' : '100%' }}
+              initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: language === 'ku' ? '-100%' : '100%' }}
+              exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               transition={{ type: 'spring', damping: 26, stiffness: 220 }}
               className={`fixed top-0 bottom-0 ${
-                language === 'ku' ? 'left-0 border-r' : 'right-0 border-l'
+                (language === 'ku' || language === 'badini') ? 'left-0 border-r' : 'right-0 border-l'
               } z-[160] w-[82%] max-w-sm bg-black/85 backdrop-blur-2xl border-white/10 flex flex-col p-6 shadow-2xl md:hidden`}
             >
               

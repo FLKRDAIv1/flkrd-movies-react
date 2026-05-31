@@ -24,7 +24,7 @@ const HeroBanner: React.FC = () => {
   const { t, language } = useTranslation();
   const { isAdmin } = useUI();
   const { addNotification } = useNotification();
-  const langCode = language === 'ku' ? 'ku' : 'en-US';
+  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
   const fetchHeroContent = useCallback(async () => {
     setLoading(true);
@@ -132,18 +132,18 @@ const HeroBanner: React.FC = () => {
         </motion.div>
       </AnimatePresence>
 
-      <div className={`absolute bottom-[15%] md:bottom-[20%] ${language === 'ku' ? 'right-6 md:right-40' : 'left-6 md:left-40'} z-30 flex flex-col items-start pointer-events-auto max-w-[95%] md:max-w-4xl`}>
+      <div className={`absolute bottom-[15%] md:bottom-[20%] ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-40' : 'left-6 md:left-40'} z-30 flex flex-col items-start pointer-events-auto max-w-[95%] md:max-w-4xl`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={`content-${currentItem.id}`}
-            initial={{ opacity: 0, x: language === 'ku' ? 40 : -40 }}
+            initial={{ opacity: 0, x: (language === 'ku' || language === 'badini') ? 40 : -40 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: language === 'ku' ? -20 : 20 }}
+            exit={{ opacity: 0, x: (language === 'ku' || language === 'badini') ? -20 : 20 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className={`w-full flex flex-col ${language === 'ku' ? 'items-end' : 'items-start'}`}
+            className={`w-full flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}
           >
             {/* Desktop-Style Metadata Sidebar (Left Corner Alignment) */}
-            <div className={`hidden md:flex flex-col gap-6 mb-10 ${language === 'ku' ? 'items-end' : 'items-start'}`}>
+            <div className={`hidden md:flex flex-col gap-6 mb-10 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
                 <div className="flex items-center gap-4">
                   <div className="bg-red-600 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_30px_rgba(229,9,20,0.5)] flex items-center gap-2">
                       <Zap size={14} fill="white" className="animate-pulse" /> {t('trendingNow')}
@@ -168,7 +168,7 @@ const HeroBanner: React.FC = () => {
             </div>
 
             {/* Mobile Metadata */}
-            <div className={`md:hidden flex items-center gap-3 mb-6 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+            <div className={`md:hidden flex items-center gap-3 mb-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
               <div className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
                 <Zap size={10} fill="white" /> {t('trendingNow')}
               </div>
@@ -180,7 +180,7 @@ const HeroBanner: React.FC = () => {
                 <motion.img
                   src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${currentItem.logo}`}
                   alt={currentItem.title || currentItem.name}
-                  className={`h-auto max-h-24 md:max-h-56 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,1)] ${language === 'ku' ? 'mr-auto' : 'ml-0'}`}
+                  className={`h-auto max-h-24 md:max-h-56 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,1)] ${(language === 'ku' || language === 'badini') ? 'mr-auto' : 'ml-0'}`}
                 />
               ) : (
                 <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-tighter leading-[0.9] text-white drop-shadow-[0_15px_30px_rgba(0,0,0,1)] shimmer-text">
@@ -189,11 +189,11 @@ const HeroBanner: React.FC = () => {
               )}
             </div>
 
-            <p className={`text-gray-300 font-bold italic text-sm md:text-xl line-clamp-3 mb-10 md:mb-14 max-w-2xl leading-relaxed opacity-90 ${language === 'ku' ? 'text-right' : 'text-left'}`}>
+            <p className={`text-gray-300 font-bold italic text-sm md:text-xl line-clamp-3 mb-10 md:mb-14 max-w-2xl leading-relaxed opacity-90 ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
               {currentItem.overview}
             </p>
 
-            <div className={`flex flex-wrap items-center gap-4 md:gap-8 ${language === 'ku' ? 'flex-row-reverse' : ''}`}>
+            <div className={`flex flex-wrap items-center gap-4 md:gap-8 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
               <LiquidButton
                 variant="default"
                 onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
@@ -226,7 +226,7 @@ const HeroBanner: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className={`hidden lg:flex absolute bottom-12 ${language === 'ku' ? 'left-32' : 'right-32'} z-40 items-center gap-6`}>
+      <div className={`hidden lg:flex absolute bottom-12 ${(language === 'ku' || language === 'badini') ? 'left-32' : 'right-32'} z-40 items-center gap-6`}>
         <button onClick={handlePrev} className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
           <ChevronLeft size={32} />
         </button>

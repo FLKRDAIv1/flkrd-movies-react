@@ -34,6 +34,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.3",
+    "stipop-react-sdk": "^1.2.6-beta.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

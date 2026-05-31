@@ -381,8 +381,8 @@ const App: React.FC = () => {
                     // Elegantly toast notification to the user
                     addNotification({
                         type: 'info',
-                        title: language === 'ku' ? 'نوێکاری گرنگ بەردەستە' : 'System Update Available',
-                        message: language === 'ku' 
+                        title: (language === 'ku' || language === 'badini') ? 'نوێکاری گرنگ بەردەستە' : 'System Update Available',
+                        message: (language === 'ku' || language === 'badini') 
                             ? `وەشانی ${result.latestVersion} بەردەستە. بۆ جێبەجێکردنی نوێکاری سەردانی ڕێکخستن بکە.`
                             : `Version ${result.latestVersion} is ready. Visit Settings to execute the system update.`
                     });
@@ -399,7 +399,7 @@ const App: React.FC = () => {
 
     return (
         <MotionConfig reducedMotion={isPerformanceMode ? "always" : "user"}>
-            <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={language === 'ku' ? 'rtl' : 'ltr'}>
+            <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                 <AnimatePresence mode="wait">
                     {loading && <SplashScreen key="splash" onComplete={() => setLoading(false)} />}
                 </AnimatePresence>

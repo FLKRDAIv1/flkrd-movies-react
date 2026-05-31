@@ -15,7 +15,7 @@ interface UserStory {
 const StoryReels: React.FC = () => {
   const [users, setUsers] = useState<UserStory[]>([]);
   const { language } = useTranslation();
-  const langCode = language === 'ku' ? 'ku' : 'en-US';
+  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
   useEffect(() => {
     const loadStories = async () => {

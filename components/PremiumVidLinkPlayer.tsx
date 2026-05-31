@@ -558,7 +558,7 @@ export default function PremiumVidLinkPlayer({
               <div className="flex items-center justify-between border-b border-white/5 pb-4">
                 <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase italic">
                   <Subtitles size={16} className="text-red-600" />
-                  {language === 'ku' ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
+                  {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
                 </h3>
                 <button onClick={() => setShowSubSettings(false)} className="text-gray-500 hover:text-white transition-colors">
                   <X size={20} />
@@ -571,13 +571,13 @@ export default function PremiumVidLinkPlayer({
                   onClick={() => setSubStudioTab('sub')}
                   className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {language === 'ku' ? 'ژێرنووس' : 'Subtitles'}
+                  {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                 </button>
                 <button 
                   onClick={() => setSubStudioTab('dub')}
                   className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {language === 'ku' ? 'دۆبلاژ' : 'Doblaj & Audio'}
+                  {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj & Audio'}
                 </button>
               </div>
 
@@ -586,14 +586,14 @@ export default function PremiumVidLinkPlayer({
                   <div className="space-y-6">
                     <div className="flex flex-col gap-3">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'قەبارەی نووسین' : 'Font Size'}</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'قەبارەی نووسین' : 'Font Size'}</label>
                     <span className="text-[10px] font-bold text-red-500">{subFontSize}px</span>
                   </div>
                   <input type="range" min="16" max="42" value={subFontSize} onChange={(e) => setSubFontSize(Number(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none accent-red-600" />
                 </div>
 
                 <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'ڕەنگی نووسین' : 'Text Color'}</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'ڕەنگی نووسین' : 'Text Color'}</label>
                   <div className="flex gap-2">
                     {['#ffffff', '#ffff00', '#00ffff', '#00ff00', '#ff00ff', '#ff0000'].map(color => (
                       <button 
@@ -608,13 +608,13 @@ export default function PremiumVidLinkPlayer({
 
                 <div className="flex flex-col gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}</label>
                     <span className="text-[10px] font-bold text-green-500">{Math.round(subBgOpacity * 100)}%</span>
                   </div>
                   <input type="range" min="0" max="1" step="0.1" value={subBgOpacity} onChange={(e) => setSubBgOpacity(Number(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none accent-green-600" />
                   
                   <div className="flex items-center justify-between mt-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'کاریگەری شووشە' : 'Glassmorphism'}</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'کاریگەری شووشە' : 'Glassmorphism'}</label>
                     <button onClick={() => setSubBlur(!subBlur)} className={`w-8 h-4 rounded-full relative transition-colors ${subBlur ? 'bg-red-600' : 'bg-white/10'}`}>
                       <motion.div animate={{ x: subBlur ? 18 : 2 }} className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm" />
                     </button>
@@ -624,7 +624,7 @@ export default function PremiumVidLinkPlayer({
                 {/* Sync Control */}
                 <div className="flex flex-col gap-3">
                   <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{language === 'ku' ? 'خێرایی ژێرنووس (چرکە)' : 'Sync Offset'}</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'خێرایی ژێرنووس (چرکە)' : 'Sync Offset'}</label>
                     <span className="text-[10px] font-bold text-blue-500">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset / 1000}s</span>
                   </div>
                   <div className="flex gap-2">
@@ -639,7 +639,7 @@ export default function PremiumVidLinkPlayer({
                 <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
                   type="text"
-                  placeholder={language === 'ku' ? 'گەڕان...' : 'Search language...'}
+                  placeholder={(language === 'ku' || language === 'badini') ? 'گەڕان...' : 'Search language...'}
                   value={subSearchQuery}
                   onChange={(e) => setSubSearchQuery(e.target.value)}
                   className="w-full bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-xs text-white focus:border-red-600/50 outline-none transition-all font-bold"
@@ -670,7 +670,7 @@ export default function PremiumVidLinkPlayer({
                         return 0;
                       })
                       .map(sub => {
-                        const isKurdish = sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur';
+                        const isKurdish = sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur';
                         return (
                           <button 
                             key={sub.id}
@@ -705,7 +705,7 @@ export default function PremiumVidLinkPlayer({
                     <div className="py-12 flex flex-col items-center gap-3 bg-white/[0.02] rounded-3xl border border-dashed border-white/10 opacity-50">
                       <Search size={20} className="text-gray-600" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-center px-4">
-                        {language === 'ku' ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'No cloud subtitles found'}
+                        {(language === 'ku' || language === 'badini') ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'No cloud subtitles found'}
                       </span>
                     </div>
                   )
@@ -715,7 +715,7 @@ export default function PremiumVidLinkPlayer({
               ) : (
                 <div className="flex flex-col gap-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                    {language === 'ku' ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
+                    {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
                   </label>
                   
                   <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -734,7 +734,7 @@ export default function PremiumVidLinkPlayer({
                         <div className="flex flex-col flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className={`font-[1000] text-[9px] uppercase tracking-[0.2em] ${kurdishDub ? 'text-yellow-500' : 'text-gray-400'}`}>
-                              {language === 'ku' ? 'کوردی' : 'KURDISH'}
+                              {(language === 'ku' || language === 'badini') ? 'کوردی' : 'KURDISH'}
                             </span>
                             {kurdishDub && (
                               <span className="text-[7px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(234,179,8,0.4)] uppercase tracking-tighter flex items-center gap-0.5">
@@ -743,7 +743,7 @@ export default function PremiumVidLinkPlayer({
                             )}
                           </div>
                           <span className="text-white font-bold text-[11px] truncate">
-                            {language === 'ku' ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
+                            {(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
                           </span>
                         </div>
                       </div>
@@ -780,12 +780,12 @@ export default function PremiumVidLinkPlayer({
                         >
                           <Mic2 size={12} />
                           {activeAudioTrack === 'ku' 
-                            ? (language === 'ku' ? 'چالاکە' : 'ACTIVE AUDIO FEED')
-                            : (language === 'ku' ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
+                            ? ((language === 'ku' || language === 'badini') ? 'چالاکە' : 'ACTIVE AUDIO FEED')
+                            : ((language === 'ku' || language === 'badini') ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
                         </button>
                       ) : (
                         <div className="w-full py-2 border border-dashed border-white/10 rounded-xl text-center text-[9px] font-bold text-gray-500">
-                          {language === 'ku' ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
+                          {(language === 'ku' || language === 'badini') ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
                         </div>
                       )}
                     </div>
@@ -809,10 +809,10 @@ export default function PremiumVidLinkPlayer({
                       </div>
                       <div className="flex flex-col text-left flex-1 min-w-0">
                         <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
-                          {language === 'ku' ? 'ئینگلیزی' : 'ENGLISH'}
+                          {(language === 'ku' || language === 'badini') ? 'ئینگلیزی' : 'ENGLISH'}
                         </span>
                         <span className="text-white font-bold text-[11px] truncate">
-                          {language === 'ku' ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
+                          {(language === 'ku' || language === 'badini') ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
                         </span>
                       </div>
                       {activeAudioTrack === 'en' && <Tv size={14} className="text-red-500 shrink-0" />}
@@ -913,7 +913,7 @@ export default function PremiumVidLinkPlayer({
                 onClick={() => setShowSubSettings(false)}
                 className="mt-auto py-4 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:border-red-500 transition-all"
               >
-                {language === 'ku' ? 'داخستن' : 'Close Studio'}
+                {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close Studio'}
               </button>
             </motion.div>
           )}
@@ -945,10 +945,10 @@ export default function PremiumVidLinkPlayer({
 
               <div className="space-y-2">
                 <h4 className="text-white font-black text-lg tracking-tight uppercase">
-                  {language === 'ku' ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
+                  {(language === 'ku' || language === 'badini') ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
                 </h4>
                 <p className="text-gray-400 text-xs leading-relaxed text-left">
-                  {language === 'ku' 
+                  {(language === 'ku' || language === 'badini') 
                     ? `دۆبلاژی [${showDubInfoModal}] چالاک کرا! لەناو لیستی سێرڤەرەکان یان دوگمەی دەنگ (Audio) لە خوارەوەی ڕاستی ڤیدیۆکە، دەتوانیت زمانەکە یان سێرڤەری دۆبلاژ هەڵبژێریت.`
                     : `The [${showDubInfoModal}] dubbed version is now active! Inside the player, you can select the Dubbed version from the server list or toggle the language track using the Audio settings button.`}
                 </p>
@@ -958,7 +958,7 @@ export default function PremiumVidLinkPlayer({
                 onClick={() => setShowDubInfoModal(null)}
                 className="py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-red-600/20"
               >
-                {language === 'ku' ? 'باشە، تێگەیشتم' : 'Got it, let\'s play'}
+                {(language === 'ku' || language === 'badini') ? 'باشە، تێگەیشتم' : 'Got it, let\'s play'}
               </button>
             </motion.div>
           </motion.div>

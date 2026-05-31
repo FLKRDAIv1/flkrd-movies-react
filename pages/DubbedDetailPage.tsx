@@ -203,7 +203,7 @@ const DubbedDetailPage: React.FC = () => {
 
             if (supabaseResult && isMounted) {
                 const titleStr = supabaseResult.title || 'Kurdish Dubbed Movie';
-                document.title = language === 'ku'
+                document.title = (language === 'ku' || language === 'badini')
                   ? `سەیرکردنی فیلمی دۆبلاژکراوی کوردی ${titleStr} | FLKRD`
                   : `Watch ${titleStr} Kurdish Dubbed Movie | FLKRD`;
 
@@ -266,8 +266,8 @@ const handleCreateWatchParty = async () => {
 
         addNotification({
             type: 'success',
-            title: language === 'ku' ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
-            message: language === 'ku' ? 'هاوڕێکەت بانگهێشت بکە!' : 'Invite your guest to join!'
+            title: (language === 'ku' || language === 'badini') ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
+            message: (language === 'ku' || language === 'badini') ? 'هاوڕێکەت بانگهێشت بکە!' : 'Invite your guest to join!'
         });
 
         const movieState = {
@@ -284,8 +284,8 @@ const handleCreateWatchParty = async () => {
         console.error('Watch party creation error:', err);
         addNotification({
             type: 'error',
-            title: language === 'ku' ? 'هەڵە' : 'Error',
-            message: language === 'ku' ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
+            title: (language === 'ku' || language === 'badini') ? 'هەڵە' : 'Error',
+            message: (language === 'ku' || language === 'badini') ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
         });
     } finally {
         setIsCreatingTicket(false);
@@ -296,13 +296,13 @@ if (loading && !dubbedData && !content) return <div className="h-screen flex ite
 
 // Strict Data Boundary Logic to prevent Black Screen / Crash
 const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading...") as string;
-    const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || (language === 'ku' ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
+    const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
     
     const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
     const isReady = !!(embedUrl || dubbedData || content);
 
     return (
-        <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+        <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
             <AnimatePresence mode="wait">
                 {!isReady && (
                     <motion.div 
@@ -323,12 +323,12 @@ const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.
 
             <div className="relative z-10 pt-24 md:pt-32 px-4 md:px-12">
             <Portal id="dubbed-nav-portal">
-                <div className={`fixed top-24 ${language === 'ku' ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
+                <div className={`fixed top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
                     <button
                         onClick={() => navigate(-1)}
                         className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 px-5 py-2.5 rounded-2xl text-[var(--text-primary)] hover:bg-[var(--brand-red)] hover:text-white active:scale-90 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl"
                     >
-                        <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180' : ''} />
+                        <ArrowLeft size={18} className={(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} />
                         {t('back')}
                     </button>
                 </div>
@@ -356,7 +356,7 @@ const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.
                     <div className="flex flex-wrap items-center gap-2 mb-6">
                         <div className="text-white text-[9px] md:text-[11px] font-black px-5 py-2.5 rounded-full flex items-center gap-2 shadow-xl uppercase tracking-[0.2em]" style={{ backgroundColor: accentColor }}>
                             <Mic2 size={14} />
-                            {dubbedData?.isSubtitled ? (language === 'ku' ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : (language === 'ku' ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
+                            {dubbedData?.isSubtitled ? ((language === 'ku' || language === 'badini') ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : ((language === 'ku' || language === 'badini') ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
                         </div>
                         {dubbedData?.level && (
                             <div className="bg-white/5 border border-white/10 text-white/60 text-[8px] md:text-[9px] font-black px-4 py-2.5 rounded-full uppercase tracking-widest">
@@ -375,7 +375,7 @@ const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.
                             ) : (
                                 <Sparkles size={14} className="text-orange-500 animate-pulse" />
                             )}
-                            {language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
+                            {(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
                         </button>
                     </div>
                     <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-[calc(-0.04em)] leading-[0.85] text-[var(--text-primary)] text-right max-w-5xl drop-shadow-2xl mb-10">

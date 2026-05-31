@@ -586,7 +586,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             }
         } catch (e) {
             console.error("Subtitle selection error:", e);
-            alert(language === 'ku' ? 'ناتوانرێت ئەم ژێرنووسە لۆد بکرێت. تکایە دانەیەکی تر تاقی بکەرەوە.' : 'Failed to load this subtitle. Please try another track.');
+            alert((language === 'ku' || language === 'badini') ? 'ناتوانرێت ئەم ژێرنووسە لۆد بکرێت. تکایە دانەیەکی تر تاقی بکەرەوە.' : 'Failed to load this subtitle. Please try another track.');
         } finally {
             setIsSearchingSubs(false);
         }
@@ -1084,7 +1084,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 ? 'opacity-40 cursor-not-allowed text-gray-500' 
                                 : 'hover:bg-white/20 hover:scale-105 active:scale-95'
                             }`}
-                            title={availableSubs.length === 0 ? (language === 'ku' ? 'ژێرنووس بەردەست نییە' : 'No Subtitles Available') : (language === 'ku' ? 'ژێرنووس' : 'Subtitles')}
+                            title={availableSubs.length === 0 ? ((language === 'ku' || language === 'badini') ? 'ژێرنووس بەردەست نییە' : 'No Subtitles Available') : ((language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles')}
                         >
                             <Subtitles size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
                         </button>
@@ -1100,7 +1100,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     <div className="flex items-center justify-between border-b border-white/5 pb-4">
                                         <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase">
                                             <Subtitles size={14} className="text-red-600" />
-                                            {language === 'ku' ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
+                                            {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
                                         </h3>
                                         <button onClick={() => setShowSubSettings(false)} className="text-gray-500 hover:text-white transition-colors">
                                             <X size={18} />
@@ -1114,13 +1114,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                 onClick={() => setSubStudioTab('sub')}
                                                 className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                                             >
-                                                {language === 'ku' ? 'ژێرنووس' : 'Subtitles'}
+                                                {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                                             </button>
                                             <button 
                                                 onClick={() => setSubStudioTab('dub')}
                                                 className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                                             >
-                                                {language === 'ku' ? 'دۆبلاژ' : 'Doblaj & Audio'}
+                                                {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj & Audio'}
                                             </button>
                                         </div>
 
@@ -1130,7 +1130,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {language === 'ku' ? 'قەبارەی نوسین' : 'Font Size'}
+                                                        {(language === 'ku' || language === 'badini') ? 'قەبارەی نوسین' : 'Font Size'}
                                                     </label>
                                                     <span className="text-[10px] font-bold text-red-500">{subtitleSize}px</span>
                                                 </div>
@@ -1144,7 +1144,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                                             <div className="flex flex-col gap-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {language === 'ku' ? 'ڕەنگی نوسین' : 'Typography Color'}
+                                                    {(language === 'ku' || language === 'badini') ? 'ڕەنگی نوسین' : 'Typography Color'}
                                                 </label>
                                                 <div className="flex gap-3">
                                                     {['#ffffff', '#facc15', '#22d3ee', '#4ade80', '#ef4444'].map(c => (
@@ -1163,7 +1163,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {language === 'ku' ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}
+                                                        {(language === 'ku' || language === 'badini') ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}
                                                     </label>
                                                     <span className="text-[10px] font-bold text-green-500">{Math.round(subBgOpacity * 100)}%</span>
                                                 </div>
@@ -1177,7 +1177,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                                             <div className="flex items-center justify-between">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {language === 'ku' ? 'کاریگەری شووشە' : 'Glassmorphism'}
+                                                    {(language === 'ku' || language === 'badini') ? 'کاریگەری شووشە' : 'Glassmorphism'}
                                                 </label>
                                                 <button 
                                                     onClick={() => setSubBlur(!subBlur)}
@@ -1195,7 +1195,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {language === 'ku' ? 'خێرایی ژێرنووس (چرکە)' : 'Subtitle Sync (Sec)'}
+                                                        {(language === 'ku' || language === 'badini') ? 'خێرایی ژێرنووس (چرکە)' : 'Subtitle Sync (Sec)'}
                                                     </label>
                                                     <span className="text-[10px] font-bold text-blue-500">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset / 1000}s</span>
                                                 </div>
@@ -1213,13 +1213,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                                             <div className="flex flex-col gap-2">
                                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {language === 'ku' ? 'گەڕان بۆ ژێرنووس' : 'Subtitle Discovery'}
+                                                    {(language === 'ku' || language === 'badini') ? 'گەڕان بۆ ژێرنووس' : 'Subtitle Discovery'}
                                                 </label>
                                                 <div className="relative group">
                                                     <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" />
                                                     <input 
                                                         type="text"
-                                                        placeholder={language === 'ku' ? 'گەڕان بۆ زمان...' : 'Find a language...'}
+                                                        placeholder={(language === 'ku' || language === 'badini') ? 'گەڕان بۆ زمان...' : 'Find a language...'}
                                                         value={subSearchQuery}
                                                         onChange={(e) => setSubSearchQuery(e.target.value)}
                                                         className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-[11px] focus:border-red-600/50 focus:bg-white/[0.08] outline-none transition-all placeholder:text-gray-600"
@@ -1234,7 +1234,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                         <Activity size={16} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 animate-pulse" />
                                                     </div>
                                                     <span className="text-[10px] font-black text-gray-400 animate-pulse uppercase tracking-[0.3em]">
-                                                        {language === 'ku' ? 'لۆدکردنی زمانەکان...' : 'FETCHING CLOUD SUBS...'}
+                                                        {(language === 'ku' || language === 'badini') ? 'لۆدکردنی زمانەکان...' : 'FETCHING CLOUD SUBS...'}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -1259,14 +1259,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                     key={sub.id}
                                                                     onClick={() => handleSelectSub(sub)}
                                                                     className={`w-full text-left p-3.5 rounded-[20px] transition-all duration-300 border flex items-center gap-4 group relative overflow-hidden ${
-                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') 
+                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb') 
                                                                         ? 'bg-gradient-to-r from-red-600/10 to-transparent border-red-600/30 hover:border-red-500/60 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
                                                                         : 'bg-gradient-to-r from-white/[0.03] to-transparent border-white/5 hover:border-white/15 hover:bg-white/[0.06]'
                                                                     }`}
                                                                 >
                                                                     {/* Prominent Flag Container */}
                                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
-                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
+                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
                                                                         ? 'bg-red-600/20 border-red-500/30'
                                                                         : 'bg-white/5 border-white/10 group-hover:bg-white/10'
                                                                     } transition-colors`}>
@@ -1278,11 +1278,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                     <div className="flex flex-col flex-1 min-w-0 relative z-10">
                                                                         <div className="flex items-center gap-2 mb-0.5">
                                                                             <span className={`font-[1000] text-[10px] uppercase tracking-[0.2em] ${
-                                                                                (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb') ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
+                                                                                (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb') ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
                                                                             } transition-colors`}>
                                                                                 {sub?.attributes?.language || 'UNKNOWN'}
                                                                             </span>
-                                                                            {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
+                                                                            {(sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
                                                                                 <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
                                                                                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
                                                                                       <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
@@ -1297,14 +1297,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                     </div>
                                                                     
                                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                                                        (sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
+                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
                                                                         ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
                                                                         : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
                                                                     }`}>
                                                                         <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                                                                     </div>
                                                                 
-                                                                    {(sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
+                                                                    {(sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
                                                                         <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
                                                                     )}
                                                                 </button>
@@ -1312,13 +1312,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                     ) : (
                                                     <div className="py-6 flex flex-col items-center gap-3 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
                                                         <span className="text-[9px] font-bold text-gray-500 text-center px-4">
-                                                            {language === 'ku' ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'NO OTHER SUBTITLES FOUND'}
+                                                            {(language === 'ku' || language === 'badini') ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'NO OTHER SUBTITLES FOUND'}
                                                         </span>
                                                         <button 
                                                             onClick={handleSearchAllSubs}
                                                             className="px-4 py-2 bg-white/5 rounded-full text-[8px] font-black uppercase hover:bg-white/10 transition-all"
                                                         >
-                                                            {language === 'ku' ? 'دوبارە گەڕان' : 'RETRY SEARCH'}
+                                                            {(language === 'ku' || language === 'badini') ? 'دوبارە گەڕان' : 'RETRY SEARCH'}
                                                         </button>
                                                     </div>
                                                 )}
@@ -1329,7 +1329,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     ) : (
                                         <div className="flex flex-col gap-4">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                {language === 'ku' ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
+                                                {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
                                             </label>
                                             
                                             <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -1348,7 +1348,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                         <div className="flex flex-col flex-1 min-w-0 text-left">
                                                             <div className="flex items-center gap-2 mb-0.5">
                                                                 <span className={`font-[1000] text-[9px] uppercase tracking-[0.2em] ${kurdishDub ? 'text-yellow-500' : 'text-gray-400'}`}>
-                                                                    {language === 'ku' ? 'کوردی' : 'KURDISH'}
+                                                                    {(language === 'ku' || language === 'badini') ? 'کوردی' : 'KURDISH'}
                                                                 </span>
                                                                 {kurdishDub && (
                                                                     <span className="text-[7px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(234,179,8,0.4)] uppercase tracking-tighter flex items-center gap-0.5">
@@ -1357,7 +1357,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                 )}
                                                             </div>
                                                             <span className="text-white font-bold text-[11px] truncate">
-                                                                {language === 'ku' ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
+                                                                {(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -1394,12 +1394,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                         >
                                                             <Mic2 size={12} />
                                                             {activeAudioTrack === 'ku' 
-                                                                ? (language === 'ku' ? 'چالاکە' : 'ACTIVE AUDIO FEED')
-                                                                : (language === 'ku' ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
+                                                                ? ((language === 'ku' || language === 'badini') ? 'چالاکە' : 'ACTIVE AUDIO FEED')
+                                                                : ((language === 'ku' || language === 'badini') ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
                                                         </button>
                                                     ) : (
                                                         <div className="w-full py-2 border border-dashed border-white/10 rounded-xl text-center text-[9px] font-bold text-gray-500">
-                                                            {language === 'ku' ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
+                                                            {(language === 'ku' || language === 'badini') ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
                                                         </div>
                                                     )}
                                                 </div>
@@ -1423,10 +1423,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                     </div>
                                                     <div className="flex flex-col text-left flex-1 min-w-0">
                                                         <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
-                                                            {language === 'ku' ? 'ئینگلیزی' : 'ENGLISH'}
+                                                            {(language === 'ku' || language === 'badini') ? 'ئینگلیزی' : 'ENGLISH'}
                                                         </span>
                                                         <span className="text-white font-bold text-[11px] truncate">
-                                                            {language === 'ku' ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
+                                                            {(language === 'ku' || language === 'badini') ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
                                                         </span>
                                                     </div>
                                                     {activeAudioTrack === 'en' && <Tv size={14} className="text-red-500 shrink-0" />}
@@ -1530,7 +1530,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     onClick={() => setShowSubSettings(false)}
                                     className="mt-6 py-4 bg-red-600/10 border border-red-600/20 rounded-[20px] text-[11px] font-black uppercase text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg hover:shadow-red-600/20"
                                 >
-                                    {language === 'ku' ? 'داخستن' : 'Dismiss Studio'}
+                                    {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Dismiss Studio'}
                                 </button>
                             </motion.div>
                             )}
@@ -1562,10 +1562,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     <div className="flex flex-col min-w-0">
                                         <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] flex items-center gap-1">
                                             <Sparkles size={10} className="text-yellow-500 fill-yellow-500 animate-pulse" />
-                                            {language === 'ku' ? 'ژێرنووس بەردەستە' : 'Kurdish CC Found'}
+                                            {(language === 'ku' || language === 'badini') ? 'ژێرنووس بەردەستە' : 'Kurdish CC Found'}
                                         </span>
                                         <span className="text-white font-black text-[12px] md:text-[13px] tracking-tight truncate">
-                                            {language === 'ku' ? 'ژێرنووسی کوردی فەرمی' : 'Official Kurdish Track'}
+                                            {(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی فەرمی' : 'Official Kurdish Track'}
                                         </span>
                                     </div>
                                 </div>
@@ -1579,12 +1579,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                         {isDownloadingKu ? (
                                             <>
                                                 <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                                <span>{language === 'ku' ? 'دادەگیرێت...' : 'LOADING...'}</span>
+                                                <span>{(language === 'ku' || language === 'badini') ? 'دادەگیرێت...' : 'LOADING...'}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <Download size={12} />
-                                                <span>{language === 'ku' ? 'داگرتن' : 'DOWNLOAD'}</span>
+                                                <span>{(language === 'ku' || language === 'badini') ? 'داگرتن' : 'DOWNLOAD'}</span>
                                             </>
                                         )}
                                     </button>
@@ -1611,7 +1611,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 className="text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic"
                                 style={{ color: accentColor || '#e50914' }}
                             >
-                                {language === 'ku' ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
+                                {(language === 'ku' || language === 'badini') ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
                             </span>
                             <div className="flex flex-col items-center gap-3">
                                 <button 
@@ -1620,7 +1620,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 >
                                     <ShieldCheck size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
                                     <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
-                                        {language === 'ku' ? 'ڕێبەری نوێکردنەوەی AdGuard' : 'ADGUARD UPDATE GUIDE'}
+                                        {(language === 'ku' || language === 'badini') ? 'ڕێبەری نوێکردنەوەی AdGuard' : 'ADGUARD UPDATE GUIDE'}
                                     </span>
                                 </button>
                                 <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
@@ -1763,10 +1763,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                             <div className="space-y-2">
                                 <h4 className="text-white font-black text-lg tracking-tight uppercase">
-                                    {language === 'ku' ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
+                                    {(language === 'ku' || language === 'badini') ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
                                 </h4>
                                 <p className="text-gray-400 text-xs leading-relaxed text-left">
-                                    {language === 'ku' 
+                                    {(language === 'ku' || language === 'badini') 
                                         ? `دۆبلاژی [${showDubInfoModal}] چالاک کرا! لەناو لیستی سێرڤەرەکان یان دوگمەی دەنگ (Audio) لە خوارەوەی ڕاستی ڤیدیۆکە، دەتوانیت زمانەکە یان سێرڤەری دۆبلاژ هەڵبژێریت.`
                                         : `The [${showDubInfoModal}] dubbed version is now active! Inside the player, you can select the Dubbed version from the server list or toggle the language track using the Audio settings button.`}
                                 </p>
@@ -1776,7 +1776,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                 onClick={() => setShowDubInfoModal(null)}
                                 className="py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-red-600/20"
                             >
-                                {language === 'ku' ? 'باشە، تێگەیشتم' : 'Got it, let\'s play'}
+                                {(language === 'ku' || language === 'badini') ? 'باشە، تێگەیشتم' : 'Got it, let\'s play'}
                             </button>
                         </motion.div>
                     </motion.div>

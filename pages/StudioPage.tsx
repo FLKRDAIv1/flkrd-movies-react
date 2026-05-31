@@ -23,7 +23,7 @@ const StudioPage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language } = useTranslation();
     const { addNotification } = useNotification();
-    const langCode = language === 'ku' ? 'ku' : 'en-US';
+    const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
     const observer = useRef<IntersectionObserver | null>(null);
     const partnerStudio = STUDIOS.find(s => String(s.id) === String(id));

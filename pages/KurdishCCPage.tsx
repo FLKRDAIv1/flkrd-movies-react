@@ -12,8 +12,8 @@ const KurdishCCPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { language } = useTranslation();
-    const isRtl = language === 'ku';
-    const langCode = language === 'ku' ? 'ku' : 'en-US';
+    const isRtl = (language === 'ku' || language === 'badini');
+    const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
     useEffect(() => {
         loadData();

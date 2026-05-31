@@ -308,7 +308,7 @@ const TVDetailPage: React.FC = () => {
           // Update browser window title dynamically for optimal search engine crawl and index representation
           const year = data.first_air_date ? ` (${data.first_air_date.split('-')[0]})` : '';
           const showName = data.name || data.original_name || 'Series';
-          document.title = language === 'ku'
+          document.title = (language === 'ku' || language === 'badini')
             ? `سەیرکردنی زنجیرەی ${showName}${year} بە ژێرنووسی کوردی | FLKRD`
             : `Watch ${showName}${year} with Kurdish Subtitles | FLKRD`;
 
@@ -381,8 +381,8 @@ const TVDetailPage: React.FC = () => {
 
       addNotification({
         type: 'success',
-        title: language === 'ku' ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
-        message: language === 'ku' ? 'هاوڕێکەت بانگهێشت بکە بۆ بەشداریکردن!' : 'Invite your guest to join the cinema hall!'
+        title: (language === 'ku' || language === 'badini') ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
+        message: (language === 'ku' || language === 'badini') ? 'هاوڕێکەت بانگهێشت بکە بۆ بەشداریکردن!' : 'Invite your guest to join the cinema hall!'
       });
 
       const movieState = {
@@ -400,8 +400,8 @@ const TVDetailPage: React.FC = () => {
       console.error('Watch party creation error:', err);
       addNotification({
         type: 'error',
-        title: language === 'ku' ? 'هەڵە' : 'Error',
-        message: language === 'ku' ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
+        title: (language === 'ku' || language === 'badini') ? 'هەڵە' : 'Error',
+        message: (language === 'ku' || language === 'badini') ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
       });
     } finally {
       setIsCreatingTicket(false);
@@ -412,7 +412,7 @@ const TVDetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={language === 'ku' ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
         <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} className="w-full h-full object-cover blur-[120px]" alt="" />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
@@ -641,14 +641,14 @@ const TVDetailPage: React.FC = () => {
         </div>
 
         {trailerKey && (
-          <div className={`absolute top-24 ${language === 'ku' ? 'left-6 md:left-20' : 'right-6 md:right-20'} z-20`}>
+          <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'left-6 md:left-20' : 'right-6 md:right-20'} z-20`}>
             <button onClick={() => setIsMuted(!isMuted)} className="bg-black/40 backdrop-blur-xl border border-white/10 p-3 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
               {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
           </div>
         )}
 
-        <div className={`absolute bottom-12 md:bottom-28 ${language === 'ku' ? 'right-0 text-right' : 'left-0 text-left'} right-0 px-6 md:px-8 lg:px-20 z-10 flex flex-col items-start max-w-6xl`}>
+        <div className={`absolute bottom-12 md:bottom-28 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right' : 'left-0 text-left'} right-0 px-6 md:px-8 lg:px-20 z-10 flex flex-col items-start max-w-6xl`}>
           <div className="flex items-center gap-3 mb-6">
             <div className="bg-blue-600/20 border border-blue-600/30 text-blue-500 px-3 py-1 rounded-full flex items-center gap-1.5 text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-xl backdrop-blur-md"><Shield size={12} /> SECURE TV VAULT</div>
             <button onClick={toggleBingeMode} className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all shadow-lg backdrop-blur-md ${isBingeEnabled ? 'bg-red-600 text-white border-red-500' : 'bg-white/10 text-gray-400 border border-white/10'}`}>
@@ -677,7 +677,7 @@ const TVDetailPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-10">
             <LiquidButton variant="default" onClick={() => handlePlayClick()} className="font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3">
               <Play size={20} fill="currentColor" />
-              <span className="text-base md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? (language === 'ku' ? 'بەردەوامبە' : 'RESUME STREAM') : (language === 'ku' ? 'دەستپێکردن' : 'START STREAM')}</span>
+              <span className="text-base md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}</span>
             </LiquidButton>
 
             {/* CO-WATCH PARTY Button */}
@@ -692,14 +692,14 @@ const TVDetailPage: React.FC = () => {
               ) : (
                 <Sparkles size={20} className="text-orange-500 animate-pulse" />
               )}
-              <span className="relative">{language === 'ku' ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}</span>
+              <span className="relative">{(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}</span>
             </button>
           </div>
         </div>
         {!isPlayerModalOpen && (
-          <div className={`absolute top-24 ${language === 'ku' ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>
+          <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>
             <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl transition-all shadow-2xl group active:scale-95">
-              <ArrowLeft size={18} className={language === 'ku' ? 'rotate-180 group-hover:translate-x-1 transition-transform' : 'group-hover:-translate-x-1 transition-transform'} />
+              <ArrowLeft size={18} className={(language === 'ku' || language === 'badini') ? 'rotate-180 group-hover:translate-x-1 transition-transform' : 'group-hover:-translate-x-1 transition-transform'} />
               <span className="text-[9px] font-black uppercase tracking-widest">{t('back')}</span>
             </button>
           </div>
@@ -715,12 +715,12 @@ const TVDetailPage: React.FC = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-6">
                 <div className="flex items-center gap-4">
                   <div className="p-4 bg-red-600 rounded-2xl shadow-2xl"><Clapperboard size={24} className="text-white" /></div>
-                  <h2 className="text-3xl md:text-7xl font-[1000] uppercase italic tracking-tighter text-white">{language === 'ku' ? 'ئەڵقەکان' : 'EPISODES'}</h2>
+                  <h2 className="text-3xl md:text-7xl font-[1000] uppercase italic tracking-tighter text-white">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'EPISODES'}</h2>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="relative min-w-[180px]" dir="ltr">
                     <select value={selectedSeason} onChange={(e) => { setSelectedSeason(Number(e.target.value)); fetchSeasonDetails(Number(e.target.value)); }} className="w-full bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-4 text-white font-black uppercase appearance-none focus:border-red-600 outline-none shadow-2xl backdrop-blur-md">
-                      {content.seasons?.filter((s: any) => s.season_number > 0).map((s: any) => <option key={s.id} value={s.season_number} className="bg-[#111]">{language === 'ku' ? 'وەرزی' : 'Season'} {s.season_number}</option>)}
+                      {content.seasons?.filter((s: any) => s.season_number > 0).map((s: any) => <option key={s.id} value={s.season_number} className="bg-[#111]">{(language === 'ku' || language === 'badini') ? 'وەرزی' : 'Season'} {s.season_number}</option>)}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-red-600 pointer-events-none" size={16} />
                   </div>

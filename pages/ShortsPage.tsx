@@ -355,7 +355,7 @@ const ShortsPage: React.FC = () => {
   };
 
   const loadShorts = useCallback(async () => {
-    const lang = language === 'ku' ? 'ku' : 'en-US';
+    const lang = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
     try {
       const data = await fetchData(`${requests.fetchTrendingMovies(lang)}&page=${page}`, language);
       if (data && Array.isArray(data)) { 

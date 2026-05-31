@@ -92,15 +92,15 @@ export const WatchPartyTicketModal: React.FC<WatchPartyTicketModalProps> = ({
 
   const handleCopy = async () => {
     try {
-      const fullMsg = language === 'ku'
+      const fullMsg = (language === 'ku' || language === 'badini')
         ? `🎬 وەرە پێکەوە سەیری "${movie.title}" بکەین!\n🔗 ${shareUrl}\n🔑 کۆدی چوونەژوورەوە: ${pinCode}`
         : `🎬 Join me to watch "${movie.title}" on FLKRD!\n🔗 ${shareUrl}\n🔑 Entry PIN: ${pinCode}`;
       await navigator.clipboard.writeText(fullMsg);
       setCopied(true);
       addNotification({
         type: 'success',
-        title: language === 'ku' ? '✅ بانگهێشت کۆپیکرا' : '✅ Invitation Copied',
-        message: language === 'ku' ? 'بیناردە بۆ هاوڕێکەت!' : 'Send it to your guest!',
+        title: (language === 'ku' || language === 'badini') ? '✅ بانگهێشت کۆپیکرا' : '✅ Invitation Copied',
+        message: (language === 'ku' || language === 'badini') ? 'بیناردە بۆ هاوڕێکەت!' : 'Send it to your guest!',
       });
       setTimeout(() => setCopied(false), 3000);
     } catch { /* ignore */ }
@@ -112,8 +112,8 @@ export const WatchPartyTicketModal: React.FC<WatchPartyTicketModalProps> = ({
       setCopiedLink(true);
       addNotification({
         type: 'success',
-        title: language === 'ku' ? '✅ بەستەرەکە کۆپیکرا' : '✅ Link Copied',
-        message: language === 'ku' ? 'بەستەری ژوور کۆپیکرا بۆ حافظە!' : 'Room link copied to clipboard!',
+        title: (language === 'ku' || language === 'badini') ? '✅ بەستەرەکە کۆپیکرا' : '✅ Link Copied',
+        message: (language === 'ku' || language === 'badini') ? 'بەستەری ژوور کۆپیکرا بۆ حافظە!' : 'Room link copied to clipboard!',
       });
       setTimeout(() => setCopiedLink(false), 3000);
     } catch { /* ignore */ }
@@ -121,14 +121,14 @@ export const WatchPartyTicketModal: React.FC<WatchPartyTicketModalProps> = ({
 
   const kuMsg = `🎬 وەرە پێکەوە سەیری "${movie.title}" بکەین لە FLKRD!\n🔗 ${shareUrl}\n🔑 کۆدی چوونەژوورەوە: ${pinCode}`;
   const enMsg = `🎬 Watch "${movie.title}" with me on FLKRD!\n🔗 ${shareUrl}\n🔑 Entry PIN: ${pinCode}`;
-  const shareMsg = encodeURIComponent(language === 'ku' ? kuMsg : enMsg);
+  const shareMsg = encodeURIComponent((language === 'ku' || language === 'badini') ? kuMsg : enMsg);
 
   const whatsappUrl = `https://api.whatsapp.com/send?text=${shareMsg}`;
   const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${shareMsg}`;
 
   if (!isOpen) return null;
 
-  const isKu = language === 'ku';
+  const isKu = (language === 'ku' || language === 'badini');
 
   return (
     <div
