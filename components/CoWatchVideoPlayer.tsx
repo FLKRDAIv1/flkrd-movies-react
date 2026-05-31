@@ -214,8 +214,24 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
 
     channel
       .on('broadcast', { event: 'sync' }, (response: any) => {
-        // Disabled: Host & Guest watch party duration/server syncing is disabled so both remain completely free
-        return;
+        const { paused, currentTime: peerTime, senderName } = response.payload;
+        
+        isApplyingPeerSyncRef.current = true;
+        setPeerSyncTrigger({
+          currentTime: peerTime,
+          paused,
+          timestamp: Date.now()
+        });
+
+        playSyncChime('sync');
+
+        addNotification({
+          type: 'info',
+          title: language === 'ku' ? 'هاوکات کرا' : 'Playback Synced',
+          message: language === 'ku'
+            ? `${senderName} پەخشی هۆڵەکەی هاوکات کردەوە!`
+            : `${senderName} synchronized the cinema screen!`,
+        });
       })
       .subscribe();
 
@@ -226,9 +242,66 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     };
   }, [ticketId, localUserId, language, addNotification]);
 
-  // 2. Broadcast Local Playback changes to Peer (Disabled - Independent Playback Mode)
-  const broadcastSyncState = (paused: boolean, time: number, forceSeek: boolean = false) => {
-    return;
+  // 2. Broadcast Local Playback changes to Peer (Explicit Sync Triggered)
+  const triggerRoomManualSync = async () => {
+    if (!channelRef.current || syncing) return;
+    setSyncing(true);
+
+    try {
+      playSyncChime('sync');
+
+      // 1. Broadcast sync payload
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'sync',
+        payload: {
+          paused: isPausedRef.current,
+          currentTime: currentTimeRef.current,
+          senderName: localUserName,
+          timestamp: Date.now()
+        }
+      });
+
+      // 2. Pretty print seek duration
+      const formatTime = (secs: number) => {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        return [h, m, s]
+          .map(v => v < 10 ? '0' + v : v)
+          .filter((v, i) => v !== '00' || i > 0)
+          .join(':');
+      };
+      
+      const timeStr = formatTime(currentTimeRef.current);
+
+      // 3. Post dynamic system/audit notice to supabase room messages
+      const syncNotice = JSON.stringify({
+        sender: 'System',
+        text: language === 'ku'
+          ? `🔴 ${localUserName} پەخشی ژوورەکەی هاوکات کرد بۆ کاتی [${timeStr}]!`
+          : `🔴 ${localUserName} synchronized the room playback to [${timeStr}]!`,
+        isSystem: true
+      });
+
+      await supabase.from('room_messages').insert({
+        ticket_id: ticketId,
+        user_id: localUserId,
+        message: syncNotice
+      });
+
+      addNotification({
+        type: 'success',
+        title: language === 'ku' ? 'هاوکات کرا' : 'Room Synced',
+        message: language === 'ku'
+          ? `هۆڵەکەت هاوکات کرد بۆ کاتی [${timeStr}]!`
+          : `You successfully synchronized the room to [${timeStr}]!`,
+      });
+    } catch (err) {
+      console.error('Failed to trigger room sync:', err);
+    } finally {
+      setTimeout(() => setSyncing(false), 800);
+    }
   };
 
   const handlePlayerProgress = (data: any) => {
@@ -341,6 +414,16 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
                 </span>
               </div>
             </div>
+
+            {/* Sync Playback Action Button */}
+            <button
+              onClick={triggerRoomManualSync}
+              disabled={syncing}
+              className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50`}
+            >
+              <Sparkles size={11} className={syncing ? "animate-spin" : "animate-pulse"} />
+              <span>{language === 'ku' ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
+            </button>
 
             {/* Server Selector Ribbon */}
             <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0 custom-scrollbar">
