@@ -21,10 +21,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
           console.log("[SPLASH VIDEO] Instant GPU-accelerated autoplay started successfully.");
         })
         .catch(err => {
-          console.error("[SPLASH VIDEO] Autoplay request failed:", err);
+          console.error("[SPLASH VIDEO] Autoplay request failed/blocked:", err);
+          console.log("[SPLASH VIDEO] Autoplay failed/blocked. Bypassing splash screen instantly to open app...");
+          onComplete?.();
         });
     }
-  }, []);
+  }, [onComplete]);
 
   useEffect(() => {
     // Unconditional mount-level safety fallback timer of 8.5 seconds (video is 8 seconds)
@@ -67,15 +69,10 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     onComplete?.();
   };
 
-  // Optional: If user clicks or taps the screen, try to unmute immediately (for web/mobile web)
+  // Instantly skip/complete splash screen and open the app when the user clicks or taps anywhere
   const handleInteraction = () => {
-    const video = videoRef.current;
-    if (video && video.muted) {
-      video.muted = false;
-      video.currentTime = 0; // Rewind to start to hear the full splash audio experience!
-      setIsMuted(false);
-      console.log("[SPLASH VIDEO] User interacted. Unmuted and rewound splash audio successfully!");
-    }
+    console.log("[SPLASH VIDEO] User interacted. Instantly opening/transitioning to main app...");
+    onComplete?.();
   };
 
   return (
@@ -93,7 +90,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
         autoPlay
         muted
         playsInline
-        webkit-playsinline="true"
+        webkitPlaysInline={true}
         preload="auto"
         controls={false}
         onLoadedMetadata={handleLoadedMetadata}

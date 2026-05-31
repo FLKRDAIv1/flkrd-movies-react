@@ -44,6 +44,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   const [reloadKey, setReloadKey] = useState(0);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const lastTapRef = useRef<number>(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const { isAdmin } = useUI();
   const { addNotification } = useNotification();
 
@@ -119,6 +120,22 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     loadMetadata();
   }, [movie.id, movie.media_type, active, index, activeIndex]);
 
+  useEffect(() => {
+    if (!active) return;
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      const command = isMutedGlobal ? 'mute' : 'unmute';
+      iframe.contentWindow.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: command,
+          args: []
+        }),
+        '*'
+      );
+    }
+  }, [isMutedGlobal, active, isVideoLoading]);
+
   const handleInteraction = () => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
@@ -132,9 +149,10 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   const videoUrl = useMemo(() => {
     if (!trailerKey || !active) return null;
     const origin = window.location.origin;
-    // Enhanced parameters for mobile auto-play and bot mitigation
-    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3&t=${reloadKey}`;
-  }, [trailerKey, active, isMutedGlobal, reloadKey]);
+    // We hardcode mute=1 to guarantee 100% successful instant autoplay on Safari/iOS WebKit.
+    // Toggling the global mute state is handled via postMessage API inside a useEffect hook to prevent reloading the iframe, which causes playback blocks.
+    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3`;
+  }, [trailerKey, active]);
 
   return (
     <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex flex-col items-center justify-center overflow-hidden">
@@ -152,10 +170,12 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
                             className="w-full h-full scale-[2.2] md:scale-100 md:aspect-[9/16] md:mx-auto brightness-[0.75] md:brightness-100"
                         >
                         <iframe 
+                            ref={iframeRef}
                             src={videoUrl}
                             className="w-full h-full"
                             frameBorder="0"
-                            allow="autoplay; encrypted-media; picture-in-picture"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
                             onLoad={() => setIsVideoLoading(false)}
                         />
                     </motion.div>

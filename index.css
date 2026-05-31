@@ -364,3 +364,25 @@ img {
   padding-top: 7.0rem !important; /* Clears DesktopTitleBar (40px) + Header (72px) */
 }
 
+/* ── Disable WebKit media controls and play overlays completely ── */
+video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
+
+video::-webkit-media-controls {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
+
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+
+video::-webkit-media-controls-panel {
+  display: none !important;
+}
+
+

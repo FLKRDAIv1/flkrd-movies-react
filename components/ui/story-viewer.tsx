@@ -221,6 +221,22 @@ function StoryContent({
   videoRef,
 }: StoryContentProps) {
   const showSpinner = isInitialLoading || isBuffering;
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  React.useEffect(() => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      const command = isMuted ? 'mute' : 'unmute';
+      iframe.contentWindow.postMessage(
+        JSON.stringify({
+          event: 'command',
+          func: command,
+          args: []
+        }),
+        '*'
+      );
+    }
+  }, [isMuted]);
 
   return (
     <>
@@ -235,9 +251,10 @@ function StoryContent({
             isInitialLoading ? "opacity-0" : "opacity-100"
         )}>
             <iframe
-              src={`https://www.youtube.com/embed/${story.src}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=0&playsinline=1&modestbranding=1&rel=0&showinfo=0`}
+              ref={iframeRef}
+              src={`https://www.youtube.com/embed/${story.src}?autoplay=1&mute=1&controls=0&playsinline=1&modestbranding=1&rel=0&showinfo=0&enablejsapi=1`}
               className="absolute inset-0 w-full h-full object-cover pointer-events-none transform scale-[1.35] md:scale-100"
-              allow="autoplay; encrypted-media"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               onLoad={onImageLoad}
             />
             <div className="absolute inset-0 z-10" />
