@@ -130,11 +130,11 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   };
 
   const videoUrl = useMemo(() => {
-    if (!trailerKey || !active || !hasInteracted) return null;
+    if (!trailerKey || !active) return null;
     const origin = window.location.origin;
     // Enhanced parameters for mobile auto-play and bot mitigation
     return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3&t=${reloadKey}`;
-  }, [trailerKey, active, hasInteracted, isMutedGlobal, reloadKey]);
+  }, [trailerKey, active, isMutedGlobal, reloadKey]);
 
   return (
     <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex flex-col items-center justify-center overflow-hidden">
@@ -329,7 +329,7 @@ const ShortsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [isMutedGlobal, setIsMutedGlobal] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(true);
   const [viewMode, setViewMode] = useState<'followers' | 'explore'>('explore');
   const [followedIds, setFollowedIds] = useState<Set<number>>(() => new Set(JSON.parse(localStorage.getItem(FOLLOWED_KEY) || '[]')));
   

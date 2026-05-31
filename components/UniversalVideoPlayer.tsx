@@ -1254,61 +1254,65 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                 if (!aIsKu && bIsKu) return 1;
                                                                 return 0;
                                                             })
-                                                            .map(sub => (
-                                                                <button 
-                                                                    key={sub.id}
-                                                                    onClick={() => handleSelectSub(sub)}
-                                                                    className={`w-full text-left p-3.5 rounded-[20px] transition-all duration-300 border flex items-center gap-4 group relative overflow-hidden ${
-                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb') 
-                                                                        ? 'bg-gradient-to-r from-red-600/10 to-transparent border-red-600/30 hover:border-red-500/60 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
-                                                                        : 'bg-gradient-to-r from-white/[0.03] to-transparent border-white/5 hover:border-white/15 hover:bg-white/[0.06]'
-                                                                    }`}
-                                                                >
-                                                                    {/* Prominent Flag Container */}
-                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
-                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
-                                                                        ? 'bg-red-600/20 border-red-500/30'
-                                                                        : 'bg-white/5 border-white/10 group-hover:bg-white/10'
-                                                                    } transition-colors`}>
-                                                                        <div className="scale-[1.2]">
-                                                                            {getLanguageFlag(sub?.attributes?.language || '')}
+                                                            .map(sub => {
+                                                                const sLang = (sub?.attributes?.language || '').toLowerCase();
+                                                                const isKurdishSub = sLang === 'ku' || sLang === 'ckb' || sLang === 'kur' || sLang === 'badini';
+                                                                return (
+                                                                    <button 
+                                                                        key={sub.id}
+                                                                        onClick={() => handleSelectSub(sub)}
+                                                                        className={`w-full text-left p-3.5 rounded-[20px] transition-all duration-300 border flex items-center gap-4 group relative overflow-hidden ${
+                                                                            isKurdishSub 
+                                                                            ? 'bg-gradient-to-r from-red-600/10 to-transparent border-red-600/30 hover:border-red-500/60 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
+                                                                            : 'bg-gradient-to-r from-white/[0.03] to-transparent border-white/5 hover:border-white/15 hover:bg-white/[0.06]'
+                                                                        }`}
+                                                                    >
+                                                                        {/* Prominent Flag Container */}
+                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
+                                                                            isKurdishSub
+                                                                            ? 'bg-red-600/20 border-red-500/30'
+                                                                            : 'bg-white/5 border-white/10 group-hover:bg-white/10'
+                                                                        } transition-colors`}>
+                                                                            <div className="scale-[1.2]">
+                                                                                {getLanguageFlag(sub?.attributes?.language || '')}
+                                                                            </div>
                                                                         </div>
-                                                                    </div>
-                                                                
-                                                                    <div className="flex flex-col flex-1 min-w-0 relative z-10">
-                                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                                            <span className={`font-[1000] text-[10px] uppercase tracking-[0.2em] ${
-                                                                                (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb') ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
-                                                                            } transition-colors`}>
-                                                                                {sub?.attributes?.language || 'UNKNOWN'}
-                                                                            </span>
-                                                                            {(sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
-                                                                                <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
-                                                                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
-                                                                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                                                                                    </svg>
-                                                                                    Verified
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <span className="text-gray-200 font-bold text-[11px] group-hover:text-white transition-colors truncate w-full">
-                                                                            {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Standard Track'}
-                                                                        </span>
-                                                                    </div>
                                                                     
-                                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                                                        (sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur')
-                                                                        ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
-                                                                        : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
-                                                                    }`}>
-                                                                        <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                                                                    </div>
-                                                                
-                                                                    {(sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur') && (
-                                                                        <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
-                                                                    )}
-                                                                </button>
-                                                            ))
+                                                                        <div className="flex flex-col flex-1 min-w-0 relative z-10">
+                                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                                <span className={`font-[1000] text-[10px] uppercase tracking-[0.2em] ${
+                                                                                    isKurdishSub ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
+                                                                                } transition-colors`}>
+                                                                                    {sub?.attributes?.language || 'UNKNOWN'}
+                                                                                </span>
+                                                                                {isKurdishSub && (
+                                                                                    <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
+                                                                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
+                                                                                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                                                                        </svg>
+                                                                                        Verified
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <span className="text-gray-200 font-bold text-[11px] group-hover:text-white transition-colors truncate w-full">
+                                                                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Standard Track'}
+                                                                            </span>
+                                                                        </div>
+                                                                        
+                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                                                                            isKurdishSub
+                                                                            ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
+                                                                            : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
+                                                                        }`}>
+                                                                            <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                                                        </div>
+                                                                    
+                                                                        {isKurdishSub && (
+                                                                            <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })
                                                     ) : (
                                                     <div className="py-6 flex flex-col items-center gap-3 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
                                                         <span className="text-[9px] font-bold text-gray-500 text-center px-4">

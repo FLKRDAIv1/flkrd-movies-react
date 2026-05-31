@@ -670,7 +670,7 @@ export default function PremiumVidLinkPlayer({
                         return 0;
                       })
                       .map(sub => {
-                        const isKurdish = sub?.attributes?.(language === 'ku' || language === 'badini') || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur';
+                        const isKurdish = sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'badini' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur';
                         return (
                           <button 
                             key={sub.id}

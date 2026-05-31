@@ -420,7 +420,7 @@ const TVDetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isTrailerModalOpen && trailerKey && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[300] backdrop-blur-3xl flex flex-col items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[9999] backdrop-blur-3xl flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-5xl flex justify-between items-center mb-4">
               <h2 className="text-xl font-black uppercase italic tracking-tighter">{t('playTrailer')}</h2>
               <button onClick={() => setIsTrailerModalOpen(false)} className="p-3 bg-white/10 hover:bg-red-600 rounded-2xl transition-all"><X size={24} /></button>
