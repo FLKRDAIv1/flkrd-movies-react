@@ -83,16 +83,19 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const [sending, setSending] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [showHeader, setShowHeader] = useState(true);
+  const [showControls, setShowControls] = useState(true);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetHeaderTimer = () => {
-    setShowHeader(true);
+    setShowControls(true);
     if (headerTimeoutRef.current) {
       clearTimeout(headerTimeoutRef.current);
     }
     headerTimeoutRef.current = setTimeout(() => {
-      setShowHeader(false);
+      if (!isInputFocused && !showStickers) {
+        setShowControls(false);
+      }
     }, 2000);
   };
 
@@ -100,7 +103,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     if (isChatOpen) {
       resetHeaderTimer();
     } else {
-      setShowHeader(false);
+      setShowControls(false);
     }
     return () => {
       if (headerTimeoutRef.current) {
@@ -108,6 +111,17 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       }
     };
   }, [isChatOpen]);
+
+  useEffect(() => {
+    if (isInputFocused || showStickers) {
+      setShowControls(true);
+      if (headerTimeoutRef.current) {
+        clearTimeout(headerTimeoutRef.current);
+      }
+    } else {
+      resetHeaderTimer();
+    }
+  }, [isInputFocused, showStickers]);
 
   const isRtl = language === 'ku';
 
@@ -387,7 +401,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     >
       {/* Sidebar Header */}
       <AnimatePresence>
-        {showHeader && (
+        {showControls && (
           <motion.div
             initial={{ opacity: 0, y: -15, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
@@ -551,37 +565,50 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       </AnimatePresence>
 
       {/* Input Tray */}
-      <form onSubmit={handleSendMessage} className="p-4 bg-transparent shrink-0 relative">
-        <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 focus-within:border-orange-600/50 transition-colors">
-          <button
-            type="button"
-            onClick={() => {
-              playSyncChime();
-              setShowStickers(!showStickers);
-            }}
-            className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer ${showStickers ? 'text-orange-500' : 'text-zinc-400'}`}
+      <AnimatePresence>
+        {showControls && (
+          <motion.form
+            onSubmit={handleSendMessage}
+            initial={{ opacity: 0, y: 15, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: 15, height: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            className="p-4 bg-transparent shrink-0 relative overflow-hidden w-full select-none"
           >
-            <Smile size={16} />
-          </button>
-          
-          <input
-            type="text"
-            placeholder={language === 'ku' ? 'نامەیەک بنووسە...' : 'Type a message...'}
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            disabled={sending}
-            className="flex-1 bg-transparent text-sm text-white px-2 py-2 outline-none font-bold placeholder-zinc-500 min-w-0"
-          />
-          
-          <button
-            type="submit"
-            disabled={!inputMessage.trim() || sending}
-            className="w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
-          >
-            <Send size={16} />
-          </button>
-        </div>
-      </form>
+            <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 focus-within:border-orange-600/50 transition-colors">
+              <button
+                type="button"
+                onClick={() => {
+                  playSyncChime();
+                  setShowStickers(!showStickers);
+                }}
+                className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer ${showStickers ? 'text-orange-500' : 'text-zinc-400'}`}
+              >
+                <Smile size={16} />
+              </button>
+              
+              <input
+                type="text"
+                placeholder={language === 'ku' ? 'نامەیەک بنووسە...' : 'Type a message...'}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+                disabled={sending}
+                className="flex-1 bg-transparent text-sm text-white px-2 py-2 outline-none font-bold placeholder-zinc-500 min-w-0"
+              />
+              
+              <button
+                type="submit"
+                disabled={!inputMessage.trim() || sending}
+                className="w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
+              >
+                <Send size={16} />
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
