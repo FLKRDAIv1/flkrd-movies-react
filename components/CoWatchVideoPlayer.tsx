@@ -242,6 +242,76 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     };
   }, [ticketId, localUserId, language, addNotification]);
 
+  // 1b. Listen to local clickable timestamp/slash command seek requests
+  useEffect(() => {
+    const handleCowatchSeek = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ seconds: number }>;
+      const targetSeconds = customEvent.detail.seconds;
+      if (typeof targetSeconds !== 'number') return;
+
+      // Update local player trigger
+      isApplyingPeerSyncRef.current = true;
+      setPeerSyncTrigger({
+        currentTime: targetSeconds,
+        paused: isPausedRef.current,
+        timestamp: Date.now()
+      });
+
+      // Play sync sound check locally
+      playSyncChime('sync');
+
+      // Broadcast sync payload to peer
+      if (channelRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'sync',
+          payload: {
+            paused: isPausedRef.current,
+            currentTime: targetSeconds,
+            senderName: localUserName,
+            timestamp: Date.now()
+          }
+        });
+      }
+
+      // Format time duration cleanly (e.g. 01:23:45)
+      const formatTime = (secs: number) => {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        return [h, m, s]
+          .map(v => v < 10 ? '0' + v : v)
+          .filter((v, i) => v !== '00' || i > 0)
+          .join(':');
+      };
+      const timeStr = formatTime(targetSeconds);
+
+      // Post audit message to Supabase chat
+      const syncNotice = JSON.stringify({
+        sender: 'System',
+        text: language === 'ku'
+          ? `🔴 ${localUserName} پەخشی ژوورەکەی گواستەوە بۆ [${timeStr}]!`
+          : `🔴 ${localUserName} seeked the playback to [${timeStr}]!`,
+        isSystem: true
+      });
+
+      try {
+        await supabase.from('room_messages').insert({
+          ticket_id: ticketId,
+          user_id: localUserId,
+          message: syncNotice
+        });
+      } catch (err) {
+        console.warn('Failed to insert dynamic seek notice:', err);
+      }
+    };
+
+    window.addEventListener('cowatch-seek', handleCowatchSeek);
+    return () => {
+      window.removeEventListener('cowatch-seek', handleCowatchSeek);
+    };
+  }, [ticketId, localUserId, localUserName, language]);
+
   // 2. Broadcast Local Playback changes to Peer (Explicit Sync Triggered)
   const triggerRoomManualSync = async () => {
     if (!channelRef.current || syncing) return;
@@ -322,7 +392,18 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
           .update({ status: 'finished' })
           .eq('id', ticketId);
 
-        broadcastSyncState(true, currentTime, true);
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'sync',
+            payload: {
+              paused: true,
+              currentTime,
+              senderName: localUserName,
+              timestamp: Date.now()
+            }
+          });
+        }
       } catch (err) {
         console.error('Failed to update ticket status to finished:', err);
       }

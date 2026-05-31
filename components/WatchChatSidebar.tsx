@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageSquare, Shield, Sparkles } from 'lucide-react';
+import { Send, MessageSquare, Shield, Sparkles, X, Smile } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -12,6 +12,8 @@ interface WatchChatSidebarProps {
   isHost: boolean;
   guestName: string;
   hostName: string;
+  onClose?: () => void;
+  isChatOpen?: boolean;
 }
 
 interface MessageItem {
@@ -23,6 +25,47 @@ interface MessageItem {
   isSystem?: boolean;
 }
 
+const playSyncChime = () => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.4);
+  } catch (e) {}
+};
+
+const parseDurationToSeconds = (timeStr: string): number | null => {
+  const parts = timeStr.trim().split(':');
+  if (parts.length === 3) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const s = parseInt(parts[2], 10);
+    if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+      return h * 3600 + m * 60 + s;
+    }
+  } else if (parts.length === 2) {
+    const m = parseInt(parts[0], 10);
+    const s = parseInt(parts[1], 10);
+    if (!isNaN(m) && !isNaN(s)) {
+      return m * 60 + s;
+    }
+  } else if (parts.length === 1) {
+    const s = parseInt(parts[0], 10);
+    if (!isNaN(s)) {
+      return s;
+    }
+  }
+  return null;
+};
+
 export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   ticketId,
   localUserId,
@@ -30,13 +73,43 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   isHost,
   guestName,
   hostName,
+  onClose,
+  isChatOpen = true,
 }) => {
   const { language } = useTranslation();
   const { addNotification } = useNotification();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [showHeader, setShowHeader] = useState(true);
+  const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetHeaderTimer = () => {
+    setShowHeader(true);
+    if (headerTimeoutRef.current) {
+      clearTimeout(headerTimeoutRef.current);
+    }
+    headerTimeoutRef.current = setTimeout(() => {
+      setShowHeader(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    if (isChatOpen) {
+      resetHeaderTimer();
+    } else {
+      setShowHeader(false);
+    }
+    return () => {
+      if (headerTimeoutRef.current) {
+        clearTimeout(headerTimeoutRef.current);
+      }
+    };
+  }, [isChatOpen]);
+
+  const isRtl = language === 'ku';
 
   // 1. Fetch initial messages
   useEffect(() => {
@@ -120,6 +193,19 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             isSystem,
           };
 
+          // Alert user if the chat is closed and the message is from another watcher
+          if (!isChatOpen && msg.user_id?.toLowerCase() !== localUserId?.toLowerCase()) {
+            playSyncChime();
+            const isSenderHost = sender === hostName;
+            addNotification({
+              type: 'info',
+              title: language === 'ku' ? '💬 پەیامی نوێ' : '💬 New Message',
+              message: language === 'ku'
+                ? `نامەیەکی نوێ لە لایەن [${isSenderHost ? 'پێشکەشکار' : 'بینەر'}] (${sender})`
+                : `New chat from [${isSenderHost ? 'Host' : 'Watcher'}] (${sender})`,
+            });
+          }
+
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, newMessage];
@@ -131,7 +217,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [ticketId, localUserId, localUserName, isHost, guestName, hostName]);
+  }, [ticketId, localUserId, localUserName, isHost, guestName, hostName, isChatOpen]);
 
   // 3. Auto-scroll to bottom
   useEffect(() => {
@@ -143,6 +229,28 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     e.preventDefault();
     const trimmed = inputMessage.trim();
     if (!trimmed || sending) return;
+
+    // Check for slash seek command
+    if (trimmed.startsWith('/seek ')) {
+      const timePart = trimmed.substring(6).trim();
+      const seconds = parseDurationToSeconds(timePart);
+      if (seconds !== null) {
+        window.dispatchEvent(new CustomEvent('cowatch-seek', { detail: { seconds } }));
+        setInputMessage('');
+        return;
+      }
+    }
+
+    // Check for raw timestamp (e.g. 1:25 or 01:23:45)
+    const timestampRegex = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/;
+    if (timestampRegex.test(trimmed)) {
+      const seconds = parseDurationToSeconds(trimmed);
+      if (seconds !== null) {
+        window.dispatchEvent(new CustomEvent('cowatch-seek', { detail: { seconds } }));
+        setInputMessage('');
+        return;
+      }
+    }
 
     setSending(true);
     try {
@@ -171,23 +279,151 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     }
   };
 
+  const handleSendSticker = async (name: string) => {
+    setShowStickers(false);
+    try {
+      const payload = JSON.stringify({
+        sender: localUserName,
+        text: `[sticker:${name}]`,
+      });
+
+      const { error } = await supabase.from('room_messages').insert({
+        ticket_id: ticketId,
+        user_id: localUserId,
+        message: payload,
+      });
+
+      if (error) throw error;
+      playSyncChime();
+    } catch (err) {
+      console.error('Failed to send sticker:', err);
+    }
+  };
+
+  const isSticker = (text: string) => {
+    return text.startsWith('[sticker:') && text.endsWith(']');
+  };
+
+  const getStickerName = (text: string) => {
+    return text.substring(9, text.length - 1);
+  };
+
+  const renderSticker = (name: string) => {
+    const emojis: Record<string, string> = {
+      sun: '☀️',
+      lion: '🦁',
+      popcorn: '🍿',
+      clapper: '🎬',
+      heart: '💖',
+      pizza: '🍕',
+      soda: '🥤',
+      award: '🏆'
+    };
+
+    const emoji = emojis[name] || '🎬';
+
+    return (
+      <motion.span
+        animate={{ scale: [1, 1.2, 1], rotate: name === 'sun' ? [0, 360] : 0 }}
+        transition={{ duration: name === 'sun' ? 10 : 2, repeat: Infinity, ease: 'linear' }}
+        className="inline-block text-2xl filter drop-shadow-[0_2px_8px_rgba(249,115,22,0.3)] select-none align-middle mx-1"
+      >
+        {emoji}
+      </motion.span>
+    );
+  };
+
+  const renderMessageText = (text: string) => {
+    const timestampRegex = /\b(?:(\d{1,2}):)?(\d{1,2}):(\d{2})\b/g;
+    
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = timestampRegex.exec(text)) !== null) {
+      const matchIndex = match.index;
+      if (matchIndex > lastIndex) {
+        parts.push(text.substring(lastIndex, matchIndex));
+      }
+
+      const fullMatch = match[0];
+      const hours = match[1] ? parseInt(match[1]) : 0;
+      const minutes = parseInt(match[2]);
+      const seconds = parseInt(match[3]);
+      
+      const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+      parts.push(
+        <button
+          key={matchIndex}
+          type="button"
+          onClick={() => {
+            playSyncChime();
+            window.dispatchEvent(new CustomEvent('cowatch-seek', { detail: { seconds: totalSeconds } }));
+          }}
+          className="text-orange-400 hover:text-orange-300 font-[1000] underline focus:outline-none px-1.5 py-0.5 rounded bg-white/5 border border-white/10 active:scale-95 transition-all inline-flex items-center gap-1 leading-none shadow-sm cursor-pointer mx-0.5"
+        >
+          <Sparkles size={9} className="text-orange-400 animate-pulse" />
+          <span>{fullMatch}</span>
+        </button>
+      );
+
+      lastIndex = timestampRegex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    return parts.length > 0 ? parts : text;
+  };
+
   return (
-    <div className="flex flex-col h-full bg-zinc-950/80 border-l border-zinc-900 backdrop-blur-2xl w-full">
+    <div 
+      onMouseMove={resetHeaderTimer}
+      onMouseEnter={resetHeaderTimer}
+      onTouchStart={resetHeaderTimer}
+      className="flex flex-col h-full bg-transparent w-full rounded-[2.25rem] overflow-hidden relative select-none"
+    >
       {/* Sidebar Header */}
-      <div className="p-4 border-b border-zinc-900/60 bg-black/40 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-orange-500" />
-          <h3 className="text-xs font-black uppercase tracking-widest text-white italic">
-            {language === 'ku' ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
-          </h3>
-        </div>
-        <div className="flex items-center gap-1.5 bg-orange-600/10 border border-orange-500/20 px-2.5 py-1 rounded-full">
-          <Shield size={10} className="text-orange-500" />
-          <span className="text-[8px] font-black uppercase text-orange-500 tracking-wider">
-            {language === 'ku' ? 'پارێزراوە' : 'SECURE NODE'}
-          </span>
-        </div>
-      </div>
+      <AnimatePresence>
+        {showHeader && (
+          <motion.div
+            initial={{ opacity: 0, y: -15, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: 'auto' }}
+            exit={{ opacity: 0, y: -15, height: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+            className="p-4 flex items-center justify-between shrink-0 bg-transparent text-white overflow-hidden w-full select-none"
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-orange-500" />
+              <h3 className="text-xs font-black uppercase tracking-widest text-white italic">
+                {language === 'ku' ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
+              </h3>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                <Shield size={10} className="text-orange-500" />
+                <span className="text-[7px] font-black uppercase text-orange-500 tracking-wider">
+                  {language === 'ku' ? 'پارێزراوە' : 'SECURE'}
+                </span>
+              </div>
+              {onClose && (
+                <button
+                  onClick={() => {
+                    playSyncChime();
+                    onClose();
+                  }}
+                  className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Message Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
@@ -201,17 +437,27 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
           {messages.map((msg) => {
             const isMe = msg.userId?.toLowerCase() === localUserId?.toLowerCase();
 
+            const isHostUser = msg.sender === hostName;
+
             if (msg.isSystem) {
+              // YouTube style "Super Chat" or "System highlight" sync alert!
               return (
                 <motion.div
                   key={msg.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-center my-1"
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="w-full my-2 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 p-3.5 rounded-2xl border border-orange-500/20 shadow-lg relative overflow-hidden flex flex-col gap-1 text-left select-none"
                 >
-                  <span className="text-[9px] font-black text-orange-500/70 bg-orange-950/20 border border-orange-950/30 px-3 py-1 rounded-xl uppercase tracking-wider">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[7px] font-[1000] tracking-[0.25em] text-white/80 uppercase">
+                      {language === 'ku' ? 'هاوکاتکردنی پەخش' : 'CINEMA SYNC ALERT'}
+                    </span>
+                    <Sparkles size={10} className="text-white animate-pulse" />
+                  </div>
+                  <span className="text-xs font-black text-white leading-relaxed">
                     🎉 {msg.text}
                   </span>
+                  <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
                 </motion.div>
               );
             }
@@ -219,24 +465,37 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex flex-col max-w-[85%] ${isMe ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                initial={{ opacity: 0, x: isRtl ? 15 : -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-start gap-2 text-sm leading-relaxed p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors text-left drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]"
               >
-                {/* Nickname */}
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-1 px-1">
-                  {msg.sender}
-                </span>
+                <div className="flex items-baseline flex-wrap gap-1.5 w-full">
+                  {/* Glowing moderator/vip badge */}
+                  <span className={`text-[7px] font-[1000] uppercase tracking-widest px-1.5 py-0.5 rounded leading-none shrink-0 inline-flex items-center gap-0.5 ${
+                    isHostUser
+                      ? 'bg-red-600/20 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
+                      : 'bg-orange-600/20 text-orange-500 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.15)]'
+                  }`}>
+                    {isHostUser ? (language === 'ku' ? 'پێشکەشکار' : 'HOST') : (language === 'ku' ? 'ئەندام' : 'MEMBER')}
+                  </span>
 
-                {/* Bubble */}
-                <div
-                  className={`px-4 py-2.5 rounded-[1.25rem] text-sm font-bold shadow-md break-all leading-relaxed ${
-                    isMe
-                      ? 'bg-orange-600 text-white rounded-tr-none'
-                      : 'bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-tl-none'
-                  }`}
-                >
-                  {msg.text}
+                  {/* Nickname with YouTube highlight */}
+                  <span className={`font-black uppercase tracking-wider text-xs ${
+                    isHostUser ? 'text-red-400' : 'text-orange-400'
+                  }`}>
+                    {msg.sender}:
+                  </span>
+
+                  {/* Message body or Sticker inline */}
+                  {isSticker(msg.text) ? (
+                    <div className="inline-block mt-1">
+                      {renderSticker(getStickerName(msg.text))}
+                    </div>
+                  ) : (
+                    <span className="text-zinc-200 font-bold break-all leading-relaxed select-text">
+                      {renderMessageText(msg.text)}
+                    </span>
+                  )}
                 </div>
               </motion.div>
             );
@@ -245,21 +504,79 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Floating Sticker drawer overlay */}
+      <AnimatePresence>
+        {showStickers && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            className="absolute bottom-20 left-4 right-4 bg-zinc-950/95 border border-zinc-900 rounded-[1.75rem] p-3 shadow-2xl z-50 flex flex-col gap-2 backdrop-blur-md"
+          >
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">
+                {language === 'ku' ? 'ستیکەرەکانی ئاهەنگ' : 'THEATRE STICKERS'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowStickers(false)}
+                className="text-zinc-500 hover:text-white cursor-pointer p-0.5 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { name: 'sun', emoji: '☀️' },
+                { name: 'lion', emoji: '🦁' },
+                { name: 'popcorn', emoji: '🍿' },
+                { name: 'clapper', emoji: '🎬' },
+                { name: 'heart', emoji: '💖' },
+                { name: 'pizza', emoji: '🍕' },
+                { name: 'soda', emoji: '🥤' },
+                { name: 'award', emoji: '🏆' }
+              ].map(item => (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => handleSendSticker(item.name)}
+                  className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5 active:scale-90 transition-all cursor-pointer"
+                >
+                  <span className="text-2xl select-none">{item.emoji}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Input Tray */}
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-zinc-900/60 bg-black/40 shrink-0">
+      <form onSubmit={handleSendMessage} className="p-4 bg-transparent shrink-0 relative">
         <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 focus-within:border-orange-600/50 transition-colors">
+          <button
+            type="button"
+            onClick={() => {
+              playSyncChime();
+              setShowStickers(!showStickers);
+            }}
+            className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer ${showStickers ? 'text-orange-500' : 'text-zinc-400'}`}
+          >
+            <Smile size={16} />
+          </button>
+          
           <input
             type="text"
             placeholder={language === 'ku' ? 'نامەیەک بنووسە...' : 'Type a message...'}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             disabled={sending}
-            className="flex-1 bg-transparent text-sm text-white px-3.5 py-2 outline-none font-bold placeholder-zinc-500"
+            className="flex-1 bg-transparent text-sm text-white px-2 py-2 outline-none font-bold placeholder-zinc-500 min-w-0"
           />
+          
           <button
             type="submit"
             disabled={!inputMessage.trim() || sending}
-            className="w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0"
+            className="w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
           >
             <Send size={16} />
           </button>

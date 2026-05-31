@@ -17,7 +17,9 @@ import { updateService, UpdateCheckResult } from '../services/updateService';
 import { isTauri } from '../utils/tauriUtils';
 import { tauriService } from '../services/tauriService';
 import { supabase } from '../utils/supabaseClient';
+// @ts-ignore
 import warningImage1 from './warnin g images/image.png';
+// @ts-ignore
 import warningImage2 from './warnin g images/image copy.png';
 
 interface SettingsModalProps {

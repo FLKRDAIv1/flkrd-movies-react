@@ -182,7 +182,23 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [scrolled, setScrolled] = useState(false);
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+    const [isWatchPage, setIsWatchPage] = useState(() => window.location.hash.startsWith('#/watch/'));
     const mainRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        const handleHashChange = () => {
+            setIsWatchPage(window.location.hash.startsWith('#/watch/'));
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        window.addEventListener('popstate', handleHashChange);
+        const interval = setInterval(handleHashChange, 200);
+
+        return () => {
+            window.removeEventListener('hashchange', handleHashChange);
+            window.removeEventListener('popstate', handleHashChange);
+            clearInterval(interval);
+        };
+    }, []);
     
     // Initialized Spatial Navigation Engine
     useSpatialNavigation();
@@ -362,17 +378,17 @@ const App: React.FC = () => {
                 <DesktopTitleBar />
                 <PremiumBackground />
                 <HashRouter>
-                    <Header scrolled={scrolled} />
+                    {!isWatchPage && <Header scrolled={scrolled} />}
                     <div className="flex flex-1 h-full overflow-hidden relative">
-                        <Sidebar />
-                        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden pt-10 tauri-only-pt">
+                        {!isWatchPage && <Sidebar />}
+                        <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : 'pt-10 tauri-only-pt'}`}>
                             <ChunkErrorBoundary>
                               <React.Suspense fallback={
                                 <div className="flex-1 flex flex-col items-center justify-center h-[70vh] gap-6">
                                   <Spinner size="lg" />
                                 </div>
                               }>
-                                  <main ref={mainRef} className="flex-1 overflow-y-auto console-perspective-container">
+                                  <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
                                       <Routes>
                                           <Route path="/" element={<HomePage />} />
                                           <Route path="/tv" element={<TVShowsPage />} />
@@ -393,7 +409,7 @@ const App: React.FC = () => {
                               </React.Suspense>
                             </ChunkErrorBoundary>
                         </div>
-                        <MobileNav />
+                        {!isWatchPage && <MobileNav />}
                     </div>
                     <ContinueWatchingPortal />
                     <WelcomeNotificationPrompt />

@@ -14,7 +14,9 @@ import {
   ShieldAlert, 
   CheckCircle,
   Delete,
-  Maximize2
+  Maximize2,
+  MessageSquare,
+  X
 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { useLocalUser } from '../hooks/useLocalUser';
@@ -186,6 +188,7 @@ export default function WatchRoomPage() {
   const [loading, setLoading] = useState(() => !(location.state?.ticket && location.state?.movie));
   const [error, setError] = useState<string | null>(null);
   const [roomFullError, setRoomFullError] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
 
   const [season, setSeason] = useState<number | undefined>(() => {
     const t = location.state?.ticket;
@@ -1061,11 +1064,22 @@ export default function WatchRoomPage() {
 
   // C. Full Active Room: Double column widescreen layouts (Player + Chat Sidebar)
 
+  const isRtl = language === 'ku';
+  const headerSpacingClass = isChatOpen 
+    ? isRtl 
+      ? 'md:left-[332px] xl:left-[352px] md:right-4' // Chat is on the left, so left has offset
+      : 'md:right-[332px] xl:right-[352px] md:left-4' // Chat is on the right, so right has offset
+    : 'left-4 right-4';
+
+  const sidebarResponsiveClass = isRtl
+    ? 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:w-[300px] xl:w-[320px] sm:top-4 sm:bottom-4 sm:right-auto sm:left-4'
+    : 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:w-[300px] xl:w-[320px] sm:top-4 sm:bottom-4 sm:left-auto sm:right-4';
+
   return (
-    <div className="relative w-full h-[calc(100vh-40px)] flex flex-col bg-black text-white overflow-hidden">
+    <div className="relative w-full h-[calc(100vh-40px)] bg-black text-white overflow-hidden select-none">
       
       {/* Dynamic blurred color flow backdrop */}
-      <div className="absolute inset-0 z-0 opacity-5 pointer-events-none filter blur-[80px] scale-110">
+      <div className="absolute inset-0 z-0 opacity-10 pointer-events-none filter blur-[120px] scale-110">
         <img
           src={getImageUrl(movie.backdrop_path || movie.poster_path)}
           alt=""
@@ -1073,12 +1087,30 @@ export default function WatchRoomPage() {
         />
       </div>
 
-      {/* Cinematic Top Bar panel */}
-      <div className="relative z-10 px-6 py-4 border-b border-zinc-900 bg-zinc-950/60 backdrop-blur-md flex items-center justify-between shrink-0 select-none">
+      {/* 100% Full-Screen Synced Video Player */}
+      <div className="absolute inset-0 z-10 w-full h-full">
+        <CoWatchVideoPlayer
+          ticketId={ticket.id}
+          movieId={String(movie.id)}
+          movieTitle={movie.title}
+          isHost={isHost}
+          localUserId={localUserId}
+          localUserName={localUserName}
+          partnerName={isHost ? guestName : hostName}
+          contentType={ticket.movie_id.startsWith('tv_') ? 'tv' : 'movie'}
+          season={season}
+          episode={episode}
+        />
+      </div>
+
+      {/* Floating Cinematic Top Bar panel */}
+      <div 
+        className={`absolute top-4 z-30 transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
+      >
         
         {/* Movie Identity */}
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-11 bg-zinc-900 rounded border border-white/10 overflow-hidden shadow flex-shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="w-7 h-9 sm:w-8 sm:h-11 bg-zinc-900 rounded border border-white/10 overflow-hidden shadow flex-shrink-0">
             <img
               src={getImageUrl(movie.poster_path, 'w500')}
               alt=""
@@ -1086,18 +1118,18 @@ export default function WatchRoomPage() {
             />
           </div>
           <div className="flex flex-col text-left">
-            <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black tracking-widest text-orange-500 uppercase bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="text-[7px] sm:text-[9px] font-black tracking-widest text-orange-500 uppercase bg-orange-600/10 border border-orange-500/20 px-1.5 py-0.5 rounded leading-none shrink-0">
                 {language === 'ku' ? 'چالاکە' : 'LIVE'}
               </span>
-              <span className="text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[200px] md:max-w-md">
+              <span className="text-[11px] sm:text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[120px] md:max-w-md">
                 {movie.title} {season !== undefined && episode !== undefined ? ` • S${season} E${episode}` : ''}
               </span>
             </div>
             {/* Active spectators indicator */}
-            <div className="flex items-center gap-1.5 mt-0.5 text-zinc-500">
-              <Users size={12} className="text-zinc-500" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-1 mt-0.5 text-zinc-500">
+              <Users size={10} className="text-zinc-500 shrink-0" />
+              <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider truncate max-w-[120px] sm:max-w-none">
                 {localUserName} {Object.values(memberNames).length > 0 ? `+ ${Object.values(memberNames).join(' + ')}` : ''}
               </span>
             </div>
@@ -1105,57 +1137,63 @@ export default function WatchRoomPage() {
         </div>
 
         {/* Exit & actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <button
+            onClick={() => {
+              playSyncChime('sync');
+              setIsChatOpen(!isChatOpen);
+            }}
+            className={`flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border p-2 sm:px-4 sm:py-2 ${
+              isChatOpen 
+                ? 'border-orange-500 text-orange-500 bg-orange-950/20 shadow-[0_0_15px_rgba(234,88,12,0.15)]' 
+                : 'border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 bg-zinc-900/50'
+            }`}
+          >
+            <MessageSquare size={13} className={isChatOpen ? 'animate-pulse text-orange-500' : ''} />
+            <span className="hidden sm:inline">{language === 'ku' ? 'چات' : 'CHAT'}</span>
+          </button>
+
           <button
             onClick={() => playSyncChime('join')}
-            className="px-4 py-2 border border-zinc-800 hover:border-orange-500/40 hover:bg-orange-950/10 text-zinc-400 hover:text-orange-500 rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-orange-500 hover:border-orange-500/40 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
           >
-            <Sparkles size={12} className="text-orange-500 animate-pulse" />
-            {language === 'ku' ? 'دەنگ بەکاربخە' : 'SOUND CHECK'}
+            <Sparkles size={13} className="text-orange-500 animate-pulse" />
+            <span className="hidden sm:inline">{language === 'ku' ? 'دەنگ' : 'SOUND'}</span>
           </button>
 
           <button
             onClick={() => navigate(getBackRoute(ticket.movie_id))}
-            className="px-4 py-2 border border-zinc-800 hover:border-red-500/40 hover:bg-red-950/10 text-zinc-400 hover:text-red-500 rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-red-500 hover:border-red-500/40 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
           >
-            <ArrowLeft size={12} /> {language === 'ku' ? 'جێهێشتن' : 'LEAVE PARTY'}
+            <ArrowLeft size={13} />
+            <span className="hidden sm:inline">{language === 'ku' ? 'جێهێشتن' : 'LEAVE'}</span>
           </button>
         </div>
 
       </div>
 
-      {/* Main Theatre Split-Screen viewport */}
-      <div className="relative z-10 flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        
-        {/* Left side: Synced Video Player */}
-        <div className="flex-1 h-full min-w-0 p-4 lg:p-6 flex items-stretch">
-          <CoWatchVideoPlayer
-            ticketId={ticket.id}
-            movieId={String(movie.id)}
-            movieTitle={movie.title}
-            isHost={isHost}
-            localUserId={localUserId}
-            localUserName={localUserName}
-            partnerName={isHost ? guestName : hostName}
-            contentType={ticket.movie_id.startsWith('tv_') ? 'tv' : 'movie'}
-            season={season}
-            episode={episode}
-          />
-        </div>
-
-        {/* Right side: Cinematic Live Chat Sidebar */}
-        <div className="w-full lg:w-[350px] xl:w-[380px] h-[300px] lg:h-full border-t lg:border-t-0 border-zinc-900 shrink-0">
-          <WatchChatSidebar
-            ticketId={ticket.id}
-            localUserId={localUserId}
-            localUserName={localUserName}
-            isHost={isHost}
-            guestName={guestName || 'Guest'}
-            hostName={hostName || 'Host'}
-          />
-        </div>
-
-      </div>
+      {/* Floating Cinematic Live Chat Sidebar overlay */}
+      <motion.div
+        animate={{ 
+          opacity: isChatOpen ? 1 : 0,
+          x: isChatOpen ? 0 : (isRtl ? -200 : 200),
+          scale: isChatOpen ? 1 : 0.95,
+          pointerEvents: isChatOpen ? 'auto' : 'none'
+        }}
+        transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+        className={`absolute z-40 flex flex-col overflow-hidden shadow-2xl ${sidebarResponsiveClass}`}
+      >
+        <WatchChatSidebar
+          ticketId={ticket.id}
+          localUserId={localUserId}
+          localUserName={localUserName}
+          isHost={isHost}
+          guestName={guestName || 'Guest'}
+          hostName={hostName || 'Host'}
+          onClose={() => setIsChatOpen(false)}
+          isChatOpen={isChatOpen}
+        />
+      </motion.div>
 
     </div>
   );

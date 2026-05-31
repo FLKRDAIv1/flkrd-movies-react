@@ -745,9 +745,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
                 win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
 
+                // Comprehensive seek command suites for iframe compatibility (Vimeo/PlayerJS)
+                win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'seek', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', version: '1.4.0', event: 'command', command: 'seek', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ event: 'command', command: 'seek', value: targetTime }), '*');
+                win.postMessage(JSON.stringify({ command: 'seek', value: targetTime }), '*');
+
                 win.postMessage(JSON.stringify({ event: targetPaused ? 'pause' : 'play' }), '*');
                 win.postMessage(JSON.stringify({ context: 'player.js', method: targetPaused ? 'pause' : 'play' }), '*');
                 win.postMessage(JSON.stringify({ method: targetPaused ? 'pause' : 'play' }), '*');
+
+                // Play/Pause command suites
+                win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: targetPaused ? 'pause' : 'play', value: null }), '*');
+                win.postMessage(JSON.stringify({ event: 'command', command: targetPaused ? 'pause' : 'play', value: null }), '*');
             } catch (err) {
                 console.warn("[PEER SYNC EFFECT] Error posting message to iframe:", err);
             }
