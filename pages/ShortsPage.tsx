@@ -133,7 +133,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     if (!trailerKey || !active) return null;
     const origin = window.location.origin;
     // Enhanced parameters for mobile auto-play and bot mitigation
-    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3&t=${reloadKey}`;
+    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMutedGlobal ? 1 : 0}&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3&t=${reloadKey}`;
   }, [trailerKey, active, isMutedGlobal, reloadKey]);
 
   return (

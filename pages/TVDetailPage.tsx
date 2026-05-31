@@ -427,10 +427,10 @@ const TVDetailPage: React.FC = () => {
             </div>
             <div className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
               <iframe
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}`}
                 className="w-full h-full"
                 allowFullScreen
-                allow="autoplay"
+                allow="autoplay; encrypted-media"
               />
             </div>
           </motion.div>
@@ -628,10 +628,10 @@ const TVDetailPage: React.FC = () => {
           {trailerKey ? (
             <div className="absolute inset-0 scale-[1.5] pointer-events-none">
               <iframe
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=${isMuted ? 1 : 0}&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}`}
                 className="w-full h-full opacity-60"
                 frameBorder="0"
-                allow="autoplay"
+                allow="autoplay; encrypted-media"
               />
             </div>
           ) : (
