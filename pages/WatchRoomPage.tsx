@@ -1087,9 +1087,10 @@ export default function WatchRoomPage() {
   const isRtl = language === 'ku';
   const headerSpacingClass = isChatOpen 
     ? isRtl 
-      ? 'md:left-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:right-4' // Chat is on the left, so left has offset
-      : 'md:right-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:left-4' // Chat is on the right, so right has offset
+      ? 'left-4 right-4 md:left-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:right-4' // Chat is on the left, so left has offset
+      : 'left-4 right-4 md:right-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:left-4' // Chat is on the right, so right has offset
     : 'left-4 right-4';
+
 
   const sidebarResponsiveClass = isRtl
     ? 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:top-4 sm:bottom-4 sm:right-auto sm:left-4'

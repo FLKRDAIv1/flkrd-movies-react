@@ -95,14 +95,32 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const [stipopLoading, setStipopLoading] = useState(false);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const isAdultContent = (text: string): boolean => {
+    const SENSITIVE_KEYWORDS = [
+      'sex', 'porn', 'xxx', 'adult', 'naked', 'nsfw', 'erotic', 'butt', 'dick', 
+      'boobs', 'vagina', 'hentai', 'breast', 'penis', 'weed', 'cigar', 'alcohol', 
+      'sensual', 'vulgar', 'orgasm', 'nude', 'lingerie', 'condom', 'sexy', 'hot',
+      'underwear', 'bra', 'strip', 'naughty', 'playboy', 'slut', 'bitch', 'ass'
+    ];
+    const lower = text.toLowerCase().trim();
+    return SENSITIVE_KEYWORDS.some(k => lower.includes(k));
+  };
+
   const fetchStipopStickers = async (query = '') => {
+    // Proactively block adult search queries instantly
+    if (isAdultContent(query)) {
+      setStipopStickers([]);
+      setStipopLoading(false);
+      return;
+    }
+
     setStipopLoading(true);
     try {
       let url = '';
       if (query.trim()) {
-        url = `https://messenger.stipop.io/v1/search?q=${encodeURIComponent(query)}&userId=${localUserId}&limit=40`;
+        url = `https://messenger.stipop.io/v1/search?q=${encodeURIComponent(query)}&userId=${localUserId}&limit=100`;
       } else {
-        url = `https://messenger.stipop.io/v1/package?userId=${localUserId}&limit=6`;
+        url = `https://messenger.stipop.io/v1/package?userId=${localUserId}&limit=12`;
       }
 
       const res = await fetch(url, {
@@ -115,24 +133,43 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       if (data && data.body) {
         if (query.trim()) {
           const list = data.body.stickerList || data.body.stickers || [];
-          setStipopStickers(list.map((s: any) => ({
+          
+          // Strict client-side filter to scan returned keywords and image URLs
+          const filtered = list.filter((s: any) => {
+            const keyword = (s.keyword || '').toString();
+            const imageUrl = (s.stickerImg || '').toString();
+            return !isAdultContent(keyword) && !isAdultContent(imageUrl);
+          });
+
+          // Limit display to exactly 50 stickers
+          setStipopStickers(filtered.slice(0, 50).map((s: any) => ({
             stickerId: s.stickerId,
             stickerImg: s.stickerImg
           })));
         } else {
           const packs = data.body.packageList || data.body.packages || [];
           const allStickers: any[] = [];
+          
           packs.forEach((p: any) => {
+            const packageName = (p.packageName || '').toString();
+            if (isAdultContent(packageName)) return; // Skip adult packages
+
             if (p.stickers) {
               p.stickers.forEach((s: any) => {
-                allStickers.push({
-                  stickerId: s.stickerId,
-                  stickerImg: s.stickerImg
-                });
+                const keyword = (s.keyword || '').toString();
+                const imageUrl = (s.stickerImg || '').toString();
+                if (!isAdultContent(keyword) && !isAdultContent(imageUrl)) {
+                  allStickers.push({
+                    stickerId: s.stickerId,
+                    stickerImg: s.stickerImg
+                  });
+                }
               });
             }
           });
-          setStipopStickers(allStickers.slice(0, 60));
+          
+          // Limit display to exactly 50 stickers
+          setStipopStickers(allStickers.slice(0, 50));
         }
       }
     } catch (err) {
