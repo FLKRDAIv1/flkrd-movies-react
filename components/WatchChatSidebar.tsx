@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageSquare, Shield, Sparkles, X, Smile } from 'lucide-react';
+import { Send, MessageSquare, Shield, Sparkles, X, Smile, Settings } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -14,6 +14,8 @@ interface WatchChatSidebarProps {
   hostName: string;
   onClose?: () => void;
   isChatOpen?: boolean;
+  chatWidth?: number;
+  onChatWidthChange?: (width: number) => void;
 }
 
 interface MessageItem {
@@ -75,6 +77,8 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   hostName,
   onClose,
   isChatOpen = true,
+  chatWidth = 22,
+  onChatWidthChange,
 }) => {
   const { language } = useTranslation();
   const { addNotification } = useNotification();
@@ -85,7 +89,64 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showControls, setShowControls] = useState(true);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [stipopStickers, setStipopStickers] = useState<any[]>([]);
+  const [stipopSearch, setStipopSearch] = useState('');
+  const [stipopLoading, setStipopLoading] = useState(false);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchStipopStickers = async (query = '') => {
+    setStipopLoading(true);
+    try {
+      let url = '';
+      if (query.trim()) {
+        url = `https://messenger.stipop.io/v1/search?q=${encodeURIComponent(query)}&userId=${localUserId}&limit=40`;
+      } else {
+        url = `https://messenger.stipop.io/v1/package?userId=${localUserId}&limit=6`;
+      }
+
+      const res = await fetch(url, {
+        headers: {
+          apikey: '3bb06c03-2293-435e-a2bb-49898c9ca7d4'
+        }
+      });
+      const data = await res.json();
+      
+      if (data && data.body) {
+        if (query.trim()) {
+          const list = data.body.stickerList || data.body.stickers || [];
+          setStipopStickers(list.map((s: any) => ({
+            stickerId: s.stickerId,
+            stickerImg: s.stickerImg
+          })));
+        } else {
+          const packs = data.body.packageList || data.body.packages || [];
+          const allStickers: any[] = [];
+          packs.forEach((p: any) => {
+            if (p.stickers) {
+              p.stickers.forEach((s: any) => {
+                allStickers.push({
+                  stickerId: s.stickerId,
+                  stickerImg: s.stickerImg
+                });
+              });
+            }
+          });
+          setStipopStickers(allStickers.slice(0, 60));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load Stipop stickers:', err);
+    } finally {
+      setStipopLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showStickers) {
+      fetchStipopStickers(stipopSearch);
+    }
+  }, [showStickers, stipopSearch]);
 
   const resetHeaderTimer = () => {
     setShowControls(true);
@@ -93,7 +154,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       clearTimeout(headerTimeoutRef.current);
     }
     headerTimeoutRef.current = setTimeout(() => {
-      if (!isInputFocused && !showStickers) {
+      if (!isInputFocused && !showStickers && !showSettings) {
         setShowControls(false);
       }
     }, 2000);
@@ -113,7 +174,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   }, [isChatOpen]);
 
   useEffect(() => {
-    if (isInputFocused || showStickers) {
+    if (isInputFocused || showStickers || showSettings) {
       setShowControls(true);
       if (headerTimeoutRef.current) {
         clearTimeout(headerTimeoutRef.current);
@@ -121,7 +182,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     } else {
       resetHeaderTimer();
     }
-  }, [isInputFocused, showStickers]);
+  }, [isInputFocused, showStickers, showSettings]);
 
   const isRtl = language === 'ku';
 
@@ -293,6 +354,35 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     }
   };
 
+  const handleSendStipopSticker = async (imgUrl: string) => {
+    setShowStickers(false);
+    try {
+      const payload = JSON.stringify({
+        sender: localUserName,
+        text: `[stipop:${imgUrl}]`,
+      });
+
+      const { error } = await supabase.from('room_messages').insert({
+        ticket_id: ticketId,
+        user_id: localUserId,
+        message: payload,
+      });
+
+      if (error) throw error;
+      playSyncChime();
+    } catch (err) {
+      console.error('Failed to send Stipop sticker:', err);
+    }
+  };
+
+  const isStipopSticker = (text: string) => {
+    return text.startsWith('[stipop:') && text.endsWith(']');
+  };
+
+  const getStipopStickerUrl = (text: string) => {
+    return text.substring(8, text.length - 1);
+  };
+
   const handleSendSticker = async (name: string) => {
     setShowStickers(false);
     try {
@@ -407,34 +497,60 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -15, height: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="p-4 flex items-center justify-between shrink-0 bg-transparent text-white overflow-hidden w-full select-none"
+            className="p-4 flex flex-col shrink-0 bg-transparent text-white overflow-hidden w-full select-none"
           >
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-orange-500" />
-              <h3 className="text-xs font-black uppercase tracking-widest text-white italic">
-                {language === 'ku' ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
-              </h3>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
-                <Shield size={10} className="text-orange-500" />
-                <span className="text-[7px] font-black uppercase text-orange-500 tracking-wider">
-                  {language === 'ku' ? 'پارێزراوە' : 'SECURE'}
-                </span>
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-orange-500" />
+                <h3 className="text-xs font-black uppercase tracking-widest text-white italic">
+                  {language === 'ku' ? 'چاتی ڕاستەوخۆ' : 'PARTY CHAT'}
+                </h3>
               </div>
-              {onClose && (
+              
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-orange-600/10 border border-orange-500/20 px-2 py-0.5 rounded-full">
+                  <Shield size={10} className="text-orange-500" />
+                  <span className="text-[7px] font-black uppercase text-orange-500 tracking-wider">
+                    {language === 'ku' ? 'پارێزراوە' : 'SECURE'}
+                  </span>
+                </div>
                 <button
-                  onClick={() => {
-                    playSyncChime();
-                    onClose();
-                  }}
-                  className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => setShowSettings(!showSettings)}
+                  className={`p-1 rounded-lg transition-colors cursor-pointer ${showSettings ? 'text-orange-500 bg-orange-950/15' : 'text-zinc-500 hover:text-white'}`}
                 >
-                  <X size={16} />
+                  <Settings size={14} />
                 </button>
-              )}
+                {onClose && (
+                  <button
+                    onClick={() => {
+                      playSyncChime();
+                      onClose();
+                    }}
+                    className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {showSettings && onChatWidthChange && (
+              <div className="flex items-center gap-2 mt-2 px-1 py-1 border-t border-zinc-900 w-full select-none">
+                <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
+                  {language === 'ku' ? 'قەبارەی چات:' : 'CHAT SIZE:'}
+                </span>
+                <input
+                  type="range"
+                  min="15"
+                  max="50"
+                  value={chatWidth}
+                  onChange={(e) => onChatWidthChange(Number(e.target.value))}
+                  className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
+                />
+                <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatWidth}%</span>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -505,6 +621,14 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                     <div className="inline-block mt-1">
                       {renderSticker(getStickerName(msg.text))}
                     </div>
+                  ) : isStipopSticker(msg.text) ? (
+                    <div className="inline-block mt-1">
+                      <img 
+                        src={getStipopStickerUrl(msg.text)} 
+                        alt="Sticker" 
+                        className="w-16 h-16 object-contain inline-block my-0.5 filter drop-shadow-md select-none align-middle cursor-pointer active:scale-95 transition-all" 
+                      />
+                    </div>
                   ) : (
                     <span className="text-zinc-200 font-bold break-all leading-relaxed select-text">
                       {renderMessageText(msg.text)}
@@ -525,7 +649,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute bottom-20 left-4 right-4 bg-zinc-950/95 border border-zinc-900 rounded-[1.75rem] p-3 shadow-2xl z-50 flex flex-col gap-2 backdrop-blur-md"
+            className="absolute bottom-20 left-4 right-4 bg-zinc-950/95 border border-zinc-900 rounded-[1.75rem] p-3 shadow-2xl z-50 flex flex-col gap-1.5 backdrop-blur-md"
           >
             <div className="flex justify-between items-center px-1">
               <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">
@@ -539,26 +663,56 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                 <X size={12} />
               </button>
             </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {[
-                { name: 'sun', emoji: '☀️' },
-                { name: 'lion', emoji: '🦁' },
-                { name: 'popcorn', emoji: '🍿' },
-                { name: 'clapper', emoji: '🎬' },
-                { name: 'heart', emoji: '💖' },
-                { name: 'pizza', emoji: '🍕' },
-                { name: 'soda', emoji: '🥤' },
-                { name: 'award', emoji: '🏆' }
-              ].map(item => (
-                <button
-                  key={item.name}
+
+            {/* Sticker search bar */}
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-xl px-2 py-1 my-0.5 shrink-0">
+              <input
+                type="text"
+                placeholder={language === 'ku' ? 'گەڕان بۆ ستیکەر...' : 'Search stickers...'}
+                value={stipopSearch}
+                onChange={(e) => setStipopSearch(e.target.value)}
+                className="flex-1 bg-transparent text-[10px] text-white outline-none font-bold placeholder-zinc-500"
+              />
+              {stipopSearch && (
+                <button 
                   type="button"
-                  onClick={() => handleSendSticker(item.name)}
-                  className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-white/5 border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5 active:scale-90 transition-all cursor-pointer"
+                  onClick={() => setStipopSearch('')}
+                  className="text-zinc-500 hover:text-white"
                 >
-                  <span className="text-2xl select-none">{item.emoji}</span>
+                  <X size={10} />
                 </button>
-              ))}
+              )}
+            </div>
+
+            {/* Sticker grid */}
+            <div className="max-h-[150px] overflow-y-auto grid grid-cols-4 gap-1.5 custom-scrollbar pr-0.5 shrink-0">
+              {stipopLoading ? (
+                <div className="col-span-4 py-8 flex flex-col items-center justify-center gap-1.5">
+                  <div className="w-4 h-4 rounded-full border-t border-orange-500 animate-spin" />
+                  <span className="text-[7px] font-black text-zinc-500 tracking-wider uppercase">
+                    {language === 'ku' ? 'بارکردنی ستیکەر...' : 'LOADING STICKERS...'}
+                  </span>
+                </div>
+              ) : stipopStickers.length === 0 ? (
+                <div className="col-span-4 py-8 text-center text-zinc-500 text-[8px] font-bold uppercase tracking-wider">
+                  {language === 'ku' ? 'هیچ ستیکەرێک نەدۆزرایەوە' : 'NO STICKERS FOUND'}
+                </div>
+              ) : (
+                stipopStickers.map((sticker) => (
+                  <button
+                    key={sticker.stickerId}
+                    type="button"
+                    onClick={() => handleSendStipopSticker(sticker.stickerImg)}
+                    className="flex items-center justify-center p-1 rounded-xl bg-white/5 border border-white/5 hover:border-orange-500/30 hover:bg-orange-500/5 active:scale-90 transition-all cursor-pointer overflow-hidden group h-12"
+                  >
+                    <img
+                      src={sticker.stickerImg}
+                      alt="Sticker"
+                      className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform select-none"
+                    />
+                  </button>
+                ))
+              )}
             </div>
           </motion.div>
         )}

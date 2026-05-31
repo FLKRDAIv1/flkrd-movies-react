@@ -26,6 +26,18 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
     }
   }, []);
 
+  useEffect(() => {
+    // Unconditional mount-level safety fallback timer of 8.5 seconds (video is 8 seconds)
+    // This guarantees that even if the video element stalls, fails, is blocked, or metadata events don't fire,
+    // the splash screen WILL transition to the main app!
+    const mountTimer = setTimeout(() => {
+      console.log("[SPLASH VIDEO] Unconditional mount-level safety timeout reached. Transitioning to app...");
+      onComplete?.();
+    }, 8500);
+
+    return () => clearTimeout(mountTimer);
+  }, [onComplete]);
+
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const videoDuration = e.currentTarget.duration;
     // Calculate fallback safety timer based on actual video duration + 50ms buffer to prevent hangs

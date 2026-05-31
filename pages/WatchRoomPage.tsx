@@ -190,6 +190,26 @@ export default function WatchRoomPage() {
   const [roomFullError, setRoomFullError] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(true);
 
+  const [chatWidth, setChatWidth] = useState(() => {
+    try {
+      return Number(localStorage.getItem('flkrd-cowatch-chat-width')) || 22;
+    } catch {
+      return 22;
+    }
+  });
+
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    handleResize();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
   const [season, setSeason] = useState<number | undefined>(() => {
     const t = location.state?.ticket;
     if (t && String(t.movie_id).startsWith('tv_')) {
@@ -1067,16 +1087,19 @@ export default function WatchRoomPage() {
   const isRtl = language === 'ku';
   const headerSpacingClass = isChatOpen 
     ? isRtl 
-      ? 'md:left-[332px] xl:left-[352px] md:right-4' // Chat is on the left, so left has offset
-      : 'md:right-[332px] xl:right-[352px] md:left-4' // Chat is on the right, so right has offset
+      ? 'md:left-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:right-4' // Chat is on the left, so left has offset
+      : 'md:right-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:left-4' // Chat is on the right, so right has offset
     : 'left-4 right-4';
 
   const sidebarResponsiveClass = isRtl
-    ? 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:w-[300px] xl:w-[320px] sm:top-4 sm:bottom-4 sm:right-auto sm:left-4'
-    : 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:w-[300px] xl:w-[320px] sm:top-4 sm:bottom-4 sm:left-auto sm:right-4';
+    ? 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:top-4 sm:bottom-4 sm:right-auto sm:left-4'
+    : 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:top-4 sm:bottom-4 sm:left-auto sm:right-4';
 
   return (
-    <div className="relative w-full h-[calc(100vh-40px)] bg-black text-white overflow-hidden select-none">
+    <div 
+      style={{ '--chat-width': `${chatWidth}vw` } as React.CSSProperties}
+      className="relative w-full h-[calc(100vh-40px)] bg-black text-white overflow-hidden select-none"
+    >
       
       {/* Dynamic blurred color flow backdrop */}
       <div className="absolute inset-0 z-0 opacity-10 pointer-events-none filter blur-[120px] scale-110">
@@ -1181,6 +1204,7 @@ export default function WatchRoomPage() {
           pointerEvents: isChatOpen ? 'auto' : 'none'
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+        style={isChatOpen ? (isMobile ? {} : { width: `clamp(280px, ${chatWidth}vw, 50vw)` }) : { width: '0px' }}
         className={`absolute z-40 flex flex-col overflow-hidden shadow-2xl ${sidebarResponsiveClass}`}
       >
         <WatchChatSidebar
@@ -1192,6 +1216,13 @@ export default function WatchRoomPage() {
           hostName={hostName || 'Host'}
           onClose={() => setIsChatOpen(false)}
           isChatOpen={isChatOpen}
+          chatWidth={chatWidth}
+          onChatWidthChange={(w) => {
+            setChatWidth(w);
+            try {
+              localStorage.setItem('flkrd-cowatch-chat-width', String(w));
+            } catch (e) {}
+          }}
         />
       </motion.div>
 

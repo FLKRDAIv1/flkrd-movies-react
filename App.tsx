@@ -65,7 +65,35 @@ class ChunkErrorBoundary extends React.Component<{ children?: React.ReactNode },
 
   render() {
     if (this.state.hasError) {
-      return <div className="h-full w-full flex items-center justify-center text-white"><SplashScreen /></div>;
+      return (
+        <div className="flex-1 w-full h-[70vh] flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
+          <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-500/30 flex items-center justify-center text-red-500 mb-6 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+            <X size={32} />
+          </div>
+          <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">
+            Something went wrong
+          </h2>
+          <p className="text-sm font-bold text-zinc-400 uppercase tracking-wide leading-relaxed mb-8">
+            The application encountered an unexpected error.
+          </p>
+          <div className="flex gap-4">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-[0_0_30px_rgba(229,9,20,0.3)]"
+            >
+              Reload App
+            </button>
+            <button
+              onClick={() => {
+                window.location.href = '/';
+              }}
+              className="px-8 py-3.5 bg-zinc-900 border border-white/10 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      );
     }
     return this.props.children;
   }
