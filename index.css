@@ -16,7 +16,15 @@
   --box-bg-rgb: 20, 20, 20;
   --border-color-rgb: 38, 38, 38;
   --global-scale: 1;
+  --player-console-top: calc(5.2rem + env(safe-area-inset-top, 0px));
 }
+
+@media (min-width: 640px) {
+  :root {
+    --player-console-top: calc(6.2rem + env(safe-area-inset-top, 0px));
+  }
+}
+
 
 .light-mode {
   --brand-red: #e50914;

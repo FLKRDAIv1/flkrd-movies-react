@@ -166,6 +166,11 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const { accentColor } = useUI();
   const { addNotification } = useNotification();
 
+  const getShortName = (fullName: string) => {
+    if (fullName === 'FLKRD SERVER') return (language === 'ku' || language === 'badini') ? 'سەرەکی' : 'Master';
+    return fullName.replace('FLKRD SERVER ', 'S');
+  };
+
   const [activeSource, setActiveSource] = useState('FLKRD SERVER');
   const [currentTime, setCurrentTime] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
@@ -477,57 +482,71 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
         {getPlayerComponent()}
 
         {/* Floating Glassmorphic Server Selector console overlay */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-xl transition-all duration-500 transform translate-y-[-10px] opacity-0 pointer-events-none group-hover/player:opacity-100 group-hover/player:translate-y-0 group-hover/player:pointer-events-auto">
-          <div className="bg-[#050505]/65 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-white">
+        <div 
+          style={{ top: 'var(--player-console-top)' }}
+          className="absolute left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-xl transition-all duration-500 transform translate-y-[-10px] opacity-0 pointer-events-none group-hover/player:opacity-100 group-hover/player:translate-y-0 group-hover/player:pointer-events-auto"
+        >
+          <div className="bg-[#050505]/85 backdrop-blur-2xl border border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-white">
             
-            {/* Sync connection status */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            {/* Top Row on mobile: Status + Sync Button */}
+            <div className="flex items-center justify-between sm:justify-start gap-4">
+              {/* Sync connection status */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="hidden sm:inline text-[8px] font-black uppercase tracking-widest text-zinc-400">
+                    {(language === 'ku' || language === 'badini') ? 'دۆخی هۆڵ' : 'THEATRE STATUS'}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-bold text-white uppercase tracking-tight">
+                    {(language === 'ku' || language === 'badini') ? 'چات چالاکە' : 'CHAT ACTIVE'}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col text-left">
-                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
-                  {(language === 'ku' || language === 'badini') ? 'دۆخی هۆڵ' : 'THEATRE STATUS'}
-                </span>
-                <span className="text-[10px] font-bold text-white uppercase tracking-tight">
-                  {(language === 'ku' || language === 'badini') ? 'تەلار کراوەیە و چات چالاکە' : 'THEATRE OPEN & CHAT ACTIVE'}
-                </span>
-              </div>
+
+              {/* Sync Playback Action Button (Mobile only) */}
+              <button
+                onClick={triggerRoomManualSync}
+                disabled={syncing}
+                className="sm:hidden px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-1.5 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 text-orange-500 active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles size={10} className={syncing ? "animate-spin" : "animate-pulse"} />
+                <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردن' : 'SYNC'}</span>
+              </button>
             </div>
 
-            {/* Sync Playback Action Button */}
+            {/* Sync Playback Action Button (Desktop only) */}
             <button
               onClick={triggerRoomManualSync}
               disabled={syncing}
-              className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50`}
+              className="hidden sm:flex px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50"
             >
               <Sparkles size={11} className={syncing ? "animate-spin" : "animate-pulse"} />
               <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
             </button>
 
             {/* Server Selector Ribbon */}
-            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 md:pb-0 custom-scrollbar">
+            <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5 sm:pb-0 custom-scrollbar justify-center sm:justify-start">
               {rankedSources.slice(0, 4).map((source) => {
                 const isActive = source.name === activeSource;
                 return (
                   <button
                     key={source.name}
                     onClick={() => handleServerSwitch(source.name)}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 border relative shrink-0 active:scale-95 ${
+                    className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-1 sm:gap-1.5 border relative shrink-0 active:scale-95 ${
                       isActive
                         ? 'bg-orange-600/20 border-orange-500 text-orange-500 shadow-[0_0_12px_rgba(234,88,12,0.2)]'
                         : 'bg-white/5 border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/10'
                     }`}
                   >
-                    <Server size={10} />
-                    <span>{source.name.replace('FLKRD ', '')}</span>
+                    <Server size={9} className="sm:w-2.5 sm:h-2.5" />
+                    <span className="hidden xs:inline">{source.name.replace('FLKRD ', '')}</span>
+                    <span className="xs:hidden">{getShortName(source.name)}</span>
                     {source.badge === 'ku' && (
-                      <span className="flex items-center gap-0.5 bg-blue-600 text-white px-1.5 py-0.5 rounded font-black text-[6px] tracking-tight uppercase scale-90 shadow-md shrink-0">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
-                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                        </svg>
-                        <span>{(language === 'ku' || language === 'badini') ? 'تەواو' : 'VERIFIED'}</span>
+                      <span className="flex items-center gap-0.5 bg-blue-600 text-white px-1 py-0.5 rounded font-black text-[5px] sm:text-[6px] tracking-tight uppercase scale-90 shadow-md shrink-0">
+                        <span>{(language === 'ku' || language === 'badini') ? 'کورد' : 'KU'}</span>
                       </span>
                     )}
                   </button>

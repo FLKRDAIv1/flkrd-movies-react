@@ -1129,7 +1129,8 @@ export default function WatchRoomPage() {
 
       {/* Floating Cinematic Top Bar panel */}
       <div 
-        className={`absolute top-4 z-30 transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
+        style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
+        className={`absolute z-30 transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
       >
         
         {/* Movie Identity */}
