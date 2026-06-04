@@ -27,12 +27,20 @@ const DocPage: React.FC = () => {
     // Read from URL query param if present
     const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const tabParam = params.get('tab') as Tab;
-    if (tabParam === 'terms' as any || tabParam === 'license' as any) return 'legal';
+    if (tabParam === 'terms' as any || tabParam === 'license' as any || tabParam === 'legal' as any) return 'legal';
     return ['flow', 'tutorials', 'tech', 'legal', 'privacy'].includes(tabParam) ? tabParam : 'flow';
   });
 
   const [selectedNode, setSelectedNode] = useState<string | null>('client');
-  const [legalDoc, setLegalDoc] = useState<'terms' | 'fairuse' | 'mit' | 'apache' | 'dmca'>('terms');
+  const [legalDoc, setLegalDoc] = useState<'terms' | 'fairuse' | 'mit' | 'apache' | 'dmca'>(() => {
+    // Auto-select the right legal sub-doc from URL param
+    const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    const tabParam = params.get('tab');
+    const docParam = params.get('doc');
+    if (docParam === 'mit' || docParam === 'apache' || docParam === 'fairuse' || docParam === 'dmca') return docParam as any;
+    if (tabParam === 'license' || tabParam === 'mit') return 'mit';
+    return 'terms';
+  });
 
   // Listen to tab changes in query params or set manually
   const handleTabChange = (tab: Tab) => {

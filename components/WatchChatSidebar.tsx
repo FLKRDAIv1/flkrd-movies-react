@@ -132,6 +132,11 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [stickerError, setStickerError] = useState(false);
 
+  // Use refs to track live state inside timeout callbacks (avoids stale closure)
+  const isInputFocusedRef = useRef(false);
+  const showStickersRef = useRef(false);
+  const showSettingsRef = useRef(false);
+
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
@@ -164,10 +169,11 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       clearTimeout(headerTimeoutRef.current);
     }
     headerTimeoutRef.current = setTimeout(() => {
-      if (!isInputFocused && !showStickers && !showSettings) {
+      // Read from refs (not stale closure values) to get current live state
+      if (!isInputFocusedRef.current && !showStickersRef.current && !showSettingsRef.current) {
         setShowControls(false);
       }
-    }, 2000);
+    }, 4000);
   };
 
   useEffect(() => {
@@ -185,11 +191,18 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
 
   useEffect(() => {
     if (isInputFocused || showStickers || showSettings) {
+      // Sync refs
+      isInputFocusedRef.current = isInputFocused;
+      showStickersRef.current = showStickers;
+      showSettingsRef.current = showSettings;
       setShowControls(true);
       if (headerTimeoutRef.current) {
         clearTimeout(headerTimeoutRef.current);
       }
     } else {
+      isInputFocusedRef.current = false;
+      showStickersRef.current = false;
+      showSettingsRef.current = false;
       resetHeaderTimer();
     }
   }, [isInputFocused, showStickers, showSettings]);

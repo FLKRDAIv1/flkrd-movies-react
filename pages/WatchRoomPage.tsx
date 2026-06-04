@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -63,110 +63,71 @@ export const playSyncChime = (type: 'join' | 'sync' | 'error') => {
     if (audioCtx.state === 'suspended') {
       audioCtx.resume();
     }
-    
-    if (type === 'join') {
-      // Warm Sub-bass chord note for cinematic depth (C4)
-      const subOsc = audioCtx.createOscillator();
-      const subGain = audioCtx.createGain();
-      subOsc.connect(subGain);
-      subGain.connect(audioCtx.destination);
-      subOsc.type = 'triangle';
-      subOsc.frequency.setValueAtTime(261.63, audioCtx.currentTime);
-      
-      subGain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      subGain.gain.exponentialRampToValueAtTime(0.7, audioCtx.currentTime + 0.1);
-      subGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
-      
-      subOsc.start();
-      subOsc.stop(audioCtx.currentTime + 1.2);
 
-      // Glorious 3-note ascending chord (C5 - E5 - G5) with dual-harmonics (sine + triangle)
+    // Master compressor/limiter — prevents clipping and keeps everything cinema-quiet
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+    compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+    compressor.connect(audioCtx.destination);
+
+    // Master volume — keep all sounds very subtle
+    const masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+    masterGain.connect(compressor);
+
+    if (type === 'join') {
+      // Soft warm 3-note ascending arpeggio (C5 → E5 → G5)
       const notes = [523.25, 659.25, 783.99];
       notes.forEach((freq, idx) => {
         setTimeout(() => {
-          // Principal sine wave
-          const oscSine = audioCtx.createOscillator();
-          const gainSine = audioCtx.createGain();
-          oscSine.connect(gainSine);
-          gainSine.connect(audioCtx.destination);
-          oscSine.type = 'sine';
-          oscSine.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          
-          gainSine.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gainSine.gain.exponentialRampToValueAtTime(0.8, audioCtx.currentTime + 0.08);
-          gainSine.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-          
-          oscSine.start();
-          oscSine.stop(audioCtx.currentTime + 0.8);
-
-          // Warm harmonic triangle wave
-          const oscTri = audioCtx.createOscillator();
-          const gainTri = audioCtx.createGain();
-          oscTri.connect(gainTri);
-          gainTri.connect(audioCtx.destination);
-          oscTri.type = 'triangle';
-          oscTri.frequency.setValueAtTime(freq * 0.995, audioCtx.currentTime); // slight detune for chorus warmth
-          
-          gainTri.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gainTri.gain.exponentialRampToValueAtTime(0.45, audioCtx.currentTime + 0.08);
-          gainTri.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
-          
-          oscTri.start();
-          oscTri.stop(audioCtx.currentTime + 0.8);
-        }, idx * 150);
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(masterGain);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.06);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.7);
+        }, idx * 130);
       });
     } else if (type === 'sync') {
-      // Gentle, clean 2-note ascending chord (F5 - A5) with detuned Chorus
+      // Gentle 2-note ping (F5 → A5) — very short and light
       const notes = [698.46, 880.00];
       notes.forEach((freq, idx) => {
         setTimeout(() => {
-          const osc1 = audioCtx.createOscillator();
-          const osc2 = audioCtx.createOscillator();
+          const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
-          
-          osc1.connect(gain);
-          osc2.connect(gain);
-          gain.connect(audioCtx.destination);
-          
-          osc1.type = 'sine';
-          osc2.type = 'triangle';
-          
-          osc1.frequency.setValueAtTime(freq, audioCtx.currentTime);
-          osc2.frequency.setValueAtTime(freq * 1.002, audioCtx.currentTime);
-          
+          osc.connect(gain);
+          gain.connect(masterGain);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
           gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-          
-          osc1.start();
-          osc2.start();
-          osc1.stop(audioCtx.currentTime + 0.5);
-          osc2.stop(audioCtx.currentTime + 0.5);
-        }, idx * 120);
+          gain.gain.exponentialRampToValueAtTime(0.12, audioCtx.currentTime + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        }, idx * 110);
       });
     } else if (type === 'error') {
-      const osc1 = audioCtx.createOscillator();
-      const osc2 = audioCtx.createOscillator();
+      // Soft low thud — not jarring, just a subtle bump
+      const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-      
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      osc1.type = 'sawtooth';
-      osc2.type = 'triangle';
-      
-      osc1.frequency.setValueAtTime(120, audioCtx.currentTime);
-      osc2.frequency.setValueAtTime(118, audioCtx.currentTime);
-      
+      osc.connect(gain);
+      gain.connect(masterGain);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.3);
       gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
-      gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-      
-      osc1.start();
-      osc2.start();
-      osc1.stop(audioCtx.currentTime + 0.4);
-      osc2.stop(audioCtx.currentTime + 0.4);
+      gain.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + 0.04);
+      gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
     }
   } catch (err) {
     console.warn('AudioContext not allowed or not supported yet:', err);
@@ -192,6 +153,34 @@ export default function WatchRoomPage() {
   const [roomFullError, setRoomFullError] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [playerPaused, setPlayerPaused] = useState(true);
+  const [showHeader, setShowHeader] = useState(true);
+  const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isChatOpenRef = useRef(true);
+
+  const resetRoomHeaderTimer = useCallback(() => {
+    setShowHeader(true);
+    if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
+    headerTimeoutRef.current = setTimeout(() => {
+      if (!isChatOpenRef.current) {
+        setShowHeader(false);
+      }
+    }, 3500);
+  }, []);
+
+  // Keep header visible when chat is open, and restart timer when closed
+  useEffect(() => {
+    isChatOpenRef.current = isChatOpen;
+    if (isChatOpen) {
+      // When chat is open, always show the header
+      setShowHeader(true);
+      if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
+    } else {
+      resetRoomHeaderTimer();
+    }
+  }, [isChatOpen, resetRoomHeaderTimer]);
+
+  // Cleanup header timeout on unmount
+  useEffect(() => () => { if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current); }, []);
 
   // Listen to cowatch-status-change event
   useEffect(() => {
@@ -1132,6 +1121,22 @@ export default function WatchRoomPage() {
         />
       </div>
 
+      {/* Full-Screen interaction layer for header reveal on mouse/touch move */}
+      <div
+        className="absolute inset-0 z-20 pointer-events-none"
+        onMouseMove={resetRoomHeaderTimer}
+        onTouchStart={resetRoomHeaderTimer}
+        style={{ pointerEvents: 'none' }}
+      />
+      {/* Capture mouse move globally across entire room */}
+      <div
+        className="absolute inset-0 z-[5] pointer-events-auto"
+        onMouseMove={resetRoomHeaderTimer}
+        onTouchStart={resetRoomHeaderTimer}
+        onClick={resetRoomHeaderTimer}
+        style={{ background: 'transparent' }}
+      />
+
       {/* 100% Full-Screen Synced Video Player */}
       <div className="absolute inset-0 z-10 w-full h-full">
         <CoWatchVideoPlayer
@@ -1148,15 +1153,23 @@ export default function WatchRoomPage() {
         />
       </div>
 
-      {/* Floating Cinematic Top Bar panel */}
-      <div 
-        style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))' }}
-        className={`absolute z-30 transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
+      {/* Floating Cinematic Top Bar panel — auto-hides after 3.5s idle */}
+      <AnimatePresence>
+      {showHeader && (
+        <motion.div
+          key="room-header"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))', zIndex: 40 }}
+          className={`absolute transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
       >
         
         {/* Movie Identity */}
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <div className="w-7 h-9 sm:w-8 sm:h-11 bg-zinc-900 rounded border border-white/10 overflow-hidden shadow flex-shrink-0">
+        <div className="flex items-center gap-2 min-w-0 overflow-hidden">
+          {/* Poster thumbnail — hidden on very small screens */}
+          <div className="hidden xs:block w-7 h-9 sm:w-8 sm:h-11 bg-zinc-900 rounded border border-white/10 overflow-hidden shadow flex-shrink-0">
             <img
               src={getImageUrl(movie.poster_path, 'w500')}
               alt=""
@@ -1164,18 +1177,18 @@ export default function WatchRoomPage() {
             />
           </div>
           <div className="flex flex-col text-left min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <span className="text-[7px] sm:text-[9px] font-black tracking-widest text-orange-500 uppercase bg-orange-600/10 border border-orange-500/20 px-1.5 py-0.5 rounded leading-none shrink-0">
                 {(language === 'ku' || language === 'badini') ? 'چالاکە' : 'LIVE'}
               </span>
-              <span className="text-[11px] sm:text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[120px] md:max-w-md">
+              <span className="text-[10px] sm:text-sm font-black text-white uppercase italic tracking-tight truncate max-w-[90px] xs:max-w-[110px] sm:max-w-xs md:max-w-md">
                 {movie.title} {season !== undefined && episode !== undefined ? ` • S${season} E${episode}` : ''}
               </span>
             </div>
-            {/* Active spectators indicator */}
-            <div className="flex items-center gap-1 mt-0.5 text-zinc-500">
+            {/* Spectators — hidden on mobile to save space */}
+            <div className="hidden sm:flex items-center gap-1 mt-0.5 text-zinc-500">
               <Users size={10} className="text-zinc-500 shrink-0" />
-              <span className="text-[8px] sm:text-[10px] font-bold uppercase tracking-wider truncate max-w-[120px] sm:max-w-none">
+              <span className="text-[10px] font-bold uppercase tracking-wider truncate max-w-none">
                 {localUserName} {Object.values(memberNames).length > 0 ? `+ ${Object.values(memberNames).join(' + ')}` : ''}
               </span>
             </div>
@@ -1183,7 +1196,7 @@ export default function WatchRoomPage() {
         </div>
 
         {/* Exit & actions */}
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 flex-shrink-0">
           {/* Play/Pause Button */}
           <button
             onClick={() => {
@@ -1221,14 +1234,18 @@ export default function WatchRoomPage() {
 
           <button
             onClick={() => navigate(getBackRoute(ticket.movie_id))}
-            className="flex items-center justify-center gap-1.5 sm:gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-red-900/30 bg-red-650/10 hover:bg-red-600 text-red-500 hover:text-white p-2 sm:px-4 sm:py-2"
+            className="flex items-center justify-center gap-1 sm:gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-red-900/30 bg-red-650/10 hover:bg-red-600 text-red-500 hover:text-white p-2 sm:px-4 sm:py-2"
           >
             <LogOut size={13} className="shrink-0" />
-            <span>{(language === 'ku' || language === 'badini') ? 'جێهێشتن' : 'LEAVE'}</span>
+            {/* Hide label on very small mobile, show from xs up */}
+            <span className="hidden xs:inline">{(language === 'ku' || language === 'badini') ? 'جێهێشتن' : 'LEAVE'}</span>
           </button>
         </div>
 
-      </div>
+
+      </motion.div>
+      )}
+      </AnimatePresence>
 
       {/* Floating Cinematic Live Chat Sidebar overlay */}
       <motion.div
