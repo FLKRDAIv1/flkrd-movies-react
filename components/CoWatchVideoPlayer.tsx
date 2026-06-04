@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tv, Play, Pause, Shield, Sparkles, AlertCircle, Award, CheckCircle, Wifi, Server } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
