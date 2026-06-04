@@ -11,7 +11,7 @@ import {
 import { Content, CastMember, MyListItem, SeasonDetails, Episode, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
-import Spinner from '../components/Spinner';
+import { SkeletonDetailPage } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
@@ -441,7 +441,7 @@ const TVDetailPage: React.FC = () => {
     }
   };
 
-  if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+  if (loading && !content) return <SkeletonDetailPage />;
   if (!content) return null;
 
   return (
@@ -761,7 +761,13 @@ const TVDetailPage: React.FC = () => {
                 </div>
               </div>
 
-              {!seasonDetails ? <div className="flex justify-center py-20"><Spinner /></div> : (
+              {!seasonDetails ? (
+                <div className="grid grid-cols-1 gap-6 animate-pulse">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-32 w-full bg-zinc-900/40 rounded-[2.5rem] border border-white/5" />
+                  ))}
+                </div>
+              ) : (
                 <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                   {seasonDetails.episodes.map((ep) => {
                     const epKey = `${selectedSeason}-${ep.episode_number}`;

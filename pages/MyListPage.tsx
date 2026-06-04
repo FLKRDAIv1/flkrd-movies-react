@@ -8,7 +8,7 @@ import { IMAGE_BASE_URL_POSTER, API_KEY } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { fetchData } from '../services/tmdbService';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { isTauri } from '../utils/tauriUtils';
 
@@ -84,7 +84,7 @@ const MyListPage: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-black"><Spinner /></div>;
+    if (loading) return <SkeletonGrid title={t('myList') || 'My List'} count={6} />;
 
     return (
         <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 sm:px-6 lg:px-8 relative">

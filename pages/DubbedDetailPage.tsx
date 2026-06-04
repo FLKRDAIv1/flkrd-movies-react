@@ -8,7 +8,7 @@ import { Content, WatchProgress } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import { API_KEY, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, CUSTOM_DUBBED_ARCHIVE } from '../constants';
-import Spinner from '../components/Spinner';
+import { SkeletonDetailPage } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -292,29 +292,19 @@ const handleCreateWatchParty = async () => {
     }
 };
 
-if (loading && !dubbedData && !content) return <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+if (loading && !dubbedData && !content) return <SkeletonDetailPage />;
 
 // Strict Data Boundary Logic to prevent Black Screen / Crash
 const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading...") as string;
-    const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
-    
-    const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
-    const isReady = !!(embedUrl || dubbedData || content);
+const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
 
-    return (
-        <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
-            <AnimatePresence mode="wait">
-                {!isReady && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
-                    >
-                        <Spinner />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
+const isReady = !!(embedUrl || dubbedData || content);
+
+if (!isReady) return <SkeletonDetailPage />;
+
+return (
+    <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
                 {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-110" alt="" />}

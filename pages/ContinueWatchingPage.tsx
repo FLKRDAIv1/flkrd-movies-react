@@ -7,7 +7,7 @@ import { WatchProgress } from '../types';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 
 const ContinueWatchingPage: React.FC = () => {
@@ -67,7 +67,7 @@ const ContinueWatchingPage: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-black"><Spinner /></div>;
+    if (loading) return <SkeletonGrid title={t('continueWatching') || 'Continue Watching'} count={6} />;
 
     return (
         <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 sm:px-6 lg:px-8 relative">

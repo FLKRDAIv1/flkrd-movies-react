@@ -15,6 +15,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
 import { bannedService } from '../services/bannedService';
 import Spinner from '../components/Spinner';
+import { SkeletonShorts } from '../components/Skeleton';
 import { Trash2 } from 'lucide-react';
 
 const STORAGE_KEY = 'flkrd_shorts_last_index';
@@ -489,10 +490,7 @@ const ShortsPage: React.FC = () => {
                 isFollowed={followedIds.has(movie.id)} onToggleFollow={() => handleToggleFollow(movie.id)}
             />
         )) : (
-            <div className="h-full flex flex-col items-center justify-center text-gray-500 font-black uppercase tracking-[1em] text-center px-10">
-                <Spinner />
-                <p className="mt-12 italic text-[11px] opacity-40">Connecting to Core...</p>
-            </div>
+            <SkeletonShorts />
         )}
       </div>
 

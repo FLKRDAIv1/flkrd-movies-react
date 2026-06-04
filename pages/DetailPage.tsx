@@ -11,7 +11,7 @@ import {
 import { Content, CastMember, MyListItem, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
-import Spinner from '../components/Spinner';
+import { SkeletonDetailPage } from '../components/Skeleton';
 import Row from '../components/Row';
 import { useTranslation } from '../contexts/LanguageContext';
 import Portal from '../components/Portal';
@@ -379,7 +379,7 @@ const DetailPage: React.FC = () => {
     } catch (e) { }
   };
 
-  if (loading && !content) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><Spinner /></div>;
+  if (loading && !content) return <SkeletonDetailPage />;
   if (!content) return null;
 
   return (

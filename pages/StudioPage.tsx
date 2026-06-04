@@ -7,6 +7,7 @@ import { Content, Studio as StudioType, MyListItem } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { fetchByStudio, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_LOGO, API_KEY, API_BASE_URL, STUDIOS } from '../constants';
 import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 
@@ -155,7 +156,7 @@ const StudioPage: React.FC = () => {
     };
 
     if (loading) {
-        return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
+        return <SkeletonGrid count={6} />;
     }
 
     return (

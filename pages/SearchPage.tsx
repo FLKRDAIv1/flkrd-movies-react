@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Content } from '../types';
 import { IMAGE_BASE_URL_POSTER, GENRES_T } from '../constants';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import Portal from '../components/Portal';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
@@ -297,10 +297,7 @@ const SearchPage: React.FC = () => {
 
       <AnimatePresence mode="wait">
         {loading ? (
-          <div className="flex flex-col items-center justify-center pt-20 gap-6">
-            <Spinner size="lg" />
-            <span className="text-main-text/40 font-black uppercase tracking-[0.5em] text-lg italic animate-pulse text-center">Neural Link Active...</span>
-          </div>
+          <SkeletonGrid count={6} />
         ) : isBlockedQuery ? (
           <motion.div key="blocked" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12 px-6">
             <div className="max-w-3xl mx-auto bg-card-bg/40 backdrop-blur-3xl border-2 border-brand/30 rounded-[3rem] p-12 md:p-20 shadow-2xl overflow-hidden relative">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HashRouter, BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
 const HomePage = React.lazy(() => import('./pages/HomePage'));
@@ -24,6 +24,7 @@ import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
 import SplashScreen from './components/SplashScreen';
 import Spinner from './components/Spinner';
+import { SkeletonGrid } from './components/Skeleton';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
 import { useNotification } from './contexts/NotificationContext';
@@ -79,7 +80,7 @@ class ChunkErrorBoundary extends React.Component<{ children?: React.ReactNode },
           <div className="flex gap-4">
             <button
               onClick={() => window.location.reload()}
-              className="px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-[0_0_30px_rgba(229,9,20,0.3)]"
+              className="px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-2xl flex items-center gap-2 font-black uppercase tracking-widest text-xs active:scale-95 transition-all shadow-[0_0_30px_rgba(229,9,20,0.35)]"
             >
               Reload App
             </button>
@@ -197,41 +198,110 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                         </motion.div>
                     )}
                 </AnimatePresence>
+                </motion.div>
             </motion.div>
-        </motion.div>
         </Portal>
+    );
+};
+
+const AppContent: React.FC<{
+    scrolled: boolean;
+    mainRef: React.RefObject<HTMLElement | null>;
+}> = ({ scrolled, mainRef }) => {
+    const { language, t } = useTranslation();
+    const { isSettingsOpen, setIsSettingsOpen } = useUI();
+    const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+    const location = useLocation();
+
+    // Determine watch room or cinema directly from router location
+    const isWatchPage = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/watch-room/');
+
+    useEffect(() => {
+        try {
+            const userAgent = (navigator.userAgent || navigator.vendor || (window as any).opera || "").toLowerCase();
+            const isIOS = /ipad|iphone|ipod/.test(userAgent) && !(window as any).MSStream;
+            const isMac = /macintosh|macintel|macppc|mac68k/.test(userAgent);
+            const isAppleDevice = isIOS || isMac || (typeof document !== 'undefined' && "ontouchend" in document);
+
+            const nav: any = window.navigator;
+            const isStandalone = nav && (nav.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
+
+            if (isAppleDevice && !isStandalone) {
+                const dismissedTime = localStorage.getItem('flkrd_ios_prompt_dismissed');
+                const now = Date.now();
+
+                let shouldPrompt = true;
+                if (dismissedTime) {
+                    const dTime = parseInt(dismissedTime);
+                    if (!isNaN(dTime)) {
+                        const sevenDays = 7 * 24 * 60 * 60 * 1000;
+                        shouldPrompt = (now - dTime) > sevenDays;
+                    }
+                }
+
+                if (shouldPrompt) {
+                    const timer = setTimeout(() => setShowIOSPrompt(true), 25000);
+                    return () => clearTimeout(timer);
+                }
+            }
+        } catch (e) {
+            console.warn("Apple detection logic failure", e);
+        }
+    }, []);
+
+    return (
+        <>
+            {!isWatchPage && <Header scrolled={scrolled} />}
+            <div className="flex flex-1 h-full overflow-hidden relative">
+                {!isWatchPage && <Sidebar />}
+                <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : 'pt-10 tauri-only-pt'}`}>
+                    <ChunkErrorBoundary>
+                      <React.Suspense fallback={
+                        <div className="flex-1 w-full min-h-screen">
+                          <SkeletonGrid count={12} />
+                        </div>
+                      }>
+                          <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
+                              <Routes>
+                                  <Route path="/" element={<HomePage />} />
+                                  <Route path="/tv" element={<TVShowsPage />} />
+                                  <Route path="/dubbed" element={<DubbedMoviesPage />} />
+                                  <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
+                                  <Route path="/shorts" element={<ShortsPage />} />
+                                  <Route path="/kurdish-cc" element={<KurdishCCPage />} />
+                                  <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
+                                  <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
+                                  <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
+                                  <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
+                                  <Route path="/continue-watching" element={<ContinueWatchingPage />} />
+                                  <Route path="/profile" element={<ProfilePage />} />
+                                  <Route path="/watch/:ticket_id" element={<WatchRoomPage />} />
+                                  <Route path="/watch-room/:ticket_id" element={<WatchRoomPage />} />
+                                  <Route path="/doc" element={<DocPage />} />
+                              </Routes>
+                          </main>
+                      </React.Suspense>
+                    </ChunkErrorBoundary>
+                </div>
+                {!isWatchPage && <MobileNav />}
+            </div>
+            <ContinueWatchingPortal />
+            <WelcomeNotificationPrompt />
+            <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
+            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <GamepadHints />
+            {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
+        </>
     );
 };
 
 const App: React.FC = () => {
     const { language, t } = useTranslation();
-    const { theme, isSettingsOpen, setIsSettingsOpen, isPerformanceMode } = useUI();
+    const { theme, isPerformanceMode } = useUI();
     const { addNotification } = useNotification();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-    const checkIsWatchPage = () => {
-        const hash = window.location.hash || '';
-        const path = window.location.pathname || '';
-        return hash.startsWith('#/watch/') || hash.startsWith('#/watch-room/') || path.startsWith('/watch/') || path.startsWith('/watch-room/');
-    };
-    const [isWatchPage, setIsWatchPage] = useState(checkIsWatchPage);
     const mainRef = useRef<HTMLElement>(null);
-
-    useEffect(() => {
-        const handleHashChange = () => {
-            setIsWatchPage(checkIsWatchPage());
-        };
-        window.addEventListener('hashchange', handleHashChange);
-        window.addEventListener('popstate', handleHashChange);
-        const interval = setInterval(handleHashChange, 200);
-
-        return () => {
-            window.removeEventListener('hashchange', handleHashChange);
-            window.removeEventListener('popstate', handleHashChange);
-            clearInterval(interval);
-        };
-    }, []);
     
     // Initialized Spatial Navigation Engine
     useSpatialNavigation();
@@ -337,39 +407,6 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [t]);
 
-    useEffect(() => {
-        try {
-            const userAgent = (navigator.userAgent || navigator.vendor || (window as any).opera || "").toLowerCase();
-            const isIOS = /ipad|iphone|ipod/.test(userAgent) && !(window as any).MSStream;
-            const isMac = /macintosh|macintel|macppc|mac68k/.test(userAgent);
-            const isAppleDevice = isIOS || isMac || (typeof document !== 'undefined' && "ontouchend" in document);
-
-            const nav: any = window.navigator;
-            const isStandalone = nav && (nav.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
-
-            if (isAppleDevice && !isStandalone) {
-                const dismissedTime = localStorage.getItem('flkrd_ios_prompt_dismissed');
-                const now = Date.now();
-
-                let shouldPrompt = true;
-                if (dismissedTime) {
-                    const dTime = parseInt(dismissedTime);
-                    if (!isNaN(dTime)) {
-                        const sevenDays = 7 * 24 * 60 * 60 * 1000;
-                        shouldPrompt = (now - dTime) > sevenDays;
-                    }
-                }
-
-                if (shouldPrompt) {
-                    const timer = setTimeout(() => setShowIOSPrompt(true), 25000);
-                    return () => clearTimeout(timer);
-                }
-            }
-        } catch (e) {
-            console.warn("Apple detection logic failure", e);
-        }
-    }, []);
-
     // Direct pathname '/doc' SPA redirection to HashRouter '/#/doc'
     useEffect(() => {
         if (window.location.pathname === '/doc' || window.location.pathname === '/doc/') {
@@ -413,46 +450,7 @@ const App: React.FC = () => {
                 <DesktopTitleBar />
                 <PremiumBackground />
                 <Router>
-                    {!isWatchPage && <Header scrolled={scrolled} />}
-                    <div className="flex flex-1 h-full overflow-hidden relative">
-                        {!isWatchPage && <Sidebar />}
-                        <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : 'pt-10 tauri-only-pt'}`}>
-                            <ChunkErrorBoundary>
-                              <React.Suspense fallback={
-                                <div className="flex-1 flex flex-col items-center justify-center h-[70vh] gap-6">
-                                  <Spinner size="lg" />
-                                </div>
-                              }>
-                                  <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
-                                      <Routes>
-                                          <Route path="/" element={<HomePage />} />
-                                          <Route path="/tv" element={<TVShowsPage />} />
-                                          <Route path="/dubbed" element={<DubbedMoviesPage />} />
-                                          <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
-                                          <Route path="/shorts" element={<ShortsPage />} />
-                                          <Route path="/kurdish-cc" element={<KurdishCCPage />} />
-                                          <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
-                                          <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
-                                          <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
-                                          <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
-                                          <Route path="/continue-watching" element={<ContinueWatchingPage />} />
-                                          <Route path="/profile" element={<ProfilePage />} />
-                                          <Route path="/watch/:ticket_id" element={<WatchRoomPage />} />
-                                          <Route path="/watch-room/:ticket_id" element={<WatchRoomPage />} />
-                                          <Route path="/doc" element={<DocPage />} />
-                                      </Routes>
-                                  </main>
-                              </React.Suspense>
-                            </ChunkErrorBoundary>
-                        </div>
-                        {!isWatchPage && <MobileNav />}
-                    </div>
-                    <ContinueWatchingPortal />
-                    <WelcomeNotificationPrompt />
-                    <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
-                    <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
-                    <GamepadHints />
-                    {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
+                    <AppContent scrolled={scrolled} mainRef={mainRef} />
                 </Router>
             </div>
         </MotionConfig>

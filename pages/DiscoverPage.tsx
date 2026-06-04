@@ -5,7 +5,7 @@ import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, 
 import { Content } from '../types';
 import { fetchPaginatedData } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
-import Spinner from '../components/Spinner';
+import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -302,10 +302,7 @@ const DiscoverPage: React.FC = () => {
                             </div>
                             
                             {loading ? (
-                                <div className="flex flex-col items-center justify-center py-40 gap-6">
-                                  <Spinner size="lg" />
-                                  <span className="text-sec-text font-black uppercase tracking-[0.5em] animate-pulse text-sm">Neural Archive Sync</span>
-                                </div>
+                                <SkeletonGrid count={12} />
                             ) : results.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-8">
                                     {results.map((item, index) => (

@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
-import Spinner from '../components/Spinner';
+import { SkeletonProfile } from '../components/Skeleton';
 import { downloadMobileConfig } from '../utils/appleProfileUtils';
 import AnimatedThemeToggler from '../components/ui/animated-theme-toggler';
 
@@ -55,7 +55,7 @@ const ProfilePage: React.FC = () => {
         addNotification({ type: 'info', title: 'Language Sync', message: `Interface language set to ${langName}.` });
     };
 
-    if (loading) return <div className="h-screen flex items-center justify-center bg-black"><Spinner /></div>;
+    if (loading) return <SkeletonProfile />;
 
     return (
         <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 md:px-8 relative overflow-x-hidden">
