@@ -88,10 +88,10 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             : 'bg-black/40 backdrop-blur-md border-white/[0.03]'
         }`}
       >
-        <div className="flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18">
+        <div className="flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18 min-w-0 gap-4">
           
           {/* Right (Start) - App Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center flex-shrink-0">
             <Link 
               to="/" 
               className="flex items-center gap-2.5 active:scale-95 transition-all select-none focus:outline-none"
@@ -109,7 +109,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
           </div>
 
           {/* Center - Main Navigation Links (Desktop/PC View Only) */}
-          <nav className="hidden md:flex items-center gap-6 font-bold text-sm tracking-wide">
+          <nav className="hidden md:flex items-center gap-4 lg:gap-6 font-bold text-sm tracking-wide flex-shrink-0">
             {navLinks.map((link) => (
               <NavLink
                 key={link.path}
@@ -140,7 +140,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
           {/* Left (End) - Utility Container */}
           
           {/* Mobile Layout: Show ONLY Search & Hamburger Menu */}
-          <div className="flex md:hidden items-center gap-3">
+          <div className="flex md:hidden items-center gap-3 flex-shrink-0">
             <button
               onClick={() => navigate('/search')}
               className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all cursor-pointer focus:outline-none"
@@ -159,7 +159,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
           </div>
 
           {/* Desktop Layout: Show full controls row + Continue Watching Pill (lg Only) */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 lg:gap-4 flex-shrink-0">
             
             {/* Continue Watching Pill (lg: breakpoint only) */}
             {!isDubPage && (

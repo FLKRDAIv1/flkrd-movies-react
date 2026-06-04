@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 <html>
 <head>
     <script>
-        window.location.href = "/#/watch/${ticket_id}";
+        window.location.href = "/watch-room/${ticket_id}";
     </script>
 </head>
 <body style="background: #000; color: #fff;">
@@ -119,7 +119,7 @@ export default async function handler(req, res) {
 
     <!-- Immediate Client-Side Navigation -->
     <script>
-        window.location.href = "/#/watch/${ticket_id}";
+        window.location.href = "/watch-room/${ticket_id}";
     </script>
 </head>
 <body style="background: #000; color: #fff; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
@@ -138,7 +138,7 @@ export default async function handler(req, res) {
 <html>
 <head>
     <script>
-        window.location.href = "/#/watch/${ticket_id}";
+        window.location.href = "/watch-room/${ticket_id}";
     </script>
 </head>
 <body style="background: #000; color: #fff;">

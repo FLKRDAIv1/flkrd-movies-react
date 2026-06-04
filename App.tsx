@@ -210,12 +210,17 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [scrolled, setScrolled] = useState(false);
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
-    const [isWatchPage, setIsWatchPage] = useState(() => window.location.hash.startsWith('#/watch/'));
+    const checkIsWatchPage = () => {
+        const hash = window.location.hash || '';
+        const path = window.location.pathname || '';
+        return hash.startsWith('#/watch/') || hash.startsWith('#/watch-room/') || path.startsWith('/watch/') || path.startsWith('/watch-room/');
+    };
+    const [isWatchPage, setIsWatchPage] = useState(checkIsWatchPage);
     const mainRef = useRef<HTMLElement>(null);
 
     useEffect(() => {
         const handleHashChange = () => {
-            setIsWatchPage(window.location.hash.startsWith('#/watch/'));
+            setIsWatchPage(checkIsWatchPage());
         };
         window.addEventListener('hashchange', handleHashChange);
         window.addEventListener('popstate', handleHashChange);
@@ -433,6 +438,7 @@ const App: React.FC = () => {
                                           <Route path="/continue-watching" element={<ContinueWatchingPage />} />
                                           <Route path="/profile" element={<ProfilePage />} />
                                           <Route path="/watch/:ticket_id" element={<WatchRoomPage />} />
+                                          <Route path="/watch-room/:ticket_id" element={<WatchRoomPage />} />
                                           <Route path="/doc" element={<DocPage />} />
                                       </Routes>
                                   </main>

@@ -179,6 +179,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const [syncing, setSyncing] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
   const [peerSyncTrigger, setPeerSyncTrigger] = useState<{ currentTime: number; paused: boolean; timestamp: number } | null>(null);
+  const [showMobileConsole, setShowMobileConsole] = useState(false);
 
   const channelRef = useRef<any>(null);
   const lastBroadcastTimeRef = useRef<number>(0);
@@ -194,6 +195,83 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const lastPeerSyncPausedRef = useRef<boolean>(true);
   const lastPeerSyncTimestampRef = useRef<number>(0);
   const activeSourceRef = useRef<string>('FLKRD SERVER');
+
+  // Broadcast status to room page header
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cowatch-status-change', { detail: { paused: isPaused } }));
+  }, [isPaused]);
+
+  const handlePlayPauseToggle = useCallback(async () => {
+    const nextPaused = !isPausedRef.current;
+    setIsPaused(nextPaused);
+    isPausedRef.current = nextPaused;
+
+    // Apply to local player
+    isApplyingPeerSyncRef.current = true;
+    setPeerSyncTrigger({
+      currentTime: currentTimeRef.current,
+      paused: nextPaused,
+      timestamp: Date.now()
+    });
+
+    // Broadcast to peer
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'sync',
+        payload: {
+          paused: nextPaused,
+          currentTime: currentTimeRef.current,
+          senderName: localUserName,
+          timestamp: Date.now()
+        }
+      });
+    }
+
+    // Format time duration cleanly
+    const formatTime = (secs: number) => {
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      const s = Math.floor(secs % 60);
+      return [h, m, s]
+        .map(v => v < 10 ? '0' + v : v)
+        .filter((v, i) => v !== '00' || i > 0)
+        .join(':');
+    };
+    const timeStr = formatTime(currentTimeRef.current);
+
+    // Post notice to chat
+    const actionNotice = JSON.stringify({
+      sender: 'System',
+      text: nextPaused
+        ? (language === 'ku' || language === 'badini')
+          ? `⏸ ${localUserName} پەخشی ژوورەکەی ڕاگرت لە [${timeStr}]`
+          : `⏸ ${localUserName} paused the video at [${timeStr}]`
+        : (language === 'ku' || language === 'badini')
+          ? `▶ ${localUserName} پەخشی ژوورەکەی دەستپێکردەوە لە [${timeStr}]`
+          : `▶ ${localUserName} resumed the video at [${timeStr}]`,
+      isSystem: true
+    });
+
+    try {
+      await supabase.from('room_messages').insert({
+        ticket_id: ticketId,
+        user_id: localUserId,
+        message: actionNotice
+      });
+    } catch (err) {
+      console.warn('Failed to insert play/pause notice:', err);
+    }
+  }, [ticketId, localUserId, localUserName, language]);
+
+  // Listen to cowatch-toggle-play event
+  useEffect(() => {
+    const handleToggle = () => {
+      handlePlayPauseToggle();
+    };
+    window.addEventListener('cowatch-toggle-play', handleToggle);
+    return () => window.removeEventListener('cowatch-toggle-play', handleToggle);
+  }, [handlePlayPauseToggle]);
 
   useEffect(() => {
     currentTimeRef.current = currentTime;
@@ -476,19 +554,27 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const rankedSources = getRankedSources(!!subtitleUrl);
 
   return (
-    <div className="relative w-full h-full bg-[#060606] overflow-hidden rounded-[2rem] border border-white/5 flex flex-col items-stretch shadow-2xl">
+    <div 
+      onClick={() => setShowMobileConsole(prev => !prev)}
+      className="relative w-full h-full bg-[#060606] overflow-hidden rounded-[2rem] border border-white/5 flex flex-col items-stretch shadow-2xl cursor-pointer"
+    >
       {/* Video Content */}
       <div className="flex-1 w-full relative group/player">
         {getPlayerComponent()}
 
         {/* Floating Glassmorphic Server Selector console overlay */}
         <div 
+          onClick={(e) => e.stopPropagation()}
           style={{ top: 'var(--player-console-top)' }}
-          className="absolute left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-xl transition-all duration-500 transform translate-y-[-10px] opacity-0 pointer-events-none group-hover/player:opacity-100 group-hover/player:translate-y-0 group-hover/player:pointer-events-auto"
+          className={`absolute left-1/2 -translate-x-1/2 z-30 w-[95%] max-w-xl transition-all duration-500 transform ${
+            showMobileConsole 
+              ? 'translate-y-0 opacity-100 pointer-events-auto' 
+              : 'translate-y-[-10px] opacity-0 pointer-events-none'
+          } sm:translate-y-[-10px] sm:opacity-0 sm:pointer-events-none sm:group-hover/player:opacity-100 sm:group-hover/player:translate-y-0 sm:group-hover/player:pointer-events-auto`}
         >
           <div className="bg-[#050505]/85 backdrop-blur-2xl border border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-white">
             
-            {/* Top Row on mobile: Status + Sync Button */}
+            {/* Top Row on mobile: Status + Controls */}
             <div className="flex items-center justify-between sm:justify-start gap-4">
               {/* Sync connection status */}
               <div className="flex items-center gap-2">
@@ -506,26 +592,49 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
                 </div>
               </div>
 
-              {/* Sync Playback Action Button (Mobile only) */}
+              {/* Mobile Controls Row */}
+              <div className="flex items-center gap-1.5">
+                {/* Play/Pause Button (Mobile only) */}
+                <button
+                  onClick={handlePlayPauseToggle}
+                  className="sm:hidden px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-1.5 border border-white/10 bg-white/5 hover:bg-white/10 text-white active:scale-95 cursor-pointer"
+                >
+                  {isPaused ? <Play size={10} className="fill-white text-white" /> : <Pause size={10} className="fill-white text-white" />}
+                  <span>{isPaused ? ((language === 'ku' || language === 'badini') ? 'پەخش' : 'PLAY') : ((language === 'ku' || language === 'badini') ? 'ڕاگرتن' : 'PAUSE')}</span>
+                </button>
+
+                {/* Sync Playback Action Button (Mobile only) */}
+                <button
+                  onClick={triggerRoomManualSync}
+                  disabled={syncing}
+                  className="sm:hidden px-2.5 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-1.5 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 text-orange-500 active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles size={10} className={syncing ? "animate-spin" : "animate-pulse"} />
+                  <span>{(language === 'ku' || language === 'badini') ? 'هاوکات' : 'SYNC'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2">
+              {/* Play/Pause Button (Desktop only) */}
+              <button
+                onClick={handlePlayPauseToggle}
+                className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 border border-white/10 bg-white/5 hover:bg-white/10 text-white active:scale-95 cursor-pointer shrink-0"
+              >
+                {isPaused ? <Play size={11} className="fill-white text-white" /> : <Pause size={11} className="fill-white text-white" />}
+                <span>{isPaused ? ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'PLAY') : ((language === 'ku' || language === 'badini') ? 'ڕاگرتن' : 'PAUSE')}</span>
+              </button>
+
+              {/* Sync Playback Action Button (Desktop only) */}
               <button
                 onClick={triggerRoomManualSync}
                 disabled={syncing}
-                className="sm:hidden px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-1.5 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 text-orange-500 active:scale-95 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50"
               >
-                <Sparkles size={10} className={syncing ? "animate-spin" : "animate-pulse"} />
-                <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردن' : 'SYNC'}</span>
+                <Sparkles size={11} className={syncing ? "animate-spin" : "animate-pulse"} />
+                <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
               </button>
             </div>
-
-            {/* Sync Playback Action Button (Desktop only) */}
-            <button
-              onClick={triggerRoomManualSync}
-              disabled={syncing}
-              className="hidden sm:flex px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all duration-300 items-center gap-2 border bg-orange-600/10 border-orange-500/30 hover:border-orange-500 hover:bg-orange-600 hover:text-white shadow-[0_0_20px_rgba(234,88,12,0.12)] hover:shadow-[0_0_25px_rgba(234,88,12,0.4)] text-orange-500 active:scale-95 cursor-pointer shrink-0 disabled:opacity-50"
-            >
-              <Sparkles size={11} className={syncing ? "animate-spin" : "animate-pulse"} />
-              <span>{(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'SYNC PLAYBACK'}</span>
-            </button>
 
             {/* Server Selector Ribbon */}
             <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-0.5 sm:pb-0 custom-scrollbar justify-center sm:justify-start">

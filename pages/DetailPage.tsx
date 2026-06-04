@@ -23,6 +23,7 @@ import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { subtitleService } from '../services/subtitleService';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { useLocalUser } from '../hooks/useLocalUser';
+import { generateUUID } from '../utils/uuidUtils';
 import { supabase } from '../utils/supabaseClient';
 import { bannedService } from '../services/bannedService';
 
@@ -118,7 +119,7 @@ const DetailPage: React.FC = () => {
     setIsCreatingParty(true);
     try {
       const pin = Math.floor(1000 + Math.random() * 9000).toString();
-      const ticketId = crypto.randomUUID();
+      const ticketId = generateUUID();
 
       const { error } = await supabase.from('watch_tickets').insert({
         id: ticketId,

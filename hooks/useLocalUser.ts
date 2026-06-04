@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { generateUUID, isValidUUID } from '../utils/uuidUtils';
 
 // A collection of fun, cinematic anonymous nicknames
 const ANONYMOUS_NICKNAMES = [
@@ -10,7 +11,8 @@ const ANONYMOUS_NICKNAMES = [
 export const useLocalUser = () => {
   const [localUserId, setLocalUserId] = useState<string>(() => {
     try {
-      return localStorage.getItem('local_user_id') || '';
+      const storedId = localStorage.getItem('local_user_id') || '';
+      return isValidUUID(storedId) ? storedId : '';
     } catch {
       return '';
     }
@@ -28,8 +30,8 @@ export const useLocalUser = () => {
     try {
       // 1. Resolve UUID
       let id = localStorage.getItem('local_user_id');
-      if (!id) {
-        id = crypto.randomUUID();
+      if (!id || !isValidUUID(id)) {
+        id = generateUUID();
         localStorage.setItem('local_user_id', id);
       }
       setLocalUserId(id);
