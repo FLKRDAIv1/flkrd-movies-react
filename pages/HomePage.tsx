@@ -109,8 +109,8 @@ const HomePage: React.FC = () => {
   // Update browser window title dynamically back to the premium brand identity on landing
   useEffect(() => {
     document.title = (language === 'ku' || language === 'badini')
-      ? 'FLKRD MOVIES | تەماشای نوێترین فیلم و زنجیرە بە ژێرنووسی کوردی بکە'
-      : 'FLKRD MOVIES | Watch Latest Movies & TV Shows with Kurdish Subtitles';
+      ? 'FLKRD MOVIES | تەماشای هەموو فیلم و زنجیرەیەک بکە'
+      : 'FLKRD MOVIES | Watch Movies & TV Shows';
   }, [language]);
 
   const loadHistory = useCallback(() => {

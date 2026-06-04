@@ -147,12 +147,12 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   };
 
   const videoUrl = useMemo(() => {
-    if (!trailerKey || !active) return null;
-    const origin = window.location.origin;
+    if (!trailerKey || !active || !hasInteracted) return null;
+    const origin = window.location.origin.startsWith('http') ? window.location.origin : '';
     // We hardcode mute=1 to guarantee 100% successful instant autoplay on Safari/iOS WebKit.
     // Toggling the global mute state is handled via postMessage API inside a useEffect hook to prevent reloading the iframe, which causes playback blocks.
-    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${origin}&widgetid=1&version=3`;
-  }, [trailerKey, active]);
+    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1${origin ? `&origin=${origin}` : ''}&widgetid=1&version=3`;
+  }, [trailerKey, active, hasInteracted]);
 
   return (
     <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex flex-col items-center justify-center overflow-hidden">
@@ -349,7 +349,7 @@ const ShortsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [isMutedGlobal, setIsMutedGlobal] = useState(true);
-  const [hasInteracted, setHasInteracted] = useState(true);
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [viewMode, setViewMode] = useState<'followers' | 'explore'>('explore');
   const [followedIds, setFollowedIds] = useState<Set<number>>(() => new Set(JSON.parse(localStorage.getItem(FOLLOWED_KEY) || '[]')));
   

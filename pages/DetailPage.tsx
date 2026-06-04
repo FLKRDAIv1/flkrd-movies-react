@@ -93,6 +93,7 @@ const DetailPage: React.FC = () => {
 
   const [initialProgress, setInitialProgress] = useState(0);
   const backdropIframeRef = useRef<HTMLIFrameElement>(null);
+  const origin = window.location.origin.startsWith('http') ? window.location.origin : '';
 
   useEffect(() => {
     const iframe = backdropIframeRef.current;
@@ -238,8 +239,24 @@ const DetailPage: React.FC = () => {
           const year = data.release_date ? ` (${data.release_date.split('-')[0]})` : '';
           const movieName = data.title || data.original_title || 'Movie';
           document.title = (language === 'ku' || language === 'badini')
-            ? `سەیرکردنی فیلمی ${movieName}${year} بە ژێرنووسی کوردی | FLKRD`
-            : `Watch ${movieName}${year} with Kurdish Subtitles | FLKRD`;
+            ? `تەماشای فیلمی ${movieName}${year} بکە | FLKRD`
+            : `Watch ${movieName}${year} | FLKRD`;
+
+          // Dynamically update meta tags for optimal Google crawling and indexing
+          const overviewText = data.overview || '';
+          const cleanOverview = overviewText.slice(0, 150);
+          const metaDesc = document.querySelector('meta[name="description"]');
+          if (metaDesc) {
+            metaDesc.setAttribute('content', `Watch ${movieName}${year} on FLKRD. ${cleanOverview}`);
+          }
+          const ogDesc = document.querySelector('meta[property="og:description"]');
+          if (ogDesc) {
+            ogDesc.setAttribute('content', `Watch ${movieName}${year} on FLKRD. ${cleanOverview}`);
+          }
+          const ogTitle = document.querySelector('meta[property="og:title"]');
+          if (ogTitle) {
+            ogTitle.setAttribute('content', `${movieName}${year} | FLKRD`);
+          }
 
           setCast(data.credits?.cast?.slice(0, 10) || []);
           let recs = [...(data.recommendations?.results || []), ...(data.similar?.results || [])];
@@ -380,7 +397,7 @@ const DetailPage: React.FC = () => {
             </div>
             <div className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
               <iframe
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}&rel=0`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&playsinline=1&enablejsapi=1${origin ? `&origin=${origin}` : ''}&rel=0`}
                 className="w-full h-full"
                 allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -557,7 +574,7 @@ const DetailPage: React.FC = () => {
             <div className="absolute inset-0 scale-[1.5] pointer-events-none">
               <iframe
                 ref={backdropIframeRef}
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1&origin=${window.location.origin}`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1${origin ? `&origin=${origin}` : ''}`}
                 className="w-full h-full opacity-60"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
