@@ -110,31 +110,31 @@ async function run() {
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/#/tv</loc>
+    <loc>https://fkurd.pro/tv</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/#/dubbed</loc>
+    <loc>https://fkurd.pro/dubbed</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/#/kurdish-cc</loc>
+    <loc>https://fkurd.pro/kurdish-cc</loc>
     <lastmod>${today}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/#/search</loc>
+    <loc>https://fkurd.pro/search</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/#/discover</loc>
+    <loc>https://fkurd.pro/discover</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -145,7 +145,7 @@ async function run() {
   movies.forEach((id) => {
     xml += `
   <url>
-    <loc>https://fkurd.pro/#/details/movie/${id}</loc>
+    <loc>https://fkurd.pro/details/movie/${id}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -159,7 +159,7 @@ async function run() {
   tvSeries.forEach((id) => {
     xml += `
   <url>
-    <loc>https://fkurd.pro/#/details/tv/${id}</loc>
+    <loc>https://fkurd.pro/details/tv/${id}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

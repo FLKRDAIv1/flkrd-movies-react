@@ -19,6 +19,7 @@ import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
 import { db, initDB } from '../utils/db';
+import { isTauri } from '../utils/tauriUtils';
 
 
 // Removed MeshGradientBackground to allow global PremiumBackground to handle theme rendering.
@@ -825,7 +826,8 @@ const DubbedMoviesPage: React.FC = () => {
     };
 
     const copyLink = () => {
-        const url = `${window.location.origin}/#/dubbed-details/${shareTarget?.id}`;
+        const routePrefix = isTauri() ? '/#/dubbed-details' : '/dubbed-details';
+        const url = `${window.location.origin}${routePrefix}/${shareTarget?.id}`;
         navigator.clipboard.writeText(url);
         addNotification({ type: 'success', title: 'Link Copied', message: 'Link copied successfully.' });
         setShareTarget(null);
@@ -1534,7 +1536,10 @@ const DubbedMoviesPage: React.FC = () => {
                                     <motion.button
                                         whileHover={{ scale: 1.05, y: -5 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${window.location.origin}/#/dubbed-details/${shareTarget.id}`)}`)}
+                                        onClick={() => {
+                                            const routePrefix = isTauri() ? '/#/dubbed-details' : '/dubbed-details';
+                                            window.open(`https://wa.me/?text=${encodeURIComponent(`${window.location.origin}${routePrefix}/${shareTarget.id}`)}`);
+                                        }}
                                         className="flex flex-col items-center gap-4 p-10 rounded-[2.5rem] bg-white/5 border border-white/10 hover:bg-green-600 transition-all group"
                                     >
                                         <Send size={28} className="text-green-500 group-hover:text-white" />

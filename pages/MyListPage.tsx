@@ -10,6 +10,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { fetchData } from '../services/tmdbService';
 import Spinner from '../components/Spinner';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
+import { isTauri } from '../utils/tauriUtils';
 
 const MyListPage: React.FC = () => {
     const [myListItems, setMyListItems] = useState<MyListItem[]>([]);
@@ -71,7 +72,8 @@ const MyListPage: React.FC = () => {
     const getShareUrl = () => {
         const jsonStr = JSON.stringify(myListItems);
         const encoded = encodeURIComponent(btoa(jsonStr));
-        return `${window.location.origin}/#/my-list?share=${encoded}`;
+        const routePrefix = isTauri() ? '/#/my-list' : '/my-list';
+        return `${window.location.origin}${routePrefix}?share=${encoded}`;
     };
 
     const clearMyList = () => {

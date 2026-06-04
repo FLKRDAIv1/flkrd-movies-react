@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, BrowserRouter, Routes, Route } from 'react-router-dom';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
 const HomePage = React.lazy(() => import('./pages/HomePage'));
@@ -397,6 +397,8 @@ const App: React.FC = () => {
         return () => clearTimeout(timer);
     }, [language, addNotification]);
 
+    const Router = isTauri() ? HashRouter : BrowserRouter;
+
     return (
         <MotionConfig reducedMotion={isPerformanceMode ? "always" : "user"}>
             <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
@@ -405,7 +407,7 @@ const App: React.FC = () => {
                 </AnimatePresence>
                 <DesktopTitleBar />
                 <PremiumBackground />
-                <HashRouter>
+                <Router>
                     {!isWatchPage && <Header scrolled={scrolled} />}
                     <div className="flex flex-1 h-full overflow-hidden relative">
                         {!isWatchPage && <Sidebar />}
@@ -445,7 +447,7 @@ const App: React.FC = () => {
                     <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
                     <GamepadHints />
                     {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
-                </HashRouter>
+                </Router>
             </div>
         </MotionConfig>
     );
