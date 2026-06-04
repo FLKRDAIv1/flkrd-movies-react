@@ -23,20 +23,27 @@ const DocPage: React.FC = () => {
     return 'en';
   });
 
+  // Helper to extract query parameters from either standard search params (web) or hash params (tauri)
+  const getQueryParam = (name: string): string | null => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has(name)) {
+      return searchParams.get(name);
+    }
+    const hashPart = window.location.hash.split('?')[1] || '';
+    const hashParams = new URLSearchParams(hashPart);
+    return hashParams.get(name);
+  };
+
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    // Read from URL query param if present
-    const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
-    const tabParam = params.get('tab') as Tab;
+    const tabParam = getQueryParam('tab') as Tab;
     if (tabParam === 'terms' as any || tabParam === 'license' as any || tabParam === 'legal' as any) return 'legal';
     return ['flow', 'tutorials', 'tech', 'legal', 'privacy'].includes(tabParam) ? tabParam : 'flow';
   });
 
   const [selectedNode, setSelectedNode] = useState<string | null>('client');
   const [legalDoc, setLegalDoc] = useState<'terms' | 'fairuse' | 'mit' | 'apache' | 'dmca'>(() => {
-    // Auto-select the right legal sub-doc from URL param
-    const params = new URLSearchParams(window.location.hash.split('?')[1] || '');
-    const tabParam = params.get('tab');
-    const docParam = params.get('doc');
+    const tabParam = getQueryParam('tab');
+    const docParam = getQueryParam('doc');
     if (docParam === 'mit' || docParam === 'apache' || docParam === 'fairuse' || docParam === 'dmca') return docParam as any;
     if (tabParam === 'license' || tabParam === 'mit') return 'mit';
     return 'terms';
@@ -45,9 +52,15 @@ const DocPage: React.FC = () => {
   // Listen to tab changes in query params or set manually
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    // Update hash query string cleanly without reloading
-    const baseUrl = window.location.hash.split('?')[0];
-    window.location.hash = `${baseUrl}?tab=${tab}`;
+    
+    const isTauriEnv = !!(window as any).__TAURI_INTERNALS__;
+    if (isTauriEnv) {
+      const baseUrl = window.location.hash.split('?')[0] || '#/doc';
+      window.location.hash = `${baseUrl}?tab=${tab}`;
+    } else {
+      const newUrl = `${window.location.pathname}?tab=${tab}`;
+      window.history.replaceState(null, '', newUrl);
+    }
   };
 
   // Extensive system translations and content
@@ -275,6 +288,14 @@ const DocPage: React.FC = () => {
   // Sync state for tab updates
   const handleLegalDocChange = (doc: typeof legalDoc) => {
     setLegalDoc(doc);
+    const isTauriEnv = !!(window as any).__TAURI_INTERNALS__;
+    if (isTauriEnv) {
+      const baseUrl = window.location.hash.split('?')[0] || '#/doc';
+      window.location.hash = `${baseUrl}?tab=legal&doc=${doc}`;
+    } else {
+      const newUrl = `${window.location.pathname}?tab=legal&doc=${doc}`;
+      window.history.replaceState(null, '', newUrl);
+    }
   };
 
   return (

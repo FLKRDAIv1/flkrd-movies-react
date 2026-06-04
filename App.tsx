@@ -407,10 +407,20 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [t]);
 
-    // Direct pathname '/doc' SPA redirection to HashRouter '/#/doc'
+    // Direct pathname '/doc' SPA redirection depending on platform (Tauri vs Web)
     useEffect(() => {
-        if (window.location.pathname === '/doc' || window.location.pathname === '/doc/') {
-            window.location.replace('/#/doc');
+        if (isTauri()) {
+            if (window.location.pathname === '/doc' || window.location.pathname === '/doc/') {
+                window.location.replace('/#/doc');
+            }
+        } else {
+            // On web, if they landed on a hash route like /#/doc or /#/tv, redirect to clean pathname /doc or /tv
+            if (window.location.hash.startsWith('#/')) {
+                const hashPath = window.location.hash.substring(2); // e.g. doc?tab=license or tv
+                if (hashPath && hashPath !== '/') {
+                    window.location.replace('/' + hashPath);
+                }
+            }
         }
     }, []);
 
