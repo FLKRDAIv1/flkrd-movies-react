@@ -8,25 +8,53 @@
   [![React](https://img.shields.io/badge/React-19.1.0-61DAFB?style=for-the-badge&logo=react&logoColor=white)](#)
   [![Supabase](https://img.shields.io/badge/Supabase-Realtime-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white)](#)
   [![Tauri](https://img.shields.io/badge/Tauri-Desktop-24C6C1?style=for-the-badge&logo=tauri&logoColor=white)](#)
-
-  **FKURD MOVIES** is a proprietary, hardware-optimized synchronized cinema application designed to stream Kurdish dubbed and subtitled media. Leveraging state-of-the-art web performance patterns, it delivers a native-like cinema experience across desktop, mobile platforms, and Tauri-based desktop shells.
 </div>
 
 ---
 
-## 🔒 Proprietary Application Overview
+# 🔗 بەشی کوردی (Kurdish Section)
 
-This repository contains the source code for the private deployment of **FKURD MOVIES**. It is hosted and distributed under strict licensing, and is not open for public modification, cloning, or redistribution.
+## 🌟 کورتەی پڕۆژە
+**فیلمەکانی ئێف کورد (FKURD MOVIES)** ئەپڵیکەیشنێکی سینەمایی و هاوکاتکراوی تایبەت و پێشکەوتووە، کە بۆ پەخشکردنی فیلم و زنجیرە ژێرنووس و دۆبلاژکراوە کوردییەکان لەسەر وێب، مۆبایل (ئایفۆن و ئەندرۆید) و دێسکتۆپ بە شێوەیەکی نایاب تەلارسازی کراوە. ئەم سیستمە لەلایەن **زانا فارووق** دیزاین و ئەندازیاری کراوە.
+
+ئەم پڕۆژەیە بە تەواوی پارێزراوە و مۆڵەتی بەکارهێنان یان کۆپیکردن و بڵاوکردنەوەی گشتی پێنەدراوە بەبێ ڕەزامەندی خاوەنەکەی.
+
+## ✨ تایبەتمەندییە سەرەکییەکان
+
+### 🖥️ ١. ڕووکاری تایبەت بۆ سەرجەم ئامێرەکان
+*   **مەکینەی پرۆفایلی ئایفۆن (iOS)**: پرۆفایلی ڕەسەنی ئایفۆن (`.mobileconfig`) دروست دەکات بۆ دامەزراندنی ئەپەکە وەک وێبکلیپی سینەمایی و کارکردنی بە شێوازی Full-screen.
+*   **ئەپی دێسکتۆپی ڕەسەن (Tauri)**: بە تەواوی ئامادەیە بۆ ویندۆز و ماک، خاوەن دوگمەی کۆنترۆڵ و شوێنی ڕاکێشانی تایبەتە.
+*   **سیستەمی گەڕانی کۆنسۆڵ (Spatial Navigation)**: ڕێگە بە بەکارهێنانی دوگمەی کیبۆرد، گەیمپاد و کۆنترۆڵی تەلەفزیۆن دەدات بە شێوازێکی زۆر خێرا و ڕوون.
+
+### 🔄 ٢. بینینی بەکۆمەڵ و هاوکات (Co-Watch)
+*   **هاوکاتکردنی پەخش لە کاتی ڕاستەقینەدا**: هاوکاتکردنی دەستپێکردن، وەستاندن و گەڕانی ڤیدیۆکان لە نێوان خانەخوێ (Host) و میوانەکاندا لە ڕێگەی سێرڤەری ڕاستەقینەی Supabase.
+*   **چوونەژوورەوەی میوان بێ ناو تۆمارکردن**: میوانەکان دەتوانن بە کۆدی PINی ٤ ژمارەیی بچنە ژووری سینەماکە بێ ئەوەی پێویست بە دروستکردنی ئەکاونت بکات.
+*   **چاتی ڕاستەقینەی ژوورەکە**: چاتکردنی خێرا لە کاتی تەماشاکردنی فیلمەکاندا.
+
+### 🌐 ٣. سیستەمی زیرەکی سێرڤەرەکان
+*   **ڕێکخستنی داینامیکی سێرڤەرەکان**: خۆکارانە بەکارهێنەر دەبەستێتەوە بە باشترین سێرڤەری بەردەست (بۆ نموونە سێرڤەری `Videasy` یان `VidLink Pro`).
+*   **کارپێکردنی خۆکار و ژێرنووس**: سێرڤەری یەکەم بە شێوەی خۆکار پەخش دەستپێدەکات و ژێرنووسی کوردی بۆ فیلمەکە باردەکات.
+
+---
+
+# 🔗 English Section
+
+## 🌟 Project Overview
+**FKURD MOVIES** is a proprietary, hardware-optimized synchronized cinema application designed to stream Kurdish dubbed and subtitled media. Developed and engineered by **Zana Faroq**, it delivers a native-like cinema experience across desktop, mobile platforms, and Tauri-based desktop shells.
+
+This repository contains proprietary source code. It is not licensed for public redistribution, cloning, or modifications.
+
+## ✨ Core Features
 
 ### 🖥️ 1. Multi-Device Native Shells
-*   **iOS Config Profile Engine**: Generates and packages Apple configuration profiles (`.mobileconfig`) on-the-fly, allowing mobile users to install the application as a standalone, native-behaving iOS web clip.
+*   **iOS Config Profile Engine**: Dynamically packages Apple configuration profiles (`.mobileconfig`) to allow mobile users to install the application as a standalone, native-behaving iOS web clip.
 *   **Tauri Desktop Shell**: Native integration with the Tauri runtime for desktop distribution, featuring custom drag regions, custom windows controls, and full-screen hardware-accelerated presentation modes.
 *   **Spatial Navigation Engine**: Console-style focus navigation mapping standard keyboard arrow keys, gamepads, and remote controls with an animated focus glow.
 
 ### 🔄 2. Synchronized Co-Watching
 *   **Real-Time Playback Synchronization**: Automatic syncing of play, pause, and seek events. Host commands are broadcasted to guest clients over Supabase Realtime Channels.
 *   **No-Auth Guest Access**: Anonymous guest users join rooms securely using 4-digit PIN codes generated dynamically for each session.
-*   **Chat Subsystem**: Dynamic room conversation list driven by real-time publications.
+*   **Chat Subsystem**: Dynamic room conversation list driven by real-time database publications.
 
 ### 🌐 3. Multi-Server Smart Routing
 *   **Dynamic Priority Balancing**: Evaluates and routes media streams through ranked server priorities (e.g. `Videasy` / `FKURD SERVER 1`, `VidLink Pro` / `FKURD SERVER 2`, `SuperEmbed`).
@@ -71,7 +99,7 @@ sequenceDiagram
 
 ---
 
-## 🛠️ Technology Stack
+## 🛠️ Technology Stack / زمان و تەکنەلۆژیاکان
 
 *   **Frontend Engine**: React 19 (StrictMode)
 *   **Router Control**: React Router DOM v7 (View Transitions API enabled)
@@ -79,10 +107,16 @@ sequenceDiagram
 *   **Animations**: Framer Motion & CSS hardware-accelerated keyframe composite layers
 *   **Desktop Shell**: Tauri v2
 *   **Database & Real-Time Sync**: Supabase (PostgreSQL + Realtime Publications)
-*   **AI Integration**: Powered by Google AI Studio (Gemini Pro models) for underlying catalog metadata enrichment and language translation processing.
+*   **AI Metadata Integration**: Powered by Google AI Studio (Gemini Pro models) for underlying catalog metadata enrichment and language translation processing.
 
 ---
 
-## 📄 License & Terms of Use
+## 📄 Legal & Licensing / بەشی یاسایی و مۆڵەتنامەکان
 
-All rights reserved. The source code, assets, configurations, and documentation within this project are proprietary property. Authorized access only.
+This software is governed by standard proprietary agreements and specific licensing modules:
+*   [MIT License](LICENSE) (MIT Standard core license)
+*   [Apache 2.0 License](LICENSE-APACHE) (For external API/Tauri modules)
+*   [Fair Use Policy](FAIRUSE.md) (Compliance under Section 107 analysis)
+*   [DMCA Takedown Policy](DMCA.md) (DMCA copyright procedures)
+
+Copyright (c) 2026 Zana Faroq. All rights reserved.
