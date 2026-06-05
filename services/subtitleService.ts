@@ -469,7 +469,10 @@ export const subtitleService = {
                     text: ''
                 };
             } else if (currentCue && line !== '' && !line.includes('-->')) {
-                currentCue.text += (currentCue.text ? '\n' : '') + line;
+                const cleanedLine = line.replace(/\{[^}]+\}/g, '').trim();
+                if (cleanedLine !== '') {
+                    currentCue.text += (currentCue.text ? '\n' : '') + cleanedLine;
+                }
             }
         }
         if (currentCue) cues.push(currentCue);

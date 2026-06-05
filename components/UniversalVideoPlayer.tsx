@@ -912,10 +912,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
     useEffect(() => {
-        const hasSeenOnboarding = localStorage.getItem('flkrd_adguard_guide_shown');
-        if (!hasSeenOnboarding) {
-            setShowAdGuardOnboarding(true);
-        }
+        // Disabled onboarding prompt automatically on play as requested by the user
     }, []);
 
     const handleOnboardingComplete = () => {
@@ -1401,14 +1398,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div ref={containerRef} className="w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
 
-            <AnimatePresence>
-                {showAdGuardOnboarding && (
-                    <AdGuardOnboarding 
-                        onComplete={handleOnboardingComplete} 
-                        accentColor={accentColor}
-                    />
-                )}
-            </AnimatePresence>
+            {/* AdGuardOnboarding disabled on play as requested by the user */}
 
             {/* Force Style & Hide Native Tracks */}
             <style>{`
@@ -1999,15 +1989,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 {(language === 'ku' || language === 'badini') ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
                             </span>
                             <div className="flex flex-col items-center gap-3">
-                                <button 
-                                    onClick={triggerAdGuardGuide}
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600/20 border border-blue-600/30 rounded-full hover:bg-blue-600/40 transition-all group"
-                                >
-                                    <ShieldCheck size={14} className="text-blue-500 group-hover:scale-110 transition-transform" />
-                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
-                                        {(language === 'ku' || language === 'badini') ? 'ڕێبەری نوێکردنەوەی AdGuard' : 'ADGUARD UPDATE GUIDE'}
-                                    </span>
-                                </button>
+                                {/* AdGuard guide button disabled on play as requested by the user */}
                                 <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
                                     <Shield size={10} className="text-red-500" />
                                     <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">

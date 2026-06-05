@@ -1506,10 +1506,11 @@ function parseVttCues(vttText: string) {
       const timeLine = lines.find(l => l.includes('-->'));
       if (!timeLine) continue;
 
-      const [startStr, endStr] = timeLine.split('-->').map(s => s.trim());
-      const start = parseTime(startStr);
-      const end = parseTime(endStr);
-      const text = lines.slice(lines.indexOf(timeLine) + 1).join('\n').replace(/<[^>]*>/g, '');
+      const rawText = lines.slice(lines.indexOf(timeLine) + 1).join('\n');
+      const text = rawText
+        .replace(/<[^>]*>/g, '')
+        .replace(/\{[^}]+\}/g, '')
+        .trim();
       
       if (text) cues.push({ start, end, text });
     }

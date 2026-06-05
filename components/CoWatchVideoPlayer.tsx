@@ -176,6 +176,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     const ranked = getRankedSources(!!subtitleUrl);
     return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
   });
+  const [initialProgress, setInitialProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
   const [isHostPaused, setIsHostPaused] = useState(true);
@@ -515,6 +516,10 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const handleServerSwitch = (serverName: string) => {
     if (serverName === activeSource) return;
 
+    // Capture the current timestamp to start the new server at the same progress
+    const switchTime = currentTimeRef.current;
+    setInitialProgress(switchTime);
+
     setActiveSource(serverName);
     activeSourceRef.current = serverName;
 
@@ -544,7 +549,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
         season={season}
         episode={episode}
         title={movieTitle}
-        initialProgress={currentTime}
+        initialProgress={initialProgress}
         accentColor={accentColor}
         subtitleUrl={subtitleUrl}
         imdbId={imdbId}
@@ -554,7 +559,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     ) : (
       <UniversalVideoPlayer
         key={`${activeSource}-${playerKey}`}
-        src={getSourceUrl(activeSource, movieId, type, season, episode, currentTime, accentColor, subtitleUrl)}
+        src={getSourceUrl(activeSource, movieId, type, season, episode, initialProgress, accentColor, subtitleUrl)}
         accentColor={accentColor}
         language={language}
         onProgress={handlePlayerProgress}
