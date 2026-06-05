@@ -2,13 +2,24 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/(.*)\\.mobileconfig",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/x-apple-aspen-config"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/watch/:ticket_id",
       "destination": "/api/watch?ticket_id=:ticket_id"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|.*\\..*$).*)",
       "destination": "/index.html"
     }
   ]

@@ -749,7 +749,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           </p>
                           <a
                             href="/webclip.mobileconfig"
-                            download="FLKRD Movies .webclip"
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >

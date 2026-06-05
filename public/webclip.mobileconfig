@@ -12,11 +12,11 @@
             <key>IsRemovable</key>
             <true/>
             <key>Label</key>
-            <string>Google</string>
+            <string>FLKRD MOVIES</string>
             <key>PayloadDescription</key>
             <string>ئەم ئەپە لەلایەن زانا فارۆقەوە درووست کراوە کە بەناوی ستوودیەکەم گرنگی یەکی زۆرمان پێی داوە هیوادارم بە چێژی لێبینن لە یێستا یە بە خۆرایە </string>
             <key>PayloadDisplayName</key>
-            <string>Google</string>
+            <string>FLKRD MOVIES</string>
             <key>PayloadIdentifier</key>
             <string>com.flkrdstudiobyzana.app.webclip</string>
             <key>PayloadOrganization</key>
@@ -30,7 +30,7 @@
             <key>Precomposed</key>
             <true/>
             <key>URL</key>
-            <string>https://google.com</string>
+            <string>https://fkurd.pro</string>
             <key>IgnoreManifestScope</key>
             <true/>
             <key>AllowTextSelection</key>
@@ -51,7 +51,7 @@
     <key>PayloadDescription</key>
     <string>ئەم ئەپە لەلایەن زانا فارۆقەوە درووست کراوە کە بەناوی ستوودیەکەم گرنگی یەکی زۆرمان پێی داوە هیوادارم بە چێژی لێبینن لە یێستا یە بە خۆرایە </string>
     <key>PayloadDisplayName</key>
-    <string>Google</string>
+    <string>FLKRD MOVIES</string>
     <key>PayloadIdentifier</key>
     <string>com.flkrdstudiobyzana.app</string>
     <key>PayloadOrganization</key>
