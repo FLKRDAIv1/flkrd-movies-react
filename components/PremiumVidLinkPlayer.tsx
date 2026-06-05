@@ -870,7 +870,7 @@ export default function PremiumVidLinkPlayer({
               {subStudioTab === 'sub' ? (
                 <>
                   <div className="space-y-6">
-                    {isAdmin && type === 'tv' && (
+                    {isAdmin && (
                       <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                           <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">

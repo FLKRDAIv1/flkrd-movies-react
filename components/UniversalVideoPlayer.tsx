@@ -1509,7 +1509,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         {subStudioTab === 'sub' ? (
                                             <>
                                                 <div className="flex flex-col gap-4">
-                                                    {isAdmin && contentType === 'tv' && (
+                                                    {isAdmin && (
                                                         <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
@@ -1982,67 +1982,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         </AnimatePresence>
                     </div>
 
-                    {/* Elegant Floating Kurdish CC Banner */}
-                    <AnimatePresence>
-                        {kurdishSub && !localSubtitleUrl && kuCCNotificationVisible && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                                className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 w-[90vw] max-w-sm sm:max-w-md bg-black/60 backdrop-blur-3xl border border-red-500/30 rounded-3xl p-4 md:p-5 flex items-center justify-between gap-4 shadow-[0_24px_50px_rgba(229,9,20,0.25)] relative overflow-hidden"
-                                style={{ fontFamily: "'Inter', sans-serif" }}
-                            >
-                                {/* Golden light leak/glow representing Kurdish Sun */}
-                                <div className="absolute top-1/2 left-0 -translate-y-1/2 w-32 h-32 bg-yellow-500/10 blur-[40px] rounded-full pointer-events-none" />
-                                {/* Red light leak/glow representing flag stripe */}
-                                <div className="absolute top-1/2 right-0 -translate-y-1/2 w-32 h-32 bg-red-600/10 blur-[40px] rounded-full pointer-events-none" />
-
-                                <div className="flex items-center gap-3 shrink-0">
-                                    {/* Kurdistan Flag flag icon container */}
-                                    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 border border-red-500/20 bg-red-600/10 shadow-inner">
-                                        <div className="scale-[1.5]">
-                                            {getLanguageFlag('ku')}
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] flex items-center gap-1">
-                                            <Sparkles size={10} className="text-yellow-500 fill-yellow-500 animate-pulse" />
-                                            {(language === 'ku' || language === 'badini') ? 'ژێرنووس بەردەستە' : 'Kurdish CC Found'}
-                                        </span>
-                                        <span className="text-white font-black text-[12px] md:text-[13px] tracking-tight truncate">
-                                            {(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی فەرمی' : 'Official Kurdish Track'}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-2 relative z-10">
-                                    <button
-                                        onClick={handleDownloadAndApplyKurdishCC}
-                                        disabled={isDownloadingKu}
-                                        className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white text-[10px] md:text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-[0_8px_20px_rgba(229,9,20,0.3)] hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 flex items-center gap-2"
-                                    >
-                                        {isDownloadingKu ? (
-                                            <>
-                                                <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                                                <span>{(language === 'ku' || language === 'badini') ? 'دادەگیرێت...' : 'LOADING...'}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Download size={12} />
-                                                <span>{(language === 'ku' || language === 'badini') ? 'داگرتن' : 'DOWNLOAD'}</span>
-                                            </>
-                                        )}
-                                    </button>
-                                    <button 
-                                        onClick={() => setKuCCNotificationVisible(false)}
-                                        className="p-2.5 bg-white/5 border border-white/10 rounded-2xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                    {/* Elegant Floating Kurdish CC Banner removed as requested by the user */}
                 </>
             )}
 
