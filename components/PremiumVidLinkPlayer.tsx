@@ -533,7 +533,8 @@ export default function PremiumVidLinkPlayer({
                   backdropFilter: subBlur ? 'blur(12px)' : 'none',
                   fontSize: `${subFontSize}px`,
                   color: subColor,
-                  fontWeight: 900
+                  fontWeight: 900,
+                  fontFamily: "'Zain', 'Outfit', sans-serif"
                 }}
               >
                 {activeCues.map((cue, i) => (
@@ -987,6 +988,18 @@ function parseVttCues(vttText: string) {
       if (text) cues.push({ start, end, text });
     }
   }
+
+  const hasKurdish = /[\u0600-\u06FF]/.test(vttText);
+  if (hasKurdish) {
+    const introCues = [
+      { start: 1.0, end: 4.0, text: "ژێرنووسکراوە لەلایەن زانا فاروقەوە" },
+      { start: 4.5, end: 7.5, text: "FLKRD Studio" }
+    ];
+    // Filter out original cues starting in the first 7.5s to prevent overlaps
+    const mainCues = cues.filter(c => c.start >= 7.5);
+    return [...introCues, ...mainCues];
+  }
+
   return cues;
 }
 

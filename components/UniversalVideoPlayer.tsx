@@ -434,7 +434,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         processedText = subtitleService.shiftVtt(processedText, subtitleOffset);
                     }
                     const cues = subtitleService.parseVtt(processedText);
-                    setSubtitleCues(cues);
+                    const hasKurdish = /[\u0600-\u06FF]/.test(processedText);
+                    if (hasKurdish) {
+                        const introCues = [
+                            { start: 1.0, end: 4.0, text: "ژێرنووسکراوە لەلایەن زانا فاروقەوە" },
+                            { start: 4.5, end: 7.5, text: "FLKRD Studio" }
+                        ];
+                        // Filter out original cues starting in the first 7.5s to prevent overlaps
+                        const mainCues = cues.filter(c => c.start >= 7.5);
+                        setSubtitleCues([...introCues, ...mainCues]);
+                    } else {
+                        setSubtitleCues(cues);
+                    }
                 }
             } catch (e) {
                 console.error("[UNIVERSAL-PLAYER] Error fetching/parsing subtitle URL:", e);
@@ -1887,7 +1898,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         style={{ 
                             fontSize: `clamp(14px, ${subtitleSize}px, 6.5vw)`, 
                             color: subtitleColor,
-                            fontFamily: "'Outfit', sans-serif" 
+                            fontFamily: "'Zain', 'Outfit', sans-serif" 
                         }}
                     >
                         {(() => {
