@@ -6,7 +6,8 @@ import {
     Mic2, Play, Zap, Share2, X, Send,
     Link as LinkIcon, Sparkles,
     Activity, Info, Star, ChevronRight, Share, Copy,
-    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, ShieldAlert
+    Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, ShieldAlert,
+    ArrowUp, ArrowDown, Server
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -258,7 +259,10 @@ const DubbedMoviesPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
-    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned'>('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers'>('upload');
+    const [serversList, setServersList] = useState<{ id: number; server_name: string; priority: number }[]>([]);
+    const [isLoadingServers, setIsLoadingServers] = useState(false);
+    const [isSavingServers, setIsSavingServers] = useState(false);
     const [adminSearchQuery, setAdminSearchQuery] = useState('');
     const [movieToDelete, setMovieToDelete] = useState<string | null>(null);
 
@@ -767,8 +771,73 @@ const DubbedMoviesPage: React.FC = () => {
     useEffect(() => {
         if (activeAdminTab === 'banned') {
             fetchBannedItems();
+        } else if (activeAdminTab === 'servers') {
+            fetchServersList();
         }
     }, [activeAdminTab]);
+
+    const fetchServersList = async () => {
+        setIsLoadingServers(true);
+        try {
+            const { data, error } = await supabase
+                .from('server_config')
+                .select('*')
+                .order('priority', { ascending: false });
+            if (error) throw error;
+            setServersList(data || []);
+        } catch (err) {
+            console.error("Failed to fetch server config:", err);
+            addNotification({ type: 'error', title: 'Data Stream Failed', message: 'Could not load servers priority configuration.' });
+        } finally {
+            setIsLoadingServers(false);
+        }
+    };
+
+    const moveServer = (index: number, direction: 'up' | 'down') => {
+        const nextIndex = direction === 'up' ? index - 1 : index + 1;
+        if (nextIndex < 0 || nextIndex >= serversList.length) return;
+
+        const updated = [...serversList];
+        const temp = updated[index];
+        updated[index] = updated[nextIndex];
+        updated[nextIndex] = temp;
+        setServersList(updated);
+    };
+
+    const handleSaveServerOrder = async () => {
+        setIsSavingServers(true);
+        try {
+            const updates = serversList.map((server, index) => {
+                const priority = 500 - index * 20;
+                return {
+                    id: server.id,
+                    server_name: server.server_name,
+                    priority: priority
+                };
+            });
+
+            const { error } = await supabase
+                .from('server_config')
+                .upsert(updates);
+            
+            if (error) throw error;
+
+            const scores: { [key: string]: number } = {};
+            updates.forEach(upd => {
+                scores[upd.server_name] = upd.priority;
+            });
+            localStorage.setItem('playerSourceScores', JSON.stringify(scores));
+            window.dispatchEvent(new Event('player-source-scores-updated'));
+
+            addNotification({ type: 'success', title: 'ڕیزبەندی نوێکراوە', message: 'Server priority mapping has been updated globally!' });
+            fetchServersList();
+        } catch (err: any) {
+            console.error("Failed to save server priority config:", err);
+            addNotification({ type: 'error', title: 'Database Reject', message: err.message || 'Failed to update server priorities.' });
+        } finally {
+            setIsSavingServers(false);
+        }
+    };
 
     const fetchBannedItems = async () => {
         setIsLoadingBanned(true);
@@ -1607,6 +1676,9 @@ const DubbedMoviesPage: React.FC = () => {
                                         <button onClick={() => setActiveAdminTab('archive')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ListVideo size={16} /> Movies List
                                         </button>
+                                        <button onClick={() => setActiveAdminTab('servers')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'servers' ? 'bg-yellow-500 text-black' : 'text-gray-400 hover:text-white'}`}>
+                                            <Server size={16} /> Servers
+                                        </button>
                                         <button onClick={() => setActiveAdminTab('banned')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
@@ -1862,6 +1934,87 @@ const DubbedMoviesPage: React.FC = () => {
                                                             </div>
                                                         </div>
                                                     ))
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {activeAdminTab === 'servers' && (
+                                            <div className="space-y-5 pb-4">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <h3 className="text-sm font-black text-brand uppercase tracking-widest flex items-center gap-1.5">
+                                                            <Server size={14} /> Server Priorities Configuration / ڕیزبەندی سێرڤەرەکان
+                                                        </h3>
+                                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">
+                                                            Drag servers up/down to configure global prioritization.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSaveServerOrder}
+                                                        disabled={isSavingServers || serversList.length === 0}
+                                                        className="px-6 py-2.5 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-black font-black uppercase text-xs rounded-xl transition-all flex items-center gap-2 shrink-0 active:scale-95 shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                                                    >
+                                                        {isSavingServers ? (
+                                                            <RefreshCw size={14} className="animate-spin" />
+                                                        ) : (
+                                                            'Save Order'
+                                                        )}
+                                                    </button>
+                                                </div>
+
+                                                {isLoadingServers ? (
+                                                    <div className="py-20 flex justify-center"><RefreshCw className="animate-spin text-yellow-500" /></div>
+                                                ) : serversList.length === 0 ? (
+                                                    <div className="py-20 text-center text-gray-500 font-bold uppercase tracking-widest italic opacity-30">No Servers Registered</div>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {serversList.map((server, index) => {
+                                                            let friendlyName = server.server_name;
+                                                            if (server.server_name === 'FLKRD SERVER') friendlyName = 'VidKing (Server 1)';
+                                                            else if (server.server_name === 'FLKRD SERVER 1') friendlyName = 'Videasy (Server 2)';
+                                                            else if (server.server_name === 'FLKRD SERVER 2') friendlyName = 'VidLink Pro (Server 3)';
+                                                            else if (server.server_name === 'FLKRD SERVER 3') friendlyName = 'VidSrc (Server 4)';
+                                                            else if (server.server_name === 'FLKRD SERVER 4') friendlyName = 'SuperEmbed (Server 5)';
+                                                            else if (server.server_name === 'FLKRD SERVER 5') friendlyName = 'CinePro (Server 6)';
+                                                            else if (server.server_name === 'FLKRD SERVER 6') friendlyName = 'VidSrc.pro (Server 7)';
+                                                            else if (server.server_name === 'FLKRD SERVER 7') friendlyName = 'VidSrc-embed.ru (Server 8)';
+
+                                                            return (
+                                                                <div key={server.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 transition-all hover:bg-white/10">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="w-8 h-8 rounded-full bg-yellow-500/10 text-yellow-500 flex items-center justify-center font-black text-sm">
+                                                                            {index + 1}
+                                                                        </span>
+                                                                        <div>
+                                                                            <p className="text-white font-black uppercase text-xs tracking-tighter">{friendlyName}</p>
+                                                                            <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Database Identifier: {server.server_name} • Priority Score: {server.priority}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={index === 0}
+                                                                            onClick={() => moveServer(index, 'up')}
+                                                                            className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"
+                                                                            aria-label="Move Up"
+                                                                        >
+                                                                            <ArrowUp size={16} />
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={index === serversList.length - 1}
+                                                                            onClick={() => moveServer(index, 'down')}
+                                                                            className="p-2 bg-white/5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all"
+                                                                            aria-label="Move Down"
+                                                                        >
+                                                                            <ArrowDown size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 )}
                                             </div>
                                         )}

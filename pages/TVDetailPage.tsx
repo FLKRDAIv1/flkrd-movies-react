@@ -117,6 +117,22 @@ const TVDetailPage: React.FC = () => {
 
   const [sources, setSources] = useState(() => getRankedSources(false));
 
+  useEffect(() => {
+    const handleScoresUpdate = () => {
+      const ranked = getRankedSources(!!subtitleUrl);
+      setSources(ranked);
+      // Auto-switch to the new top server if user hasn't manually chosen one
+      if (ranked.length > 0) {
+        setActiveSource(ranked[0].name);
+      }
+    };
+    window.addEventListener('player-source-scores-updated', handleScoresUpdate);
+    return () => {
+      window.removeEventListener('player-source-scores-updated', handleScoresUpdate);
+    };
+  }, [subtitleUrl]);
+
+
   // [SUBTITLE SYNC] Fetch episode-specific subtitles
   useEffect(() => {
     const fetchEpisodeSubtitles = async () => {
@@ -313,7 +329,11 @@ const TVDetailPage: React.FC = () => {
   }, [content, selectedSeason, selectedEpisode, id, isBingeEnabled, showBingeCountdown]);
 
   const handlePlayerProgress = useCallback((data: any) => {
-    if (data.event === 'timeupdate' || data.event === 'pause' || data.event === 'ended') {
+    // Accept any event with a valid currentTime — covers VidKing, Videasy, VidLink, etc.
+    const time = data.currentTime || data.time || 0;
+    if (time > 0) {
+      updateProgress(data);
+    } else if (data.event === 'pause' || data.event === 'ended') {
       updateProgress(data);
     }
   }, [updateProgress]);
@@ -538,7 +558,7 @@ const TVDetailPage: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {activeSource === 'FLKRD SERVER 1' ? (
+              {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
                   tmdbId={id!}
                   type="tv"

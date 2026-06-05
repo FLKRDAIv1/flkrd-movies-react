@@ -511,12 +511,18 @@ export default function PremiumVidLinkPlayer({
           // NOTE: sandbox attribute intentionally omitted — VidLink Pro detects
           // sandboxed iframes and blocks playback with "Please Disable Sandbox".
           // Tauri's WKWebView security handles isolation at the process level.
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; gyroscope; accelerometer"
           referrerPolicy="no-referrer-when-downgrade"
           // @ts-ignore
           scrolling="no"
+          // iOS Safari: prevent native AVPlayer from intercepting video
+          // @ts-ignore
+          webkit-playsinline="true"
+          // @ts-ignore
+          x-webkit-airplay="deny"
           onLoad={() => setIsPlayerLoading(false)}
         ></iframe>
+
 
         <AnimatePresence>
           {showSubtitles && activeCues.length > 0 && (

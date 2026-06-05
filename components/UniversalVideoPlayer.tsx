@@ -924,6 +924,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             else if (payload.data?.position !== undefined) {
                 newTime = payload.data.position;
             }
+            else if (payload.timestamp !== undefined) {
+                newTime = payload.timestamp;
+            }
 
             const timeAsNum = newTime !== undefined ? Number(newTime) : undefined;
 
@@ -933,7 +936,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     onProgressRef.current({
                         currentTime: timeAsNum,
                         paused: paused,
-                        event: eventName
+                        event: eventName || 'timeupdate',
+                        duration: payload.duration !== undefined ? Number(payload.duration) : undefined
                     });
                 }
             } else if (eventName !== undefined) {
@@ -1247,9 +1251,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
             : activeSrcForIframe;
         let finalSrc = cleanSrc || '';
 
+        // Detect iOS Safari (including Capacitor/Tauri on iOS WebView)
+        const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+
         // Force inline playback for iOS on external embed providers
+        // This prevents the native AVPlayer from hijacking the video element
         if (finalSrc && !finalSrc.includes('playsinline=')) {
             finalSrc += (finalSrc.includes('?') ? '&' : '?') + 'playsinline=1';
+        }
+        if (isIOS && finalSrc && !finalSrc.includes('webkit-playsinline=')) {
+            finalSrc += '&webkit-playsinline=1';
+        }
+        if (isIOS && finalSrc && !finalSrc.includes('muted=')) {
+            // Some iOS WebViews require muted for inline autoplay
+            // Do NOT force muted — Videasy handles this internally
         }
 
         if (frozenSrcRef.current && currentContentKey === lastContentKeyRef.current) {
@@ -1266,9 +1281,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         try {
             const url = new URL(iframeSrc);
             url.searchParams.delete('start');
+            url.searchParams.delete('progress');
             return url.toString();
         } catch (e) {
-            return iframeSrc.split('&start=')[0];
+            return iframeSrc.split('&start=')[0].split('&progress=')[0];
         }
     }, [iframeSrc]);
 
@@ -2021,10 +2037,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     className="w-full h-full border-none z-10"
                     style={{ display: 'block' }}
                     // NO sandbox — providers detect sandbox and refuse to load
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access"
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
                     referrerPolicy="strict-origin-when-cross-origin"
                     // @ts-ignore
                     scrolling="no"
+                    // iOS Safari: prevent native video player takeover
+                    // @ts-ignore
+                    webkit-playsinline="true"
+                    // @ts-ignore
+                    x-webkit-airplay="deny"
                     onLoad={handleIframeLoad}
                     title="FLKRD Universal Player"
                 />

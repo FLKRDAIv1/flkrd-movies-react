@@ -86,6 +86,22 @@ const DetailPage: React.FC = () => {
 
   const [sources, setSources] = useState(() => getRankedSources(false));
 
+  useEffect(() => {
+    const handleScoresUpdate = () => {
+      const ranked = getRankedSources(!!subtitleUrl);
+      setSources(ranked);
+      // Auto-switch to the new top server if user hasn't manually chosen one
+      if (ranked.length > 0) {
+        setActiveSource(ranked[0].name);
+      }
+    };
+    window.addEventListener('player-source-scores-updated', handleScoresUpdate);
+    return () => {
+      window.removeEventListener('player-source-scores-updated', handleScoresUpdate);
+    };
+  }, [subtitleUrl]);
+
+
   const toggleBingeMode = () => {
     const newVal = !bingeMode;
     setBingeMode(newVal);
@@ -184,10 +200,15 @@ const DetailPage: React.FC = () => {
   }, [content, bingeMode, showBingePrompt, recommendations]);
 
   const handlePlayerProgress = useCallback((data: any) => {
-    if (data.event === 'timeupdate' || data.event === 'pause' || data.event === 'ended') {
-      const time = data.currentTime || data.time || 0;
-      const duration = data.duration || 0;
+    // Accept any event with a valid currentTime — covers VidKing, Videasy ({timestamp}), VidLink, etc.
+    const time = data.currentTime || data.time || 0;
+    const duration = data.duration || 0;
+    if (time > 0 && duration > 0) {
       updateProgress(time, duration);
+    } else if (data.event === 'pause' || data.event === 'ended') {
+      // Force save on pause/end even without duration
+      const t = data.currentTime || data.time || 0;
+      if (t > 0) updateProgress(t, duration);
     }
   }, [updateProgress]);
 
@@ -455,7 +476,7 @@ const DetailPage: React.FC = () => {
 
             <div className="flex-1 w-full relative bg-black overflow-hidden">
               
-              {activeSource === 'FLKRD SERVER 1' ? (
+              {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
                   tmdbId={id!}
                   type="movie"

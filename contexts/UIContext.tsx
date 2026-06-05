@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '../utils/supabaseClient';
 
 type Theme = 'light' | 'dark' | 'premium-gradient-1' | 'premium-gradient-2' | 'premium-particles-galaxy' | 'premium-particles-moon' | 'premium-particles-stardust';
 
@@ -55,6 +56,49 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
     return true;
   });
+
+  useEffect(() => {
+    const syncServerPriorities = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('server_config')
+          .select('server_name, priority');
+        if (error) throw error;
+        if (data && data.length > 0) {
+          const scores: { [key: string]: number } = {};
+          data.forEach(row => {
+            scores[row.server_name] = row.priority;
+          });
+          localStorage.setItem('playerSourceScores', JSON.stringify(scores));
+          window.dispatchEvent(new Event('player-source-scores-updated'));
+        }
+      } catch (err) {
+        console.error('[UI CONTEXT] Failed to sync server priorities:', err);
+      }
+    };
+
+    // Initial load
+    syncServerPriorities();
+
+    // 🔴 REALTIME: Subscribe to server_config changes so ALL users update instantly
+    // when admin saves a new server order — no page refresh needed
+    const serverConfigChannel = supabase
+      .channel('server_config_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'server_config' },
+        () => {
+          console.log('[UI CONTEXT] Server priority updated by admin — re-syncing...');
+          syncServerPriorities();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      serverConfigChannel.unsubscribe();
+    };
+  }, []);
+
 
   useEffect(() => {
     localStorage.setItem('flkrd_theme', theme);
