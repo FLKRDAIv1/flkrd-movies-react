@@ -117,6 +117,46 @@ export default function PremiumVidLinkPlayer({
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
+  const [showSubBackground, setShowSubBackground] = useState(() => {
+    try {
+      const saved = localStorage.getItem('sub_show_bg');
+      return saved !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  // Load saved styles from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedSize = localStorage.getItem('sub_size');
+      const savedColor = localStorage.getItem('sub_color');
+      const savedOpacity = localStorage.getItem('sub_opacity');
+      const savedBlur = localStorage.getItem('sub_blur');
+      const savedShowBg = localStorage.getItem('sub_show_bg');
+
+      if (savedSize) setSubFontSize(Number(savedSize));
+      if (savedColor) setSubColor(savedColor);
+      if (savedOpacity) setSubBgOpacity(Number(savedOpacity));
+      if (savedBlur) setSubBlur(savedBlur === 'true');
+      if (savedShowBg) setShowSubBackground(savedShowBg !== 'false');
+    } catch (e) {
+      console.warn("Failed to load sub settings from localStorage", e);
+    }
+  }, []);
+
+  // Save styles when changed
+  useEffect(() => {
+    try {
+      localStorage.setItem('sub_size', subFontSize.toString());
+      localStorage.setItem('sub_color', subColor);
+      localStorage.setItem('sub_opacity', subBgOpacity.toString());
+      localStorage.setItem('sub_blur', subBlur.toString());
+      localStorage.setItem('sub_show_bg', showSubBackground.toString());
+    } catch (e) {
+      console.warn("Failed to save sub settings to localStorage", e);
+    }
+  }, [subFontSize, subColor, subBgOpacity, subBlur, showSubBackground]);
 
   // Doblaj & Multi-Language Audio States
   const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
@@ -767,10 +807,15 @@ export default function PremiumVidLinkPlayer({
               className="absolute bottom-[15%] left-0 right-0 z-[100] pointer-events-none w-full flex justify-center px-4"
             >
               <div 
-                className={`px-6 py-3 rounded-2xl text-center shadow-2xl max-w-[90%] transition-all duration-300 border border-white/10`}
+                className={`px-6 py-3 rounded-2xl text-center max-w-[90%] transition-all duration-300 ${showSubBackground ? 'shadow-2xl border border-white/10' : ''}`}
                 style={{ 
-                  backgroundColor: `rgba(0,0,0,${subBgOpacity})`,
-                  backdropFilter: subBlur ? 'blur(12px)' : 'none',
+                  backgroundColor: showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'transparent',
+                  backdropFilter: showSubBackground && subBlur ? 'blur(12px)' : 'none',
+                  border: showSubBackground ? undefined : 'none',
+                  boxShadow: showSubBackground ? undefined : 'none',
+                  textShadow: showSubBackground 
+                    ? '0 2px 4px rgba(0,0,0,0.8)'
+                    : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
                   fontSize: `${subFontSize}px`,
                   color: subColor,
                   fontWeight: 900,
@@ -903,6 +948,13 @@ export default function PremiumVidLinkPlayer({
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'کاریگەری شووشە' : 'Glassmorphism'}</label>
                     <button onClick={() => setSubBlur(!subBlur)} className={`w-8 h-4 rounded-full relative transition-colors ${subBlur ? 'bg-red-600' : 'bg-white/10'}`}>
                       <motion.div animate={{ x: subBlur ? 18 : 2 }} className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm" />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-2 border-t border-white/5 pt-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'پێشاندانی پشتەوە' : 'Show Background'}</label>
+                    <button onClick={() => setShowSubBackground(!showSubBackground)} className={`w-8 h-4 rounded-full relative transition-colors ${showSubBackground ? 'bg-red-600' : 'bg-white/10'}`}>
+                      <motion.div animate={{ x: showSubBackground ? 18 : 2 }} className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm" />
                     </button>
                   </div>
                 </div>

@@ -197,6 +197,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
     const [subBlur, setSubBlur] = useState(true);
+    const [showSubBackground, setShowSubBackground] = useState(() => {
+        try {
+            const saved = localStorage.getItem('sub_show_bg');
+            return saved !== 'false';
+        } catch (e) {
+            return true;
+        }
+    });
     const [kurdishSub, setKurdishSub] = useState<SubtitleResult | null>(null);
     const [isDownloadingKu, setIsDownloadingKu] = useState(false);
     const [kuCCNotificationVisible, setKuCCNotificationVisible] = useState(true);
@@ -507,11 +515,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const savedColor = localStorage.getItem('sub_color');
         const savedOpacity = localStorage.getItem('sub_opacity');
         const savedBlur = localStorage.getItem('sub_blur');
+        const savedShowBg = localStorage.getItem('sub_show_bg');
 
         if (savedSize) setSubtitleSize(Number(savedSize));
         if (savedColor) setSubtitleColor(savedColor);
         if (savedOpacity) setSubBgOpacity(Number(savedOpacity));
         if (savedBlur) setSubBlur(savedBlur === 'true');
+        if (savedShowBg) setShowSubBackground(savedShowBg !== 'false');
     }, [subtitleUrl]);
 
     // Save styles when changed
@@ -520,7 +530,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         localStorage.setItem('sub_color', subtitleColor);
         localStorage.setItem('sub_opacity', subBgOpacity.toString());
         localStorage.setItem('sub_blur', subBlur.toString());
-    }, [subtitleSize, subtitleColor, subBgOpacity, subBlur]);
+        localStorage.setItem('sub_show_bg', showSubBackground.toString());
+    }, [subtitleSize, subtitleColor, subBgOpacity, subBlur, showSubBackground]);
 
     // Fetch and parse VTT whenever localSubtitleUrl or subtitleOffset changes
     useEffect(() => {
@@ -1605,6 +1616,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     />
                                                 </button>
                                             </div>
+                                            <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                    {(language === 'ku' || language === 'badini') ? 'پێشاندانی پشتەوە' : 'Show Background'}
+                                                </label>
+                                                <button 
+                                                    onClick={() => setShowSubBackground(!showSubBackground)}
+                                                    className={`w-10 h-5 rounded-full transition-all relative ${showSubBackground ? 'bg-red-600' : 'bg-white/10'}`}
+                                                >
+                                                    <motion.div 
+                                                        animate={{ x: showSubBackground ? 22 : 4 }}
+                                                        className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm"
+                                                    />
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div className="flex flex-col gap-4">
@@ -2117,12 +2142,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                             return (
                                 <div 
-                                    className="px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight shadow-[0_32px_64px_rgba(0,0,0,0.8)] transition-all duration-300 leading-relaxed border border-white/10 max-w-[95vw] sm:max-w-[85vw]"
+                                    className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-300 leading-relaxed max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''}`}
                                     style={{ 
-                                        backgroundColor: `rgba(0, 0, 0, ${subBgOpacity})`,
-                                        backdropFilter: subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
-                                        WebkitBackdropFilter: subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
-                                        textShadow: '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)',
+                                        backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
+                                        backdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
+                                        WebkitBackdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
+                                        border: showSubBackground ? undefined : 'none',
+                                        boxShadow: showSubBackground ? undefined : 'none',
+                                        textShadow: showSubBackground 
+                                            ? '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)'
+                                            : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
                                         textWrap: 'balance',
                                         wordBreak: 'break-word',
                                         lineHeight: '1.4'
