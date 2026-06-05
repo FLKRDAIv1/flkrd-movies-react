@@ -325,7 +325,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 id: `custom-db-${targetId}`,
                 attributes: {
                     language: 'ku',
-                    display_name: lastFileName || 'Kurdish Custom Subtitle (Uploaded)',
+                    display_name: 'Kurdish',
                     url: lastPublicUrl,
                     file_id: 0
                 }
@@ -616,7 +616,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                             id: `custom-db-${data.id}`,
                             attributes: {
                                 language: data.language || 'ku',
-                                display_name: data.file_name || 'Kurdish Custom Subtitle (Uploaded)',
+                                display_name: 'Kurdish',
                                 url: data.subtitle_url,
                                 file_id: 0
                             }
@@ -626,7 +626,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
                 let finalSubs = safeResults;
                 if (customSub) {
-                    finalSubs = [customSub, ...safeResults.filter(s => s && s.attributes && s.attributes.url !== customSub!.attributes.url)];
+                    // Filter out any other Kurdish subtitles to show only the official admin-uploaded one
+                    const nonKurdishSubs = safeResults.filter(s => {
+                        if (!s || !s.attributes) return false;
+                        const lang = (s.attributes.language || '').toLowerCase();
+                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && lang !== 'badini';
+                    });
+                    finalSubs = [customSub, ...nonKurdishSubs];
                     
                     // Auto-select and auto-apply the custom subtitle by default
                     if (!subtitleUrl && !localSubtitleUrl) {
@@ -1567,7 +1573,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                                 } transition-colors`}>
                                                                                     {sub?.attributes?.language || 'UNKNOWN'}
                                                                                 </span>
-                                                                                {isKurdishSub && (
+                                                                                {isKurdishSub && String(sub.id).startsWith('custom-db-') && (
                                                                                     <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
                                                                                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
                                                                                           <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />

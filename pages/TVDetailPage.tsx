@@ -123,48 +123,74 @@ const TVDetailPage: React.FC = () => {
       if (!id || !isPlayerModalOpen) return;
       setSubtitleUrl(null); // Reset for new episode
       try {
-        const externalIds = await fetchExternalIds(id, 'tv');
-        if (externalIds && externalIds.imdb_id) {
-          setImdbId(externalIds.imdb_id);
-          const results = await subtitleService.searchSubtitles(
-            externalIds.imdb_id, 
-            'tv', 
-            selectedSeason, 
-            selectedEpisode, 
-            'ku'
-          );
-          if (results && results.length > 0) {
-            // Prioritize true Kurdish (ku/ckb) or titles with "kurd"
-            const bestTrack = results.find(r => 
-                r.attributes.language === 'ku' || 
-                r.attributes.language === 'ckb' || 
-                r.attributes.display_name.toLowerCase().includes('kurd')
-            ) || results[0];
+        // Check Supabase custom_subtitles first
+        let supabaseSubUrl = null;
+        try {
+          const { data } = await supabase
+            .from('custom_subtitles')
+            .select('subtitle_url')
+            .eq('tmdb_id', String(id))
+            .eq('media_type', 'tv')
+            .eq('language', 'ku')
+            .eq('season', selectedSeason)
+            .eq('episode', selectedEpisode)
+            .maybeSingle();
+          if (data && data.subtitle_url) {
+            supabaseSubUrl = data.subtitle_url;
+          }
+        } catch (dbErr) {
+          console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);
+        }
 
-            const downloadLink = bestTrack.attributes.file_id !== 0 
-                ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
-                : bestTrack.attributes.url;
+        if (supabaseSubUrl) {
+          console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Custom Kurdish Track from Supabase:`, supabaseSubUrl);
+          setSubtitleUrl(supabaseSubUrl);
+          const ranked = getRankedSources(true);
+          setSources(ranked);
+        } else {
+          const externalIds = await fetchExternalIds(id, 'tv');
+          if (externalIds && externalIds.imdb_id) {
+            setImdbId(externalIds.imdb_id);
+            const results = await subtitleService.searchSubtitles(
+              externalIds.imdb_id, 
+              'tv', 
+              selectedSeason, 
+              selectedEpisode, 
+              'ku'
+            );
+            if (results && results.length > 0) {
+              // Prioritize true Kurdish (ku/ckb) or titles with "kurd"
+              const bestTrack = results.find(r => 
+                  r.attributes.language === 'ku' || 
+                  r.attributes.language === 'ckb' || 
+                  r.attributes.display_name.toLowerCase().includes('kurd')
+              ) || results[0];
 
-            if (downloadLink) {
-              console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, downloadLink);
-              setSubtitleUrl(downloadLink);
-              
-              // [PINNING] Boost Kurdish-ready servers
-              const ranked = getRankedSources(true);
-              setSources(ranked);
+              const downloadLink = bestTrack.attributes.file_id !== 0 
+                  ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
+                  : bestTrack.attributes.url;
 
+              if (downloadLink) {
+                console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, downloadLink);
+                setSubtitleUrl(downloadLink);
+                
+                // [PINNING] Boost Kurdish-ready servers
+                const ranked = getRankedSources(true);
+                setSources(ranked);
+
+                addNotification({ 
+                  type: 'success', 
+                  title: 'ژێرنووسی کوردی', 
+                  message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
+                });
+              }
+            } else {
               addNotification({ 
-                type: 'success', 
-                title: 'ژێرنووسی کوردی', 
-                message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
+                type: 'info', 
+                title: 'ژێرنووس', 
+                message: `ببورە، ژێرنووسی کوردی بۆ S${selectedSeason} E${selectedEpisode} بەردەست نییە.` 
               });
             }
-          } else {
-            addNotification({ 
-              type: 'info', 
-              title: 'ژێرنووس', 
-              message: `ببورە، ژێرنووسی کوردی بۆ S${selectedSeason} E${selectedEpisode} بەردەست نییە.` 
-            });
           }
         }
       } catch (e) {

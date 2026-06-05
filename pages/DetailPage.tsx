@@ -275,45 +275,71 @@ const DetailPage: React.FC = () => {
             setInitialProgress(saved.progress || 0);
           }
 
-          // [SUBTITLE SYNC] Search for Kurdish subtitles using OpenSubtitles
+          // [SUBTITLE SYNC] Search for Kurdish subtitles using Supabase/OpenSubtitles
           try {
-            const externalIds = await fetchExternalIds(id, 'movie');
-            if (externalIds && externalIds.imdb_id) {
-                setImdbId(externalIds.imdb_id);
-                const results = await subtitleService.searchSubtitles(externalIds.imdb_id, 'movie', undefined, undefined, 'ku');
-                if (results && results.length > 0) {
-                    // Filter for the best Kurdish track
-                    const bestTrack = results.find(r => 
-                        r.attributes.language === 'ku' || 
-                        r.attributes.language === 'ckb' || 
-                        r.attributes.display_name.toLowerCase().includes('kurd')
-                    ) || results[0];
+            // Check Supabase custom_subtitles first
+            let supabaseSubUrl = null;
+            try {
+              const { data } = await supabase
+                .from('custom_subtitles')
+                .select('subtitle_url')
+                .eq('tmdb_id', String(id))
+                .eq('media_type', 'movie')
+                .eq('language', 'ku')
+                .eq('season', 0)
+                .eq('episode', 0)
+                .maybeSingle();
+              if (data && data.subtitle_url) {
+                supabaseSubUrl = data.subtitle_url;
+              }
+            } catch (dbErr) {
+              console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);
+            }
 
-                    const downloadLink = bestTrack.attributes.file_id !== 0 
-                        ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
-                        : bestTrack.attributes.url;
+            if (supabaseSubUrl) {
+              console.log("[SUBTITLE SYNC] Kurdish Custom Track Established from Supabase:", supabaseSubUrl);
+              setSubtitleUrl(supabaseSubUrl);
+              const ranked = getRankedSources(true);
+              setSources(ranked);
+            } else {
+              const externalIds = await fetchExternalIds(id, 'movie');
+              if (externalIds && externalIds.imdb_id) {
+                  setImdbId(externalIds.imdb_id);
+                  const results = await subtitleService.searchSubtitles(externalIds.imdb_id, 'movie', undefined, undefined, 'ku');
+                  if (results && results.length > 0) {
+                      // Filter for the best Kurdish track
+                      const bestTrack = results.find(r => 
+                          r.attributes.language === 'ku' || 
+                          r.attributes.language === 'ckb' || 
+                          r.attributes.display_name.toLowerCase().includes('kurd')
+                      ) || results[0];
 
-                    if (downloadLink) {
-                        console.log("[SUBTITLE SYNC] Kurdish Track Established:", downloadLink);
-                        setSubtitleUrl(downloadLink);
-                        
-                        // [PINNING] Boost Kurdish-ready servers
-                        const ranked = getRankedSources(true);
-                        setSources(ranked);
+                      const downloadLink = bestTrack.attributes.file_id !== 0 
+                          ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
+                          : bestTrack.attributes.url;
 
-                        addNotification({ 
-                          type: 'success', 
-                          title: 'ژێرنووسی کوردی', 
-                          message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
-                        });
-                    }
-                } else {
-                    addNotification({ 
-                      type: 'info', 
-                      title: 'ژێرنووس', 
-                      message: 'ببورە، ژێرنووسی کوردی بۆ ئەم بەرهەمە لە OpenSubtitles نەدۆزرایەوە.' 
-                    });
-                }
+                      if (downloadLink) {
+                          console.log("[SUBTITLE SYNC] Kurdish Track Established:", downloadLink);
+                          setSubtitleUrl(downloadLink);
+                          
+                          // [PINNING] Boost Kurdish-ready servers
+                          const ranked = getRankedSources(true);
+                          setSources(ranked);
+
+                          addNotification({ 
+                            type: 'success', 
+                            title: 'ژێرنووسی کوردی', 
+                            message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
+                          });
+                      }
+                  } else {
+                      addNotification({ 
+                        type: 'info', 
+                        title: 'ژێرنووس', 
+                        message: 'ببورە، ژێرنووسی کوردی بۆ ئەم بەرهەمە لە OpenSubtitles نەدۆزرایەوە.' 
+                      });
+                  }
+              }
             }
           } catch (e) {
               console.warn("[SUBTITLE SYNC] Error fetching automated tracks:", e);
