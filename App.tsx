@@ -204,6 +204,33 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
 };
 
+const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const location = useLocation();
+    const [animatedLocation, setAnimatedLocation] = useState(location);
+
+    useEffect(() => {
+        if (location.pathname !== animatedLocation.pathname || location.search !== animatedLocation.search) {
+            if ((document as any).startViewTransition) {
+                (document as any).startViewTransition(() => {
+                    setAnimatedLocation(location);
+                    const mainEl = document.querySelector('main');
+                    if (mainEl) mainEl.scrollTop = 0;
+                });
+            } else {
+                setAnimatedLocation(location);
+                const mainEl = document.querySelector('main');
+                if (mainEl) mainEl.scrollTop = 0;
+            }
+        }
+    }, [location, animatedLocation]);
+
+    return (
+        <Routes location={animatedLocation}>
+            {children}
+        </Routes>
+    );
+};
+
 const AppContent: React.FC<{
     scrolled: boolean;
     mainRef: React.RefObject<HTMLElement | null>;
@@ -262,7 +289,7 @@ const AppContent: React.FC<{
                         </div>
                       }>
                           <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
-                              <Routes>
+                              <ViewTransitionRoutes>
                                   <Route path="/" element={<HomePage />} />
                                   <Route path="/tv" element={<TVShowsPage />} />
                                   <Route path="/dubbed" element={<DubbedMoviesPage />} />
@@ -278,7 +305,7 @@ const AppContent: React.FC<{
                                   <Route path="/watch/:ticket_id" element={<WatchRoomPage />} />
                                   <Route path="/watch-room/:ticket_id" element={<WatchRoomPage />} />
                                   <Route path="/doc" element={<DocPage />} />
-                              </Routes>
+                              </ViewTransitionRoutes>
                           </main>
                       </React.Suspense>
                     </ChunkErrorBoundary>

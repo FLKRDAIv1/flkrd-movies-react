@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, X, Check, Plus, Share, Monitor, FastForward,
@@ -69,8 +69,9 @@ const TVDetailPage: React.FC = () => {
   const { localUserId, localUserName } = useLocalUser();
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
 
-  const [content, setContent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const [content, setContent] = useState<any>(location.state?.customData || null);
+  const [loading, setLoading] = useState(!location.state?.customData);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [recommendations, setRecommendations] = useState<Content[]>([]);
@@ -363,7 +364,7 @@ const TVDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchContentDetails = async () => {
       if (!id) return;
-      setLoading(true);
+      if (!content) setLoading(true);
       try {
         const apiLang = 'en-US';
         const endpoint = `/tv/${id}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;

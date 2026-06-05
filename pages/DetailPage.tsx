@@ -236,7 +236,7 @@ const DetailPage: React.FC = () => {
   useEffect(() => {
     const fetchContentDetails = async () => {
       if (!id) return;
-      setLoading(true);
+      if (!content) setLoading(true);
       try {
         const apiLang = 'en-US';
         const movieEndpoint = `/movie/${id}?api_key=${API_KEY}&language=${apiLang}&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
