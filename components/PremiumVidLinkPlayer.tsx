@@ -957,125 +957,162 @@ export default function PremiumVidLinkPlayer({
           )}
         </AnimatePresence>
 
-        {/* Episodes Portal Drawer */}
+        {/* Episodes Portal Drawer v2 (Top-Down Sliding Cinema Overlay) */}
         <AnimatePresence>
           {showEpisodesPortal && type === 'tv' && onEpisodeChange && (
             <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              className="absolute top-0 right-0 bottom-0 w-80 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-[200] p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6"
+              initial={{ y: '-100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '-100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 100 }}
+              className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+              style={{ fontFamily: "'Inter', sans-serif" }}
             >
-              <div className="flex items-center justify-between border-b border-white/5 pb-4 shrink-0">
-                <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase italic">
-                  <Tv size={16} className="text-red-600 animate-pulse" />
-                  {(language === 'ku' || language === 'badini') ? 'زنجیرە & ئەڵقەکان' : 'TV Hub & Episodes'}
-                </h3>
-                <button onClick={() => setShowEpisodesPortal(false)} className="text-gray-500 hover:text-white transition-colors">
-                  <X size={20} />
+              {/* Header Row */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-red-600/10 border border-red-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                    <Tv size={12} className="text-red-500 animate-pulse" />
+                    <span className="text-[9px] font-black text-red-500 uppercase tracking-widest leading-none">
+                      {(language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-500 tracking-wider">
+                    {title}
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setShowEpisodesPortal(false)} 
+                  className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white"
+                >
+                  <X size={18} />
                 </button>
               </div>
 
-              {/* Seasons Dropdown Selector */}
-              <div className="flex flex-col gap-2 shrink-0">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {(language === 'ku' || language === 'badini') ? 'سەیرکردنی سیزن' : 'Explore Season'}
-                </label>
-                <div className="relative">
-                  <select 
-                    value={season}
-                    onChange={(e) => {
-                      const sNum = Number(e.target.value);
-                      if (onSeasonChange) onSeasonChange(sNum);
-                    }}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold appearance-none focus:border-red-600 outline-none pr-10"
-                  >
-                    {seasons.map((s) => (
-                      <option key={s.id} value={s.season_number} className="bg-[#0a0a0a] text-white">
-                        {(language === 'ku' || language === 'badini') 
-                          ? `سیزنی ${s.season_number} (${s.episode_count} ئەڵقە)`
-                          : `Season ${s.season_number} (${s.episode_count} Episodes)`}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs">▼</div>
+              {/* Season Buttons Horizontal Row */}
+              <div className="flex flex-col gap-1.5 shrink-0 text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                  {(language === 'ku' || language === 'badini') ? 'سیزنەکان' : 'SEASONS'}
+                </span>
+                <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide">
+                  {seasons.map((s) => {
+                    const isCurrentSeason = season === s.season_number;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          if (onSeasonChange) onSeasonChange(s.season_number);
+                        }}
+                        className="relative px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border border-white/5 active:scale-95"
+                      >
+                        {isCurrentSeason ? (
+                          <motion.div 
+                            layoutId="activeSeasonPillPremium"
+                            className="absolute inset-0 bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                          />
+                        ) : null}
+                        <span className={`relative z-10 ${isCurrentSeason ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                          {(language === 'ku' || language === 'badini') 
+                            ? `سیزنی ${s.season_number}`
+                            : `Season ${s.season_number}`}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Scrollable Episodes List */}
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-h-[30vh]">
-                {!currentSeasonDetails ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-4 opacity-50">
-                    <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                      {(language === 'ku' || language === 'badini') ? 'باردەکرێت...' : 'Loading Episodes...'}
-                    </span>
-                  </div>
-                ) : (
-                  currentSeasonDetails.episodes.map((ep) => {
-                    const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
-                    const isWatched = watchedEpisodes.has(epKey);
-                    const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
-                    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
-                    
-                    return (
-                      <button
-                        key={ep.id}
-                        onClick={() => {
-                          if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
-                          setShowEpisodesPortal(false);
-                        }}
-                        className={`w-full text-left p-2.5 rounded-2xl border transition-all flex items-start gap-3 relative overflow-hidden group ${
-                          isActive
-                            ? 'bg-red-600/10 border-red-500 text-white'
-                            : 'bg-white/5 border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        {/* Thumbnail container */}
-                        <div className="w-24 aspect-video rounded-lg overflow-hidden shrink-0 bg-black relative border border-white/5">
-                          {ep.still_path ? (
-                            <img 
-                              src={`${IMAGE_BASE_URL}${ep.still_path}`} 
-                              alt="" 
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
-                          )}
-                          {isActive && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
-                            </div>
-                          )}
-                          {isWatched && !isActive && (
-                            <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full text-[8px] font-bold">✓</div>
-                          )}
-                        </div>
+              {/* Episodes Horizontal Swiper Container */}
+              <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest shrink-0">
+                  {(language === 'ku' || language === 'badini') 
+                    ? `ئەڵقەکانی سیزنی ${season}`
+                    : `SEASON ${season} EPISODES`}
+                </span>
+                
+                <div className="flex-1 overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-5 py-2 scrollbar-hide scroll-smooth">
+                  {!currentSeasonDetails ? (
+                    <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
+                      <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                        {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING EPISODES...'}
+                      </span>
+                    </div>
+                  ) : (
+                    currentSeasonDetails.episodes.map((ep) => {
+                      const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
+                      const isWatched = watchedEpisodes.has(epKey);
+                      const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
+                      const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+                      
+                      return (
+                        <div
+                          key={ep.id}
+                          onClick={() => {
+                            if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                            setShowEpisodesPortal(false);
+                          }}
+                          className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                            isActive
+                              ? 'bg-red-600/5 border-red-600 shadow-[0_8px_32px_rgba(220,38,38,0.1)]'
+                              : 'bg-white/[0.02] border-white/5 hover:border-white/10 hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          {/* Card Image Wrapper */}
+                          <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                            {ep.still_path ? (
+                              <img 
+                                src={`${IMAGE_BASE_URL}${ep.still_path}`} 
+                                alt="" 
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                            )}
 
-                        {/* Metadata */}
-                        <div className="flex flex-col min-w-0">
-                          <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isActive ? 'text-red-500' : 'text-gray-400'}`}>
-                            {(language === 'ku' || language === 'badini')
-                              ? `ئەڵقەی ${ep.episode_number}`
-                              : `Episode ${ep.episode_number}`}
-                          </span>
-                          <span className="text-xs font-bold truncate pr-4 text-white">
-                            {ep.name}
-                          </span>
+                            {/* Hover Play Button Overlay */}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                              <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                <Play size={16} fill="currentColor" className="translate-x-[1px]" />
+                              </div>
+                            </div>
+
+                            {/* Active / Current indicator */}
+                            {isActive && (
+                              <div className="absolute bottom-2 left-2 bg-red-600 text-white px-2 py-0.5 rounded font-black text-[6px] uppercase tracking-widest shadow-md flex items-center gap-1 z-20">
+                                <span className="w-1 h-1 rounded-full bg-white animate-ping" />
+                                <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
+                              </div>
+                            )}
+
+                            {/* Watched status tick */}
+                            {isWatched && !isActive && (
+                              <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full text-[8px] shadow-lg z-20 font-black">✓</div>
+                            )}
+                          </div>
+
+                          {/* Card Metadata */}
+                          <div className="flex flex-col px-1">
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-red-500' : 'text-gray-500'}`}>
+                              {(language === 'ku' || language === 'badini') 
+                                ? `ئەڵقەی ${ep.episode_number}` 
+                                : `Episode ${ep.episode_number}`}
+                            </span>
+                            <h4 className="text-white font-black text-xs truncate group-hover:text-red-500 transition-colors mt-0.5" title={ep.name}>
+                              {ep.name}
+                            </h4>
+                            <p className="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mt-1" title={ep.overview}>
+                              {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
+                            </p>
+                          </div>
                         </div>
-                      </button>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
-              
-              <button 
-                onClick={() => setShowEpisodesPortal(false)}
-                className="mt-auto py-4 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:border-red-500 transition-all shrink-0"
-              >
-                {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close Portal'}
-              </button>
             </motion.div>
           )}
         </AnimatePresence>
