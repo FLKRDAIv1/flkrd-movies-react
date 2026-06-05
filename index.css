@@ -25,6 +25,24 @@
   }
 }
 
+/* GPU Hardware Acceleration for buttery-smooth 60fps clicks, transitions, and overlays */
+button, 
+a, 
+input, 
+select, 
+textarea,
+.motion-safe,
+.card, 
+.backdrop-blur,
+.modal-overlay,
+[class*="backdrop-blur"] {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+
 
 .light-mode {
   --brand-red: #e50914;

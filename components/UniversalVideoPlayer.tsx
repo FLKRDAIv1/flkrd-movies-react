@@ -215,8 +215,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 }
 
                 // Determine season and episode if content is TV
-                let fileSeason: number | null = null;
-                let fileEpisode: number | null = null;
+                let fileSeason = 0;
+                let fileEpisode = 0;
 
                 if (contentType === 'tv') {
                     // Try to parse from filename
@@ -227,8 +227,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     } else {
                         // Fallback to active episode if only 1 file is uploaded
                         if (files.length === 1) {
-                            fileSeason = season !== undefined ? season : null;
-                            fileEpisode = episode !== undefined ? episode : null;
+                            fileSeason = season !== undefined ? season : 0;
+                            fileEpisode = episode !== undefined ? episode : 0;
                         } else {
                             throw new Error(`Could not determine episode from filename "${file.name}"`);
                         }
@@ -277,7 +277,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 
                 // If it matches currently active season/episode (or is a movie), update local player state
                 const isActiveEpisode = contentType !== 'tv' || 
-                    (fileSeason === season && fileEpisode === episode);
+                    (fileSeason === (season || 0) && fileEpisode === (episode || 0));
 
                 if (isActiveEpisode) {
                     lastBlobUrl = URL.createObjectURL(blob);
@@ -605,18 +605,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         .select('*')
                         .eq('tmdb_id', String(idToQuery))
                         .eq('media_type', contentType || 'movie')
-                        .eq('language', 'ku');
-
-                    if (contentType === 'tv') {
-                        if (season !== undefined) {
-                            query = query.eq('season', season);
-                        }
-                        if (episode !== undefined) {
-                            query = query.eq('episode', episode);
-                        }
-                    } else {
-                        query = query.is('season', null).is('episode', null);
-                    }
+                        .eq('language', 'ku')
+                        .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
+                        .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
                     const { data } = await query.maybeSingle();
                         
