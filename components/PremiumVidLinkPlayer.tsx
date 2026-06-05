@@ -524,7 +524,7 @@ export default function PremiumVidLinkPlayer({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-[15%] left-1/2 -translate-x-1/2 z-[100] pointer-events-none w-full flex justify-center px-4"
+              className="absolute bottom-[15%] left-0 right-0 z-[100] pointer-events-none w-full flex justify-center px-4"
             >
               <div 
                 className={`px-6 py-3 rounded-2xl text-center shadow-2xl max-w-[90%] transition-all duration-300 border border-white/10`}
@@ -538,7 +538,7 @@ export default function PremiumVidLinkPlayer({
                 }}
               >
                 {activeCues.map((cue, i) => (
-                  <p key={i} className="tracking-tight leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] custom-subtitle-text">
+                  <p key={i} className="text-center tracking-tight leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] custom-subtitle-text">
                     {cue.text}
                   </p>
                 ))}

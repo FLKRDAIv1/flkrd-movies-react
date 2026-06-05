@@ -76,7 +76,7 @@ const playSyncChime = () => {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
     gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.35, audioCtx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.04, audioCtx.currentTime + 0.05);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.4);

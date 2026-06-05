@@ -75,7 +75,7 @@ export const playSyncChime = (type: 'join' | 'sync' | 'error') => {
 
     // Master volume — keep all sounds very subtle
     const masterGain = audioCtx.createGain();
-    masterGain.gain.setValueAtTime(0.22, audioCtx.currentTime);
+    masterGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
     masterGain.connect(compressor);
 
     if (type === 'join') {

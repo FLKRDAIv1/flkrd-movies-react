@@ -2001,7 +2001,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     }}
                                 >
                                     {activeCue.text.split('\n').map((line, idx) => (
-                                        <div key={`${line}-${idx}`} className="drop-shadow-2xl">
+                                        <div key={`${line}-${idx}`} className="text-center drop-shadow-2xl">
                                             {line}
                                         </div>
                                     ))}

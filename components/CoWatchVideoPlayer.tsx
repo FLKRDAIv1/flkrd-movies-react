@@ -34,7 +34,7 @@ const playSyncChime = (type: 'join' | 'sync' | 'error') => {
       subOsc.frequency.setValueAtTime(261.63, audioCtx.currentTime);
       
       subGain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      subGain.gain.exponentialRampToValueAtTime(0.7, audioCtx.currentTime + 0.1);
+      subGain.gain.exponentialRampToValueAtTime(0.06, audioCtx.currentTime + 0.1);
       subGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
       
       subOsc.start();
@@ -53,7 +53,7 @@ const playSyncChime = (type: 'join' | 'sync' | 'error') => {
           oscSine.frequency.setValueAtTime(freq, audioCtx.currentTime);
           
           gainSine.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gainSine.gain.exponentialRampToValueAtTime(0.8, audioCtx.currentTime + 0.08);
+          gainSine.gain.exponentialRampToValueAtTime(0.08, audioCtx.currentTime + 0.08);
           gainSine.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
           
           oscSine.start();
@@ -68,7 +68,7 @@ const playSyncChime = (type: 'join' | 'sync' | 'error') => {
           oscTri.frequency.setValueAtTime(freq * 0.995, audioCtx.currentTime); // slight detune for chorus warmth
           
           gainTri.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gainTri.gain.exponentialRampToValueAtTime(0.45, audioCtx.currentTime + 0.08);
+          gainTri.gain.exponentialRampToValueAtTime(0.04, audioCtx.currentTime + 0.08);
           gainTri.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
           
           oscTri.start();
@@ -95,7 +95,7 @@ const playSyncChime = (type: 'join' | 'sync' | 'error') => {
           osc2.frequency.setValueAtTime(freq * 1.002, audioCtx.currentTime);
           
           gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
+          gain.gain.exponentialRampToValueAtTime(0.05, audioCtx.currentTime + 0.05);
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
           
           osc1.start();
@@ -120,7 +120,7 @@ const playSyncChime = (type: 'join' | 'sync' | 'error') => {
       osc2.frequency.setValueAtTime(118, audioCtx.currentTime);
       
       gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.05);
       gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
       
       osc1.start();

@@ -340,6 +340,15 @@ export const subtitleService = {
             
             if (!link) throw new Error("Could not obtain download link");
 
+            // Resolve relative paths to absolute URLs (e.g. from Stremio Proxy or local custom storage)
+            if (link.startsWith('/')) {
+                if (link.startsWith('/subtitle/')) {
+                    link = `https://opensubtitles-v3.strem.io${link}`;
+                } else {
+                    link = `https://fkurd.pro${link}`;
+                }
+            }
+
             // Fetch the actual text content (or zip)
             const response = await this.fetchWithFallback(link);
             if (!response.ok) throw new Error("Could not fetch subtitle content");
@@ -377,8 +386,16 @@ export const subtitleService = {
 
     async getSubtitleBlob(url: string, offset: number = 0) {
         try {
-            console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", url);
-            const response = await this.fetchWithFallback(url);
+            let absoluteUrl = url;
+            if (url.startsWith('/')) {
+                if (url.startsWith('/subtitle/')) {
+                    absoluteUrl = `https://opensubtitles-v3.strem.io${url}`;
+                } else {
+                    absoluteUrl = `https://fkurd.pro${url}`;
+                }
+            }
+            console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", absoluteUrl);
+            const response = await this.fetchWithFallback(absoluteUrl);
             if (response && response.ok) {
                 const text = await response.text();
                 
