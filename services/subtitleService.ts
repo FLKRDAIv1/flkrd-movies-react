@@ -341,7 +341,9 @@ export const subtitleService = {
             if (!link) throw new Error("Could not obtain download link");
 
             // Resolve relative paths to absolute URLs (e.g. from Stremio Proxy or local custom storage)
-            if (link.startsWith('/')) {
+            if (link.startsWith('//')) {
+                link = `https:${link}`;
+            } else if (link.startsWith('/')) {
                 if (link.startsWith('/subtitle/')) {
                     link = `https://opensubtitles-v3.strem.io${link}`;
                 } else {
@@ -387,7 +389,9 @@ export const subtitleService = {
     async getSubtitleBlob(url: string, offset: number = 0) {
         try {
             let absoluteUrl = url;
-            if (url.startsWith('/')) {
+            if (url.startsWith('//')) {
+                absoluteUrl = `https:${url}`;
+            } else if (url.startsWith('/')) {
                 if (url.startsWith('/subtitle/')) {
                     absoluteUrl = `https://opensubtitles-v3.strem.io${url}`;
                 } else {
