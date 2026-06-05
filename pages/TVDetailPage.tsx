@@ -538,6 +538,7 @@ const TVDetailPage: React.FC = () => {
                   season={selectedSeason}
                   episode={selectedEpisode}
                   title={content?.name}
+                  tmdbId={id}
                 />
               )}
 

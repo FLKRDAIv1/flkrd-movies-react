@@ -332,6 +332,9 @@ return (
                                 accentColor={accentColor}
                                 language={language}
                                 onLoad={handlePlayerLoad}
+                                tmdbId={dubbedData?.tmdb_id || content?.id}
+                                imdbId={dubbedData?.imdb_id || content?.imdb_id}
+                                contentType={dubbedData?.media_type || "movie"}
                             />
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl">

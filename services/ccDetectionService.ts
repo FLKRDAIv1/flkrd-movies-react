@@ -1,4 +1,5 @@
 import { fetchExternalIds } from './tmdbService';
+import { supabase } from '../utils/supabaseClient';
 
 interface CCQueueItem {
     tmdbId: number;
@@ -79,17 +80,35 @@ class CCDetectionService {
 
                 const imdbId = externalIds.imdb_id;
                 
-                // Fast-check Stremio API ONLY (No REST API fallback for batching to save rate limits)
-                // We only check Stremio for covers. If it's on Stremio, it gets the badge.
-                // Doing OpenSubtitles REST for 50 covers will get IP banned instantly.
-                const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${item.type}/${imdbId}.json`;
-                const res = await fetch(stremioUrl).catch(() => null);
-                
-                let hasCC = false;
-                if (res && res.ok) {
-                    const data = await res.json();
-                    if (data && data.subtitles && Array.isArray(data.subtitles)) {
-                        hasCC = data.subtitles.some((s: any) => s.lang === 'ku' || s.lang === 'ckb');
+                // Check if custom subtitle exists in Supabase custom_subtitles table first
+                let hasCustomCC = false;
+                try {
+                    const { data } = await supabase
+                        .from('custom_subtitles')
+                        .select('id')
+                        .eq('tmdb_id', String(item.tmdbId))
+                        .eq('media_type', item.type)
+                        .maybeSingle();
+                    if (data) {
+                        hasCustomCC = true;
+                    }
+                } catch (dbErr) {
+                    console.warn("[CC DETECT] Supabase error:", dbErr);
+                }
+
+                let hasCC = hasCustomCC;
+                if (!hasCC) {
+                    // Fast-check Stremio API ONLY (No REST API fallback for batching to save rate limits)
+                    // We only check Stremio for covers. If it's on Stremio, it gets the badge.
+                    // Doing OpenSubtitles REST for 50 covers will get IP banned instantly.
+                    const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${item.type}/${imdbId}.json`;
+                    const res = await fetch(stremioUrl).catch(() => null);
+                    
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        if (data && data.subtitles && Array.isArray(data.subtitles)) {
+                            hasCC = data.subtitles.some((s: any) => s.lang === 'ku' || s.lang === 'ckb');
+                        }
                     }
                 }
 

@@ -451,6 +451,7 @@ const DetailPage: React.FC = () => {
                   imdbId={imdbId || content?.imdb_id}
                   contentType="movie"
                   title={content?.title}
+                  tmdbId={id}
                 />
               )}
 

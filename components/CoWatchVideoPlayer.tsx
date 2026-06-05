@@ -547,6 +547,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
         episode={episode}
         title={movieTitle}
         peerSyncTrigger={peerSyncTrigger}
+        tmdbId={movieId}
       />
     );
   };

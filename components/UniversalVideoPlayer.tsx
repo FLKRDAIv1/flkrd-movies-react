@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { subtitleService, SubtitleResult } from '../services/subtitleService';
 import { supabase } from '../utils/supabaseClient';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
+import { useUI } from '../contexts/UIContext';
 
 interface UniversalVideoPlayerProps {
     src: string;
@@ -21,6 +22,7 @@ interface UniversalVideoPlayerProps {
     episode?: number;
     title?: string;
     peerSyncTrigger?: { currentTime: number; paused: boolean; timestamp: number } | null;
+    tmdbId?: number | string;
 }
 
 declare global {
@@ -119,7 +121,8 @@ const getLanguageFlag = (langCode: string) => {
     return defaultFlag;
 };
 
-const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode, title, peerSyncTrigger }) => {
+const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode, title, peerSyncTrigger, tmdbId }) => {
+    const { isAdmin } = useUI();
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -147,6 +150,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [kurdishSub, setKurdishSub] = useState<SubtitleResult | null>(null);
     const [isDownloadingKu, setIsDownloadingKu] = useState(false);
     const [kuCCNotificationVisible, setKuCCNotificationVisible] = useState(true);
+    const [isUploadingSub, setIsUploadingSub] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     const setAvailableSubsWithVirtual = useCallback((newSubs: SubtitleResult[]) => {
         const safeSubs = Array.isArray(newSubs) ? newSubs : [];
@@ -166,6 +171,107 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         const filtered = safeSubs.filter(s => s && s.id !== 'prop-kurdish-auto' as any && s.attributes && s.attributes.url !== subtitleUrl);
         setAvailableSubs([virtualSub, ...filtered]);
     }, [subtitleUrl]);
+
+    const handleAdminSubUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Check format
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        if (extension !== 'srt' && extension !== 'vtt') {
+            setUploadStatus({
+                type: 'error',
+                message: (language === 'ku' || language === 'badini') ? 'تەنها فایلی SRT یان VTT ڕێگەپێدراوە' : 'ONLY VTT OR SRT FILES ALLOWED'
+            });
+            return;
+        }
+
+        setIsUploadingSub(true);
+        setUploadStatus(null);
+
+        try {
+            // Read content
+            let fileContent = await file.text();
+            
+            // If it's SRT, convert to VTT format
+            if (extension === 'srt') {
+                fileContent = 'WEBVTT\n\n' + fileContent
+                    .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
+                    .replace(/^\d+$/gm, '');
+            }
+
+            // Target ID to uniquely identify this movie
+            const targetId = tmdbId || imdbId;
+            if (!targetId) {
+                throw new Error("Missing content identifier (TMDb or IMDb ID)");
+            }
+
+            // Create Blob and upload to Supabase Storage subtitles bucket
+            const blob = new Blob([fileContent], { type: 'text/vtt' });
+            const filePath = `custom/${targetId}_${Date.now()}.vtt`;
+            
+            const { data: uploadData, error: uploadErr } = await supabase.storage
+                .from('subtitles')
+                .upload(filePath, blob, {
+                    contentType: 'text/vtt',
+                    upsert: true
+                });
+
+            if (uploadErr) throw uploadErr;
+
+            // Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('subtitles')
+                .getPublicUrl(filePath);
+
+            // Save reference in custom_subtitles database table
+            const { error: dbErr } = await supabase
+                .from('custom_subtitles')
+                .upsert({
+                    tmdb_id: String(targetId),
+                    media_type: contentType || 'movie',
+                    language: 'ku',
+                    subtitle_url: publicUrl,
+                    file_name: file.name
+                }, {
+                    onConflict: 'tmdb_id,media_type,language'
+                });
+
+            if (dbErr) throw dbErr;
+
+            setUploadStatus({
+                type: 'success',
+                message: (language === 'ku' || language === 'badini') ? 'ژێرنووس بە سەرکەوتوویی بارکرا!' : 'SUBTITLE UPLOADED SUCCESSFULLY!'
+            });
+
+            // Instantly apply this subtitle locally!
+            const localBlobUrl = URL.createObjectURL(blob);
+            setLocalSubtitleUrl(localBlobUrl);
+            
+            const newCustomSub: SubtitleResult = {
+                id: `custom-db-${targetId}`,
+                attributes: {
+                    language: 'ku',
+                    display_name: file.name || 'Kurdish Custom Subtitle (Uploaded)',
+                    url: publicUrl,
+                    file_id: 0
+                }
+            };
+            setKurdishSub(newCustomSub);
+            setAvailableSubs(prev => [newCustomSub, ...prev.filter(s => s && s.id !== newCustomSub.id)]);
+
+            // Clear input
+            e.target.value = '';
+        } catch (err: any) {
+            console.error("Upload error:", err);
+            setUploadStatus({
+                type: 'error',
+                message: err.message || 'UPLOAD PROCESS FAILED'
+            });
+        } finally {
+            setIsUploadingSub(false);
+        }
+    };
 
     // Doblaj & Multi-Language Audio States
     const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
@@ -410,9 +516,60 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         const discoverKurdishCC = async () => {
             if (!imdbId || !contentType) return;
             try {
+                // 1. Fetch available subs from OpenSubtitles
                 const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
                 const safeResults = Array.isArray(results) ? results : [];
-                if (safeResults.length > 0) {
+
+                // 2. Fetch custom subtitle from Supabase custom_subtitles table
+                let customSub: SubtitleResult | null = null;
+                const idToQuery = tmdbId || imdbId;
+                if (idToQuery) {
+                    const { data } = await supabase
+                        .from('custom_subtitles')
+                        .select('*')
+                        .eq('tmdb_id', String(idToQuery))
+                        .eq('media_type', contentType)
+                        .maybeSingle();
+                        
+                    if (data && data.subtitle_url) {
+                        customSub = {
+                            id: `custom-db-${data.id}`,
+                            attributes: {
+                                language: data.language || 'ku',
+                                display_name: data.file_name || 'Kurdish Custom Subtitle (Uploaded)',
+                                url: data.subtitle_url,
+                                file_id: 0
+                            }
+                        };
+                    }
+                }
+
+                let finalSubs = safeResults;
+                if (customSub) {
+                    finalSubs = [customSub, ...safeResults.filter(s => s && s.attributes && s.attributes.url !== customSub!.attributes.url)];
+                    
+                    // Auto-select and auto-apply the custom subtitle by default
+                    if (!subtitleUrl && !localSubtitleUrl) {
+                        console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded subtitle:", customSub.attributes.url);
+                        try {
+                            const text = await subtitleService.downloadSubtitle(customSub);
+                            if (text) {
+                                let processedText = text;
+                                if (!processedText.startsWith('WEBVTT')) {
+                                    processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
+                                }
+                                const blob = new Blob([processedText], { type: 'text/vtt' });
+                                setLocalSubtitleUrl(URL.createObjectURL(blob));
+                                setKurdishSub(customSub);
+                                setKuCCNotificationVisible(false);
+                            }
+                        } catch (err) {
+                            console.warn("Failed to auto-apply custom subtitle:", err);
+                        }
+                    } else if (kurdishSub === null) {
+                        setKurdishSub(customSub);
+                    }
+                } else if (safeResults.length > 0) {
                     const foundKu = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
                         return lang === 'ku' || lang === 'ckb' || lang === 'kur';
@@ -446,7 +603,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                         }
                     }
                 }
-                setAvailableSubsWithVirtual(safeResults);
+                setAvailableSubsWithVirtual(finalSubs);
             } catch (e: any) {
                 console.warn("[UNIVERSAL-PLAYER] Background Kurdish CC search failed gracefully:", e?.message || e);
                 setAvailableSubsWithVirtual([]);
@@ -454,7 +611,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         };
 
         discoverKurdishCC();
-    }, [imdbId, contentType, season, episode]);
+    }, [imdbId, contentType, season, episode, tmdbId]);
 
     // Background discovery of Kurdish Dubbed movies from Supabase Cloud
     useEffect(() => {
@@ -1127,6 +1284,50 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                         {subStudioTab === 'sub' ? (
                                             <>
                                                 <div className="flex flex-col gap-4">
+                                                    {isAdmin && (
+                                                        <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
+                                                                    <ShieldCheck size={12} /> ADMIN SYSTEM
+                                                                </span>
+                                                                <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">CC Manager</span>
+                                                            </div>
+                                                            
+                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide leading-relaxed">
+                                                                {(language === 'ku' || language === 'badini') 
+                                                                    ? 'فایلی ژێرنووسی تایبەت (.vtt یان .srt) ئاپلۆد بکە بۆ ئەم بابەتە' 
+                                                                    : 'Upload a custom subtitle file (.vtt or .srt) for this movie/show.'}
+                                                            </p>
+
+                                                            <div className="flex flex-col gap-2">
+                                                                <input 
+                                                                    type="file" 
+                                                                    accept=".vtt,.srt" 
+                                                                    id="admin-sub-upload-input"
+                                                                    className="hidden" 
+                                                                    onChange={handleAdminSubUpload}
+                                                                />
+                                                                <button
+                                                                    onClick={() => document.getElementById('admin-sub-upload-input')?.click()}
+                                                                    disabled={isUploadingSub}
+                                                                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50"
+                                                                >
+                                                                    <Download size={12} className="rotate-180" />
+                                                                    {isUploadingSub 
+                                                                        ? ((language === 'ku' || language === 'badini') ? 'ئاپلۆد دەکرێت...' : 'UPLOADING...') 
+                                                                        : ((language === 'ku' || language === 'badini') ? 'هەڵبژاردنی ژێرنووس' : 'UPLOAD CC FILE')}
+                                                                </button>
+                                                                
+                                                                {uploadStatus && (
+                                                                    <span className={`text-[8px] font-black uppercase tracking-widest text-center mt-1 ${
+                                                                        uploadStatus.type === 'success' ? 'text-green-500' : 'text-red-500'
+                                                                    }`}>
+                                                                        {uploadStatus.message}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex justify-between items-center">
                                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
