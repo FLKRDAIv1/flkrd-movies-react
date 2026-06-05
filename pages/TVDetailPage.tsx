@@ -157,6 +157,9 @@ const TVDetailPage: React.FC = () => {
             .maybeSingle();
           if (data && data.subtitle_url) {
             supabaseSubUrl = data.subtitle_url;
+            if (supabaseSubUrl.startsWith('//')) {
+              supabaseSubUrl = `https:${supabaseSubUrl}`;
+            }
           }
         } catch (dbErr) {
           console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);

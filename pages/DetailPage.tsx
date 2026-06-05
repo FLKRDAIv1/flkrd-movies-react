@@ -315,6 +315,9 @@ const DetailPage: React.FC = () => {
                 .maybeSingle();
               if (data && data.subtitle_url) {
                 supabaseSubUrl = data.subtitle_url;
+                if (supabaseSubUrl.startsWith('//')) {
+                  supabaseSubUrl = `https:${supabaseSubUrl}`;
+                }
               }
             } catch (dbErr) {
               console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);

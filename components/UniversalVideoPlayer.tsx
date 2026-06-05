@@ -306,6 +306,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     .from('subtitles')
                     .getPublicUrl(filePath);
 
+                let resolvedPublicUrl = publicUrl;
+                if (resolvedPublicUrl.startsWith('//')) {
+                    resolvedPublicUrl = `https:${resolvedPublicUrl}`;
+                }
+
                 // Save reference in custom_subtitles database table
                 const { error: dbErr } = await supabase
                     .from('custom_subtitles')
@@ -313,7 +318,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         tmdb_id: String(targetId),
                         media_type: contentType || 'movie',
                         language: 'ku',
-                        subtitle_url: publicUrl,
+                        subtitle_url: resolvedPublicUrl,
                         file_name: file.name,
                         season: fileSeason,
                         episode: fileEpisode
@@ -331,7 +336,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 if (isActiveEpisode) {
                     lastBlobUrl = URL.createObjectURL(blob);
-                    lastPublicUrl = publicUrl;
+                    lastPublicUrl = resolvedPublicUrl;
                     lastFileName = file.name;
                 }
             } catch (err: any) {
@@ -669,12 +674,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const { data } = await query.maybeSingle();
                         
                     if (data && data.subtitle_url) {
+                        let subUrl = data.subtitle_url;
+                        if (subUrl.startsWith('//')) {
+                            subUrl = `https:${subUrl}`;
+                        }
                         customSub = {
                             id: `custom-db-${data.id}`,
                             attributes: {
                                 language: data.language || 'ku',
                                 display_name: 'Kurdish',
-                                url: data.subtitle_url,
+                                url: subUrl,
                                 file_id: 0
                             }
                         };
@@ -2400,26 +2409,50 @@ function parseSeasonEpisodeFromFilename(filename: string, defaultSeason?: number
     if (sExMatch) {
         return { season: parseInt(sExMatch[1], 10), episode: parseInt(sExMatch[2], 10) };
     }
+
+    // Pattern 2: s1 ep4 or s01 ep04
+    const sEpMatch = cleanName.match(/s(\d+)\s*ep\s*(\d+)/);
+    if (sEpMatch) {
+        return { season: parseInt(sEpMatch[1], 10), episode: parseInt(sEpMatch[2], 10) };
+    }
+
+    // Pattern 3: season 1 episode 4
+    const seasonEpisodeMatch = cleanName.match(/season\s*(\d+)\s*episode\s*(\d+)/);
+    if (seasonEpisodeMatch) {
+        return { season: parseInt(seasonEpisodeMatch[1], 10), episode: parseInt(seasonEpisodeMatch[2], 10) };
+    }
+
+    // Pattern 4: season 1 ep 4
+    const seasonEpMatch = cleanName.match(/season\s*(\d+)\s*ep\s*(\d+)/);
+    if (seasonEpMatch) {
+        return { season: parseInt(seasonEpMatch[1], 10), episode: parseInt(seasonEpMatch[2], 10) };
+    }
+
+    // Pattern 5: s1 episode 4
+    const sEpisodeMatch = cleanName.match(/s(\d+)\s*episode\s*(\d+)/);
+    if (sEpisodeMatch) {
+        return { season: parseInt(sEpisodeMatch[1], 10), episode: parseInt(sEpisodeMatch[2], 10) };
+    }
     
-    // Pattern 2: 1x02 or 01x02
+    // Pattern 6: 1x02 or 01x02
     const xMatch = cleanName.match(/(\d+)\s*x\s*(\d+)/);
     if (xMatch) {
         return { season: parseInt(xMatch[1], 10), episode: parseInt(xMatch[2], 10) };
     }
 
-    // Pattern 3: ep02 or ep.02 or ep_02 or episode02 or episode_02 or episode.2
+    // Pattern 7: ep02 or ep.02 or ep_02 or episode02 or episode_02 or episode.2
     const epMatch = cleanName.match(/(?:ep|episode)\s*[_.-]?\s*(\d+)/);
     if (epMatch) {
         return { season: defaultSeason || 1, episode: parseInt(epMatch[1], 10) };
     }
 
-    // Pattern 4: E02 or E2
+    // Pattern 8: E02 or E2
     const eOnlyMatch = cleanName.match(/[_.-]e(\d+)(?:\b|[_.-])/);
     if (eOnlyMatch) {
         return { season: defaultSeason || 1, episode: parseInt(eOnlyMatch[1], 10) };
     }
 
-    // Pattern 5: Just a number at the end or surrounded by separators, e.g. "Game of Thrones - 03.srt" or "Game of Thrones 03"
+    // Pattern 9: Just a number at the end or surrounded by separators, e.g. "Game of Thrones - 03.srt" or "Game of Thrones 03"
     const numMatch = cleanName.match(/(?:\b|[_.-])(\d{1,3})(?:\b|[_.-])(?=[^0-9]*\.[a-z0-9]+$)/);
     if (numMatch) {
         return { season: defaultSeason || 1, episode: parseInt(numMatch[1], 10) };

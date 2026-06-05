@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv } from 'lucide-react';
+import { Play, Maximize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
+import { useUI } from '../contexts/UIContext';
 
 import { Season, SeasonDetails } from '../types';
 
@@ -70,6 +71,7 @@ export default function PremiumVidLinkPlayer({
   onSeasonChange
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
+  const { isAdmin } = useUI();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
@@ -77,6 +79,8 @@ export default function PremiumVidLinkPlayer({
   const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
   const [activeCues, setActiveCues] = useState<any[]>([]);
   const [vttContent, setVttContent] = useState<string | null>(null);
+  const [isUploadingSub, setIsUploadingSub] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   // Ref so the VidLink postMessage handler always reads the latest vttContent
   // (avoids stale closure — the handler was only re-registered on [onProgress] change)
   const vttContentRef = React.useRef<string | null>(null);
@@ -226,6 +230,181 @@ export default function PremiumVidLinkPlayer({
       fetchAllTranslations();
     }
   }, [resolvedTmdbId, tmdbId, imdbId, type]);
+
+  const handleAdminSubUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploadingSub(true);
+    setUploadStatus(null);
+
+    const targetId = tmdbId || imdbId;
+    if (!targetId) {
+      setUploadStatus({
+        type: 'error',
+        message: "Missing content identifier (TMDb or IMDb ID)"
+      });
+      setIsUploadingSub(false);
+      return;
+    }
+
+    let successCount = 0;
+    let errors: string[] = [];
+    let lastBlobUrl = '';
+    let lastPublicUrl = '';
+    let lastFileName = '';
+    let lastFileContent = '';
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (extension !== 'srt' && extension !== 'vtt') {
+        errors.push(`${file.name}: ONLY VTT OR SRT ALLOWED`);
+        continue;
+      }
+
+      try {
+        // Read content
+        let fileContent = await file.text();
+        
+        // If it's SRT, convert to VTT format
+        if (extension === 'srt') {
+          fileContent = 'WEBVTT\n\n' + fileContent
+            .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
+            .replace(/^\d+$/gm, '');
+        }
+
+        // Determine season and episode if content is TV
+        let fileSeason = 0;
+        let fileEpisode = 0;
+
+        if (type === 'tv') {
+          // Try to parse from filename
+          const parsed = parseSeasonEpisodeFromFilename(file.name, season);
+          if (parsed) {
+            fileSeason = parsed.season;
+            fileEpisode = parsed.episode;
+          } else {
+            // Fallback to active episode if only 1 file is uploaded
+            if (files.length === 1) {
+              fileSeason = season !== undefined ? season : 0;
+              fileEpisode = episode !== undefined ? episode : 0;
+            } else {
+              throw new Error(`Could not determine episode from filename "${file.name}"`);
+            }
+          }
+        }
+
+        // Create Blob and upload to Supabase Storage subtitles bucket
+        const blob = new Blob([fileContent], { type: 'text/vtt' });
+        const timeStamp = Date.now();
+        const filePath = type === 'tv'
+          ? `custom/${targetId}_s${fileSeason}_e${fileEpisode}_${timeStamp}.vtt`
+          : `custom/${targetId}_${timeStamp}.vtt`;
+        
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('subtitles')
+          .upload(filePath, blob, {
+            contentType: 'text/vtt',
+            upsert: true
+          });
+
+        if (uploadErr) throw uploadErr;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('subtitles')
+          .getPublicUrl(filePath);
+
+        let resolvedPublicUrl = publicUrl;
+        if (resolvedPublicUrl.startsWith('//')) {
+          resolvedPublicUrl = `https:${resolvedPublicUrl}`;
+        }
+
+        // Save reference in custom_subtitles database table
+        const { error: dbErr } = await supabase
+          .from('custom_subtitles')
+          .upsert({
+            tmdb_id: String(targetId),
+            media_type: type || 'movie',
+            language: 'ku',
+            subtitle_url: resolvedPublicUrl,
+            file_name: file.name,
+            season: fileSeason,
+            episode: fileEpisode
+          }, {
+            onConflict: 'tmdb_id,media_type,language,season,episode'
+          });
+
+        if (dbErr) throw dbErr;
+
+        successCount++;
+        
+        // If it matches currently active season/episode (or is a movie), update local player state
+        const isActiveEpisode = type !== 'tv' || 
+          (fileSeason === (season || 0) && fileEpisode === (episode || 0));
+
+        if (isActiveEpisode) {
+          lastBlobUrl = URL.createObjectURL(blob);
+          lastPublicUrl = resolvedPublicUrl;
+          lastFileName = file.name;
+          lastFileContent = fileContent;
+        }
+      } catch (err: any) {
+        console.error(`[SUBTITLE UPLOAD] Error uploading ${file.name}:`, err);
+        errors.push(`${file.name}: ${err.message || err}`);
+      }
+
+      // Update status in real-time for batch uploads
+      if (files.length > 1) {
+        setUploadStatus({
+          type: 'success',
+          message: (language === 'ku' || language === 'badini')
+            ? `بارکردنی ${i + 1}/${files.length} ژێرنووس...`
+            : `Uploading ${i + 1}/${files.length} subtitles...`
+        });
+      }
+    }
+
+    setIsUploadingSub(false);
+
+    if (errors.length > 0) {
+      setUploadStatus({
+        type: 'error',
+        message: (language === 'ku' || language === 'badini')
+          ? `بارکردنی ${successCount} ژێرنووس سەرکەوتوو بوو. کێشە: ${errors.slice(0, 2).join(', ')}`
+          : `Uploaded ${successCount} successfully. Errors: ${errors.slice(0, 2).join(', ')}`
+      });
+    } else {
+      setUploadStatus({
+        type: 'success',
+        message: (language === 'ku' || language === 'badini')
+          ? `هەموو ${successCount} ژێرنووسەکە بە سەرکەوتوویی بارکران!`
+          : `ALL ${successCount} SUBTITLES UPLOADED SUCCESSFULLY!`
+      });
+    }
+
+    // If currently playing episode was updated, hot-swap it
+    if (lastBlobUrl) {
+      setVttContent(lastFileContent);
+      const newCustomSub = {
+        id: `custom-db-${targetId}`,
+        attributes: {
+          language: 'ku',
+          display_name: 'Kurdish',
+          url: lastPublicUrl,
+          file_id: 0
+        }
+      };
+      setAvailableSubs(prev => {
+        const filtered = prev.filter(s => s.id !== `custom-db-${targetId}`);
+        return [newCustomSub, ...filtered];
+      });
+      setCurrentSubId(`custom-db-${targetId}`);
+      setShowSubtitles(true);
+      setShowSubSettings(false);
+    }
+  };
 
   // Subtitle Search Logic
   const handleSearchAllSubs = useCallback(async () => {
@@ -646,8 +825,53 @@ export default function PremiumVidLinkPlayer({
               {subStudioTab === 'sub' ? (
                 <>
                   <div className="space-y-6">
+                    {isAdmin && (
+                      <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
+                            <ShieldCheck size={12} /> ADMIN SYSTEM
+                          </span>
+                          <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">CC Manager</span>
+                        </div>
+                        
+                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide leading-relaxed">
+                          {(language === 'ku' || language === 'badini') 
+                            ? 'فایلی ژێرنووسی تایبەت (.vtt یان .srt) ئاپلۆد بکە بۆ ئەم بابەتە' 
+                            : 'Upload a custom subtitle file (.vtt or .srt) for this movie/show.'}
+                        </p>
+
+                        <div className="flex flex-col gap-2">
+                          <input 
+                            type="file" 
+                            accept=".vtt,.srt" 
+                            id="admin-sub-upload-input-premium"
+                            multiple
+                            className="hidden" 
+                            onChange={handleAdminSubUpload}
+                          />
+                          <button
+                            onClick={() => document.getElementById('admin-sub-upload-input-premium')?.click()}
+                            disabled={isUploadingSub}
+                            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50"
+                          >
+                            <Download size={12} className="rotate-180" />
+                            {isUploadingSub 
+                              ? ((language === 'ku' || language === 'badini') ? 'ئاپلۆد دەکرێت...' : 'UPLOADING...') 
+                              : ((language === 'ku' || language === 'badini') ? 'هەڵبژاردنی ژێرنووس' : 'UPLOAD CC FILE')}
+                          </button>
+                          
+                          {uploadStatus && (
+                            <span className={`text-[8px] font-black uppercase tracking-widest text-center mt-1 ${
+                              uploadStatus.type === 'success' ? 'text-green-500' : 'text-red-500'
+                            }`}>
+                              {uploadStatus.message}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'قەبارەی نووسین' : 'Font Size'}</label>
                     <span className="text-[10px] font-bold text-red-500">{subFontSize}px</span>
                   </div>
@@ -1265,4 +1489,65 @@ function parseTime(timeStr: string) {
     seconds += parseFloat(parts[1]);
   }
   return seconds;
+}
+
+// Filename Episode Parser Helper
+function parseSeasonEpisodeFromFilename(filename: string, defaultSeason?: number): { season: number, episode: number } | null {
+  const cleanName = filename.toLowerCase();
+  
+  // Pattern 1: s01e02 or s1e2 or s01.e02 or s1_e2
+  const sExMatch = cleanName.match(/s(\d+)\s*[_.-]?\s*e(\d+)/);
+  if (sExMatch) {
+    return { season: parseInt(sExMatch[1], 10), episode: parseInt(sExMatch[2], 10) };
+  }
+
+  // Pattern 2: s1 ep4 or s01 ep04
+  const sEpMatch = cleanName.match(/s(\d+)\s*ep\s*(\d+)/);
+  if (sEpMatch) {
+    return { season: parseInt(sEpMatch[1], 10), episode: parseInt(sEpMatch[2], 10) };
+  }
+
+  // Pattern 3: season 1 episode 4
+  const seasonEpisodeMatch = cleanName.match(/season\s*(\d+)\s*episode\s*(\d+)/);
+  if (seasonEpisodeMatch) {
+    return { season: parseInt(seasonEpisodeMatch[1], 10), episode: parseInt(seasonEpisodeMatch[2], 10) };
+  }
+
+  // Pattern 4: season 1 ep 4
+  const seasonEpMatch = cleanName.match(/season\s*(\d+)\s*ep\s*(\d+)/);
+  if (seasonEpMatch) {
+    return { season: parseInt(seasonEpMatch[1], 10), episode: parseInt(seasonEpMatch[2], 10) };
+  }
+
+  // Pattern 5: s1 episode 4
+  const sEpisodeMatch = cleanName.match(/s(\d+)\s*episode\s*(\d+)/);
+  if (sEpisodeMatch) {
+    return { season: parseInt(sEpisodeMatch[1], 10), episode: parseInt(sEpisodeMatch[2], 10) };
+  }
+  
+  // Pattern 6: 1x02 or 01x02
+  const xMatch = cleanName.match(/(\d+)\s*x\s*(\d+)/);
+  if (xMatch) {
+    return { season: parseInt(xMatch[1], 10), episode: parseInt(xMatch[2], 10) };
+  }
+
+  // Pattern 7: ep02 or ep.02 or ep_02 or episode02 or episode_02 or episode.2
+  const epMatch = cleanName.match(/(?:ep|episode)\s*[_.-]?\s*(\d+)/);
+  if (epMatch) {
+    return { season: defaultSeason || 1, episode: parseInt(epMatch[1], 10) };
+  }
+
+  // Pattern 8: E02 or E2
+  const eOnlyMatch = cleanName.match(/[_.-]e(\d+)(?:\b|[_.-])/);
+  if (eOnlyMatch) {
+    return { season: defaultSeason || 1, episode: parseInt(eOnlyMatch[1], 10) };
+  }
+
+  // Pattern 9: Just a number at the end or surrounded by separators, e.g. "Game of Thrones - 03.srt" or "Game of Thrones 03"
+  const numMatch = cleanName.match(/(?:\b|[_.-])(\d{1,3})(?:\b|[_.-])(?=[^0-9]*\.[a-z0-9]+$)/);
+  if (numMatch) {
+    return { season: defaultSeason || 1, episode: parseInt(numMatch[1], 10) };
+  }
+
+  return null;
 }
