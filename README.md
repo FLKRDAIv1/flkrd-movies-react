@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" width="100%" alt="FKURD MOVIES Banner" style="border-radius: 2rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem;" />
+  <img src="pages/ASSETS/image copy.png" width="100%" alt="FKURD MOVIES Banner" style="border-radius: 2rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem;" />
   
   # 🎬 FKURD MOVIES (`fkurd.pro`)
   
