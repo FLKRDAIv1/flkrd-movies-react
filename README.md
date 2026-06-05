@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="pages/ASSETS/image copy.png" width="100%" alt="FKURD MOVIES Banner" style="border-radius: 2rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem;" />
+  <img src="public/apple-touch-icon.png" width="100%" alt="FKURD MOVIES Banner" style="border-radius: 2rem; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem;" />
   
   # 🎬 FKURD MOVIES (`fkurd.pro`)
   
