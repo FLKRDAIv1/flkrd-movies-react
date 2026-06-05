@@ -2208,18 +2208,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         exit={{ y: '-100%', opacity: 0 }}
                         transition={{ type: 'spring', damping: 24, stiffness: 100 }}
                         className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
-                        style={{ fontFamily: "'Inter', sans-serif" }}
+                        style={{ fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif" }}
                     >
                         {/* Header Row */}
                         <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="bg-red-600/10 border border-red-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
                                     <Tv size={12} className="text-red-500 animate-pulse" />
-                                    <span className="text-[9px] font-black text-red-500 uppercase tracking-widest leading-none">
+                                    <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
                                         {(language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL'}
                                     </span>
                                 </div>
-                                <span className="text-[10px] font-bold text-gray-500 tracking-wider">
+                                <span className={`font-bold text-gray-500 tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[10px]'}`}>
                                     {title}
                                 </span>
                             </div>
@@ -2233,7 +2233,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                         {/* Season Buttons Horizontal Row */}
                         <div className="flex flex-col gap-1.5 shrink-0 text-left">
-                            <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                            <span className={`font-black text-gray-500 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
                                 {(language === 'ku' || language === 'badini') ? 'سیزنەکان' : 'SEASONS'}
                             </span>
                             <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide">
@@ -2245,11 +2245,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             onClick={() => {
                                                 if (onSeasonChange) onSeasonChange(s.season_number);
                                             }}
-                                            className={`relative px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
+                                            className={`relative px-5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
                                                 isCurrentSeason 
                                                     ? 'border-red-500/20' 
                                                     : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.06]'
-                                            }`}
+                                            } ${(language === 'ku' || language === 'badini') ? 'text-[13px] py-1' : 'text-[10px] py-2.5'}`}
                                         >
                                             {isCurrentSeason ? (
                                                 <motion.div 
@@ -2258,7 +2258,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                                                 />
                                             ) : null}
-                                            <span className={`relative z-10 ${isCurrentSeason ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <span className={`relative z-10 ${isCurrentSeason ? 'text-white font-black' : 'text-gray-400 hover:text-white'}`}>
                                                 {(language === 'ku' || language === 'badini') 
                                                     ? `سیزنی ${s.season_number}`
                                                     : `Season ${s.season_number}`}
@@ -2271,7 +2271,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                         {/* Episodes Horizontal Swiper Container */}
                         <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
-                            <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest shrink-0">
+                            <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
                                 {(language === 'ku' || language === 'badini') 
                                     ? `ئەڵقەکانی سیزنی ${season}`
                                     : `SEASON ${season} EPISODES`}
@@ -2291,7 +2291,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     {!currentSeasonDetails ? (
                                         <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
                                             <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                            <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
                                                 {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING EPISODES...'}
                                             </span>
                                         </div>
@@ -2340,7 +2340,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                         {/* Rating Badge */}
                                                         {ep.vote_average > 0 && (
-                                                            <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] px-1.5 py-0.5 rounded-lg font-black text-[7px] uppercase tracking-wider flex items-center gap-1 z-20 border border-white/5">
+                                                            <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
                                                                 <span className="text-[8px] leading-none">★</span>
                                                                 <span>{ep.vote_average.toFixed(1)}</span>
                                                             </div>
@@ -2348,7 +2348,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                         {/* Active / Current indicator */}
                                                         {isActive && (
-                                                            <div className="absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white px-2 py-0.5 rounded-lg font-black text-[6px] uppercase tracking-widest shadow-[0_0_10px_rgba(220,38,38,0.5)] flex items-center gap-1.5 z-20">
+                                                            <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
                                                                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                                                                 <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
                                                             </div>
@@ -2356,7 +2356,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                         {/* Watched status tick */}
                                                         {isWatched && !isActive && (
-                                                            <div className="absolute top-2 right-2 bg-green-500/25 backdrop-blur-md text-green-400 px-1.5 py-0.5 rounded-lg border border-green-500/30 text-[7px] font-black tracking-wider z-20 flex items-center gap-0.5">
+                                                            <div className={`absolute top-2 right-2 bg-green-500/25 backdrop-blur-md text-green-400 rounded-lg border border-green-500/30 flex items-center gap-0.5 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
                                                                 <span>✓</span>
                                                                 <span>{(language === 'ku' || language === 'badini') ? 'بینراوە' : 'WATCHED'}</span>
                                                             </div>
@@ -2365,15 +2365,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                     {/* Card Metadata */}
                                                     <div className="flex flex-col px-1">
-                                                        <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'}`}>
+                                                        <span className={`uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
                                                             {(language === 'ku' || language === 'badini') 
                                                                 ? `ئەڵقەی ${ep.episode_number}` 
                                                                 : `Episode ${ep.episode_number}`}
                                                         </span>
-                                                        <h4 className="text-white font-black text-xs truncate group-hover:text-red-500 transition-colors mt-0.5" title={ep.name}>
+                                                        <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
                                                             {ep.name}
                                                         </h4>
-                                                        <p className="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mt-1" title={ep.overview}>
+                                                        <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={ep.overview}>
                                                             {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
                                                         </p>
                                                     </div>
