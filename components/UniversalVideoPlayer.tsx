@@ -1509,7 +1509,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         {subStudioTab === 'sub' ? (
                                             <>
                                                 <div className="flex flex-col gap-4">
-                                                    {isAdmin && (
+                                                    {isAdmin && contentType === 'tv' && (
                                                         <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
                                                             <div className="flex items-center justify-between">
                                                                 <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
