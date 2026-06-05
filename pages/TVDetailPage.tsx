@@ -574,6 +574,14 @@ const TVDetailPage: React.FC = () => {
                   subtitleUrl={subtitleUrl || undefined}
                   imdbId={imdbId || undefined}
                   onProgress={handlePlayerProgress}
+                  seasons={content?.seasons || []}
+                  currentSeasonDetails={seasonDetails || undefined}
+                  watchedEpisodes={watchedEpisodes}
+                  onEpisodeChange={(s, e) => handlePlayClick(s, e)}
+                  onSeasonChange={(s) => {
+                    setSelectedSeason(s);
+                    fetchSeasonDetails(s);
+                  }}
                 />
               ) : (
                 <UniversalVideoPlayer
@@ -589,6 +597,14 @@ const TVDetailPage: React.FC = () => {
                   episode={selectedEpisode}
                   title={content?.name}
                   tmdbId={id}
+                  seasons={content?.seasons || []}
+                  currentSeasonDetails={seasonDetails || undefined}
+                  watchedEpisodes={watchedEpisodes}
+                  onEpisodeChange={(s, e) => handlePlayClick(s, e)}
+                  onSeasonChange={(s) => {
+                    setSelectedSeason(s);
+                    fetchSeasonDetails(s);
+                  }}
                 />
               )}
 

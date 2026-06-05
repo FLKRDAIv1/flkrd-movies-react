@@ -8,6 +8,7 @@ import { subtitleService, SubtitleResult } from '../services/subtitleService';
 import { supabase } from '../utils/supabaseClient';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 import { useUI } from '../contexts/UIContext';
+import { Season, SeasonDetails } from '../types';
 
 interface UniversalVideoPlayerProps {
     src: string;
@@ -23,6 +24,11 @@ interface UniversalVideoPlayerProps {
     title?: string;
     peerSyncTrigger?: { currentTime: number; paused: boolean; timestamp: number } | null;
     tmdbId?: number | string;
+    seasons?: Season[];
+    currentSeasonDetails?: SeasonDetails;
+    watchedEpisodes?: Set<string>;
+    onEpisodeChange?: (season: number, episode: number) => void;
+    onSeasonChange?: (season: number) => void;
 }
 
 declare global {
@@ -121,7 +127,26 @@ const getLanguageFlag = (langCode: string) => {
     return defaultFlag;
 };
 
-const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ src, onLoad, accentColor, language, onProgress, subtitleUrl, imdbId, contentType, season, episode, title, peerSyncTrigger, tmdbId }) => {
+const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
+    src,
+    onLoad,
+    accentColor,
+    language,
+    onProgress,
+    subtitleUrl,
+    imdbId,
+    contentType,
+    season,
+    episode,
+    title,
+    peerSyncTrigger,
+    tmdbId,
+    seasons = [],
+    currentSeasonDetails,
+    watchedEpisodes = new Set(),
+    onEpisodeChange,
+    onSeasonChange
+}) => {
     const { isAdmin } = useUI();
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -135,6 +160,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffset] = useState(0);
     const [showSubSettings, setShowSubSettings] = useState(false);
+    const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
     const [availableSubs, setAvailableSubs] = useState<SubtitleResult[]>([]);
     const [isSearchingSubs, setIsSearchingSubs] = useState(false);
     const [localSubtitleUrl, setLocalSubtitleUrl] = useState<string | null>(null);
@@ -1370,12 +1396,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                     </div>
 
                     {/* Top-Right: Settings Menu */}
-                    <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-2">
+                    <div className="absolute top-4 right-4 z-40 flex flex-row items-center gap-2">
+                        {contentType === 'tv' && onEpisodeChange && (
+                            <button 
+                                onClick={() => {
+                                    setShowEpisodesPortal(!showEpisodesPortal);
+                                    setShowSubSettings(false);
+                                }}
+                                className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
+                                title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
+                            >
+                                <Tv size={18} className={showEpisodesPortal ? 'text-red-500 scale-110' : ''} />
+                            </button>
+                        )}
                         <button 
                             onClick={() => {
                                 if (availableSubs.length === 0) return;
                                 setShowSubSettings(!showSubSettings);
                                 if (!showSubSettings) handleSearchAllSubs();
+                                setShowEpisodesPortal(false);
                             }}
                             disabled={availableSubs.length === 0}
                             className={`p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl ${
@@ -1881,6 +1920,130 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                     {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Dismiss Studio'}
                                 </button>
                             </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Episodes Portal Drawer */}
+                        <AnimatePresence>
+                            {showEpisodesPortal && contentType === 'tv' && onEpisodeChange && (
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    className="bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/10 p-5 md:p-6 rounded-[24px] md:rounded-[32px] shadow-[0_32px_64px_rgba(0,0,0,0.8)] w-[90vw] sm:w-80 max-h-[75vh] flex flex-col gap-5 md:gap-6 custom-scrollbar overflow-y-auto"
+                                    style={{ fontFamily: "'Inter', sans-serif" }}
+                                >
+                                    <div className="flex items-center justify-between border-b border-white/5 pb-4 shrink-0">
+                                        <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase italic">
+                                            <Tv size={14} className="text-red-600 animate-pulse" />
+                                            {(language === 'ku' || language === 'badini') ? 'زنجیرە & ئەڵقەکان' : 'TV Hub & Episodes'}
+                                        </h3>
+                                        <button onClick={() => setShowEpisodesPortal(false)} className="text-gray-500 hover:text-white transition-colors">
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+
+                                    {/* Seasons Dropdown Selector */}
+                                    <div className="flex flex-col gap-2 shrink-0">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                            {(language === 'ku' || language === 'badini') ? 'سەیرکردنی سیزن' : 'Explore Season'}
+                                        </label>
+                                        <div className="relative">
+                                            <select 
+                                                value={season}
+                                                onChange={(e) => {
+                                                    const sNum = Number(e.target.value);
+                                                    if (onSeasonChange) onSeasonChange(sNum);
+                                                }}
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold appearance-none focus:border-red-600 outline-none pr-10"
+                                            >
+                                                {seasons.map((s) => (
+                                                    <option key={s.id} value={s.season_number} className="bg-[#0a0a0a] text-white">
+                                                        {(language === 'ku' || language === 'badini') 
+                                                            ? `سیزنی ${s.season_number} (${s.episode_count} ئەڵقە)`
+                                                            : `Season ${s.season_number} (${s.episode_count} Episodes)`}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs">▼</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Scrollable Episodes List */}
+                                    <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-h-[30vh]">
+                                        {!currentSeasonDetails ? (
+                                            <div className="py-12 flex flex-col items-center justify-center gap-4 opacity-50">
+                                                <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                                    {(language === 'ku' || language === 'badini') ? 'باردەکرێت...' : 'Loading Episodes...'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            currentSeasonDetails.episodes.map((ep) => {
+                                                const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
+                                                const isWatched = watchedEpisodes.has(epKey);
+                                                const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
+                                                const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+                                                
+                                                return (
+                                                    <button
+                                                        key={ep.id}
+                                                        onClick={() => {
+                                                            if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                                                            setShowEpisodesPortal(false);
+                                                        }}
+                                                        className={`w-full text-left p-2.5 rounded-2xl border transition-all flex items-start gap-3 relative overflow-hidden group ${
+                                                            isActive
+                                                                ? 'bg-red-600/10 border-red-500 text-white'
+                                                                : 'bg-white/5 border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        {/* Thumbnail container */}
+                                                        <div className="w-24 aspect-video rounded-lg overflow-hidden shrink-0 bg-black relative border border-white/5">
+                                                            {ep.still_path ? (
+                                                                <img 
+                                                                    src={`${IMAGE_BASE_URL}${ep.still_path}`} 
+                                                                    alt="" 
+                                                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                                                                    loading="lazy"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                                                            )}
+                                                            {isActive && (
+                                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                                                                </div>
+                                                            )}
+                                                            {isWatched && !isActive && (
+                                                                <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full text-[8px] font-bold">✓</div>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Metadata */}
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isActive ? 'text-red-500' : 'text-gray-400'}`}>
+                                                                {(language === 'ku' || language === 'badini')
+                                                                    ? `ئەڵقەی ${ep.episode_number}`
+                                                                    : `Episode ${ep.episode_number}`}
+                                                            </span>
+                                                            <span className="text-xs font-bold truncate pr-4 text-white">
+                                                                {ep.name}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => setShowEpisodesPortal(false)}
+                                        className="mt-2 py-3 bg-red-600/10 border border-red-600/20 rounded-[20px] text-[10px] font-black uppercase text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg shrink-0"
+                                    >
+                                        {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close Portal'}
+                                    </button>
+                                </motion.div>
                             )}
                         </AnimatePresence>
                     </div>

@@ -6,6 +6,8 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 
+import { Season, SeasonDetails } from '../types';
+
 interface PremiumVidLinkPlayerProps {
   tmdbId: string;
   type: 'movie' | 'tv';
@@ -18,6 +20,11 @@ interface PremiumVidLinkPlayerProps {
   subtitleUrl?: string;
   onProgress?: (data: any) => void;
   peerSyncTrigger?: { currentTime: number; paused: boolean; timestamp: number } | null;
+  seasons?: Season[];
+  currentSeasonDetails?: SeasonDetails;
+  watchedEpisodes?: Set<string>;
+  onEpisodeChange?: (season: number, episode: number) => void;
+  onSeasonChange?: (season: number) => void;
 }
 
 export default function PremiumVidLinkPlayer({
@@ -31,13 +38,19 @@ export default function PremiumVidLinkPlayer({
   subtitleUrl,
   imdbId,
   onProgress,
-  peerSyncTrigger
+  peerSyncTrigger,
+  seasons = [],
+  currentSeasonDetails,
+  watchedEpisodes = new Set(),
+  onEpisodeChange,
+  onSeasonChange
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [showSubSettings, setShowSubSettings] = useState(false);
+  const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
   const [activeCues, setActiveCues] = useState<any[]>([]);
   const [vttContent, setVttContent] = useState<string | null>(null);
   // Ref so the VidLink postMessage handler always reads the latest vttContent
@@ -470,11 +483,29 @@ export default function PremiumVidLinkPlayer({
     <div className="w-full h-full bg-black relative flex flex-col overflow-hidden">
       {/* Top Controls */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
+        {type === 'tv' && onEpisodeChange && (
+          <button 
+            onClick={() => {
+              setShowEpisodesPortal(!showEpisodesPortal);
+              setShowSubSettings(false);
+            }}
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
+              showEpisodesPortal 
+                ? 'bg-red-600 border-red-500 text-white' 
+                : 'bg-white/10 border-white/20 text-white/50'
+            }`}
+          >
+            <Tv size={14} />
+            <span className="text-[10px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+          </button>
+        )}
+
         {/* Subtitle Toggle */}
         <button 
           onClick={() => {
             setShowSubSettings(!showSubSettings);
             if (!showSubSettings) handleSearchAllSubs();
+            setShowEpisodesPortal(false);
           }}
           className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
             showSubSettings 
@@ -921,6 +952,129 @@ export default function PremiumVidLinkPlayer({
                 className="mt-auto py-4 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:border-red-500 transition-all"
               >
                 {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close Studio'}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Episodes Portal Drawer */}
+        <AnimatePresence>
+          {showEpisodesPortal && type === 'tv' && onEpisodeChange && (
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              className="absolute top-0 right-0 bottom-0 w-80 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-[200] p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-4 shrink-0">
+                <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase italic">
+                  <Tv size={16} className="text-red-600 animate-pulse" />
+                  {(language === 'ku' || language === 'badini') ? 'زنجیرە & ئەڵقەکان' : 'TV Hub & Episodes'}
+                </h3>
+                <button onClick={() => setShowEpisodesPortal(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Seasons Dropdown Selector */}
+              <div className="flex flex-col gap-2 shrink-0">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  {(language === 'ku' || language === 'badini') ? 'سەیرکردنی سیزن' : 'Explore Season'}
+                </label>
+                <div className="relative">
+                  <select 
+                    value={season}
+                    onChange={(e) => {
+                      const sNum = Number(e.target.value);
+                      if (onSeasonChange) onSeasonChange(sNum);
+                    }}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold appearance-none focus:border-red-600 outline-none pr-10"
+                  >
+                    {seasons.map((s) => (
+                      <option key={s.id} value={s.season_number} className="bg-[#0a0a0a] text-white">
+                        {(language === 'ku' || language === 'badini') 
+                          ? `سیزنی ${s.season_number} (${s.episode_count} ئەڵقە)`
+                          : `Season ${s.season_number} (${s.episode_count} Episodes)`}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs">▼</div>
+                </div>
+              </div>
+
+              {/* Scrollable Episodes List */}
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-h-[30vh]">
+                {!currentSeasonDetails ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-4 opacity-50">
+                    <div className="w-8 h-8 rounded-full border-2 border-red-600 border-t-transparent animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      {(language === 'ku' || language === 'badini') ? 'باردەکرێت...' : 'Loading Episodes...'}
+                    </span>
+                  </div>
+                ) : (
+                  currentSeasonDetails.episodes.map((ep) => {
+                    const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
+                    const isWatched = watchedEpisodes.has(epKey);
+                    const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
+                    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+                    
+                    return (
+                      <button
+                        key={ep.id}
+                        onClick={() => {
+                          if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                          setShowEpisodesPortal(false);
+                        }}
+                        className={`w-full text-left p-2.5 rounded-2xl border transition-all flex items-start gap-3 relative overflow-hidden group ${
+                          isActive
+                            ? 'bg-red-600/10 border-red-500 text-white'
+                            : 'bg-white/5 border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        {/* Thumbnail container */}
+                        <div className="w-24 aspect-video rounded-lg overflow-hidden shrink-0 bg-black relative border border-white/5">
+                          {ep.still_path ? (
+                            <img 
+                              src={`${IMAGE_BASE_URL}${ep.still_path}`} 
+                              alt="" 
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                          )}
+                          {isActive && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                            </div>
+                          )}
+                          {isWatched && !isActive && (
+                            <div className="absolute top-1 right-1 bg-green-500 text-white p-0.5 rounded-full text-[8px] font-bold">✓</div>
+                          )}
+                        </div>
+
+                        {/* Metadata */}
+                        <div className="flex flex-col min-w-0">
+                          <span className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isActive ? 'text-red-500' : 'text-gray-400'}`}>
+                            {(language === 'ku' || language === 'badini')
+                              ? `ئەڵقەی ${ep.episode_number}`
+                              : `Episode ${ep.episode_number}`}
+                          </span>
+                          <span className="text-xs font-bold truncate pr-4 text-white">
+                            {ep.name}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              
+              <button 
+                onClick={() => setShowEpisodesPortal(false)}
+                className="mt-auto py-4 bg-white/5 border border-white/5 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:border-red-500 transition-all shrink-0"
+              >
+                {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close Portal'}
               </button>
             </motion.div>
           )}
