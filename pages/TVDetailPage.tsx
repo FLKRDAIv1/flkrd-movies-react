@@ -79,7 +79,10 @@ const TVDetailPage: React.FC = () => {
   const [selectedSeason, setSelectedSeason] = useState(1);
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
-  const [activeSource, setActiveSource] = useState('FLKRD SERVER');
+  const [activeSource, setActiveSource] = useState(() => {
+    const ranked = getRankedSources(false);
+    return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
+  });
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<string>>(new Set());
   const [initialProgress, setInitialProgress] = useState(0);

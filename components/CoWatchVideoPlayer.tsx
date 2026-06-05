@@ -171,7 +171,11 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     return fullName.replace('FLKRD SERVER ', 'S');
   };
 
-  const [activeSource, setActiveSource] = useState('FLKRD SERVER');
+  const [sources, setSources] = useState(() => getRankedSources(!!subtitleUrl));
+  const [activeSource, setActiveSource] = useState(() => {
+    const ranked = getRankedSources(!!subtitleUrl);
+    return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
+  });
   const [currentTime, setCurrentTime] = useState(0);
   const [isPaused, setIsPaused] = useState(true);
   const [isHostPaused, setIsHostPaused] = useState(true);
@@ -195,6 +199,20 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   const lastPeerSyncPausedRef = useRef<boolean>(true);
   const lastPeerSyncTimestampRef = useRef<number>(0);
   const activeSourceRef = useRef<string>('FLKRD SERVER');
+
+  useEffect(() => {
+    const handleScoresUpdate = () => {
+      const ranked = getRankedSources(!!subtitleUrl);
+      setSources(ranked);
+      if (ranked.length > 0) {
+        setActiveSource(ranked[0].name);
+      }
+    };
+    window.addEventListener('player-source-scores-updated', handleScoresUpdate);
+    return () => {
+      window.removeEventListener('player-source-scores-updated', handleScoresUpdate);
+    };
+  }, [subtitleUrl]);
 
   // Broadcast status to room page header
   useEffect(() => {
@@ -552,7 +570,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     );
   };
 
-  const rankedSources = getRankedSources(!!subtitleUrl);
+  const rankedSources = sources;
 
   return (
     <div 

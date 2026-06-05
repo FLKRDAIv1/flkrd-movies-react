@@ -69,7 +69,10 @@ const DetailPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Content[]>([]);
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
-  const [activeSource, setActiveSource] = useState('FLKRD SERVER');
+  const [activeSource, setActiveSource] = useState(() => {
+    const ranked = getRankedSources(false);
+    return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
+  });
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
   const [logoPath, setLogoPath] = useState<string | null>(null);
