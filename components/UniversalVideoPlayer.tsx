@@ -173,104 +173,169 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     }, [subtitleUrl]);
 
     const handleAdminSubUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        // Check format
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        if (extension !== 'srt' && extension !== 'vtt') {
-            setUploadStatus({
-                type: 'error',
-                message: (language === 'ku' || language === 'badini') ? 'تەنها فایلی SRT یان VTT ڕێگەپێدراوە' : 'ONLY VTT OR SRT FILES ALLOWED'
-            });
-            return;
-        }
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
 
         setIsUploadingSub(true);
         setUploadStatus(null);
 
-        try {
-            // Read content
-            let fileContent = await file.text();
-            
-            // If it's SRT, convert to VTT format
-            if (extension === 'srt') {
-                fileContent = 'WEBVTT\n\n' + fileContent
-                    .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                    .replace(/^\d+$/gm, '');
+        const targetId = tmdbId || imdbId;
+        if (!targetId) {
+            setUploadStatus({
+                type: 'error',
+                message: "Missing content identifier (TMDb or IMDb ID)"
+            });
+            setIsUploadingSub(false);
+            return;
+        }
+
+        let successCount = 0;
+        let errors: string[] = [];
+        let lastBlobUrl = '';
+        let lastPublicUrl = '';
+        let lastFileName = '';
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            if (extension !== 'srt' && extension !== 'vtt') {
+                errors.push(`${file.name}: ONLY VTT OR SRT ALLOWED`);
+                continue;
             }
 
-            // Target ID to uniquely identify this movie
-            const targetId = tmdbId || imdbId;
-            if (!targetId) {
-                throw new Error("Missing content identifier (TMDb or IMDb ID)");
+            try {
+                // Read content
+                let fileContent = await file.text();
+                
+                // If it's SRT, convert to VTT format
+                if (extension === 'srt') {
+                    fileContent = 'WEBVTT\n\n' + fileContent
+                        .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
+                        .replace(/^\d+$/gm, '');
+                }
+
+                // Determine season and episode if content is TV
+                let fileSeason: number | null = null;
+                let fileEpisode: number | null = null;
+
+                if (contentType === 'tv') {
+                    // Try to parse from filename
+                    const parsed = parseSeasonEpisodeFromFilename(file.name, season);
+                    if (parsed) {
+                        fileSeason = parsed.season;
+                        fileEpisode = parsed.episode;
+                    } else {
+                        // Fallback to active episode if only 1 file is uploaded
+                        if (files.length === 1) {
+                            fileSeason = season !== undefined ? season : null;
+                            fileEpisode = episode !== undefined ? episode : null;
+                        } else {
+                            throw new Error(`Could not determine episode from filename "${file.name}"`);
+                        }
+                    }
+                }
+
+                // Create Blob and upload to Supabase Storage subtitles bucket
+                const blob = new Blob([fileContent], { type: 'text/vtt' });
+                const timeStamp = Date.now();
+                const filePath = contentType === 'tv'
+                    ? `custom/${targetId}_s${fileSeason}_e${fileEpisode}_${timeStamp}.vtt`
+                    : `custom/${targetId}_${timeStamp}.vtt`;
+                
+                const { data: uploadData, error: uploadErr } = await supabase.storage
+                    .from('subtitles')
+                    .upload(filePath, blob, {
+                        contentType: 'text/vtt',
+                        upsert: true
+                    });
+
+                if (uploadErr) throw uploadErr;
+
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('subtitles')
+                    .getPublicUrl(filePath);
+
+                // Save reference in custom_subtitles database table
+                const { error: dbErr } = await supabase
+                    .from('custom_subtitles')
+                    .upsert({
+                        tmdb_id: String(targetId),
+                        media_type: contentType || 'movie',
+                        language: 'ku',
+                        subtitle_url: publicUrl,
+                        file_name: file.name,
+                        season: fileSeason,
+                        episode: fileEpisode
+                    }, {
+                        onConflict: 'tmdb_id,media_type,language,season,episode'
+                    });
+
+                if (dbErr) throw dbErr;
+
+                successCount++;
+                
+                // If it matches currently active season/episode (or is a movie), update local player state
+                const isActiveEpisode = contentType !== 'tv' || 
+                    (fileSeason === season && fileEpisode === episode);
+
+                if (isActiveEpisode) {
+                    lastBlobUrl = URL.createObjectURL(blob);
+                    lastPublicUrl = publicUrl;
+                    lastFileName = file.name;
+                }
+            } catch (err: any) {
+                console.error(`[SUBTITLE UPLOAD] Error uploading ${file.name}:`, err);
+                errors.push(`${file.name}: ${err.message || err}`);
             }
 
-            // Create Blob and upload to Supabase Storage subtitles bucket
-            const blob = new Blob([fileContent], { type: 'text/vtt' });
-            const filePath = `custom/${targetId}_${Date.now()}.vtt`;
-            
-            const { data: uploadData, error: uploadErr } = await supabase.storage
-                .from('subtitles')
-                .upload(filePath, blob, {
-                    contentType: 'text/vtt',
-                    upsert: true
+            // Update status in real-time for batch uploads
+            if (files.length > 1) {
+                setUploadStatus({
+                    type: 'success',
+                    message: (language === 'ku' || language === 'badini')
+                        ? `بارکردنی ${i + 1}/${files.length} ژێرنووس...`
+                        : `Uploading ${i + 1}/${files.length} subtitles...`
                 });
+            }
+        }
 
-            if (uploadErr) throw uploadErr;
+        setIsUploadingSub(false);
 
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('subtitles')
-                .getPublicUrl(filePath);
-
-            // Save reference in custom_subtitles database table
-            const { error: dbErr } = await supabase
-                .from('custom_subtitles')
-                .upsert({
-                    tmdb_id: String(targetId),
-                    media_type: contentType || 'movie',
-                    language: 'ku',
-                    subtitle_url: publicUrl,
-                    file_name: file.name
-                }, {
-                    onConflict: 'tmdb_id,media_type,language'
-                });
-
-            if (dbErr) throw dbErr;
-
+        if (errors.length > 0) {
+            setUploadStatus({
+                type: 'error',
+                message: (language === 'ku' || language === 'badini')
+                    ? `بارکردنی ${successCount} ژێرنووس سەرکەوتوو بوو. کێشە: ${errors.slice(0, 2).join(', ')}`
+                    : `Uploaded ${successCount} successfully. Errors: ${errors.slice(0, 2).join(', ')}`
+            });
+        } else {
             setUploadStatus({
                 type: 'success',
-                message: (language === 'ku' || language === 'badini') ? 'ژێرنووس بە سەرکەوتوویی بارکرا!' : 'SUBTITLE UPLOADED SUCCESSFULLY!'
+                message: (language === 'ku' || language === 'badini')
+                    ? `هەموو ${successCount} ژێرنووسەکە بە سەرکەوتوویی بارکران!`
+                    : `ALL ${successCount} SUBTITLES UPLOADED SUCCESSFULLY!`
             });
+        }
 
-            // Instantly apply this subtitle locally!
-            const localBlobUrl = URL.createObjectURL(blob);
-            setLocalSubtitleUrl(localBlobUrl);
-            
+        // If currently playing episode was updated, hot-swap it
+        if (lastBlobUrl) {
+            setLocalSubtitleUrl(lastBlobUrl);
             const newCustomSub: SubtitleResult = {
                 id: `custom-db-${targetId}`,
                 attributes: {
                     language: 'ku',
-                    display_name: file.name || 'Kurdish Custom Subtitle (Uploaded)',
-                    url: publicUrl,
+                    display_name: lastFileName || 'Kurdish Custom Subtitle (Uploaded)',
+                    url: lastPublicUrl,
                     file_id: 0
                 }
             };
             setKurdishSub(newCustomSub);
             setAvailableSubs(prev => [newCustomSub, ...prev.filter(s => s && s.id !== newCustomSub.id)]);
-
-            // Clear input
-            e.target.value = '';
-        } catch (err: any) {
-            console.error("Upload error:", err);
-            setUploadStatus({
-                type: 'error',
-                message: err.message || 'UPLOAD PROCESS FAILED'
-            });
-        } finally {
-            setIsUploadingSub(false);
         }
+
+        // Clear input
+        e.target.value = '';
     };
 
     // Doblaj & Multi-Language Audio States
@@ -535,12 +600,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 let customSub: SubtitleResult | null = null;
                 const idToQuery = tmdbId || imdbId;
                 if (idToQuery) {
-                    const { data } = await supabase
+                    let query = supabase
                         .from('custom_subtitles')
                         .select('*')
                         .eq('tmdb_id', String(idToQuery))
-                        .eq('media_type', contentType)
-                        .maybeSingle();
+                        .eq('media_type', contentType || 'movie')
+                        .eq('language', 'ku');
+
+                    if (contentType === 'tv') {
+                        if (season !== undefined) {
+                            query = query.eq('season', season);
+                        }
+                        if (episode !== undefined) {
+                            query = query.eq('episode', episode);
+                        }
+                    } else {
+                        query = query.is('season', null).is('episode', null);
+                    }
+
+                    const { data } = await query.maybeSingle();
                         
                     if (data && data.subtitle_url) {
                         customSub = {
@@ -1315,6 +1393,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                                                                     type="file" 
                                                                     accept=".vtt,.srt" 
                                                                     id="admin-sub-upload-input"
+                                                                    multiple
                                                                     className="hidden" 
                                                                     onChange={handleAdminSubUpload}
                                                                 />
@@ -2001,5 +2080,42 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
         </div>
     );
 });
+
+// Filename Episode Parser Helper
+function parseSeasonEpisodeFromFilename(filename: string, defaultSeason?: number): { season: number, episode: number } | null {
+    const cleanName = filename.toLowerCase();
+    
+    // Pattern 1: s01e02 or s1e2 or s01.e02 or s1_e2
+    const sExMatch = cleanName.match(/s(\d+)\s*[_.-]?\s*e(\d+)/);
+    if (sExMatch) {
+        return { season: parseInt(sExMatch[1], 10), episode: parseInt(sExMatch[2], 10) };
+    }
+    
+    // Pattern 2: 1x02 or 01x02
+    const xMatch = cleanName.match(/(\d+)\s*x\s*(\d+)/);
+    if (xMatch) {
+        return { season: parseInt(xMatch[1], 10), episode: parseInt(xMatch[2], 10) };
+    }
+
+    // Pattern 3: ep02 or ep.02 or ep_02 or episode02 or episode_02 or episode.2
+    const epMatch = cleanName.match(/(?:ep|episode)\s*[_.-]?\s*(\d+)/);
+    if (epMatch) {
+        return { season: defaultSeason || 1, episode: parseInt(epMatch[1], 10) };
+    }
+
+    // Pattern 4: E02 or E2
+    const eOnlyMatch = cleanName.match(/[_.-]e(\d+)(?:\b|[_.-])/);
+    if (eOnlyMatch) {
+        return { season: defaultSeason || 1, episode: parseInt(eOnlyMatch[1], 10) };
+    }
+
+    // Pattern 5: Just a number at the end or surrounded by separators, e.g. "Game of Thrones - 03.srt" or "Game of Thrones 03"
+    const numMatch = cleanName.match(/(?:\b|[_.-])(\d{1,3})(?:\b|[_.-])(?=[^0-9]*\.[a-z0-9]+$)/);
+    if (numMatch) {
+        return { season: defaultSeason || 1, episode: parseInt(numMatch[1], 10) };
+    }
+
+    return null;
+}
 
 export default UniversalVideoPlayer;

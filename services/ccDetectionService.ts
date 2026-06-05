@@ -88,8 +88,8 @@ class CCDetectionService {
                         .select('id')
                         .eq('tmdb_id', String(item.tmdbId))
                         .eq('media_type', item.type)
-                        .maybeSingle();
-                    if (data) {
+                        .limit(1);
+                    if (data && data.length > 0) {
                         hasCustomCC = true;
                     }
                 } catch (dbErr) {
