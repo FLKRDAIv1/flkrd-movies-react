@@ -968,7 +968,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
 
         console.log("[PEER SYNC EFFECT] Applying peer sync update in UniversalVideoPlayer:", peerSyncTrigger);
 
-        if (isHls && videoRef.current) {
+        if (videoRef.current) {
             const timeDiff = Math.abs(videoRef.current.currentTime - peerSyncTrigger.currentTime);
             if (timeDiff > 2) {
                 videoRef.current.currentTime = peerSyncTrigger.currentTime;
@@ -1005,8 +1005,42 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                 // Play/Pause command suites
                 win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: targetPaused ? 'pause' : 'play', value: null }), '*');
                 win.postMessage(JSON.stringify({ event: 'command', command: targetPaused ? 'pause' : 'play', value: null }), '*');
+
+                // Update iframe src directly if it supports progress/start query parameters (for Videasy, VidKing, etc.)
+                const currentIframeSrc = iframeRef.current.src;
+                if (currentIframeSrc) {
+                    const url = new URL(currentIframeSrc);
+                    let urlChanged = false;
+
+                    if (url.searchParams.has('progress')) {
+                        const newProg = Math.floor(targetTime).toString();
+                        if (url.searchParams.get('progress') !== newProg) {
+                            url.searchParams.set('progress', newProg);
+                            urlChanged = true;
+                        }
+                    }
+                    if (url.searchParams.has('start')) {
+                        const newStart = Math.floor(targetTime).toString();
+                        if (url.searchParams.get('start') !== newStart) {
+                            url.searchParams.set('start', newStart);
+                            urlChanged = true;
+                        }
+                    }
+                    if (url.searchParams.has('startTime')) {
+                        const newStart = Math.floor(targetTime).toString();
+                        if (url.searchParams.get('startTime') !== newStart) {
+                            url.searchParams.set('startTime', newStart);
+                            urlChanged = true;
+                        }
+                    }
+
+                    if (urlChanged) {
+                        console.log("[PEER SYNC EFFECT] Reloading iframe to sync progress:", url.toString());
+                        iframeRef.current.src = url.toString();
+                    }
+                }
             } catch (err) {
-                console.warn("[PEER SYNC EFFECT] Error posting message to iframe:", err);
+                console.warn("[PEER SYNC EFFECT] Error posting message or updating iframe src:", err);
             }
         }
     }, [peerSyncTrigger, isHls, isIframe]);

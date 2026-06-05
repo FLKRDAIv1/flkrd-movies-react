@@ -536,7 +536,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   // Render Co-Watching Video Player with bidirectional control
   const getPlayerComponent = () => {
     const type = contentType || 'movie';
-    return activeSource === 'FLKRD SERVER 1' ? (
+    return activeSource === 'FLKRD SERVER 2' ? (
       <PremiumPlayer
         key={`${activeSource}-${playerKey}`}
         tmdbId={movieId}
