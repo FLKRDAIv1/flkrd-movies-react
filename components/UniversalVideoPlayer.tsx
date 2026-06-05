@@ -590,26 +590,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
     // Background discovery of Kurdish Subtitles on load or when parameters change
     useEffect(() => {
         const discoverKurdishCC = async () => {
-            if (!imdbId || !contentType) return;
+            if (!contentType) return;
+            const idToQuery = tmdbId || imdbId;
+            if (!idToQuery) return;
             try {
-                // 1. Fetch available subs from OpenSubtitles
-                const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
-                const safeResults = Array.isArray(results) ? results : [];
+                // 1. Fetch available subs from OpenSubtitles if imdbId is present
+                let safeResults: SubtitleResult[] = [];
+                if (imdbId) {
+                    try {
+                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
+                        safeResults = Array.isArray(results) ? results : [];
+                    } catch (openSubErr) {
+                        console.warn("[UNIVERSAL-PLAYER] OpenSubtitles search failed:", openSubErr);
+                    }
+                }
 
                 // 2. Fetch custom subtitle from Supabase custom_subtitles table
                 let customSub: SubtitleResult | null = null;
-                const idToQuery = tmdbId || imdbId;
-                if (idToQuery) {
-                    let query = supabase
-                        .from('custom_subtitles')
-                        .select('*')
-                        .eq('tmdb_id', String(idToQuery))
-                        .eq('media_type', contentType || 'movie')
-                        .eq('language', 'ku')
-                        .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
-                        .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
+                let query = supabase
+                    .from('custom_subtitles')
+                    .select('*')
+                    .eq('tmdb_id', String(idToQuery))
+                    .eq('media_type', contentType || 'movie')
+                    .eq('language', 'ku')
+                    .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
+                    .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
-                    const { data } = await query.maybeSingle();
+                const { data } = await query.maybeSingle();
                         
                     if (data && data.subtitle_url) {
                         customSub = {
@@ -622,7 +629,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({ 
                             }
                         };
                     }
-                }
 
                 let finalSubs = safeResults;
                 if (customSub) {

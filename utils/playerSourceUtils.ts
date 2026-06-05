@@ -80,7 +80,7 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
 
     case 'FLKRD SERVER 1': { // Videasy (TOP 2) — uses built-in subtitle upload UI
-      const veParams = `?color=${playerColor}&overlay=true&playsinline=1${progress > 10 ? `&progress=${Math.floor(progress)}` : ''}`;
+      const veParams = `?color=${playerColor}&autoplay=true&overlay=true&playsinline=1${progress > 10 ? `&progress=${Math.floor(progress)}` : ''}`;
       return isTv
         ? `https://player.videasy.net/tv/${id}/${season}/${episode}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
         : `https://player.videasy.net/movie/${id}${veParams}`;
