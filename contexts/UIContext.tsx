@@ -3,6 +3,18 @@ import { supabase } from '../utils/supabaseClient';
 
 type Theme = 'light' | 'dark' | 'premium-gradient-1' | 'premium-gradient-2' | 'premium-particles-galaxy' | 'premium-particles-moon' | 'premium-particles-stardust';
 
+export interface GlassConfig {
+  blurAmount: number;
+  saturation: number;
+  redOpacity: number;
+  darkOpacity: number;
+  borderOpacity: number;
+  displacementScale: number;
+  aberrationIntensity: number;
+  elasticity: number;
+  cornerRadius: number;
+}
+
 interface UIContextType {
   theme: Theme;
   accentColor: string;
@@ -21,6 +33,8 @@ interface UIContextType {
   setIsControllerDetected: (isDetected: boolean) => void;
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
+  glassConfig: GlassConfig;
+  updateGlassConfig: (config: GlassConfig) => Promise<boolean>;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -39,6 +53,17 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     localStorage.getItem('flkrd_performance_turbo') === 'true'
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [glassConfig, setGlassConfig] = useState<GlassConfig>({
+    blurAmount: 20,
+    saturation: 130,
+    redOpacity: 0.18,
+    darkOpacity: 0.65,
+    borderOpacity: 0.20,
+    displacementScale: 30,
+    aberrationIntensity: 2,
+    elasticity: 0.35,
+    cornerRadius: 28,
+  });
   const [isAdmin, setIsAdminState] = useState(() => {
     const isAdminStored = localStorage.getItem('isFlkrdAdmin') === 'true';
     if (!isAdminStored) return false;
@@ -62,15 +87,34 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const { data, error } = await supabase
           .from('server_config')
-          .select('server_name, priority');
+          .select('id, server_name, priority');
         if (error) throw error;
         if (data && data.length > 0) {
+          // Sync server priorities
           const scores: { [key: string]: number } = {};
           data.forEach(row => {
             scores[row.server_name] = row.priority;
           });
           localStorage.setItem('playerSourceScores', JSON.stringify(scores));
           window.dispatchEvent(new Event('player-source-scores-updated'));
+
+          // Sync glass customizer configurations
+          const newConfig: Partial<GlassConfig> = {};
+          data.forEach(row => {
+            if (row.server_name === 'glass_blur_amount') newConfig.blurAmount = row.priority;
+            if (row.server_name === 'glass_saturation') newConfig.saturation = row.priority;
+            if (row.server_name === 'glass_red_opacity') newConfig.redOpacity = row.priority / 100;
+            if (row.server_name === 'glass_dark_opacity') newConfig.darkOpacity = row.priority / 100;
+            if (row.server_name === 'glass_border_opacity') newConfig.borderOpacity = row.priority / 100;
+            if (row.server_name === 'glass_displacement_scale') newConfig.displacementScale = row.priority;
+            if (row.server_name === 'glass_aberration_intensity') newConfig.aberrationIntensity = row.priority;
+            if (row.server_name === 'glass_elasticity') newConfig.elasticity = row.priority / 100;
+            if (row.server_name === 'glass_corner_radius') newConfig.cornerRadius = row.priority;
+          });
+          
+          if (Object.keys(newConfig).length > 0) {
+            setGlassConfig(prev => ({ ...prev, ...newConfig }));
+          }
         }
       } catch (err) {
         console.error('[UI CONTEXT] Failed to sync server priorities:', err);
@@ -158,6 +202,63 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   }, [isConsoleMode]);
 
+  const updateGlassConfig = async (config: GlassConfig): Promise<boolean> => {
+    try {
+      const { data: currentRows, error: fetchError } = await supabase
+        .from('server_config')
+        .select('id, server_name');
+      
+      if (fetchError) throw fetchError;
+
+      const rowMap = new Map<string, number>();
+      let maxId = 0;
+      if (currentRows) {
+        currentRows.forEach(row => {
+          rowMap.set(row.server_name, row.id);
+          if (row.id > maxId) {
+            maxId = row.id;
+          }
+        });
+      }
+
+      const keys = [
+        { key: 'glass_blur_amount', val: config.blurAmount },
+        { key: 'glass_saturation', val: config.saturation },
+        { key: 'glass_red_opacity', val: Math.round(config.redOpacity * 100) },
+        { key: 'glass_dark_opacity', val: Math.round(config.darkOpacity * 100) },
+        { key: 'glass_border_opacity', val: Math.round(config.borderOpacity * 100) },
+        { key: 'glass_displacement_scale', val: config.displacementScale },
+        { key: 'glass_aberration_intensity', val: config.aberrationIntensity },
+        { key: 'glass_elasticity', val: Math.round(config.elasticity * 100) },
+        { key: 'glass_corner_radius', val: config.cornerRadius },
+      ];
+
+      let nextId = maxId + 1;
+      const upserts = keys.map(item => {
+        const dbId = rowMap.get(item.key);
+        if (dbId) {
+          return { id: dbId, server_name: item.key, priority: item.val };
+        } else {
+          const assignedId = nextId;
+          nextId++;
+          return { id: assignedId, server_name: item.key, priority: item.val };
+        }
+      });
+
+      const { error: upsertError } = await supabase
+        .from('server_config')
+        .upsert(upserts);
+
+      if (upsertError) throw upsertError;
+
+      setGlassConfig(config);
+      return true;
+    } catch (e) {
+      console.error('[UI CONTEXT] Failed to update glass config:', e);
+      return false;
+    }
+  };
+
   const toggleTheme = () => setThemeState(prev => prev === 'light' ? 'dark' : 'light');
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
@@ -175,8 +276,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <UIContext.Provider value={{ 
-      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin,
-      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin
+      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig,
+      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig
     }}>
       {children}
     </UIContext.Provider>

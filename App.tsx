@@ -204,30 +204,72 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
 };
 
+const pageVariants = {
+    initial: {
+        opacity: 0,
+        y: 16,
+        scale: 0.985
+    },
+    animate: {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        transition: {
+            type: "spring",
+            mass: 0.45,
+            stiffness: 180,
+            damping: 24,
+            restDelta: 0.001
+        }
+    },
+    exit: {
+        opacity: 0,
+        y: -12,
+        scale: 0.985,
+        transition: {
+            duration: 0.22,
+            ease: [0.32, 0, 0.67, 0] // easeInCubic
+        }
+    }
+};
+
+const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    useEffect(() => {
+        const mainEl = document.querySelector('main');
+        if (mainEl) {
+            mainEl.scrollTop = 0;
+        }
+    }, []);
+
+    return (
+        <motion.div
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex-1 w-full h-full flex flex-col"
+        >
+            {children}
+        </motion.div>
+    );
+};
+
 const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const location = useLocation();
     const [animatedLocation, setAnimatedLocation] = useState(location);
 
     useEffect(() => {
         if (location.pathname !== animatedLocation.pathname || location.search !== animatedLocation.search) {
-            if ((document as any).startViewTransition) {
-                (document as any).startViewTransition(() => {
-                    setAnimatedLocation(location);
-                    const mainEl = document.querySelector('main');
-                    if (mainEl) mainEl.scrollTop = 0;
-                });
-            } else {
-                setAnimatedLocation(location);
-                const mainEl = document.querySelector('main');
-                if (mainEl) mainEl.scrollTop = 0;
-            }
+            setAnimatedLocation(location);
         }
     }, [location, animatedLocation]);
 
     return (
-        <Routes location={animatedLocation}>
-            {children}
-        </Routes>
+        <AnimatePresence mode="wait">
+            <Routes location={animatedLocation} key={animatedLocation.pathname}>
+                {children}
+            </Routes>
+        </AnimatePresence>
     );
 };
 
@@ -236,7 +278,7 @@ const AppContent: React.FC<{
     mainRef: React.RefObject<HTMLElement | null>;
 }> = ({ scrolled, mainRef }) => {
     const { language, t } = useTranslation();
-    const { isSettingsOpen, setIsSettingsOpen } = useUI();
+    const { isSettingsOpen, setIsSettingsOpen, glassConfig } = useUI();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const location = useLocation();
 
@@ -278,6 +320,40 @@ const AppContent: React.FC<{
 
     return (
         <>
+            <svg className="hidden pointer-events-none absolute w-0 h-0" aria-hidden="true">
+                <defs>
+                    <filter
+                        id="container-glass"
+                        x="-10%"
+                        y="-10%"
+                        width="120%"
+                        height="120%"
+                        colorInterpolationFilters="sRGB"
+                    >
+                        <feTurbulence
+                            type="fractalNoise"
+                            baseFrequency="0.02 0.02"
+                            numOctaves="2"
+                            seed="1"
+                            result="turbulence"
+                        />
+                        <feGaussianBlur in="turbulence" stdDeviation="1.5" result="blurredNoise" />
+                        <feOffset in="blurredNoise" dx="0" dy="0" result="offsetNoise">
+                            <animate attributeName="dx" dur="45s" values="0; 1200; 0" repeatCount="indefinite" />
+                            <animate attributeName="dy" dur="45s" values="0; 600; 0" repeatCount="indefinite" />
+                        </feOffset>
+                        <feDisplacementMap
+                            in="SourceGraphic"
+                            in2="offsetNoise"
+                            scale={glassConfig.displacementScale}
+                            xChannelSelector="R"
+                            yChannelSelector="B"
+                            result="displaced"
+                        />
+                        <feComposite in="SourceGraphic" in2="displaced" operator="over" />
+                    </filter>
+                </defs>
+            </svg>
             {!isWatchPage && <Header scrolled={scrolled} />}
             <div className="flex flex-1 h-full overflow-hidden relative">
                 {!isWatchPage && <Sidebar />}
@@ -290,21 +366,25 @@ const AppContent: React.FC<{
                       }>
                           <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
                               <ViewTransitionRoutes>
-                                  <Route path="/" element={<HomePage />} />
-                                  <Route path="/tv" element={<TVShowsPage />} />
-                                  <Route path="/dubbed" element={<DubbedMoviesPage />} />
-                                  <Route path="/discover" element={<DiscoverPage />} /><Route path="/discover/:selection" element={<DiscoverPage />} />
-                                  <Route path="/shorts" element={<ShortsPage />} />
-                                  <Route path="/kurdish-cc" element={<KurdishCCPage />} />
-                                  <Route path="/studios" element={<StudiosListPage />} /><Route path="/studio/:id/:name" element={<StudioPage />} />
-                                  <Route path="/details/movie/:id" element={<DetailPage />} /><Route path="/details/tv/:id" element={<TVDetailPage />} />
-                                  <Route path="/dubbed-details/:id" element={<DubbedDetailPage />} />
-                                  <Route path="/search" element={<SearchPage />} /><Route path="/my-list" element={<MyListPage />} />
-                                  <Route path="/continue-watching" element={<ContinueWatchingPage />} />
-                                  <Route path="/profile" element={<ProfilePage />} />
-                                  <Route path="/watch/:ticket_id" element={<WatchRoomPage />} />
-                                  <Route path="/watch-room/:ticket_id" element={<WatchRoomPage />} />
-                                  <Route path="/doc" element={<DocPage />} />
+                                  <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
+                                  <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
+                                  <Route path="/dubbed" element={<AnimatedPage><DubbedMoviesPage /></AnimatedPage>} />
+                                  <Route path="/discover" element={<AnimatedPage><DiscoverPage /></AnimatedPage>} />
+                                  <Route path="/discover/:selection" element={<AnimatedPage><DiscoverPage /></AnimatedPage>} />
+                                  <Route path="/shorts" element={<AnimatedPage><ShortsPage /></AnimatedPage>} />
+                                  <Route path="/kurdish-cc" element={<AnimatedPage><KurdishCCPage /></AnimatedPage>} />
+                                  <Route path="/studios" element={<AnimatedPage><StudiosListPage /></AnimatedPage>} />
+                                  <Route path="/studio/:id/:name" element={<AnimatedPage><StudioPage /></AnimatedPage>} />
+                                  <Route path="/details/movie/:id" element={<AnimatedPage><DetailPage /></AnimatedPage>} />
+                                  <Route path="/details/tv/:id" element={<AnimatedPage><TVDetailPage /></AnimatedPage>} />
+                                  <Route path="/dubbed-details/:id" element={<AnimatedPage><DubbedDetailPage /></AnimatedPage>} />
+                                  <Route path="/search" element={<AnimatedPage><SearchPage /></AnimatedPage>} />
+                                  <Route path="/my-list" element={<AnimatedPage><MyListPage /></AnimatedPage>} />
+                                  <Route path="/continue-watching" element={<AnimatedPage><ContinueWatchingPage /></AnimatedPage>} />
+                                  <Route path="/profile" element={<AnimatedPage><ProfilePage /></AnimatedPage>} />
+                                  <Route path="/watch/:ticket_id" element={<AnimatedPage><WatchRoomPage /></AnimatedPage>} />
+                                  <Route path="/watch-room/:ticket_id" element={<AnimatedPage><WatchRoomPage /></AnimatedPage>} />
+                                  <Route path="/doc" element={<AnimatedPage><DocPage /></AnimatedPage>} />
                               </ViewTransitionRoutes>
                           </main>
                       </React.Suspense>

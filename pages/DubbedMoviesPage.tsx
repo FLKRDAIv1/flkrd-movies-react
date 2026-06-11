@@ -259,7 +259,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
-    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers'>('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers' | 'glass'>('upload');
     const [serversList, setServersList] = useState<{ id: number; server_name: string; priority: number }[]>([]);
     const [isLoadingServers, setIsLoadingServers] = useState(false);
     const [isSavingServers, setIsSavingServers] = useState(false);
@@ -1668,18 +1668,20 @@ const DubbedMoviesPage: React.FC = () => {
                                     </div>
 
 
-                                    {/* Tabs */}
-                                    <div className="flex gap-2 p-1 bg-white/5 rounded-xl mb-6 shrink-0">
-                                        <button onClick={() => setActiveAdminTab('upload')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'upload' ? 'bg-brand text-white' : 'text-gray-400 hover:text-white'}`}>
+                                    <div className="flex gap-2 p-1 bg-white/5 rounded-xl mb-6 shrink-0 overflow-x-auto scrollbar-hide">
+                                        <button onClick={() => setActiveAdminTab('upload')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'upload' ? 'bg-brand text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <PlusCircle size={16} /> Upload Movie
                                         </button>
-                                        <button onClick={() => setActiveAdminTab('archive')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                        <button onClick={() => setActiveAdminTab('archive')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ListVideo size={16} /> Movies List
                                         </button>
-                                        <button onClick={() => setActiveAdminTab('servers')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'servers' ? 'bg-yellow-500 text-black' : 'text-gray-400 hover:text-white'}`}>
+                                        <button onClick={() => setActiveAdminTab('servers')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'servers' ? 'bg-yellow-500 text-black' : 'text-gray-400 hover:text-white'}`}>
                                             <Server size={16} /> Servers
                                         </button>
-                                        <button onClick={() => setActiveAdminTab('banned')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                        <button onClick={() => setActiveAdminTab('glass')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'glass' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <Sparkles size={16} /> دیزاینی شووشە
+                                        </button>
+                                        <button onClick={() => setActiveAdminTab('banned')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
                                     </div>
@@ -2045,6 +2047,10 @@ const DubbedMoviesPage: React.FC = () => {
                                                 )}
                                             </div>
                                         )}
+
+                                        {activeAdminTab === 'glass' && (
+                                            <GlassCustomizer />
+                                        )}
                                     </div>
                                 </motion.div>
                             </motion.div>
@@ -2303,6 +2309,273 @@ const DubbedMoviesPage: React.FC = () => {
 
             </div>
         </div >
+    );
+};
+
+const GlassCustomizer: React.FC = () => {
+    const { glassConfig, updateGlassConfig } = useUI();
+    const { addNotification } = useNotification();
+    const [localConfig, setLocalConfig] = useState(glassConfig);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setLocalConfig(glassConfig);
+    }, [glassConfig]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        const success = await updateGlassConfig(localConfig);
+        setIsSaving(false);
+        if (success) {
+            addNotification({
+                type: 'success',
+                title: 'تۆمار کرا',
+                message: 'دیزاینەکە بە سەرکەوتوویی بڵاوکرایەوە بۆ هەموو بەکارهێنەران!'
+            });
+        } else {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک ڕوویدا',
+                message: 'پەیوەندی سەرنەکەوت لەگەڵ سێرڤەر.'
+            });
+        }
+    };
+
+    return (
+        <div className="space-y-6 pb-6 text-right" dir="rtl">
+            <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-2">کۆنتڕۆڵی دیزاینی شووشە (Glassmorphism Settings)</h3>
+                <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                    لەم بەشەدا دەتوانیت لێڵی، ڕوونی، و ڕەنگی بەشە شووشەییەکانی تەواوی وێب سایتەکە بگۆڕیت. هەر گۆڕانکارییەک تۆمار بکەیت ڕاستەوخۆ بۆ هەموو بەکارهێنەرانی ئەپ و وێب سایتەکە جێبەجێ دەبێت لە هەمان چرکەدا.
+                </p>
+            </div>
+
+            <div className="space-y-4">
+                {/* 1. Blur Amount Slider */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕادەی لێڵی پاشبنەما (Blur)</span>
+                        <span className="font-mono text-brand">{localConfig.blurAmount}px</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="5" 
+                        max="60" 
+                        value={localConfig.blurAmount}
+                        onChange={(e) => setLocalConfig({ ...localConfig, blurAmount: Number(e.target.value) })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 2. Saturation Slider */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>تێربوونی ڕەنگ (Saturation)</span>
+                        <span className="font-mono text-brand">{localConfig.saturation}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="50" 
+                        max="250" 
+                        value={localConfig.saturation}
+                        onChange={(e) => setLocalConfig({ ...localConfig, saturation: Number(e.target.value) })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 3. Red Tint Opacity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕوونی تیشکی سوور (Red Tint Opacity)</span>
+                        <span className="font-mono text-brand">{Math.round(localConfig.redOpacity * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="80" 
+                        value={Math.round(localConfig.redOpacity * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, redOpacity: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 4. Dark Base Opacity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>تاریکی بنەڕەتی (Dark Base Opacity)</span>
+                        <span className="font-mono text-brand">{Math.round(localConfig.darkOpacity * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="10" 
+                        max="95" 
+                        value={Math.round(localConfig.darkOpacity * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, darkOpacity: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 5. Border Opacity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕوونی چوارچێوەی بەشەکان (Border Opacity)</span>
+                        <span className="font-mono text-brand">{Math.round(localConfig.borderOpacity * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="90" 
+                        value={Math.round(localConfig.borderOpacity * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, borderOpacity: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 6. Liquid Glass Displacement Bending */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕادەی چەمانەوەی شووشەیی (Displacement Scale)</span>
+                        <span className="font-mono text-brand">{localConfig.displacementScale}</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="120" 
+                        value={localConfig.displacementScale}
+                        onChange={(e) => setLocalConfig({ ...localConfig, displacementScale: Number(e.target.value) })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 7. Aberration Intensity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕادەی لادانی ڕەنگی شووشەیی (Aberration Intensity)</span>
+                        <span className="font-mono text-brand">{localConfig.aberrationIntensity}</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="15" 
+                        value={localConfig.aberrationIntensity}
+                        onChange={(e) => setLocalConfig({ ...localConfig, aberrationIntensity: Number(e.target.value) })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 8. Elasticity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>نەرمی و جیڕی لەرینەوە (Elasticity)</span>
+                        <span className="font-mono text-brand">{Math.round(localConfig.elasticity * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="10" 
+                        max="90" 
+                        value={Math.round(localConfig.elasticity * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, elasticity: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 9. Corner Radius */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕادەی بازنەیی گۆشەکان (Corner Radius)</span>
+                        <span className="font-mono text-brand">{localConfig.cornerRadius}px</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="50" 
+                        value={localConfig.cornerRadius}
+                        onChange={(e) => setLocalConfig({ ...localConfig, cornerRadius: Number(e.target.value) })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+            </div>
+
+            {/* Live Preview Container */}
+            <div className="mt-6 p-5 bg-black/60 border border-white/5 rounded-[1.8rem] space-y-3">
+                <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider block">پێشبینی ڕاستەوخۆ (Live Preview)</span>
+                
+                {/* Local Dynamic Preview Filter for Slider dragging feedback */}
+                <svg className="hidden pointer-events-none absolute w-0 h-0" aria-hidden="true">
+                    <defs>
+                        <filter
+                            id="preview-container-glass"
+                            x="-10%"
+                            y="-10%"
+                            width="120%"
+                            height="120%"
+                            colorInterpolationFilters="sRGB"
+                        >
+                            <feTurbulence
+                                type="fractalNoise"
+                                baseFrequency="0.02 0.02"
+                                numOctaves="2"
+                                seed="1"
+                                result="turbulence"
+                            />
+                            <feGaussianBlur in="turbulence" stdDeviation="1.5" result="blurredNoise" />
+                            <feOffset in="blurredNoise" dx="0" dy="0" result="offsetNoise">
+                                <animate attributeName="dx" dur="45s" values="0; 1200; 0" repeatCount="indefinite" />
+                                <animate attributeName="dy" dur="45s" values="0; 600; 0" repeatCount="indefinite" />
+                            </feOffset>
+                            <feDisplacementMap
+                                in="SourceGraphic"
+                                in2="offsetNoise"
+                                scale={localConfig.displacementScale}
+                                xChannelSelector="R"
+                                yChannelSelector="B"
+                                result="displaced"
+                            />
+                            <feComposite in="SourceGraphic" in2="displaced" operator="over" />
+                        </filter>
+                    </defs>
+                </svg>
+
+                {/* Simulated Glass Element */}
+                <div 
+                    className="relative border overflow-hidden transition-all duration-300"
+                    style={{
+                        borderRadius: `${localConfig.cornerRadius}px`,
+                        borderColor: `rgba(229, 9, 20, ${localConfig.borderOpacity})`,
+                    }}
+                >
+                    {/* Isolated Liquid-Glass background overlay */}
+                    <div 
+                        className="absolute inset-0 z-0 transition-all duration-300 pointer-events-none"
+                        style={{
+                            background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${localConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${localConfig.darkOpacity})`,
+                            backdropFilter: `blur(${localConfig.blurAmount}px) saturate(${localConfig.saturation}%)`,
+                            WebkitBackdropFilter: `blur(${localConfig.blurAmount}px) saturate(${localConfig.saturation}%)`,
+                            borderRadius: `${localConfig.cornerRadius}px`,
+                            filter: 'url(#preview-container-glass)',
+                        }}
+                    />
+                    {/* Sharp content above background overlay */}
+                    <div className="relative z-10 p-6 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-xs font-black">F</div>
+                        <div className="text-right">
+                            <span className="text-xs font-black text-white block leading-none">FLKRD Stream Core</span>
+                            <span className="text-[8px] text-gray-400 font-bold uppercase mt-1 block">Live Preview Node</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Save Action */}
+            <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full mt-4 py-4 rounded-[1.5rem] bg-brand hover:bg-brand/90 text-white text-[10px] font-[1000] uppercase tracking-[0.3em] flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+                {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
+                تۆمارکردن و بڵاوکردنەوە بۆ هەمووان (Save & Apply)
+            </button>
+        </div>
     );
 };
 

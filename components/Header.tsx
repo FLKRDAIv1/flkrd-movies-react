@@ -16,7 +16,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const [recentItems, setRecentItems] = useState<WatchProgress[]>([]);
   const historyRef = useRef<HTMLDivElement>(null);
 
-  const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
+  const { theme, toggleTheme, accentColor, setIsSettingsOpen, glassConfig } = useUI();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -82,13 +82,25 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     <>
       {/* 1. Global Base Styling (Glassmorphism & Fixed Top) */}
       <header 
-        className={`global-header fixed top-0 w-full z-50 transition-all duration-500 border-b ${
+        className={`global-header fixed top-0 w-full z-50 transition-all duration-500 overflow-hidden ${
           scrolled 
-            ? 'bg-black/75 backdrop-blur-xl border-white/[0.08] shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
-            : 'bg-black/40 backdrop-blur-md border-white/[0.03]'
+            ? 'shadow-[0_4px_30px_rgba(0,0,0,0.4)]' 
+            : ''
         }`}
       >
-        <div className="flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18 min-w-0 gap-4">
+        <div 
+          className="absolute inset-0 z-0 transition-all duration-300 border-b"
+          style={{
+            background: scrolled 
+              ? `linear-gradient(to bottom, rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15}), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95}))` 
+              : `linear-gradient(to bottom, rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.8}), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.4}))`,
+            backdropFilter: `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)`,
+            WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)`,
+            borderBottomColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+            filter: 'url(#container-glass)',
+          }}
+        />
+        <div className="relative z-10 flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18 min-w-0 gap-4">
           
           {/* Right (Start) - App Logo */}
           <div className="flex items-center flex-shrink-0">
@@ -143,7 +155,13 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
           <div className="flex md:hidden items-center gap-3 flex-shrink-0">
             <button
               onClick={() => navigate('/search')}
-              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all cursor-pointer focus:outline-none"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-white/5 active:scale-90 transition-all cursor-pointer focus:outline-none"
+              style={{
+                background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+              }}
               aria-label={t('search')}
             >
               <Search className="w-5.5 h-5.5" />
@@ -151,7 +169,13 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             
             <button
               onClick={() => setIsDrawerOpen(true)}
-              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 active:scale-90 transition-all cursor-pointer focus:outline-none"
+              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-white/5 active:scale-90 transition-all cursor-pointer focus:outline-none"
+              style={{
+                background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+              }}
               aria-label="Open Menu"
             >
               <Menu className="w-5.5 h-5.5" />
@@ -177,7 +201,13 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             <div className="relative" ref={historyRef}>
               <button
                 onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                className={`bg-white/5 hover:bg-white/10 border border-white/10 rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group focus:outline-none ${isHistoryOpen ? 'bg-[var(--brand-red)] border-[var(--brand-red)] shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.4)]' : ''}`}
+                className={`border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group focus:outline-none ${isHistoryOpen ? 'bg-[var(--brand-red)] border-[var(--brand-red)] shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.4)]' : ''}`}
+                style={!isHistoryOpen ? {
+                  background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                  backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+                } : {}}
                 aria-label="Recently Viewed"
               >
                 <History className={`w-5 h-5 lg:w-5.5 lg:h-5.5 transition-colors ${isHistoryOpen ? 'text-white' : 'text-gray-400 group-hover:text-white'}`} />
@@ -258,7 +288,15 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             </div>
 
             {/* Theme Toggler */}
-            <div className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg">
+            <div 
+              className="border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg"
+              style={{
+                background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+              }}
+            >
               <AnimatedThemeToggler />
             </div>
 
@@ -271,18 +309,30 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             {!isDubPage && (
               <button
                 onClick={() => navigate('/profile')}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)] focus:outline-none"
+                className="border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group hover:bg-[var(--brand-red)] focus:outline-none"
+                style={{
+                  background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                  backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+                }}
                 aria-label={t('profile')}
               >
                 <User className="w-5 h-5 lg:w-5.5 lg:h-5.5 text-gray-400 group-hover:text-white transition-colors" />
               </button>
             )}
-
+ 
             {/* Settings Button */}
             {!isDubPage && (
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg focus:outline-none text-gray-400 hover:text-white"
+                className="border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg focus:outline-none text-gray-400 hover:text-white"
+                style={{
+                  background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
+                  backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
+                }}
                 aria-label={t('settings')}
               >
                 <Cog className="w-5 h-5 lg:w-5.5 lg:h-5.5" />
@@ -311,11 +361,33 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               animate={{ x: 0 }}
               exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: 220 * (glassConfig.elasticity / 0.35), 
+                damping: 26 * (0.35 / glassConfig.elasticity) 
+              }}
               className={`fixed top-0 bottom-0 ${
-                (language === 'ku' || language === 'badini') ? 'left-0 border-r' : 'right-0 border-l'
-              } z-[160] w-[82%] max-w-sm bg-black/85 backdrop-blur-2xl border-white/10 flex flex-col p-6 shadow-2xl md:hidden`}
+                (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
+              } z-[160] w-[82%] max-w-sm flex flex-col p-6 shadow-2xl md:hidden overflow-hidden`}
+              style={{
+                borderRadius: `${glassConfig.cornerRadius}px`,
+              }}
             >
+              {/* Isolated Liquid-Glass background overlay */}
+              <div 
+                className={`absolute inset-0 z-0 transition-all duration-300 ${
+                  (language === 'ku' || language === 'badini') ? 'border-r' : 'border-l'
+                }`}
+                style={{
+                  background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.2})`,
+                  backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity})`,
+                  borderRadius: `${glassConfig.cornerRadius}px`,
+                  filter: 'url(#container-glass)',
+                }}
+              />
+              <div className="relative z-10 flex flex-col h-full w-full">
               
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-5 border-b border-white/5">
@@ -443,6 +515,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 <span className="text-[7px] font-black tracking-widest text-[var(--brand-red)] uppercase mt-0.5">MADE BY ZANA FAROQ</span>
               </div>
 
+              </div>
             </motion.div>
           </>
         )}

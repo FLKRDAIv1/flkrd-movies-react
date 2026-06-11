@@ -156,7 +156,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     theme, setTheme, 
     accentColor, setAccentColor, 
     scale, setScale, 
-    isPerformanceMode, setIsPerformanceMode 
+    isPerformanceMode, setIsPerformanceMode,
+    glassConfig
   } = useUI();
   const { addNotification } = useNotification();
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -337,11 +338,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="relative w-full max-w-lg bg-card-bg rounded-[2.5rem] border border-main-text/10 shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden z-10"
+            className="relative w-full max-w-lg shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden z-10"
+            style={{ borderRadius: `${glassConfig.cornerRadius}px` }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Isolated Liquid-Glass background overlay */}
+            <div 
+              className="absolute inset-0 z-0 pointer-events-none transition-all duration-300"
+              style={{
+                background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${glassConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                borderRadius: `${glassConfig.cornerRadius}px`,
+                borderWidth: '1px',
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity})`,
+                filter: 'url(#container-glass)',
+              }}
+            />
+
             {/* Glass Highlight Overlay */}
-            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.03] to-transparent" />
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.03] to-transparent z-[1]" style={{ borderRadius: `${glassConfig.cornerRadius}px` }} />
+
+            {/* Sharp content container above background overlay */}
+            <div className="relative z-10 w-full h-full flex flex-col">
             
             {/* Header */}
             <div className="relative px-8 pt-8 pb-6 border-b border-white/[0.06] flex items-center justify-between">
@@ -1033,6 +1052,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            </div> {/* End of sharp content container */}
           </motion.div>
         </div>
       )}

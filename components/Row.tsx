@@ -229,11 +229,17 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 key={`${item.id}-${index}-${mediaType}`}
                 onClick={() => navigateToDetail(item)}
                 onMouseEnter={handlePrefetch}
-                className="flex-shrink-0 w-36 md:w-64 group/card relative cursor-pointer"
-                whileTap={{ scale: 0.95 }}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
+                className="flex-shrink-0 w-36 md:w-64 group/card relative cursor-pointer py-2 overflow-visible"
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
+                whileHover={{ scale: 1.04, y: -6 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 20
+                }}
               >
                 <div className="relative aspect-[2/3] w-full rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand shadow-xl bg-neutral-950/80">
                   <img
