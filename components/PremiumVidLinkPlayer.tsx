@@ -793,6 +793,54 @@ export default function PremiumVidLinkPlayer({
     };
   }, []);
 
+  // Screen Wake Lock API integration to prevent display sleep mode
+  useEffect(() => {
+    let wakeLock: any = null;
+
+    const requestLock = async () => {
+      if ('wakeLock' in navigator && isPlaying) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('[WAKE LOCK] Screen Wake Lock acquired successfully');
+        } catch (err) {
+          console.warn('[WAKE LOCK] Failed to acquire Screen Wake Lock:', err);
+        }
+      }
+    };
+
+    const releaseLock = async () => {
+      if (wakeLock) {
+        try {
+          await wakeLock.release();
+          console.log('[WAKE LOCK] Screen Wake Lock released');
+          wakeLock = null;
+        } catch (err) {
+          console.warn('[WAKE LOCK] Failed to release Screen Wake Lock:', err);
+        }
+      }
+    };
+
+    if (isPlaying) {
+      requestLock();
+    } else {
+      releaseLock();
+    }
+
+    // Re-acquire wake lock when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPlaying) {
+        requestLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      releaseLock();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPlaying]);
+
   useEffect(() => {
     if (!peerSyncTrigger || !iframeRef.current?.contentWindow) return;
 
