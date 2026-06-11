@@ -84,6 +84,13 @@ export default function PremiumVidLinkPlayer({
   // Ref so the VidLink postMessage handler always reads the latest vttContent
   // (avoids stale closure — the handler was only re-registered on [onProgress] change)
   const vttContentRef = React.useRef<string | null>(null);
+  const [parsedCues, setParsedCues] = useState<any[]>([]);
+  const parsedCuesRef = React.useRef<any[]>([]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const lastMessageTimeRef = React.useRef<number>(performance.now());
+  const lastReceivedTimeRef = React.useRef<number>(0);
+  const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
+
   const [availableSubs, setAvailableSubs] = useState<any[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [subSearchQuery, setSubSearchQuery] = useState('');
@@ -92,6 +99,18 @@ export default function PremiumVidLinkPlayer({
   const [isResolvingId, setIsResolvingId] = useState(true);
   // Keep ref in sync with state
   useEffect(() => { vttContentRef.current = vttContent; }, [vttContent]);
+
+  // Pre-parse and cache VTT cues once when content changes
+  useEffect(() => {
+    if (vttContent) {
+      const cues = parseVttCues(vttContent);
+      setParsedCues(cues);
+      parsedCuesRef.current = cues;
+    } else {
+      setParsedCues([]);
+      parsedCuesRef.current = [];
+    }
+  }, [vttContent]);
 
   const setAvailableSubsWithVirtual = useCallback((newSubs: any[]) => {
     if (!subtitleUrl) {
@@ -502,9 +521,47 @@ export default function PremiumVidLinkPlayer({
     return map[lang.toLowerCase()] || '🏳️';
   };
 
-  // Parse VTT for overlay and sync availableSubs
+  // Resolve subtitleUrl prop or auto-discover subtitle from DB automatically on mount or change
   useEffect(() => {
-    if (!subtitleUrl) {
+    if (subtitleUrl) {
+      setResolvedSubUrl(subtitleUrl);
+      return;
+    }
+
+    let isMounted = true;
+    const discoverSub = async () => {
+      const activeId = tmdbId || imdbId;
+      if (!activeId) return;
+
+      try {
+        const { data } = await supabase
+          .from('custom_subtitles')
+          .select('*')
+          .eq('tmdb_id', String(activeId))
+          .eq('media_type', type || 'movie')
+          .eq('language', 'ku')
+          .eq('season', type === 'tv' ? (season ?? 0) : 0)
+          .eq('episode', type === 'tv' ? (episode ?? 0) : 0)
+          .maybeSingle();
+
+        if (data && data.subtitle_url && isMounted) {
+          let url = data.subtitle_url;
+          if (url.startsWith('//')) {
+            url = `https:${url}`;
+          }
+          setResolvedSubUrl(url);
+        }
+      } catch (err) {
+        console.warn("[VIP-PLAYER] Auto-discovery query error:", err);
+      }
+    };
+    discoverSub();
+    return () => { isMounted = false; };
+  }, [subtitleUrl, tmdbId, imdbId, type, season, episode]);
+
+  // Parse VTT for overlay and sync availableSubs based on resolvedSubUrl
+  useEffect(() => {
+    if (!resolvedSubUrl) {
       setVttContent(null);
       return;
     }
@@ -514,14 +571,14 @@ export default function PremiumVidLinkPlayer({
       attributes: {
         language: 'ku',
         display_name: 'Kurdish CC (Auto Established)',
-        url: subtitleUrl,
+        url: resolvedSubUrl,
         file_id: 0
       }
     };
 
     // Inject into available subs list
     setAvailableSubs(prev => {
-      if (prev.some(s => s.id === 'prop-kurdish-auto' as any || s.attributes.url === subtitleUrl)) {
+      if (prev.some(s => s.id === 'prop-kurdish-auto' as any || s.attributes.url === resolvedSubUrl)) {
         return prev;
       }
       return [virtualSub, ...prev];
@@ -532,7 +589,7 @@ export default function PremiumVidLinkPlayer({
 
     const fetchVtt = async () => {
       try {
-        const blobUrl = await subtitleService.getSubtitleBlob(subtitleUrl);
+        const blobUrl = await subtitleService.getSubtitleBlob(resolvedSubUrl);
         if (blobUrl) {
           const response = await fetch(blobUrl);
           if (response.ok) {
@@ -545,7 +602,7 @@ export default function PremiumVidLinkPlayer({
       }
     };
     fetchVtt();
-  }, [subtitleUrl]);
+  }, [resolvedSubUrl]);
 
 
 
@@ -637,14 +694,24 @@ export default function PremiumVidLinkPlayer({
       if (event.data?.type === 'PLAYER_EVENT') {
         const { event: eventType, currentTime, duration } = event.data.data;
         
-        // SYNC SUBTITLES — use ref to avoid stale closure
-        if (vttContentRef.current && currentTime !== undefined) {
-          const cues = parseVttCues(vttContentRef.current);
-          const active = cues.filter(c => currentTime >= c.start && currentTime <= c.end);
-          setActiveCues(active);
+        // SYNC SUBTITLES — use cached cues array ref instead of parsing every frame
+        if (currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
+          lastMessageTimeRef.current = performance.now();
+          lastReceivedTimeRef.current = currentTime;
+          
+          if (eventType === 'pause' || eventType === 'paused') {
+            setIsPlaying(false);
+          } else {
+            setIsPlaying(true);
+          }
+
+          if (parsedCuesRef.current.length > 0) {
+            const active = parsedCuesRef.current.filter(c => currentTime >= c.start && currentTime <= c.end);
+            setActiveCues(active);
+          }
         }
 
-        if (onProgress && currentTime !== undefined) {
+        if (onProgress && currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
           onProgress({ 
             event: eventType,
             currentTime, 
@@ -657,18 +724,55 @@ export default function PremiumVidLinkPlayer({
       if (event.data?.type === 'MEDIA_DATA') {
         const mediaData = event.data.data;
         localStorage.setItem('vidLinkProgress', JSON.stringify(mediaData));
-        if (onProgress && mediaData.currentTime) {
-          onProgress({ 
-            event: 'timeupdate',
-            currentTime: mediaData.currentTime, 
-            duration: mediaData.duration 
-          });
+        const currentTime = mediaData.currentTime;
+        if (currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
+          lastMessageTimeRef.current = performance.now();
+          lastReceivedTimeRef.current = currentTime;
+          setIsPlaying(true);
+
+          if (parsedCuesRef.current.length > 0) {
+            const active = parsedCuesRef.current.filter(c => currentTime >= c.start && currentTime <= c.end);
+            setActiveCues(active);
+          }
+
+          if (onProgress) {
+            onProgress({ 
+              event: 'timeupdate',
+              currentTime, 
+              duration: mediaData.duration 
+            });
+          }
         }
       }
     };
     window.addEventListener('message', handleVidLinkMessage);
     return () => window.removeEventListener('message', handleVidLinkMessage);
   }, [onProgress]);
+
+  // Playhead Keep-Alive / Interpolator
+  // If the iframe's message stream stalls (common on long movies due to memory/ad blocker CPU throttling in third-party iframe ads),
+  // this effect will interpolate the current time based on elapsed performance.now() intervals to prevent subtitle freezing.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = performance.now();
+      const elapsedSinceLastMsg = (now - lastMessageTimeRef.current) / 1000;
+
+      if (isPlaying && elapsedSinceLastMsg > 2.0 && parsedCuesRef.current.length > 0) {
+        const estimatedTime = lastReceivedTimeRef.current + elapsedSinceLastMsg;
+        const active = parsedCuesRef.current.filter(c => estimatedTime >= c.start && estimatedTime <= c.end);
+        setActiveCues(active);
+
+        if (onProgress) {
+          onProgress({
+            event: 'timeupdate',
+            currentTime: estimatedTime
+          });
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isPlaying, onProgress]);
 
   // 3. SUPPRESS TAURI NATIVE DIALOGS from VidLink's built-in subtitle failure alerts
   // Tauri intercepts window.alert/confirm/prompt as native macOS dialogs — block them
@@ -1506,6 +1610,9 @@ function parseVttCues(vttText: string) {
       const timeLine = lines.find(l => l.includes('-->'));
       if (!timeLine) continue;
 
+      const [startStr, endStr] = timeLine.split('-->').map(s => s.trim());
+      const start = parseTime(startStr);
+      const end = parseTime(endStr);
       const rawText = lines.slice(lines.indexOf(timeLine) + 1).join('\n');
       const text = rawText
         .replace(/<[^>]*>/g, '')

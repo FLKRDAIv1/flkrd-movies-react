@@ -220,6 +220,19 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
     window.dispatchEvent(new CustomEvent('cowatch-status-change', { detail: { paused: isPaused } }));
   }, [isPaused]);
 
+  // Console toggle event listener & visibility broadcast
+  useEffect(() => {
+    const handleToggleConsole = () => {
+      setShowMobileConsole(prev => !prev);
+    };
+    window.addEventListener('cowatch-toggle-console', handleToggleConsole);
+    return () => window.removeEventListener('cowatch-toggle-console', handleToggleConsole);
+  }, []);
+
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('cowatch-console-visibility', { detail: showMobileConsole }));
+  }, [showMobileConsole]);
+
   const handlePlayPauseToggle = useCallback(async () => {
     const nextPaused = !isPausedRef.current;
     setIsPaused(nextPaused);
@@ -594,7 +607,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
             showMobileConsole 
               ? 'translate-y-0 opacity-100 pointer-events-auto' 
               : 'translate-y-[-10px] opacity-0 pointer-events-none'
-          } sm:translate-y-[-10px] sm:opacity-0 sm:pointer-events-none sm:group-hover/player:opacity-100 sm:group-hover/player:translate-y-0 sm:group-hover/player:pointer-events-auto`}
+          }`}
         >
           <div className="bg-[#050505]/85 backdrop-blur-2xl border border-white/10 rounded-2xl p-2.5 sm:p-3 shadow-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 text-white">
             

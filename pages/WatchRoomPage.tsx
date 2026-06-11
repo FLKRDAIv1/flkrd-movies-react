@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { 
   Tv, 
   Users, 
@@ -18,6 +18,7 @@ import {
   Delete,
   Maximize2,
   MessageSquare,
+  Server,
   X
 } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
@@ -144,6 +145,7 @@ export default function WatchRoomPage() {
   const { localUserId, localUserName } = useLocalUser();
 
   const location = useLocation();
+  const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 
   // Page States — instantly hydrate from router state if available (no loading screen!)
   const [ticket, setTicket] = useState<TicketRecord | null>(() => location.state?.ticket || null);
@@ -155,29 +157,25 @@ export default function WatchRoomPage() {
   const [playerPaused, setPlayerPaused] = useState(true);
   const [showHeader, setShowHeader] = useState(true);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isChatOpenRef = useRef(true);
+  const [isChatActive, setIsChatActive] = useState(false);
+  const isChatActiveRef = useRef(false);
 
   const resetRoomHeaderTimer = useCallback(() => {
     setShowHeader(true);
     if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
     headerTimeoutRef.current = setTimeout(() => {
-      if (!isChatOpenRef.current) {
+      // Hide header and chat overlay when user is idle, unless there is active typing or drawer open
+      if (!isChatActiveRef.current) {
         setShowHeader(false);
       }
-    }, 3500);
+    }, 4000);
   }, []);
 
-  // Keep header visible when chat is open, and restart timer when closed
+  // Sync ref and restart timer on state changes
   useEffect(() => {
-    isChatOpenRef.current = isChatOpen;
-    if (isChatOpen) {
-      // When chat is open, always show the header
-      setShowHeader(true);
-      if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current);
-    } else {
-      resetRoomHeaderTimer();
-    }
-  }, [isChatOpen, resetRoomHeaderTimer]);
+    isChatActiveRef.current = isChatActive;
+    resetRoomHeaderTimer();
+  }, [isChatOpen, isChatActive, resetRoomHeaderTimer]);
 
   // Cleanup header timeout on unmount
   useEffect(() => () => { if (headerTimeoutRef.current) clearTimeout(headerTimeoutRef.current); }, []);
@@ -199,6 +197,43 @@ export default function WatchRoomPage() {
       return 22;
     }
   });
+
+  const [chatHeight, setChatHeight] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem('flkrd-cowatch-chat-height')) || 480;
+    } catch {
+      return 480;
+    }
+  });
+
+  const [chatTextSize, setChatTextSize] = useState<number>(() => {
+    try {
+      return Number(localStorage.getItem('flkrd-cowatch-chat-text-size')) || 11;
+    } catch {
+      return 11;
+    }
+  });
+
+  const [chatOpacity, setChatOpacity] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('flkrd-cowatch-chat-opacity');
+      return saved !== null ? Number(saved) : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const roomRef = useRef<HTMLDivElement>(null);
+  const dragControls = useDragControls();
+  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+
+  useEffect(() => {
+    const handleConsoleVisibility = (e: any) => {
+      setIsConsoleOpen(e.detail);
+    };
+    window.addEventListener('cowatch-console-visibility', handleConsoleVisibility as EventListener);
+    return () => window.removeEventListener('cowatch-console-visibility', handleConsoleVisibility as EventListener);
+  }, []);
 
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
@@ -1101,15 +1136,24 @@ export default function WatchRoomPage() {
       : 'left-4 right-4 md:right-[calc(clamp(280px,var(--chat-width,22vw),50vw)+32px)] md:left-4' // Chat is on the right, so right has offset
     : 'left-4 right-4';
 
-
-  const sidebarResponsiveClass = isRtl
-    ? 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:top-4 sm:bottom-4 sm:right-auto sm:left-4'
-    : 'left-4 right-4 bottom-24 h-[300px] sm:h-[calc(100%-2rem)] sm:top-4 sm:bottom-4 sm:left-auto sm:right-4';
+  const handleRoomClick = (e: React.MouseEvent) => {
+    // Avoid blurring when clicking directly inside the chat sidebar inputs or drawers
+    if (e.target instanceof Element && e.target.closest('.z-40')) {
+      return;
+    }
+    if (document.activeElement?.id === 'chat-input') {
+      (document.activeElement as HTMLInputElement).blur();
+    }
+  };
 
   return (
     <div 
+      ref={roomRef}
       style={{ '--chat-width': `${chatWidth}vw` } as React.CSSProperties}
-      className="relative w-full h-[calc(100vh-40px)] bg-black text-white overflow-hidden select-none"
+      className="relative w-full h-full bg-black text-white overflow-hidden select-none"
+      onMouseMove={resetRoomHeaderTimer}
+      onTouchStart={resetRoomHeaderTimer}
+      onClick={handleRoomClick}
     >
       
       {/* Dynamic blurred color flow backdrop */}
@@ -1121,20 +1165,14 @@ export default function WatchRoomPage() {
         />
       </div>
 
-      {/* Full-Screen interaction layer for header reveal on mouse/touch move */}
+      {/* Capture mouse move / reveal globally across entire room when controls are hidden */}
       <div
-        className="absolute inset-0 z-20 pointer-events-none"
-        onMouseMove={resetRoomHeaderTimer}
-        onTouchStart={resetRoomHeaderTimer}
-        style={{ pointerEvents: 'none' }}
-      />
-      {/* Capture mouse move globally across entire room */}
-      <div
-        className="absolute inset-0 z-[5] pointer-events-auto"
+        className={`absolute inset-0 transition-all duration-300 ${
+          !showHeader ? 'z-25 pointer-events-auto bg-black/0' : 'z-0 pointer-events-none'
+        }`}
         onMouseMove={resetRoomHeaderTimer}
         onTouchStart={resetRoomHeaderTimer}
         onClick={resetRoomHeaderTimer}
-        style={{ background: 'transparent' }}
       />
 
       {/* 100% Full-Screen Synced Video Player */}
@@ -1162,7 +1200,7 @@ export default function WatchRoomPage() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          style={{ top: 'calc(1rem + env(safe-area-inset-top, 0px))', zIndex: 40 }}
+          style={{ top: isTauri ? 'calc(3.2rem + env(safe-area-inset-top, 0px))' : 'calc(2.2rem + env(safe-area-inset-top, 0px))', zIndex: 40 }}
           className={`absolute transition-all duration-500 ease-out px-3 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/5 bg-zinc-950/90 backdrop-blur-xl shadow-2xl flex items-center justify-between select-none ${headerSpacingClass}`}
       >
         
@@ -1203,38 +1241,57 @@ export default function WatchRoomPage() {
               playSyncChime('sync');
               window.dispatchEvent(new CustomEvent('cowatch-toggle-play'));
             }}
-            className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
+            className="flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-md rounded-xl border border-white/10 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 backdrop-blur-md p-2 sm:px-4 sm:py-2"
           >
             {playerPaused ? <Play size={13} className="fill-current text-white" /> : <Pause size={13} className="fill-current text-white" />}
             <span className="hidden sm:inline">{playerPaused ? ((language === 'ku' || language === 'badini') ? 'پەخش' : 'PLAY') : ((language === 'ku' || language === 'badini') ? 'ڕاگرتن' : 'PAUSE')}</span>
           </button>
 
+          {/* Servers Toggle Button */}
+          <button
+            onClick={() => {
+              playSyncChime('sync');
+              window.dispatchEvent(new CustomEvent('cowatch-toggle-console'));
+            }}
+            className={`flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-md rounded-xl border p-2 sm:px-4 sm:py-2 backdrop-blur-md ${
+              isConsoleOpen 
+                ? 'border-orange-500/30 text-orange-400 bg-orange-500/10 shadow-[0_0_15px_rgba(234,88,12,0.15)]' 
+                : 'border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 bg-white/5'
+            }`}
+          >
+            <Server size={13} className={isConsoleOpen ? 'animate-pulse text-orange-500' : ''} />
+            <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان' : 'SERVERS'}</span>
+          </button>
+
+          {/* Chat Toggle Button */}
           <button
             onClick={() => {
               playSyncChime('sync');
               setIsChatOpen(!isChatOpen);
             }}
-            className={`flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border p-2 sm:px-4 sm:py-2 ${
+            className={`flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-md rounded-xl border p-2 sm:px-4 sm:py-2 backdrop-blur-md ${
               isChatOpen 
-                ? 'border-orange-500 text-orange-500 bg-orange-950/20 shadow-[0_0_15px_rgba(234,88,12,0.15)]' 
-                : 'border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 bg-zinc-900/50'
+                ? 'border-orange-500/30 text-orange-400 bg-orange-500/10 shadow-[0_0_15px_rgba(234,88,12,0.15)]' 
+                : 'border-white/10 text-zinc-400 hover:text-white hover:bg-white/10 hover:border-white/20 bg-white/5'
             }`}
           >
             <MessageSquare size={13} className={isChatOpen ? 'animate-pulse text-orange-500' : ''} />
             <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'چات' : 'CHAT'}</span>
           </button>
 
+          {/* Sound Chime Button */}
           <button
             onClick={() => playSyncChime('join')}
-            className="hidden sm:flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-zinc-800 text-zinc-400 hover:text-orange-500 hover:border-orange-500/40 bg-zinc-900/50 p-2 sm:px-4 sm:py-2"
+            className="hidden sm:flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-md rounded-xl border border-white/10 bg-white/5 text-zinc-400 hover:text-orange-450 hover:bg-white/10 hover:border-white/20 backdrop-blur-md p-2 sm:px-4 sm:py-2"
           >
             <Sparkles size={13} className="text-orange-500 animate-pulse" />
             <span className="hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'دەنگ' : 'SOUND'}</span>
           </button>
 
+          {/* Leave Button */}
           <button
             onClick={() => navigate(getBackRoute(ticket.movie_id))}
-            className="flex items-center justify-center gap-1 sm:gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-lg rounded-xl border border-red-900/30 bg-red-650/10 hover:bg-red-600 text-red-500 hover:text-white p-2 sm:px-4 sm:py-2"
+            className="flex items-center justify-center gap-1 sm:gap-2 font-black uppercase tracking-widest text-[10px] active:scale-95 transition-all cursor-pointer shadow-md rounded-xl border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 hover:border-red-500/30 text-red-500 hover:text-red-400 backdrop-blur-md p-2 sm:px-4 sm:py-2"
           >
             <LogOut size={13} className="shrink-0" />
             {/* Hide label on very small mobile, show from xs up */}
@@ -1249,15 +1306,30 @@ export default function WatchRoomPage() {
 
       {/* Floating Cinematic Live Chat Sidebar overlay */}
       <motion.div
+        drag
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={roomRef}
+        dragElastic={0}
+        dragMomentum={false}
         animate={{ 
-          opacity: isChatOpen ? 1 : 0,
-          x: isChatOpen ? 0 : (isRtl ? -200 : 200),
-          scale: isChatOpen ? 1 : 0.95,
-          pointerEvents: isChatOpen ? 'auto' : 'none'
+          opacity: isChatOpen && (showHeader || isChatActive) ? 1 : 0,
+          scale: isChatOpen && (showHeader || isChatActive) ? 1 : 0.95,
+          pointerEvents: isChatOpen && (showHeader || isChatActive) ? 'auto' : 'none'
         }}
         transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-        style={isChatOpen ? (isMobile ? {} : { width: `clamp(280px, ${chatWidth}vw, 50vw)` }) : { width: '0px' }}
-        className={`absolute z-40 flex flex-col overflow-hidden shadow-2xl ${sidebarResponsiveClass}`}
+        style={{
+          width: isChatOpen ? (isMobile ? `clamp(240px, ${chatWidth + 50}vw, 95vw)` : `clamp(280px, ${chatWidth}vw, 50vw)`) : '0px',
+          height: isChatOpen ? `${chatHeight}px` : '0px',
+          backgroundColor: chatOpacity === 0 ? 'transparent' : `rgba(9, 9, 11, ${chatOpacity / 100 * 0.8})`,
+          borderColor: chatOpacity === 0 ? 'transparent' : `rgba(255, 255, 255, ${chatOpacity / 100 * 0.1})`,
+          backdropFilter: chatOpacity === 0 ? 'none' : `blur(${chatOpacity / 100 * 24}px)`,
+        }}
+        className={`absolute z-40 flex flex-col overflow-hidden shadow-2xl rounded-2xl border ${
+          isRtl
+            ? 'left-4 bottom-24 sm:left-6 sm:top-28 sm:bottom-auto'
+            : 'right-4 bottom-24 sm:right-6 sm:top-28 sm:bottom-auto'
+        }`}
       >
         <WatchChatSidebar
           ticketId={ticket.id}
@@ -1275,8 +1347,49 @@ export default function WatchRoomPage() {
               localStorage.setItem('flkrd-cowatch-chat-width', String(w));
             } catch (e) {}
           }}
+          chatHeight={chatHeight}
+          onChatHeightChange={(h) => {
+            setChatHeight(h);
+            try {
+              localStorage.setItem('flkrd-cowatch-chat-height', String(h));
+            } catch (e) {}
+          }}
+          chatTextSize={chatTextSize}
+          onChatTextSizeChange={(s) => {
+            setChatTextSize(s);
+            try {
+              localStorage.setItem('flkrd-cowatch-chat-text-size', String(s));
+            } catch (e) {}
+          }}
+          chatOpacity={chatOpacity}
+          onChatOpacityChange={(op) => {
+            setChatOpacity(op);
+            try {
+              localStorage.setItem('flkrd-cowatch-chat-opacity', String(op));
+            } catch (e) {}
+          }}
+          onHeaderPointerDown={(e) => dragControls.start(e)}
+          onActivityChange={setIsChatActive}
         />
       </motion.div>
+
+      {/* Floating Chat Trigger Button (only visible when chat is closed and controls are shown) */}
+      <AnimatePresence>
+        {!isChatOpen && showHeader && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 10 }}
+            onClick={() => {
+              playSyncChime('sync');
+              setIsChatOpen(true);
+            }}
+            className={`absolute z-30 bottom-24 ${isRtl ? 'left-6' : 'right-6'} p-4 rounded-full bg-[#0c0c0e]/80 border border-white/10 backdrop-blur-xl text-orange-500 hover:text-white shadow-2xl active:scale-95 transition-all cursor-pointer`}
+          >
+            <MessageSquare size={20} className="animate-pulse" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
     </div>
   );

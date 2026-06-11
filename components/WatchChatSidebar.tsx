@@ -55,6 +55,14 @@ interface WatchChatSidebarProps {
   isChatOpen?: boolean;
   chatWidth?: number;
   onChatWidthChange?: (width: number) => void;
+  chatHeight?: number;
+  onChatHeightChange?: (height: number) => void;
+  chatTextSize?: number;
+  onChatTextSizeChange?: (size: number) => void;
+  chatOpacity?: number;
+  onChatOpacityChange?: (opacity: number) => void;
+  onHeaderPointerDown?: (e: React.PointerEvent) => void;
+  onActivityChange?: (active: boolean) => void;
 }
 
 interface MessageItem {
@@ -107,6 +115,17 @@ const parseDurationToSeconds = (timeStr: string): number | null => {
   return null;
 };
 
+const EMOTICON_STICKERS: Record<string, string> = {
+  sun: '☀️',
+  lion: '🦁',
+  popcorn: '🍿',
+  clapper: '🎬',
+  heart: '💖',
+  pizza: '🍕',
+  soda: '🥤',
+  award: '🏆'
+};
+
 export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   ticketId,
   localUserId,
@@ -118,6 +137,14 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   isChatOpen = true,
   chatWidth = 22,
   onChatWidthChange,
+  chatHeight = 480,
+  onChatHeightChange,
+  chatTextSize = 11,
+  onChatTextSizeChange,
+  chatOpacity = 0,
+  onChatOpacityChange,
+  onHeaderPointerDown,
+  onActivityChange,
 }) => {
   const { language } = useTranslation();
   const { addNotification } = useNotification();
@@ -131,11 +158,19 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   const [showSettings, setShowSettings] = useState(false);
   const headerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [stickerError, setStickerError] = useState(false);
+  const [stickerTab, setStickerTab] = useState<'quick' | 'stipop'>('quick');
 
   // Use refs to track live state inside timeout callbacks (avoids stale closure)
   const isInputFocusedRef = useRef(false);
   const showStickersRef = useRef(false);
   const showSettingsRef = useRef(false);
+
+  // Communicate active state (focus/drawers open) to parent for auto-hide override
+  useEffect(() => {
+    if (onActivityChange) {
+      onActivityChange(isInputFocused || showStickers || showSettings);
+    }
+  }, [isInputFocused, showStickers, showSettings, onActivityChange]);
 
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -161,7 +196,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
     }
   }, [showStickers]);
 
-  const STIPOP_API_KEY = 'c186cd75c25d5975d1edf3e8fef69234';
+  const STIPOP_API_KEY = '12cb4172e75177634f7a7ef1c97944ab';
 
   const resetHeaderTimer = () => {
     setShowControls(true);
@@ -436,18 +471,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
   };
 
   const renderSticker = (name: string) => {
-    const emojis: Record<string, string> = {
-      sun: '☀️',
-      lion: '🦁',
-      popcorn: '🍿',
-      clapper: '🎬',
-      heart: '💖',
-      pizza: '🍕',
-      soda: '🥤',
-      award: '🏆'
-    };
-
-    const emoji = emojis[name] || '🎬';
+    const emoji = EMOTICON_STICKERS[name] || '🎬';
 
     return (
       <motion.span
@@ -510,7 +534,8 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       onMouseMove={resetHeaderTimer}
       onMouseEnter={resetHeaderTimer}
       onTouchStart={resetHeaderTimer}
-      className="flex flex-col h-full bg-transparent w-full rounded-[2.25rem] overflow-hidden relative select-none"
+      className="flex flex-col h-full bg-transparent w-full overflow-hidden relative select-none"
+      style={{ fontFamily: "'Outfit', 'Zain', sans-serif" }}
     >
       {/* Sidebar Header */}
       <AnimatePresence>
@@ -520,7 +545,12 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -15, height: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="p-4 flex flex-col shrink-0 bg-transparent text-white overflow-hidden w-full select-none"
+            style={{
+              background: chatOpacity === 0 ? 'transparent' : undefined,
+              touchAction: 'none'
+            }}
+            onPointerDown={onHeaderPointerDown}
+            className="p-3 flex flex-col shrink-0 bg-gradient-to-b from-black/85 via-black/40 to-transparent text-white overflow-hidden w-full select-none cursor-move"
           >
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
@@ -540,6 +570,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSettings(!showSettings)}
+                  onPointerDown={(e) => e.stopPropagation()}
                   className={`p-1 rounded-lg transition-colors cursor-pointer ${showSettings ? 'text-orange-500 bg-orange-950/15' : 'text-zinc-500 hover:text-white'}`}
                 >
                   <Settings size={14} />
@@ -550,6 +581,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
                       playSyncChime();
                       onClose();
                     }}
+                    onPointerDown={(e) => e.stopPropagation()}
                     className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
                   >
                     <X size={16} />
@@ -558,20 +590,78 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
               </div>
             </div>
 
-            {showSettings && onChatWidthChange && (
-              <div className="flex items-center gap-2 mt-2 px-1 py-1 border-t border-zinc-900 w-full select-none">
-                <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
-                  {(language === 'ku' || language === 'badini') ? 'قەبارەی چات:' : 'CHAT SIZE:'}
-                </span>
-                <input
-                  type="range"
-                  min="15"
-                  max="50"
-                  value={chatWidth}
-                  onChange={(e) => onChatWidthChange(Number(e.target.value))}
-                  className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
-                />
-                <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatWidth}%</span>
+            {showSettings && (
+              <div 
+                onPointerDown={(e) => e.stopPropagation()}
+                className="flex flex-col gap-1 w-full select-none"
+              >
+                {onChatWidthChange && (
+                  <div className="flex items-center gap-2 mt-2 px-1 py-1 border-t border-zinc-900 w-full">
+                    <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
+                      {(language === 'ku' || language === 'badini') ? 'قەبارەی چات:' : 'CHAT SIZE:'}
+                    </span>
+                    <input
+                      type="range"
+                      min="15"
+                      max="50"
+                      value={chatWidth}
+                      onChange={(e) => onChatWidthChange(Number(e.target.value))}
+                      className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatWidth}%</span>
+                  </div>
+                )}
+
+                {onChatHeightChange && (
+                  <div className="flex items-center gap-2 mt-1 px-1 py-1 border-t border-zinc-900/60 w-full">
+                    <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
+                      {(language === 'ku' || language === 'badini') ? 'بەرزی چات:' : 'CHAT HEIGHT:'}
+                    </span>
+                    <input
+                      type="range"
+                      min="180"
+                      max="700"
+                      value={chatHeight}
+                      onChange={(e) => onChatHeightChange(Number(e.target.value))}
+                      className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatHeight}px</span>
+                  </div>
+                )}
+
+                {onChatTextSizeChange && (
+                  <div className="flex items-center gap-2 mt-1 px-1 py-1 border-t border-zinc-900/60 w-full">
+                    <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
+                      {(language === 'ku' || language === 'badini') ? 'قەبارەی نووسین:' : 'FONT SIZE:'}
+                    </span>
+                    <input
+                      type="range"
+                      min="9"
+                      max="18"
+                      value={chatTextSize}
+                      onChange={(e) => onChatTextSizeChange(Number(e.target.value))}
+                      className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatTextSize}px</span>
+                  </div>
+                )}
+
+                {onChatOpacityChange && (
+                  <div className="flex items-center gap-2 mt-1 px-1 py-1 border-t border-zinc-900/60 w-full">
+                    <span className="text-[8px] font-black text-zinc-500 tracking-widest uppercase">
+                      {(language === 'ku' || language === 'badini') ? 'ڕوونی پانێڵ:' : 'PANEL OPACITY:'}
+                    </span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={chatOpacity}
+                      onChange={(e) => onChatOpacityChange(Number(e.target.value))}
+                      className="flex-1 accent-orange-500 h-1 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[9px] font-black text-orange-500 font-mono leading-none">{chatOpacity}%</span>
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
@@ -579,9 +669,12 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
       </AnimatePresence>
 
       {/* Message Feed */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-        <div className="text-center py-2 shrink-0">
-          <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-[0.2em] bg-zinc-900/50 border border-zinc-800 px-3 py-1 rounded-full">
+      <div 
+        style={{ fontSize: `${chatTextSize}px` }}
+        className="flex-1 overflow-y-auto p-2 space-y-2.5 custom-scrollbar flex flex-col"
+      >
+        <div className="text-center py-1 shrink-0">
+          <span className="text-[7px] font-bold text-zinc-500 uppercase tracking-[0.2em] bg-zinc-950/40 border border-zinc-800/40 px-2 py-0.5 rounded-full">
             {(language === 'ku' || language === 'badini') ? 'ئاهەنگی تەماشا دەستیپێکرد' : 'CO-WATCH INITIATED'}
           </span>
         </div>
@@ -589,28 +682,32 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isMe = msg.userId?.toLowerCase() === localUserId?.toLowerCase();
-
             const isHostUser = msg.sender === hostName;
 
             if (msg.isSystem) {
-              // YouTube style "Super Chat" or "System highlight" sync alert!
+              // System highlight sync alert
               return (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="w-full my-2 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-500 p-3.5 rounded-2xl border border-orange-500/20 shadow-lg relative overflow-hidden flex flex-col gap-1 text-left select-none"
+                  className="w-full my-1 p-1 flex flex-col gap-0.5 text-left select-none shrink-0 bg-transparent border-0"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[7px] font-[1000] tracking-[0.25em] text-white/80 uppercase">
+                    <span 
+                      className="text-[6px] font-[1000] tracking-[0.25em] text-orange-400 uppercase animate-pulse"
+                      style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                    >
                       {(language === 'ku' || language === 'badini') ? 'هاوکاتکردنی پەخش' : 'CINEMA SYNC ALERT'}
                     </span>
-                    <Sparkles size={10} className="text-white animate-pulse" />
+                    <Sparkles size={8} className="text-orange-400 animate-pulse" />
                   </div>
-                  <span className="text-xs font-black text-white leading-relaxed">
+                  <span 
+                    className="text-[1.1em] font-black text-white leading-relaxed" 
+                    style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                  >
                     🎉 {msg.text}
                   </span>
-                  <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
                 </motion.div>
               );
             }
@@ -618,46 +715,62 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             return (
               <motion.div
                 key={msg.id}
-                initial={{ opacity: 0, x: isRtl ? 15 : -15 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-start gap-2 text-sm leading-relaxed p-1.5 rounded-xl hover:bg-white/[0.03] transition-colors text-left drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]"
+                initial={{ opacity: 0, y: 8, x: isMe ? (isRtl ? -10 : 10) : (isRtl ? 10 : -10) }}
+                animate={{ opacity: 1, y: 0, x: 0 }}
+                className={`flex flex-col gap-0.5 max-w-[90%] shrink-0 ${
+                  isMe 
+                    ? (isRtl ? 'self-start' : 'self-end') 
+                    : (isRtl ? 'self-end' : 'self-start')
+                }`}
               >
-                <div className="flex items-baseline flex-wrap gap-1.5 w-full">
-                  {/* Glowing moderator/vip badge */}
-                  <span className={`text-[7px] font-[1000] uppercase tracking-widest px-1.5 py-0.5 rounded leading-none shrink-0 inline-flex items-center gap-0.5 ${
-                    isHostUser
-                      ? 'bg-red-600/20 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
-                      : 'bg-orange-600/20 text-orange-500 border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.15)]'
-                  }`}>
-                    {isHostUser ? ((language === 'ku' || language === 'badini') ? 'پێشکەشکار' : 'HOST') : ((language === 'ku' || language === 'badini') ? 'ئەندام' : 'MEMBER')}
-                  </span>
+                <div className="p-1 text-left">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                    <span 
+                      className={`text-[6px] font-[1000] uppercase tracking-widest px-1 py-0.5 rounded leading-none shrink-0 inline-flex items-center gap-0.5 ${
+                        isHostUser
+                          ? 'bg-red-650/20 text-red-400 border border-red-500/20'
+                          : 'bg-orange-600/20 text-orange-400 border border-orange-500/20'
+                      }`}
+                      style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                    >
+                      {isHostUser ? ((language === 'ku' || language === 'badini') ? 'پێشکەشکار' : 'HOST') : ((language === 'ku' || language === 'badini') ? 'ئەندام' : 'MEMBER')}
+                    </span>
+                    <span 
+                      className="font-black text-[9px] text-zinc-300 tracking-wider"
+                      style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                    >
+                      {msg.sender}
+                    </span>
+                  </div>
 
-                  {/* Nickname with YouTube highlight */}
-                  <span className={`font-black uppercase tracking-wider text-xs ${
-                    isHostUser ? 'text-red-400' : 'text-orange-400'
-                  }`}>
-                    {msg.sender}:
-                  </span>
-
-                  {/* Message body or Sticker inline */}
                   {isSticker(msg.text) ? (
-                    <div className="inline-block mt-1">
+                    <div className="inline-block mt-0.5">
                       {renderSticker(getStickerName(msg.text))}
                     </div>
                   ) : isStipopSticker(msg.text) ? (
-                    <div className="inline-block mt-1">
+                    <div className="inline-block mt-0.5">
                       <img 
                         src={getStipopStickerUrl(msg.text)} 
                         alt="Sticker" 
-                        className="w-16 h-16 object-contain inline-block my-0.5 filter drop-shadow-md select-none align-middle cursor-pointer active:scale-95 transition-all" 
+                        className="w-12 h-12 object-contain inline-block my-0.5 filter drop-shadow-md select-none align-middle cursor-pointer active:scale-95 transition-all" 
                       />
                     </div>
                   ) : (
-                    <span className="text-zinc-200 font-bold break-all leading-relaxed select-text">
+                    <p 
+                      className="text-[1.1em] font-bold text-zinc-150 break-words leading-relaxed select-text"
+                      style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                    >
                       {renderMessageText(msg.text)}
-                    </span>
+                    </p>
                   )}
                 </div>
+                {/* Timestamp */}
+                <span 
+                  className={`text-[6px] font-black text-zinc-500 tracking-widest uppercase px-1 mt-0.5 block ${isMe ? 'text-right' : 'text-left'}`}
+                  style={{ textShadow: '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.95)' }}
+                >
+                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
               </motion.div>
             );
           })}
@@ -665,7 +778,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Official Stipop SDK Sticker Drawer */}
+      {/* Official Stipop SDK / Quick Sticker Drawer */}
       <AnimatePresence>
         {showStickers && (
           <motion.div
@@ -673,14 +786,34 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-            className="absolute bottom-20 left-2 right-2 z-50 rounded-[1.75rem] overflow-hidden shadow-2xl border border-zinc-800"
+            className="absolute bottom-20 left-2 right-2 z-50 rounded-[1.75rem] overflow-hidden shadow-2xl border border-zinc-800 bg-[#09090b]/98 backdrop-blur-xl"
           >
-            {/* Header row */}
+            {/* Header row / Tabs */}
             <div className="flex justify-between items-center px-3 py-2 bg-zinc-950/98 border-b border-zinc-800/60">
-              <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest flex items-center gap-1.5">
-                <Sparkles size={9} className="text-orange-500" />
-                {(language === 'ku' || language === 'badini') ? 'ستیکەرەکانی ئاهەنگ' : 'STIPOP STICKERS'}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStickerTab('quick')}
+                  className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    stickerTab === 'quick'
+                      ? 'bg-orange-600/20 text-orange-500 border border-orange-500/30'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {(language === 'ku' || language === 'badini') ? 'ستیکەری خێرا' : 'Quick Emojis'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStickerTab('stipop')}
+                  className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                    stickerTab === 'stipop'
+                      ? 'bg-orange-600/20 text-orange-500 border border-orange-500/30'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
+                >
+                  {(language === 'ku' || language === 'badini') ? 'ستیکەرەکانی Stipop' : 'Stipop SDK'}
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={() => setShowStickers(false)}
@@ -690,64 +823,79 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
               </button>
             </div>
 
-            {/* Stipop SDK SearchComponent — handles auth, search, pagination, grid natively */}
-            <div className="stipop-sdk-wrapper" dir="ltr">
-              {stickerError ? (
-                <div className="flex flex-col items-center justify-center p-6 text-center bg-zinc-950/80 rounded-[1.25rem] border border-zinc-800 m-2 h-[220px]">
-                  <AlertTriangle className="text-orange-500 mb-3 animate-pulse" size={24} />
-                  <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-2">
-                    {(language === 'ku' || language === 'badini') ? 'ستیکەرەکان بەردەست نین' : 'Stickers Unavailable'}
-                  </p>
-                  <p className="text-[8px] font-bold text-zinc-500 leading-relaxed max-w-[200px] uppercase">
-                    {(language === 'ku' || language === 'badini')
-                      ? 'تکایە دڵنیابەرەوە کە کلیلی API لە فایلی کۆنفیگ بە شێوەیەکی دروست دانراوە.' 
-                      : 'Please verify that your Stipop API Key is correctly configured in your Dashboard.'}
-                  </p>
-                </div>
-              ) : (
-                <StickerErrorBoundary language={language}>
-                  <SearchComponent
-                    params={{
-                      apikey: STIPOP_API_KEY,
-                      userId: localUserId || 'flkrd-guest',
-                      lang: (language === 'ku' || language === 'badini') ? 'ar' : 'en',
-                      countryCode: (language === 'ku' || language === 'badini') ? 'IQ' : 'US',
-                      limit: 50,
-                    }}
-                    mainLanguage={(language === 'ku' || language === 'badini') ? 'ar' : 'en'}
-                    size={{ width: undefined, height: 220, imgSize: 80 }}
-                    backgroundColor="#09090b"
-                    column={4}
-                    scroll={true}
-                    scrollHover="#f97316"
-                    preview={false}
-                    loadingColor="#f97316"
-                    shadow="none"
-                    border={{
-                      border: 'none',
-                      radius: { all: 0 },
-                    }}
-                    input={{
-                      border: '1px solid #27272a',
-                      radius: 12,
-                      backgroundColor: '#18181b',
-                      color: '#ffffff',
-                      width: undefined,
-                      height: 34,
-                      focus: '#f97316',
-                      search: (language === 'ku' || language === 'badini') ? 'گەڕان...' : 'Search stickers...',
-                    }}
-                    stickerClick={(sticker: any) => {
-                      // SDK passes the sticker object — url is the image URL
-                      const imgUrl = sticker?.url || sticker?.imgUrl || sticker?.stickerImg || sticker?.img || '';
-                      if (imgUrl) {
-                        handleSendStipopSticker(imgUrl);
-                      }
-                    }}
-                  />
-                </StickerErrorBoundary>
-              )}
-            </div>
+            {/* Tab content */}
+            {stickerTab === 'quick' ? (
+              <div className="p-4 grid grid-cols-4 gap-3 bg-[#09090b]/80 h-[220px] overflow-y-auto custom-scrollbar justify-items-center items-center">
+                {Object.keys(EMOTICON_STICKERS).map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => handleSendSticker(name)}
+                    className="w-16 h-16 rounded-2xl bg-white/5 border border-white/5 hover:border-orange-500/30 active:scale-90 flex items-center justify-center transition-all cursor-pointer text-3xl shadow-lg hover:bg-white/10"
+                    title={name}
+                  >
+                    {EMOTICON_STICKERS[name]}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="stipop-sdk-wrapper" dir="ltr">
+                {stickerError ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center bg-zinc-950/80 rounded-[1.25rem] border border-zinc-800 m-2 h-[220px]">
+                    <AlertTriangle className="text-orange-500 mb-3 animate-pulse" size={24} />
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-wider mb-2">
+                      {(language === 'ku' || language === 'badini') ? 'ستیکەرەکان بەردەست نین' : 'Stickers Unavailable'}
+                    </p>
+                    <p className="text-[8px] font-bold text-zinc-500 leading-relaxed max-w-[200px] uppercase">
+                      {(language === 'ku' || language === 'badini')
+                        ? 'تکایە دڵنیابەرەوە کە کلیلی API لە فایلی کۆنفیگ بە شێوەیەکی دروست دانراوە.' 
+                        : 'Please verify that your Stipop API Key is correctly configured in your Dashboard.'}
+                    </p>
+                  </div>
+                ) : (
+                  <StickerErrorBoundary language={language}>
+                    <SearchComponent
+                      params={{
+                        apikey: STIPOP_API_KEY,
+                        userId: localUserId || 'flkrd-guest',
+                        lang: (language === 'ku' || language === 'badini') ? 'ar' : 'en',
+                        countryCode: (language === 'ku' || language === 'badini') ? 'IQ' : 'US',
+                        limit: 50,
+                      }}
+                      mainLanguage={(language === 'ku' || language === 'badini') ? 'ar' : 'en'}
+                      size={{ width: undefined, height: 220, imgSize: 80 }}
+                      backgroundColor="#09090b"
+                      column={4}
+                      scroll={true}
+                      scrollHover="#f97316"
+                      preview={false}
+                      loadingColor="#f97316"
+                      shadow="none"
+                      border={{
+                        border: 'none',
+                        radius: { all: 0 },
+                      }}
+                      input={{
+                        border: '1px solid #27272a',
+                        radius: 12,
+                        backgroundColor: '#18181b',
+                        color: '#ffffff',
+                        width: undefined,
+                        height: 34,
+                        focus: '#f97316',
+                        search: (language === 'ku' || language === 'badini') ? 'گەڕان...' : 'Search stickers...',
+                      }}
+                      stickerClick={(sticker: any) => {
+                        const imgUrl = sticker?.url || sticker?.imgUrl || sticker?.stickerImg || sticker?.img || '';
+                        if (imgUrl) {
+                          handleSendStipopSticker(imgUrl);
+                        }
+                      }}
+                    />
+                  </StickerErrorBoundary>
+                )}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -761,37 +909,41 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: 15, height: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-            className="p-4 bg-transparent shrink-0 relative overflow-hidden w-full select-none"
+            style={{
+              background: chatOpacity === 0 ? 'transparent' : undefined
+            }}
+            className="p-2 bg-gradient-to-t from-black/85 via-black/40 to-transparent shrink-0 relative overflow-hidden w-full select-none"
           >
-            <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-1.5 focus-within:border-orange-600/50 transition-colors">
+            <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 rounded-xl p-1 focus-within:border-orange-500/50 transition-all shadow-inner">
               <button
                 type="button"
                 onClick={() => {
                   playSyncChime();
                   setShowStickers(!showStickers);
                 }}
-                className={`p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer ${showStickers ? 'text-orange-500' : 'text-zinc-400'}`}
+                className={`p-2 rounded-lg bg-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-95 shrink-0 cursor-pointer ${showStickers ? 'text-orange-500' : 'text-zinc-400'}`}
               >
-                <Smile size={16} />
+                <Smile size={14} />
               </button>
               
               <input
                 type="text"
+                id="chat-input"
                 placeholder={(language === 'ku' || language === 'badini') ? 'نامەیەک بنووسە...' : 'Type a message...'}
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
                 disabled={sending}
-                className="flex-1 bg-transparent text-sm text-white px-2 py-2 outline-none font-bold placeholder-zinc-500 min-w-0"
+                className="flex-1 bg-transparent text-xs text-white px-1.5 py-1 outline-none font-bold placeholder-zinc-500 min-w-0"
               />
               
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || sending}
-                className="w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
+                className="w-8 h-8 rounded-lg bg-orange-600 hover:bg-orange-700 disabled:opacity-40 disabled:hover:bg-orange-600 text-white flex items-center justify-center transition-all shadow-lg active:scale-95 shrink-0 cursor-pointer"
               >
-                <Send size={16} />
+                <Send size={14} />
               </button>
             </div>
           </motion.form>

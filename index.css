@@ -16,12 +16,12 @@
   --box-bg-rgb: 20, 20, 20;
   --border-color-rgb: 38, 38, 38;
   --global-scale: 1;
-  --player-console-top: calc(5.2rem + env(safe-area-inset-top, 0px));
+  --player-console-top: calc(7.2rem + env(safe-area-inset-top, 0px));
 }
 
 @media (min-width: 640px) {
   :root {
-    --player-console-top: calc(6.2rem + env(safe-area-inset-top, 0px));
+    --player-console-top: calc(8.2rem + env(safe-area-inset-top, 0px));
   }
 }
 
@@ -306,6 +306,16 @@ html.console-mode-active .web-only {
 /* Ensure the DesktopTitleBar is always on top */
 .is-tauri [data-tauri-drag-region] {
   z-index: 9999 !important;
+}
+
+/* Push the video player console down in Tauri mode to clear the lowered room header */
+.is-tauri {
+  --player-console-top: calc(8.5rem + env(safe-area-inset-top, 0px)) !important;
+}
+@media (min-width: 640px) {
+  .is-tauri {
+    --player-console-top: calc(9.5rem + env(safe-area-inset-top, 0px)) !important;
+  }
 }
 
 /* Fix for transparent window backgrounds */

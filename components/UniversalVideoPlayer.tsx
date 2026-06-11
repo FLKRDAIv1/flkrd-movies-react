@@ -193,6 +193,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     useEffect(() => {
         currentTimeRef.current = currentTime;
     }, [currentTime]);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const lastMessageTimeRef = useRef<number>(performance.now());
+    const lastReceivedTimeRef = useRef<number>(0);
     const [subtitleCues, setSubtitleCues] = useState<{start: number, end: number, text: string}[]>([]);
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
@@ -966,6 +969,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 eventName = 'seek';
             }
 
+            if (paused === true) {
+                setIsPlaying(false);
+            } else if (paused === false) {
+                setIsPlaying(true);
+            }
+
             // Comprehensive postMessage event parser for all embed sources
             if (payload.type === 'timeupdate' || payload.type === 'vjs-timeupdate') {
                 newTime = payload.data?.currentTime || payload.currentTime || payload.seconds;
@@ -1004,16 +1013,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const timeAsNum = newTime !== undefined ? Number(newTime) : undefined;
 
             if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
-                setCurrentTime(timeAsNum);
-                if (onProgressRef.current) {
-                    onProgressRef.current({
-                        currentTime: timeAsNum,
-                        paused: paused,
-                        event: eventName || 'timeupdate',
-                        duration: payload.duration !== undefined ? Number(payload.duration) : undefined
-                    });
+                // Prevent Unix timestamp overflow (we only accept actual playhead time < 13.8 hours)
+                if (timeAsNum < 50000) {
+                    setCurrentTime(timeAsNum);
+                    lastReceivedTimeRef.current = timeAsNum;
+                    lastMessageTimeRef.current = performance.now();
+                    setIsPlaying(true);
+
+                    if (onProgressRef.current) {
+                        onProgressRef.current({
+                            currentTime: timeAsNum,
+                            paused: paused,
+                            event: eventName || 'timeupdate',
+                            duration: payload.duration !== undefined ? Number(payload.duration) : undefined
+                        });
+                    }
                 }
             } else if (eventName !== undefined) {
+                if (eventName === 'seek') {
+                    lastMessageTimeRef.current = performance.now();
+                }
                 if (onProgressRef.current) {
                     onProgressRef.current({
                         currentTime: currentTimeRef.current,
@@ -1029,6 +1048,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         window.addEventListener('message', handlePlayerMessages);
         return () => window.removeEventListener('message', handlePlayerMessages);
     }, [handlePlayerMessages]);
+
+    // Subtitle Keep-Alive Playhead Interpolator
+    // If the iframe message stream stalls (common on long movies due to backgrounding/tab throttling or ad blocker CPU load in the iframe),
+    // this effect will interpolate the current time based on elapsed performance.now() intervals to prevent subtitle freezing.
+    useEffect(() => {
+        if (!isIframe) return;
+
+        const interval = setInterval(() => {
+            const now = performance.now();
+            const elapsedSinceLastMsg = (now - lastMessageTimeRef.current) / 1000;
+
+            if (isPlaying && elapsedSinceLastMsg > 2.0) {
+                const estimatedTime = lastReceivedTimeRef.current + elapsedSinceLastMsg;
+                setCurrentTime(estimatedTime);
+            }
+        }, 500);
+
+        return () => clearInterval(interval);
+    }, [isPlaying, isIframe]);
 
     useEffect(() => {
         return () => {
