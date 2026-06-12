@@ -112,6 +112,12 @@ const DetailPage: React.FC = () => {
   };
 
   const [initialProgress, setInitialProgress] = useState(0);
+  const lastResolvedDurationRef = useRef<number>(0);
+
+  useEffect(() => {
+    lastResolvedDurationRef.current = 0;
+  }, [id]);
+
   const backdropIframeRef = useRef<HTMLIFrameElement>(null);
   const origin = window.location.origin.startsWith('http') ? window.location.origin : '';
 
@@ -205,15 +211,19 @@ const DetailPage: React.FC = () => {
   const handlePlayerProgress = useCallback((data: any) => {
     // Accept any event with a valid currentTime — covers VidKing, Videasy ({timestamp}), VidLink, etc.
     const time = data.currentTime || data.time || 0;
-    const duration = data.duration || 0;
-    if (time > 0 && duration > 0) {
+    if (data.duration && data.duration > 0) {
+      lastResolvedDurationRef.current = data.duration;
+    }
+    const duration = lastResolvedDurationRef.current || data.duration || (content?.runtime ? content.runtime * 60 : 0) || 7200;
+
+    if (time > 0) {
       updateProgress(time, duration);
     } else if (data.event === 'pause' || data.event === 'ended') {
       // Force save on pause/end even without duration
       const t = data.currentTime || data.time || 0;
       if (t > 0) updateProgress(t, duration);
     }
-  }, [updateProgress]);
+  }, [updateProgress, content]);
 
   useEffect(() => {
     try {

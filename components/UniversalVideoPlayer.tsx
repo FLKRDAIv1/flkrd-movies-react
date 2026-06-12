@@ -2155,12 +2155,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     onTimeUpdate={(e) => {
                         const time = e.currentTarget.currentTime;
                         setCurrentTime(time);
-                        onProgressRef.current?.({ currentTime: time, paused: e.currentTarget.paused });
+                        onProgressRef.current?.({ 
+                            currentTime: time, 
+                            paused: e.currentTarget.paused,
+                            duration: e.currentTarget.duration
+                        });
                     }}
                     onPlaying={() => setLoading(false)}
-                    onPlay={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: false, event: 'play' })}
-                    onPause={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: true, event: 'pause' })}
-                    onSeeking={(e) => onProgressRef.current?.({ currentTime: e.currentTarget.currentTime, paused: e.currentTarget.paused, event: 'seek' })}
+                    onPlay={(e) => onProgressRef.current?.({ 
+                        currentTime: e.currentTarget.currentTime, 
+                        paused: false, 
+                        event: 'play',
+                        duration: e.currentTarget.duration
+                    })}
+                    onPause={(e) => onProgressRef.current?.({ 
+                        currentTime: e.currentTarget.currentTime, 
+                        paused: true, 
+                        event: 'pause',
+                        duration: e.currentTarget.duration
+                    })}
+                    onSeeking={(e) => onProgressRef.current?.({ 
+                        currentTime: e.currentTarget.currentTime, 
+                        paused: e.currentTarget.paused, 
+                        event: 'seek',
+                        duration: e.currentTarget.duration
+                    })}
                 >
                     {(localSubtitleUrl || subtitleUrl) && (
                         <track 

@@ -89,6 +89,13 @@ const TVDetailPage: React.FC = () => {
   const [initialProgress, setInitialProgress] = useState(0);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
   const [currentPlaybackDuration, setCurrentPlaybackDuration] = useState(0);
+  const lastResolvedDurationRef = useRef<number>(0);
+
+  useEffect(() => {
+    lastResolvedDurationRef.current = 0;
+    setCurrentPlaybackDuration(0);
+    setCurrentPlaybackTime(0);
+  }, [selectedSeason, selectedEpisode]);
   const [logoPath, setLogoPath] = useState<string | null>(null);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
@@ -297,7 +304,10 @@ const TVDetailPage: React.FC = () => {
     let progress: WatchProgress[] = progressData ? JSON.parse(progressData) : [];
 
     const time = data.currentTime || data.time;
-    const duration = data.duration;
+    if (data.duration && data.duration > 0) {
+      lastResolvedDurationRef.current = data.duration;
+    }
+    const duration = lastResolvedDurationRef.current || data.duration || 2700;
 
     setCurrentPlaybackTime(time);
     setCurrentPlaybackDuration(duration);
@@ -311,7 +321,7 @@ const TVDetailPage: React.FC = () => {
       backdrop_path: content.backdrop_path,
       vote_average: content.vote_average,
       progress: time,
-      duration: duration || 2700,
+      duration: duration,
       lastWatched: Date.now(),
       season: selectedSeason,
       episode: selectedEpisode
@@ -324,7 +334,7 @@ const TVDetailPage: React.FC = () => {
     window.dispatchEvent(new Event('watchProgressUpdated'));
 
     // Mark as watched (Binge countdown trigger removed as requested - provider handles next episode)
-    if (time > (duration || 2700) * 0.98) {
+    if (time > duration * 0.98) {
       const tvProg = JSON.parse(localStorage.getItem('tv_progress') || '{}');
       const showSet = new Set(tvProg[id!] || []);
       showSet.add(`${selectedSeason}-${selectedEpisode}`);
