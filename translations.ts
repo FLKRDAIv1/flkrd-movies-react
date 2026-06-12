@@ -95,6 +95,7 @@ const translations = {
     thinking: "Thinking...",
 
     // Search Page
+    didYouMean: "Did you mean:",
     resultsFor: "Results for",
     noResultsFor: "No results for",
     securitySystemTitle: "Protection",
@@ -299,6 +300,7 @@ const translations = {
     thinking: "خەریکی بیرکردنەوەیە...",
 
     // Search Page
+    didYouMean: "مەبەستت ئەمەیە؟",
     resultsFor: "ئەنجامەکان بۆ",
     noResultsFor: "هیچ ئەنجامێک نییە بۆ",
     securitySystemTitle: "پاراستن",
@@ -503,6 +505,7 @@ const translations = {
     thinking: "خەریکە بیر دکەت...",
 
     // Search Page
+    didYouMean: "مەبەست تە ئەڤەیە؟",
     resultsFor: "ئەنجامەکان بۆ",
     noResultsFor: "هیچ ئەنجامەک نییە بۆ",
     securitySystemTitle: "پاراستن",

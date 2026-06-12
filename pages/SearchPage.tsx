@@ -168,6 +168,19 @@ const SearchPage: React.FC = () => {
     setIsProcessing(false);
   };
 
+  const firstResult = results[0];
+  const firstResultTitle = firstResult ? (firstResult.title || firstResult.name || '') : '';
+  
+  const shouldShowDidYouMean = 
+    inputValue.trim().length >= 2 && 
+    firstResultTitle && 
+    firstResultTitle.toLowerCase() !== inputValue.trim().toLowerCase();
+
+  const handleDidYouMeanClick = () => {
+    setInputValue(firstResultTitle);
+    setIsSuggestionsVisible(false);
+  };
+
   const suggestions = results.slice(0, 6);
 
   const containerVariants = {
@@ -251,6 +264,28 @@ const SearchPage: React.FC = () => {
             </AnimatePresence>
           </div>
         </motion.div>
+
+        {/* Smart "Did you mean" Suggestion */}
+        <AnimatePresence>
+          {shouldShowDidYouMean && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="mt-4 px-6 flex items-center gap-2 text-xs md:text-sm font-medium"
+              dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
+            >
+              <span className="text-sec-text">{t('didYouMean')}</span>
+              <button 
+                onClick={handleDidYouMeanClick}
+                className="font-black text-brand hover:underline flex items-center gap-1.5 focus:outline-none"
+              >
+                <Sparkles size={12} className="text-yellow-500 animate-pulse" />
+                {firstResultTitle}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Enhanced Auto-Suggestions */}
         <AnimatePresence>
