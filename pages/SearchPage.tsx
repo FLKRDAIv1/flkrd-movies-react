@@ -186,7 +186,7 @@ const SearchPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8 relative overflow-hidden pb-20 bg-main-bg">
+    <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8 relative overflow-x-hidden pb-20 bg-main-bg">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand/5 filter blur-[150px] -z-10 animate-pulse"></div>
 
       <div className="relative mb-12 max-w-3xl mx-auto z-[60]">
