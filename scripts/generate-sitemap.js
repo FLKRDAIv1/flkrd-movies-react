@@ -176,8 +176,18 @@ async function run() {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  fs.writeFileSync(SITEMAP_PATH, xml, 'utf-8');
-  console.log(`[SITEMAP GENERATOR] Successfully created dynamic sitemap at: ${SITEMAP_PATH} with ${movies.size + tvSeries.size + 6} URLs.`);
+  const paths = [
+    SITEMAP_PATH,
+    path.resolve('public/sitmap.xml'),
+    path.resolve('public/sitemap.xls'),
+    path.resolve('public/sitmap.xls')
+  ];
+
+  paths.forEach((p) => {
+    fs.writeFileSync(p, xml, 'utf-8');
+  });
+
+  console.log(`[SITEMAP GENERATOR] Successfully created dynamic sitemaps at: ${paths.join(', ')} with ${movies.size + tvSeries.size + 6} URLs.`);
 }
 
 run().catch(err => {
