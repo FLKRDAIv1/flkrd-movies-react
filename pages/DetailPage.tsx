@@ -637,21 +637,35 @@ const DetailPage: React.FC = () => {
 
       <div className="relative w-full h-[75vh] md:h-[95vh] overflow-hidden z-10 group" dir="ltr">
         <div className="absolute inset-0 overflow-hidden">
-          {trailerKey ? (
-            <div className="absolute inset-0 scale-[1.5] pointer-events-none">
+          <motion.img 
+            initial={{ scale: 1.2 }} 
+            animate={{ scale: 1 }} 
+            transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
+            src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover opacity-70" 
+          />
+          {trailerKey && (
+            <div className="absolute inset-0 scale-[1.5] pointer-events-none z-[1]">
               <iframe
                 ref={backdropIframeRef}
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1${origin ? `&origin=${origin}` : ''}`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1`}
                 className="w-full h-full opacity-60"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               />
             </div>
-          ) : (
-            <motion.img initial={{ scale: 1.2 }} animate={{ scale: 1 }} transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }} src={`${IMAGE_BASE_URL}${content.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-70" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/20 to-transparent dark-gradient-mask"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/20 to-transparent dark-gradient-mask z-[2]"></div>
         </div>
+
+        {trailerKey && (
+          <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'left-6 md:left-20' : 'right-6 md:right-20'} z-20`}>
+            <button onClick={() => setIsMuted(!isMuted)} className="bg-black/40 backdrop-blur-xl border border-white/10 p-3 rounded-full text-white hover:bg-[var(--brand-red)] transition-all shadow-2xl">
+              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+          </div>
+        )}
 
         {!isPlayerModalOpen && (
           <Portal id="detail-nav-portal">

@@ -122,7 +122,10 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   }, [movie.id, movie.media_type, active, index, activeIndex]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setIsVideoLoading(true);
+      return;
+    }
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
       const command = isMutedGlobal ? 'mute' : 'unmute';
@@ -147,62 +150,43 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     lastTapRef.current = now;
   };
 
-  const videoUrl = useMemo(() => {
-    if (!trailerKey || !active || !hasInteracted) return null;
-    const origin = window.location.origin.startsWith('http') ? window.location.origin : '';
-    // We hardcode mute=1 to guarantee 100% successful instant autoplay on Safari/iOS WebKit.
-    // Toggling the global mute state is handled via postMessage API inside a useEffect hook to prevent reloading the iframe, which causes playback blocks.
-    return `https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1${origin ? `&origin=${origin}` : ''}&widgetid=1&version=3`;
-  }, [trailerKey, active, hasInteracted]);
-
   return (
     <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex flex-col items-center justify-center overflow-hidden">
       {/* Cinematic Background Layer */}
       <div className="absolute inset-0 z-0 overflow-hidden flex items-center justify-center">
-        {trailerKey ? (
-          <div className="w-full h-full relative pointer-events-none">
-            <AnimatePresence mode='wait'>
-                {videoUrl ? (
-                        <motion.div 
-                            key="video"
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
-                            exit={{ opacity: 0 }}
-                            className="w-full h-full scale-[2.2] md:scale-100 md:aspect-[9/16] md:mx-auto brightness-[0.75] md:brightness-100"
-                        >
-                        <iframe 
-                            ref={iframeRef}
-                            src={videoUrl}
-                            className="w-full h-full"
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                            onLoad={() => setIsVideoLoading(false)}
-                        />
-                    </motion.div>
-                ) : (
-                    <motion.div key="poster" className="absolute inset-0 w-full h-full">
-                        <img 
-                            src={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`} 
-                            className="w-full h-full object-cover opacity-60 scale-110 blur-xl"
-                            alt=""
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <Spinner />
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            
-            {/* High-End Cinematic Vignette Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/90 z-20" />
-            <div className="absolute inset-0 shadow-[inset_0_0_200px_rgba(0,0,0,0.9)] z-21" />
-          </div>
-        ) : (
-          <div className="h-full w-full bg-[#050505] flex flex-col items-center justify-center">
-             <Spinner />
+        {/* Always render the backdrop poster image behind */}
+        <div className="absolute inset-0 w-full h-full">
+          <img 
+            src={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`} 
+            className="w-full h-full object-cover opacity-60 scale-110 blur-xl"
+            alt=""
+          />
+          {isVideoLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <Spinner />
+            </div>
+          )}
+        </div>
+
+        {trailerKey && active && hasInteracted && (
+          <div className="w-full h-full relative pointer-events-none z-[1]">
+            <div className="w-full h-full scale-[2.2] md:scale-100 md:aspect-[9/16] md:mx-auto brightness-[0.75] md:brightness-100">
+              <iframe 
+                ref={iframeRef}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1`}
+                className={`w-full h-full transition-opacity duration-1000 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                onLoad={() => setIsVideoLoading(false)}
+              />
+            </div>
           </div>
         )}
+
+        {/* High-End Cinematic Vignette Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-black/90 z-20" />
+        <div className="absolute inset-0 shadow-[inset_0_0_200px_rgba(0,0,0,0.9)] z-21" />
       </div>
 
       <div className="absolute inset-0 z-30" onClick={handleInteraction} />

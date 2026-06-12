@@ -740,20 +740,19 @@ const TVDetailPage: React.FC = () => {
 
       <div className="relative w-full h-[70vh] md:h-[90vh] overflow-hidden z-10" dir="ltr">
         <div className="absolute inset-0">
-          {trailerKey ? (
-            <div className="absolute inset-0 scale-[1.5] pointer-events-none">
+          <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} alt="" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          {trailerKey && (
+            <div className="absolute inset-0 scale-[1.5] pointer-events-none z-[1]">
               <iframe
                 ref={backdropIframeRef}
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1${origin ? `&origin=${origin}` : ''}`}
+                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1`}
                 className="w-full h-full opacity-60"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               />
             </div>
-          ) : (
-            <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} alt="" className="w-full h-full object-cover opacity-60" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-[2]"></div>
         </div>
 
         {trailerKey && (

@@ -121,9 +121,8 @@ self.addEventListener('fetch', event => {
   }
 
   // --- BYPASS LOGIC ---
-  // 2. Bypass all external traffic (Streaming, APIs, etc.)
+  // 2. Bypass all external traffic (Streaming, APIs, etc.) natively without intercepting
   if (url.origin !== self.location.origin) {
-    event.respondWith(fetch(event.request).catch(() => {}));
     return;
   }
 
