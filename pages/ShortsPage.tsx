@@ -157,7 +157,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
         {/* Always render the backdrop poster image behind */}
         <div className="absolute inset-0 w-full h-full">
           <img 
-            src={`${IMAGE_BASE_URL}${movie.backdrop_path || movie.poster_path}`} 
+            src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path || movie.backdrop_path}`} 
             className="w-full h-full object-cover opacity-60 scale-110 blur-xl"
             alt=""
           />
@@ -388,6 +388,14 @@ const ShortsPage: React.FC = () => {
     return viewMode === 'followers' ? movies.filter(m => followedIds.has(m.id)) : movies;
   }, [viewMode, movies, followedIds]);
 
+  // Safety Clamp: Reset activeIndex to 0 if bounds mismatch (e.g. switching views or stale session)
+  useEffect(() => {
+    if (displayedMovies.length > 0 && activeIndex >= displayedMovies.length) {
+      setActiveIndex(0);
+      sessionStorage.setItem(STORAGE_KEY, '0');
+    }
+  }, [displayedMovies.length, activeIndex]);
+
   // ── Engine V5: Controller-Synchronized Feed (Stabilized) ──
   const { lastAction } = useGamepad();
   useEffect(() => {
@@ -461,7 +469,18 @@ const ShortsPage: React.FC = () => {
         className="h-full w-full overflow-y-scroll snap-y snap-proximity scrollbar-hide bg-[#050505] overscroll-none"
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
       >
-        {displayedMovies.length > 0 ? displayedMovies.map((movie, index) => (
+        {displayedMovies.length > 0 ? displayedMovies.map((movie, index) => {
+          const isNear = index >= activeIndex - 1 && index <= activeIndex + 1;
+          if (!isNear) {
+            return (
+              <div 
+                key={`${movie.id}-${index}`} 
+                className="w-full snap-start bg-[#050505] flex-shrink-0" 
+                style={{ height: 'calc(var(--vh, 1vh) * 100)' }} 
+              />
+            );
+          }
+          return (
             <TrailerItem 
                 key={`${movie.id}-${index}`} 
                 movie={movie} 
@@ -473,7 +492,8 @@ const ShortsPage: React.FC = () => {
                 onNavigate={() => navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`, { state: { customData: movie } })}
                 isFollowed={followedIds.has(movie.id)} onToggleFollow={() => handleToggleFollow(movie.id)}
             />
-        )) : (
+          );
+        }) : (
             <SkeletonShorts />
         )}
       </div>
