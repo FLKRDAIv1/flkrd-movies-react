@@ -41,8 +41,10 @@ import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import { isTauri } from './utils/tauriUtils';
 import { updateService } from './services/updateService';
+import { supabase } from './utils/supabaseClient';
 
 class ChunkErrorBoundary extends React.Component<{ children?: React.ReactNode }, { hasError: boolean }> {
   state: { hasError: boolean };
@@ -273,6 +275,163 @@ const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 };
 
+const getCountryInfo = async (): Promise<string> => {
+    try {
+        const cached = sessionStorage.getItem('flkrd_visitor_country');
+        if (cached) return cached;
+        const res = await fetch('https://ipapi.co/json/');
+        if (!res.ok) throw new Error('Failed to fetch country');
+        const data = await res.json();
+        const country = data.country_name || data.country || 'Unknown';
+        sessionStorage.setItem('flkrd_visitor_country', country);
+        return country;
+    } catch (e) {
+        console.warn("GeoIP check failed, falling back:", e);
+        try {
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            if (tz && (tz.includes('Baghdad') || tz.includes('Erbil') || tz.includes('Asia/Baghdad'))) {
+                return 'Iraq';
+            }
+        } catch (err) {}
+        return 'Unknown';
+    }
+};
+
+const startPerformanceObserver = (visitId: string) => {
+    let fcp: number | null = null;
+    let lcp: number | null = null;
+    let cls = 0;
+    let inp: number | null = null;
+    let updateTimeout: any = null;
+
+    const queueUpdate = () => {
+        if (updateTimeout) clearTimeout(updateTimeout);
+        updateTimeout = setTimeout(async () => {
+            try {
+                const updates: any = {};
+                if (fcp !== null) updates.fcp = Number((fcp / 1000).toFixed(2));
+                if (lcp !== null) updates.lcp = Number((lcp / 1000).toFixed(2));
+                if (cls > 0) updates.cls = Number(cls.toFixed(4));
+                if (inp !== null) updates.inp = Math.round(inp);
+
+                if (Object.keys(updates).length > 0) {
+                    await supabase.from('site_analytics').update(updates).eq('id', visitId);
+                }
+            } catch (e) {
+                // ignore
+            }
+        }, 1500);
+    };
+
+    // 1. FCP (Paint)
+    const paintEntries = performance.getEntriesByType('paint');
+    const fcpEntry = paintEntries.find(e => e.name === 'first-contentful-paint');
+    if (fcpEntry) {
+        fcp = fcpEntry.startTime;
+        queueUpdate();
+    } else {
+        try {
+            const paintObserver = new PerformanceObserver((entryList) => {
+                const entries = entryList.getEntries();
+                const fcpE = entries.find(e => e.name === 'first-contentful-paint');
+                if (fcpE) {
+                    fcp = fcpE.startTime;
+                    queueUpdate();
+                    paintObserver.disconnect();
+                }
+            });
+            paintObserver.observe({ type: 'paint', buffered: true });
+        } catch (e) {}
+    }
+
+    // 2. LCP
+    try {
+        const lcpObserver = new PerformanceObserver((entryList) => {
+            const entries = entryList.getEntries();
+            const lastEntry = entries[entries.length - 1];
+            lcp = lastEntry.startTime;
+            queueUpdate();
+        });
+        lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch (e) {}
+
+    // 3. CLS
+    try {
+        const clsObserver = new PerformanceObserver((entryList) => {
+            for (const entry of entryList.getEntries() as any[]) {
+                if (!entry.hadRecentInput) {
+                    cls += entry.value;
+                    queueUpdate();
+                }
+            }
+        });
+        clsObserver.observe({ type: 'layout-shift', buffered: true });
+    } catch (e) {}
+
+    // 4. FID/INP
+    try {
+        const fidObserver = new PerformanceObserver((entryList) => {
+            const entries = entryList.getEntries();
+            const firstInput = entries[0] as any;
+            if (firstInput) {
+                inp = firstInput.processingStart - firstInput.startTime;
+                queueUpdate();
+            }
+        });
+        fidObserver.observe({ type: 'first-input', buffered: true });
+    } catch (e) {}
+};
+
+const logVisit = async (path: string) => {
+    try {
+        const isTauriEnv = isTauri();
+        const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        let sessionId = sessionStorage.getItem('flkrd_visitor_session');
+        if (!sessionId) {
+            sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            sessionStorage.setItem('flkrd_visitor_session', sessionId);
+        }
+
+        let country = 'Unknown';
+        if (isLocalHost) {
+            country = 'Local Dev';
+        } else if (isTauriEnv) {
+            country = 'Tauri App';
+        } else {
+            country = await getCountryInfo();
+        }
+
+        let deviceType = 'Desktop';
+        const ua = navigator.userAgent.toLowerCase();
+        if (isTauriEnv) {
+            deviceType = 'Tauri Desktop';
+        } else if (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile/i.test(ua)) {
+            deviceType = 'Mobile';
+        } else if (/ipad|tablet|playbook|silk/i.test(ua) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2)) {
+            deviceType = 'Tablet';
+        }
+
+        const { data, error } = await supabase.from('site_analytics').insert([{
+            session_id: sessionId,
+            country: country,
+            device_type: deviceType,
+            page_path: path,
+            referrer: document.referrer || 'Direct',
+            user_agent: navigator.userAgent
+        }]).select('id');
+
+        if (error) throw error;
+        
+        const visitId = data?.[0]?.id;
+        if (visitId) {
+            startPerformanceObserver(visitId);
+        }
+    } catch (err) {
+        console.warn("Analytics registration bypassed:", err);
+    }
+};
+
 const AppContent: React.FC<{
     scrolled: boolean;
     mainRef: React.RefObject<HTMLElement | null>;
@@ -281,6 +440,11 @@ const AppContent: React.FC<{
     const { isSettingsOpen, setIsSettingsOpen, glassConfig } = useUI();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const location = useLocation();
+
+    // Track page visits
+    useEffect(() => {
+        logVisit(location.pathname + location.search);
+    }, [location.pathname, location.search]);
 
     // Determine watch room or cinema directly from router location
     const isWatchPage = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/watch-room/');
@@ -371,6 +535,7 @@ const AppContent: React.FC<{
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             <GamepadHints />
             {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
+            {!isTauri() && import.meta.env.PROD && <Analytics />}
         </>
     );
 };

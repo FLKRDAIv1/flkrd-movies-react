@@ -172,6 +172,21 @@ const translations = {
     performanceDescription: "Optimized for Low-End Mobile",
     performanceInfo: "Activating this protocol disables intensive atmospheric effects and simplifies transitions to ensure maximum frame rates on legacy hardware.",
 
+    // Visitor Analytics
+    visitorAnalytics: "Visitor Analytics",
+    openDashboard: "Open Analytics Dashboard",
+    backToSettings: "Back to Settings",
+    liveActiveUsers: "Live Active Users",
+    totalVisits: "Total Visits",
+    recentVisits: "Recent Visits",
+    topCountries: "Top Countries",
+    deviceShare: "Device Share",
+    last7DaysTraffic: "Last 7 Days Traffic",
+    pagePath: "Page Path",
+    device: "Device",
+    location: "Location",
+    time: "Time",
+
     // Discover Page
     hollywood: "Hollywood",
     bollywood: "Bollywood",
@@ -377,6 +392,21 @@ const translations = {
     performanceDescription: "باشترکردنی بۆ مۆبایلە لاوازەکان",
     performanceInfo: "چالاککردنی ئەم بەشە دەبێتە ھۆی خێراتر کردنی وێب سایتەکە لەسەر مۆبایلە کۆنەکان بە لابردنی ھەندێک ئەنیمەیشن و کاریگەری.",
 
+    // Visitor Analytics
+    visitorAnalytics: "ئاماری سەردانکەران",
+    openDashboard: "کردنەوەی پانێڵی ئامارەکان",
+    backToSettings: "گەڕانەوە بۆ ڕێکخستن",
+    liveActiveUsers: "بەکارهێنەرانی چالاک ئێستا",
+    totalVisits: "کۆی سەردانەکان",
+    recentVisits: "دوایین سەردانەکان",
+    topCountries: "سەرەکیترین وڵاتەکان",
+    deviceShare: "ڕێژەی ئامێرەکان",
+    last7DaysTraffic: "هاتوچۆی ٧ ڕۆژی ڕابردوو",
+    pagePath: "ڕێڕەوی پەڕە",
+    device: "ئامێر",
+    location: "شوێن",
+    time: "کات",
+
     // Discover Page
     hollywood: "هۆڵیوود",
     bollywood: "بۆڵیوود",
@@ -581,6 +611,21 @@ const translations = {
     performanceTurbo: "چالاککرنا خێرا",
     performanceDescription: "باشترکرن بۆ مۆبایلێن لاواز",
     performanceInfo: "چالاککرنا ئەڤێ بەشێ دێ وێب سایتێ خێراتر کەت سەر مۆبایلێن کۆن.",
+
+    // Visitor Analytics
+    visitorAnalytics: "ئامارا سەرەدانکەران",
+    openDashboard: "کرنا پەنەلا ئاماران",
+    backToSettings: "زڤڕین بۆ ڕێکخستنان",
+    liveActiveUsers: "بەکارهێنەرێن چالاک نوکە",
+    totalVisits: "کۆیا سەرەدانان",
+    recentVisits: "دوماهیک سەرەدان",
+    topCountries: "وەڵاتێن سەرەکی",
+    deviceShare: "ڕێژەیا ئامیران",
+    last7DaysTraffic: "هاتنوچوونا ٧ ڕۆژێن بوورین",
+    pagePath: "ڕێڕەوێ پەڕەی",
+    device: "ئامیر",
+    location: "جهـ",
+    time: "دەم",
 
     // Discover Page
     hollywood: "هۆڵیوود",
