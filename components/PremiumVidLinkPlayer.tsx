@@ -26,6 +26,7 @@ interface PremiumVidLinkPlayerProps {
   watchedEpisodes?: Set<string>;
   onEpisodeChange?: (season: number, episode: number) => void;
   onSeasonChange?: (season: number) => void;
+  startFullscreen?: boolean;
 }
 
 const containerVariants = {
@@ -68,7 +69,8 @@ export default function PremiumVidLinkPlayer({
   currentSeasonDetails,
   watchedEpisodes = new Set(),
   onEpisodeChange,
-  onSeasonChange
+  onSeasonChange,
+  startFullscreen
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const { isAdmin } = useUI();
@@ -935,12 +937,20 @@ export default function PremiumVidLinkPlayer({
       if (!document.fullscreenElement) {
         containerRef.current?.requestFullscreen().catch(err => {
           console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+          setIsSimulatedFullscreen(true);
+          setIsFullscreen(true);
         });
       } else {
         document.exitFullscreen();
       }
     });
   };
+
+  useEffect(() => {
+    if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
+      toggleFullscreen();
+    }
+  }, [startFullscreen]);
 
   return (
     <div 

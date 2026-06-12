@@ -595,6 +595,7 @@ const TVDetailPage: React.FC = () => {
                     setSelectedSeason(s);
                     fetchSeasonDetails(s);
                   }}
+                  startFullscreen={true}
                 />
               ) : (
                 <UniversalVideoPlayer
@@ -618,6 +619,7 @@ const TVDetailPage: React.FC = () => {
                     setSelectedSeason(s);
                     fetchSeasonDetails(s);
                   }}
+                  startFullscreen={true}
                 />
               )}
 

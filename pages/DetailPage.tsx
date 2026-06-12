@@ -502,6 +502,7 @@ const DetailPage: React.FC = () => {
                   subtitleUrl={subtitleUrl || undefined}
                   imdbId={imdbId || undefined}
                   onProgress={handlePlayerProgress}
+                  startFullscreen={true}
                 />
               ) : (
                 <UniversalVideoPlayer
@@ -515,6 +516,7 @@ const DetailPage: React.FC = () => {
                   contentType="movie"
                   title={content?.title}
                   tmdbId={id}
+                  startFullscreen={true}
                 />
               )}
 

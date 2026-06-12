@@ -29,6 +29,7 @@ interface UniversalVideoPlayerProps {
     watchedEpisodes?: Set<string>;
     onEpisodeChange?: (season: number, episode: number) => void;
     onSeasonChange?: (season: number) => void;
+    startFullscreen?: boolean;
 }
 
 declare global {
@@ -169,7 +170,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     currentSeasonDetails,
     watchedEpisodes = new Set(),
     onEpisodeChange,
-    onSeasonChange
+    onSeasonChange,
+    startFullscreen
 }) => {
     const { isAdmin } = useUI();
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -893,12 +895,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             if (!document.fullscreenElement) {
                 containerRef.current?.requestFullscreen().catch(err => {
                     console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                    setIsSimulatedFullscreen(true);
+                    setIsFullscreen(true);
                 });
             } else {
                 document.exitFullscreen();
             }
         });
     };
+
+    useEffect(() => {
+        if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
+            toggleFullscreen();
+        }
+    }, [startFullscreen]);
 
     const handleSelectSub = async (sub: SubtitleResult) => {
         setIsSearchingSubs(true);
