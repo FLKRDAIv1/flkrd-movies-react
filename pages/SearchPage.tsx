@@ -58,6 +58,7 @@ const SearchVisualEffect = () => {
 const NoResultsSuggestions = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { glassConfig } = useUI();
 
   const quickLinks = [
     { label: t('movies'), icon: <Film size={14} />, path: '/discover' },
@@ -69,7 +70,20 @@ const NoResultsSuggestions = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto mt-12 p-8 rounded-[2.5rem] bg-box-bg border border-border-color backdrop-blur-xl"
+      className="max-w-2xl mx-auto mt-12 p-8 border"
+      style={{
+        borderRadius: '32px',
+        borderStyle: 'solid',
+        borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+        background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+        backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+        WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+        boxShadow: `
+          inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
+          inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+          0 20px 40px rgba(0,0,0,0.4)
+        `
+      }}
     >
       <div className="flex items-center gap-3 mb-6 justify-center">
         <Sparkles size={18} className="text-yellow-500 animate-pulse" />
@@ -114,7 +128,7 @@ const SearchPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { isAdmin } = useUI();
+  const { isAdmin, glassConfig } = useUI();
   const { addNotification } = useNotification();
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
 
@@ -177,9 +191,36 @@ const SearchPage: React.FC = () => {
 
       <div className="relative mb-12 max-w-3xl mx-auto z-[60]">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-brand to-red-900 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
-          <div className="relative flex items-center">
-            <SearchIcon className={`absolute left-6 transition-all duration-500 ${isProcessing ? 'text-brand scale-110' : 'text-sec-text'}`} size={24} />
+          <div className="absolute -inset-1 bg-gradient-to-r from-brand to-red-900 rounded-3xl blur opacity-10 group-hover:opacity-25 transition duration-1000"></div>
+          <div 
+            className="relative flex items-center overflow-hidden border transition-all duration-300"
+            style={{
+              borderRadius: '24px',
+              borderStyle: 'solid',
+              borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+              background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+              backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+              WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+              boxShadow: `
+                inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                0 20px 40px rgba(0,0,0,0.5)
+              `
+            }}
+          >
+            {/* Dynamic GPU-accelerated water sheen overlay */}
+            <div 
+              className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                opacity: (glassConfig.displacementScale / 120) * 0.9,
+                animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+              }}
+            />
+
+            <SearchIcon className={`absolute left-6 z-10 transition-all duration-500 ${isProcessing ? 'text-brand scale-110' : 'text-sec-text'}`} size={24} />
             <input
               type="text"
               value={inputValue}
@@ -187,7 +228,7 @@ const SearchPage: React.FC = () => {
               onFocus={() => inputValue.trim().length > 1 && setIsSuggestionsVisible(true)}
               onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 250)}
               placeholder={t('searchPlaceholder')}
-              className="w-full bg-box-bg backdrop-blur-3xl border-2 border-border-color focus:border-brand focus:ring-0 text-main-text rounded-2xl py-5 pr-14 pl-16 text-xl shadow-2xl transition-all outline-none font-medium"
+              className="w-full bg-transparent focus:ring-0 text-main-text rounded-2xl py-5 pr-14 pl-16 text-xl transition-all outline-none font-medium z-10"
             />
 
             <AnimatePresence>
@@ -218,8 +259,32 @@ const SearchPage: React.FC = () => {
               initial={{ opacity: 0, y: -10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              className="absolute top-full mt-4 w-full bg-card-bg/98 backdrop-blur-[50px] border border-border-color rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] z-[100] overflow-hidden"
+              className="absolute top-full mt-4 w-full border z-[100] overflow-hidden"
+              style={{
+                borderRadius: '32px',
+                borderStyle: 'solid',
+                borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                  inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                  inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                  0 50px 100px rgba(0, 0, 0, 0.8)
+                `
+              }}
             >
+              {/* Dynamic GPU-accelerated water sheen overlay */}
+              <div 
+                className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                style={{
+                  background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                  opacity: (glassConfig.displacementScale / 120) * 0.9,
+                  animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                }}
+              />
               {suggestions.length > 0 ? (
                 <>
                   <div className="px-6 py-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
@@ -308,7 +373,22 @@ const SearchPage: React.FC = () => {
           </motion.div>
         ) : inputValue && results.length > 0 ? (
           <motion.div key="results" variants={containerVariants} initial="hidden" animate="show" className="w-full">
-            <div className="flex items-center justify-between mb-12 bg-white/5 p-8 rounded-[2.5rem] backdrop-blur-2xl border border-border-color shadow-2xl">
+            <div 
+              className="flex items-center justify-between mb-12 p-8 border"
+              style={{
+                borderRadius: '32px',
+                borderStyle: 'solid',
+                borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                  0 20px 40px rgba(0,0,0,0.4)
+                `
+              }}
+            >
               <div className="flex items-center gap-6">
                 <div className="bg-green-500/20 p-4 rounded-[1.5rem] border border-green-500/30">
                   <ShieldCheck className="text-green-500" size={32} />
@@ -347,7 +427,16 @@ const SearchPage: React.FC = () => {
                     />
 
                     {/* Liquid Glass Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10" />
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10 overflow-hidden">
+                      <div 
+                        className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                        style={{
+                          background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                          opacity: (glassConfig.displacementScale / 120) * 0.9,
+                          animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                        }}
+                      />
+                    </div>
 
                     {/* IMDb Badge */}
                     {item.vote_average !== undefined && item.vote_average > 0 && (

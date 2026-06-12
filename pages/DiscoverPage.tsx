@@ -64,7 +64,7 @@ const DiscoverPage: React.FC = () => {
     
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { theme, isAdmin } = useUI();
+    const { theme, isAdmin, glassConfig } = useUI();
     const { addNotification } = useNotification();
     const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
     const isRtl = (language === 'ku' || language === 'badini');
@@ -188,16 +188,38 @@ const DiscoverPage: React.FC = () => {
         setSelectedGenres(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
     };
 
-    const CategoryButton = ({ title, onClick, icon, color, className = "" }: any) => (
+    const CategoryButton = ({ title, onClick, icon, rgbColor, className = "" }: any) => (
         <motion.button
             whileHover={{ scale: 1.05, y: -10 }}
             whileTap={{ scale: 0.95 }}
             onClick={onClick}
-            className={`flex-1 p-8 md:p-10 rounded-[2.5rem] bg-white/5 backdrop-blur-2xl border border-border-color shadow-2xl text-center group relative overflow-hidden flex flex-col items-center ${className}`}
+            className={`flex-1 p-8 md:p-10 rounded-[2.5rem] text-center group relative overflow-hidden flex flex-col items-center border transition-all duration-300 ${className}`}
+            style={{
+                background: `radial-gradient(circle at 50% 0%, rgba(${rgbColor}, ${glassConfig.redOpacity * 1.5}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                borderStyle: 'solid',
+                borderColor: `rgba(${rgbColor}, ${glassConfig.borderOpacity})`,
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                  inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                  inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                  0 25px 50px -12px rgba(0, 0, 0, 0.5)
+                `
+            }}
         >
-            <div className={`absolute -bottom-12 -right-12 w-40 h-40 rounded-full ${color} filter blur-[80px] opacity-20 group-hover:opacity-40 transition-opacity`}></div>
-            <div className="text-brand mb-4 group-hover:-translate-y-1 transition-transform">{icon}</div>
-            <h2 className="text-xl md:text-3xl font-black text-main-text uppercase tracking-tighter italic">{title}</h2>
+            {/* Dynamic GPU-accelerated water sheen overlay */}
+            <div 
+              className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                opacity: (glassConfig.displacementScale / 120) * 0.9,
+                animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+              }}
+            />
+            <div className="text-brand mb-4 group-hover:-translate-y-1 transition-transform relative z-10">{icon}</div>
+            <h2 className="text-xl md:text-3xl font-black text-main-text uppercase tracking-tighter italic relative z-10">{title}</h2>
         </motion.button>
     );
 
@@ -212,12 +234,12 @@ const DiscoverPage: React.FC = () => {
             </motion.div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-8 w-full max-w-7xl relative z-10">
-                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-red-600" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
-                <CategoryButton title={t('hollywood')} onClick={() => navigate('/discover/hollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-blue-600" />
-                <CategoryButton title={t('bollywood')} onClick={() => navigate('/discover/bollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} color="bg-orange-600" />
-                <CategoryButton title={t('animations')} onClick={() => navigate('/discover/animations')} icon={<Zap className="w-6 h-6 md:w-8 md:h-8" />} color="bg-yellow-600" />
-                <CategoryButton title={t('choiceCountry')} onClick={() => navigate('/discover/country')} icon={<Globe className="w-6 h-6 md:w-8 md:h-8" />} color="bg-green-600" />
-                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} color="bg-purple-600" />
+                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="229, 9, 20" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
+                <CategoryButton title={t('hollywood')} onClick={() => navigate('/discover/hollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="37, 99, 235" />
+                <CategoryButton title={t('bollywood')} onClick={() => navigate('/discover/bollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="249, 115, 22" />
+                <CategoryButton title={t('animations')} onClick={() => navigate('/discover/animations')} icon={<Zap className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="234, 179, 8" />
+                <CategoryButton title={t('choiceCountry')} onClick={() => navigate('/discover/country')} icon={<Globe className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="22, 163, 74" />
+                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="147, 51, 234" />
             </div>
         </div>
     );
@@ -248,8 +270,34 @@ const DiscoverPage: React.FC = () => {
                             <h2 className="text-4xl md:text-6xl font-[1000] text-main-text mb-8 uppercase tracking-tighter italic text-center drop-shadow-2xl relative z-10">{t('choiceCountry')}</h2>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 w-full max-w-6xl mb-20 relative z-10">
                                 {countries.map((country) => (
-                                    <motion.button key={country.code} whileHover={{ scale: 1.05 }} onClick={() => setActiveCountry(country.code)} className="aspect-square rounded-[2.5rem] bg-white/5 border border-border-color flex flex-col items-center justify-center relative overflow-hidden group shadow-xl">
-                                        <img src={country.flagUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-40 transition-opacity" />
+                                    <motion.button 
+                                        key={country.code} 
+                                        whileHover={{ scale: 1.05 }} 
+                                        onClick={() => setActiveCountry(country.code)} 
+                                        className="aspect-square rounded-[2.5rem] flex flex-col items-center justify-center relative overflow-hidden group border transition-all duration-300"
+                                        style={{
+                                            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                                            backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                                            WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                                            borderStyle: 'solid',
+                                            borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                                            boxShadow: `
+                                              inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
+                                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                                              0 15px 35px rgba(0,0,0,0.4)
+                                            `
+                                        }}
+                                    >
+                                        <img src={country.flagUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15 group-hover:opacity-35 transition-opacity" />
+                                        {/* Dynamic GPU-accelerated water sheen overlay */}
+                                        <div 
+                                          className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                                          style={{
+                                            background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                                            opacity: (glassConfig.displacementScale / 120) * 0.9,
+                                            animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                                          }}
+                                        />
                                         <span className="relative z-10 text-xl font-black uppercase tracking-widest text-center px-4 text-white drop-shadow-md">{country.name}</span>
                                     </motion.button>
                                 ))}
@@ -259,7 +307,34 @@ const DiscoverPage: React.FC = () => {
                     {(selection && (selection !== 'country' || activeCountry)) && (
                         <div className="flex flex-col">
                             <div className={`sticky top-20 md:top-24 z-[45] mb-6 transition-all duration-500 ease-in-out`}>
-                                <div className={`relative transition-all duration-500 overflow-hidden backdrop-blur-[100px] ${isSticky ? 'rounded-2xl bg-black/80 border-white/10 p-3 shadow-2xl' : 'rounded-[2rem] bg-card-bg/75 border-border-color py-4 px-6 md:px-8 shadow-2xl'}`}>
+                                <div 
+                                    className={`relative transition-all duration-500 overflow-hidden border`}
+                                    style={{
+                                        borderRadius: isSticky ? '16px' : '32px',
+                                        background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${isSticky ? glassConfig.darkOpacity * 1.25 : glassConfig.darkOpacity})`,
+                                        backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                                        WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                                        borderStyle: 'solid',
+                                        borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                                        padding: isSticky ? '12px' : '20px 28px',
+                                        boxShadow: `
+                                          inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
+                                          inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
+                                          inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
+                                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                                          0 20px 40px rgba(0,0,0,0.5)
+                                        `
+                                    }}
+                                >
+                                    {/* Dynamic GPU-accelerated water sheen overlay */}
+                                    <div 
+                                      className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                                      style={{
+                                        background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                                        opacity: (glassConfig.displacementScale / 120) * 0.9,
+                                        animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                                      }}
+                                    />
                                     <div className={`relative z-10 flex flex-col gap-3`}>
                                         <div className={`w-full flex items-center justify-between gap-4 ${isRtl ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
                                             <h2 className={`font-[1000] text-main-text uppercase italic tracking-tighter leading-none transition-all ${isSticky ? 'text-lg md:text-2xl' : 'text-2xl md:text-4xl'}`}>
@@ -319,7 +394,16 @@ const DiscoverPage: React.FC = () => {
                                               <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
                                               
                                               {/* Liquid Glass Hover Overlay */}
-                                              <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10" />
+                                              <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10 overflow-hidden">
+                                                  <div 
+                                                    className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                                                    style={{
+                                                      background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                                                      opacity: (glassConfig.displacementScale / 120) * 0.9,
+                                                      animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                                                    }}
+                                                  />
+                                              </div>
 
                                               {/* IMDb Badge */}
                                               {item.vote_average !== undefined && item.vote_average > 0 && (
