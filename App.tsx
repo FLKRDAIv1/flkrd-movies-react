@@ -41,6 +41,7 @@ import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
+import { Analytics } from "@vercel/analytics/react";
 import { isTauri } from './utils/tauriUtils';
 import { updateService } from './services/updateService';
 
@@ -370,7 +371,12 @@ const AppContent: React.FC<{
             <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             <GamepadHints />
-            {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
+            {!isTauri() && import.meta.env.PROD && (
+                <>
+                    <SpeedInsights />
+                    <Analytics />
+                </>
+            )}
         </>
     );
 };
