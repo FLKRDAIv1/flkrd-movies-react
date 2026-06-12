@@ -458,4 +458,15 @@ video::-webkit-media-controls-panel {
   }
 }
 
-
+/* ── iOS Native Liquid Glass Sheen Animation ── */
+@keyframes ios-glass-shine {
+  0% {
+    transform: translate(-15%, -15%) rotate(0deg);
+  }
+  50% {
+    transform: translate(15%, 15%) rotate(180deg);
+  }
+  100% {
+    transform: translate(-15%, -15%) rotate(360deg);
+  }
+}

@@ -344,17 +344,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           >
             {/* Isolated Liquid-Glass background overlay */}
             <div 
-              className="absolute inset-0 z-0 pointer-events-none transition-all duration-300"
+              className="absolute inset-0 z-0 pointer-events-none transition-all duration-300 overflow-hidden"
               style={{
-                background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${glassConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
                 backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
                 WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
                 borderRadius: `${glassConfig.cornerRadius}px`,
                 borderWidth: '1px',
-                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity})`,
-                filter: 'url(#container-glass)',
+                borderStyle: 'solid',
+                borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                  inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                  inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                  0 25px 50px -12px rgba(0, 0, 0, 0.5)
+                `
               }}
-            />
+            >
+              {/* Dynamic GPU-accelerated water sheen overlay */}
+              <div 
+                className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                style={{
+                  background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                  opacity: (glassConfig.displacementScale / 120) * 0.9,
+                  animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                }}
+              />
+            </div>
 
             {/* Glass Highlight Overlay */}
             <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-white/[0.03] to-transparent z-[1]" style={{ borderRadius: `${glassConfig.cornerRadius}px` }} />

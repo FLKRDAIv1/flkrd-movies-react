@@ -89,17 +89,31 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
         }`}
       >
         <div 
-          className="absolute inset-0 z-0 transition-all duration-300 border-b"
+          className="absolute inset-0 z-0 transition-all duration-300 border-b overflow-hidden"
           style={{
             background: scrolled 
               ? `linear-gradient(to bottom, rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15}), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95}))` 
               : `linear-gradient(to bottom, rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.8}), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.4}))`,
             backdropFilter: `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)`,
             WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)`,
-            borderBottomColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.5})`,
-            filter: 'url(#container-glass)',
+            borderBottomStyle: 'solid',
+            borderBottomColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity * 0.5})`,
+            boxShadow: `
+              inset 0 1px 0 0 rgba(255, 255, 255, ${0.08 + glassConfig.borderOpacity * 0.25}),
+              inset 0 -1px 0 0 rgba(0, 0, 0, 0.3)
+            `
           }}
-        />
+        >
+          {/* Dynamic GPU-accelerated water sheen overlay */}
+          <div 
+            className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+            style={{
+              background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.1}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+              opacity: (glassConfig.displacementScale / 120) * 0.6,
+              animationDuration: `${40 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+            }}
+          />
+        </div>
         <div className="relative z-10 flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18 min-w-0 gap-4">
           
           {/* Right (Start) - App Logo */}
@@ -375,18 +389,35 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             >
               {/* Isolated Liquid-Glass background overlay */}
               <div 
-                className={`absolute inset-0 z-0 transition-all duration-300 ${
+                className={`absolute inset-0 z-0 transition-all duration-300 overflow-hidden ${
                   (language === 'ku' || language === 'badini') ? 'border-r' : 'border-l'
                 }`}
                 style={{
-                  background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.2})`,
+                  background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.2})`,
                   backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
                   WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity})`,
+                  borderStyle: 'solid',
+                  borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
                   borderRadius: `${glassConfig.cornerRadius}px`,
-                  filter: 'url(#container-glass)',
+                  boxShadow: `
+                    inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                    inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                    inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                    0 30px 60px rgba(0,0,0,0.55)
+                  `
                 }}
-              />
+              >
+                {/* Dynamic GPU-accelerated water sheen overlay */}
+                <div 
+                  className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                  style={{
+                    background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                    opacity: (glassConfig.displacementScale / 120) * 0.9,
+                    animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                  }}
+                />
+              </div>
               <div className="relative z-10 flex flex-col h-full w-full">
               
               {/* Drawer Header */}

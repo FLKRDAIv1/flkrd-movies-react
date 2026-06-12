@@ -2499,62 +2499,43 @@ const GlassCustomizer: React.FC = () => {
             {/* Live Preview Container */}
             <div className="mt-6 p-5 bg-black/60 border border-white/5 rounded-[1.8rem] space-y-3">
                 <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider block">پێشبینی ڕاستەوخۆ (Live Preview)</span>
-                
-                {/* Local Dynamic Preview Filter for Slider dragging feedback */}
-                <svg className="hidden pointer-events-none absolute w-0 h-0" aria-hidden="true">
-                    <defs>
-                        <filter
-                            id="preview-container-glass"
-                            x="-10%"
-                            y="-10%"
-                            width="120%"
-                            height="120%"
-                            colorInterpolationFilters="sRGB"
-                        >
-                            <feTurbulence
-                                type="fractalNoise"
-                                baseFrequency="0.02 0.02"
-                                numOctaves="2"
-                                seed="1"
-                                result="turbulence"
-                            />
-                            <feGaussianBlur in="turbulence" stdDeviation="1.5" result="blurredNoise" />
-                            <feOffset in="blurredNoise" dx="0" dy="0" result="offsetNoise">
-                                <animate attributeName="dx" dur="45s" values="0; 1200; 0" repeatCount="indefinite" />
-                                <animate attributeName="dy" dur="45s" values="0; 600; 0" repeatCount="indefinite" />
-                            </feOffset>
-                            <feDisplacementMap
-                                in="SourceGraphic"
-                                in2="offsetNoise"
-                                scale={localConfig.displacementScale}
-                                xChannelSelector="R"
-                                yChannelSelector="B"
-                                result="displaced"
-                            />
-                            <feComposite in="SourceGraphic" in2="displaced" operator="over" />
-                        </filter>
-                    </defs>
-                </svg>
 
                 {/* Simulated Glass Element */}
                 <div 
                     className="relative border overflow-hidden transition-all duration-300"
                     style={{
                         borderRadius: `${localConfig.cornerRadius}px`,
-                        borderColor: `rgba(229, 9, 20, ${localConfig.borderOpacity})`,
+                        borderStyle: 'solid',
+                        borderColor: `rgba(var(--brand-red-rgb), ${localConfig.borderOpacity})`,
                     }}
                 >
                     {/* Isolated Liquid-Glass background overlay */}
                     <div 
-                        className="absolute inset-0 z-0 transition-all duration-300 pointer-events-none"
+                        className="absolute inset-0 z-0 transition-all duration-300 pointer-events-none overflow-hidden"
                         style={{
-                            background: `radial-gradient(circle at 50% 0%, rgba(229, 9, 20, ${localConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${localConfig.darkOpacity})`,
+                            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${localConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${localConfig.darkOpacity})`,
                             backdropFilter: `blur(${localConfig.blurAmount}px) saturate(${localConfig.saturation}%)`,
                             WebkitBackdropFilter: `blur(${localConfig.blurAmount}px) saturate(${localConfig.saturation}%)`,
                             borderRadius: `${localConfig.cornerRadius}px`,
-                            filter: 'url(#preview-container-glass)',
+                            boxShadow: `
+                              inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + localConfig.borderOpacity * 0.45}),
+                              inset ${localConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                              inset -${localConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                              0 20px 40px rgba(0,0,0,0.65)
+                            `
                         }}
-                    />
+                    >
+                        {/* Dynamic GPU-accelerated water sheen overlay */}
+                        <div 
+                          className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                          style={{
+                            background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (localConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                            opacity: (localConfig.displacementScale / 120) * 0.9,
+                            animationDuration: `${30 * (0.35 / Math.max(0.1, localConfig.elasticity))}s`
+                          }}
+                        />
+                    </div>
                     {/* Sharp content above background overlay */}
                     <div className="relative z-10 p-6 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-xs font-black">F</div>

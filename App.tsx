@@ -322,35 +322,8 @@ const AppContent: React.FC<{
         <>
             <svg className="hidden pointer-events-none absolute w-0 h-0" aria-hidden="true">
                 <defs>
-                    <filter
-                        id="container-glass"
-                        x="-10%"
-                        y="-10%"
-                        width="120%"
-                        height="120%"
-                        colorInterpolationFilters="sRGB"
-                    >
-                        <feTurbulence
-                            type="fractalNoise"
-                            baseFrequency="0.02 0.02"
-                            numOctaves="2"
-                            seed="1"
-                            result="turbulence"
-                        />
-                        <feGaussianBlur in="turbulence" stdDeviation="1.5" result="blurredNoise" />
-                        <feOffset in="blurredNoise" dx="0" dy="0" result="offsetNoise">
-                            <animate attributeName="dx" dur="45s" values="0; 1200; 0" repeatCount="indefinite" />
-                            <animate attributeName="dy" dur="45s" values="0; 600; 0" repeatCount="indefinite" />
-                        </feOffset>
-                        <feDisplacementMap
-                            in="SourceGraphic"
-                            in2="offsetNoise"
-                            scale={glassConfig.displacementScale}
-                            xChannelSelector="R"
-                            yChannelSelector="B"
-                            result="displaced"
-                        />
-                        <feComposite in="SourceGraphic" in2="displaced" operator="over" />
+                    <filter id="container-glass">
+                        <feOffset dx="0" dy="0" />
                     </filter>
                 </defs>
             </svg>

@@ -31,15 +31,31 @@ const MobileNav: React.FC = () => {
   return (
     <div className="global-mobilenav fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto z-50 md:hidden w-[92%] max-w-[420px] pointer-events-auto overflow-visible">
       <div 
-        className="w-full rounded-full border backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.65)] flex items-center justify-between px-2 py-1.5 gap-1.5 transition-all duration-300"
+        className="w-full rounded-full border backdrop-blur-2xl shadow-[0_20px_40px_rgba(0,0,0,0.65)] flex items-center justify-between px-2 py-1.5 gap-1.5 transition-all duration-300 overflow-hidden relative"
         style={{
-          background: `linear-gradient(135deg, rgba(229, 9, 20, ${glassConfig.redOpacity * 1.5}) 0%, rgba(15, 23, 42, ${glassConfig.darkOpacity * 1.15}) 100%)`,
+          background: `linear-gradient(135deg, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 1.5}) 0%, rgba(15, 23, 42, ${glassConfig.darkOpacity * 1.15}) 100%)`,
           backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
           WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-          borderColor: `rgba(239, 68, 68, ${glassConfig.borderOpacity})`,
-          filter: 'url(#container-glass)',
+          borderStyle: 'solid',
+          borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+          boxShadow: `
+            inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+            inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+            inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+            inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+            0 20px 40px rgba(0,0,0,0.65)
+          `
         }}
       >
+        {/* Dynamic GPU-accelerated water sheen overlay */}
+        <div 
+          className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite] z-0"
+          style={{
+            background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+            opacity: (glassConfig.displacementScale / 120) * 0.9,
+            animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+          }}
+        />
         {items.map((item) => {
           const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
 
