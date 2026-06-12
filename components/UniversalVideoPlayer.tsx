@@ -181,6 +181,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffset] = useState(0);
@@ -877,6 +878,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 return;
             }
 
+            const hasNativeFullscreen = !!containerRef.current.requestFullscreen || 
+                                        !!(containerRef.current as any).webkitRequestFullscreen ||
+                                        !!(containerRef.current as any).mozRequestFullScreen ||
+                                        !!(containerRef.current as any).msRequestFullscreen;
+
+            if (!hasNativeFullscreen) {
+                setIsSimulatedFullscreen(prev => !prev);
+                setIsFullscreen(prev => !prev);
+                return;
+            }
+
             // Handle Browser Fullscreen
             if (!document.fullscreenElement) {
                 containerRef.current?.requestFullscreen().catch(err => {
@@ -1076,6 +1088,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
         };
     }, []);
+
+    useEffect(() => {
+        if (!isSimulatedFullscreen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setIsSimulatedFullscreen(false);
+                setIsFullscreen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isSimulatedFullscreen]);
 
     useEffect(() => {
         return () => {
@@ -1491,7 +1515,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     }, [iframeSrc]);
 
     return (
-        <div ref={containerRef} className="w-full h-full relative bg-black flex items-center justify-center overflow-hidden">
+        <div 
+            ref={containerRef} 
+            className={`bg-black flex items-center justify-center overflow-hidden transition-all duration-300 ${
+                isSimulatedFullscreen 
+                    ? 'fixed inset-0 w-screen h-screen z-[9999]' 
+                    : 'w-full h-full relative'
+            }`}
+        >
 
             {/* AdGuardOnboarding disabled on play as requested by the user */}
 

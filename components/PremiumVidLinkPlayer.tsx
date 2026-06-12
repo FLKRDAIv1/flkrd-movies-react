@@ -91,6 +91,7 @@ export default function PremiumVidLinkPlayer({
   const lastReceivedTimeRef = React.useRef<number>(0);
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   const [availableSubs, setAvailableSubs] = useState<any[]>([]);
@@ -785,6 +786,18 @@ export default function PremiumVidLinkPlayer({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isSimulatedFullscreen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSimulatedFullscreen(false);
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSimulatedFullscreen]);
+
   // Re-filter cues whenever subtitleOffset changes
   useEffect(() => {
     if (parsedCuesRef.current.length > 0) {
@@ -908,6 +921,17 @@ export default function PremiumVidLinkPlayer({
         return;
       }
 
+      const hasNativeFullscreen = !!containerRef.current.requestFullscreen || 
+                                  !!(containerRef.current as any).webkitRequestFullscreen ||
+                                  !!(containerRef.current as any).mozRequestFullScreen ||
+                                  !!(containerRef.current as any).msRequestFullscreen;
+
+      if (!hasNativeFullscreen) {
+        setIsSimulatedFullscreen(prev => !prev);
+        setIsFullscreen(prev => !prev);
+        return;
+      }
+
       if (!document.fullscreenElement) {
         containerRef.current?.requestFullscreen().catch(err => {
           console.error(`Error attempting to enable full-screen mode: ${err.message}`);
@@ -919,7 +943,14 @@ export default function PremiumVidLinkPlayer({
   };
 
   return (
-    <div ref={containerRef} className="w-full h-full bg-black relative flex flex-col overflow-hidden">
+    <div 
+      ref={containerRef} 
+      className={`bg-black relative flex flex-col overflow-hidden transition-all duration-300 ${
+        isSimulatedFullscreen 
+          ? 'fixed inset-0 w-screen h-screen z-[9999]' 
+          : 'w-full h-full'
+      }`}
+    >
       {/* Top Controls */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
         {type === 'tv' && onEpisodeChange && (
