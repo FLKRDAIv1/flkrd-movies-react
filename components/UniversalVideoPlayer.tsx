@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play } from 'lucide-react';
+import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import AdGuardOnboarding from './AdGuardOnboarding';
@@ -180,6 +180,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffset] = useState(0);
@@ -536,7 +537,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         localStorage.setItem('sub_show_bg', showSubBackground.toString());
     }, [subtitleSize, subtitleColor, subBgOpacity, subBlur, showSubBackground]);
 
-    // Fetch and parse VTT whenever localSubtitleUrl or subtitleOffset changes
+    // Fetch and parse VTT whenever localSubtitleUrl changes
     useEffect(() => {
         if (!localSubtitleUrl) {
             setSubtitleCues([]);
@@ -564,9 +565,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     if (!processedText.startsWith('WEBVTT')) {
                         processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
                     }
-                    if (subtitleOffset !== 0) {
-                        processedText = subtitleService.shiftVtt(processedText, subtitleOffset);
-                    }
                     const cues = subtitleService.parseVtt(processedText);
                     const hasKurdish = /[\u0600-\u06FF]/.test(processedText);
                     if (hasKurdish) {
@@ -591,7 +589,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             active = false;
         };
-    }, [localSubtitleUrl, subtitleOffset]);
+    }, [localSubtitleUrl]);
 
     const handleIframeLoad = () => {
         setLoading(false);
@@ -1049,24 +1047,35 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => window.removeEventListener('message', handlePlayerMessages);
     }, [handlePlayerMessages]);
 
-    // Subtitle Keep-Alive Playhead Interpolator
-    // If the iframe message stream stalls (common on long movies due to backgrounding/tab throttling or ad blocker CPU load in the iframe),
-    // this effect will interpolate the current time based on elapsed performance.now() intervals to prevent subtitle freezing.
+    // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
-        if (!isIframe) return;
+        const handleFullscreenChange = () => {
+            const isFull = !!document.fullscreenElement;
+            setIsFullscreen(isFull);
 
-        const interval = setInterval(() => {
-            const now = performance.now();
-            const elapsedSinceLastMsg = (now - lastMessageTimeRef.current) / 1000;
-
-            if (isPlaying && elapsedSinceLastMsg > 2.0) {
-                const estimatedTime = lastReceivedTimeRef.current + elapsedSinceLastMsg;
-                setCurrentTime(estimatedTime);
+            // Intercept iframe fullscreen and redirect to container
+            if (document.fullscreenElement === iframeRef.current && containerRef.current) {
+                console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
+                document.exitFullscreen().then(() => {
+                    containerRef.current?.requestFullscreen().catch(err => {
+                        console.error("[PLAYER] Failed to redirect fullscreen:", err);
+                    });
+                });
             }
-        }, 500);
+        };
 
-        return () => clearInterval(interval);
-    }, [isPlaying, isIframe]);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+        };
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -1545,6 +1554,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             title={availableSubs.length === 0 ? ((language === 'ku' || language === 'badini') ? 'ژێرنووس بەردەست نییە' : 'No Subtitles Available') : ((language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles')}
                         >
                             <Subtitles size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
+                        </button>
+
+                        <button 
+                            onClick={toggleFullscreen}
+                            className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
+                            title={isFullscreen 
+                                ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
+                                : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
+                            }
+                        >
+                            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                         </button>
 
                         <AnimatePresence>

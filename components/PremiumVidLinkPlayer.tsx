@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck } from 'lucide-react';
+import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -90,6 +90,8 @@ export default function PremiumVidLinkPlayer({
   const lastMessageTimeRef = React.useRef<number>(performance.now());
   const lastReceivedTimeRef = React.useRef<number>(0);
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const [availableSubs, setAvailableSubs] = useState<any[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
@@ -136,6 +138,8 @@ export default function PremiumVidLinkPlayer({
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
   const [subtitleOffset, setSubtitleOffset] = useState(0);
+  const subtitleOffsetRef = React.useRef(subtitleOffset);
+  useEffect(() => { subtitleOffsetRef.current = subtitleOffset; }, [subtitleOffset]);
   const [showSubBackground, setShowSubBackground] = useState(() => {
     try {
       const saved = localStorage.getItem('sub_show_bg');
@@ -705,8 +709,9 @@ export default function PremiumVidLinkPlayer({
             setIsPlaying(true);
           }
 
+          const offsetSec = subtitleOffsetRef.current / 1000;
           if (parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.filter(c => currentTime >= c.start && currentTime <= c.end);
+            const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
             setActiveCues(active);
           }
         }
@@ -730,8 +735,9 @@ export default function PremiumVidLinkPlayer({
           lastReceivedTimeRef.current = currentTime;
           setIsPlaying(true);
 
+          const offsetSec = subtitleOffsetRef.current / 1000;
           if (parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.filter(c => currentTime >= c.start && currentTime <= c.end);
+            const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
             setActiveCues(active);
           }
 
@@ -749,30 +755,46 @@ export default function PremiumVidLinkPlayer({
     return () => window.removeEventListener('message', handleVidLinkMessage);
   }, [onProgress]);
 
-  // Playhead Keep-Alive / Interpolator
-  // If the iframe's message stream stalls (common on long movies due to memory/ad blocker CPU throttling in third-party iframe ads),
-  // this effect will interpolate the current time based on elapsed performance.now() intervals to prevent subtitle freezing.
+  // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = performance.now();
-      const elapsedSinceLastMsg = (now - lastMessageTimeRef.current) / 1000;
+    const handleFullscreenChange = () => {
+      const isFull = !!document.fullscreenElement;
+      setIsFullscreen(isFull);
 
-      if (isPlaying && elapsedSinceLastMsg > 2.0 && parsedCuesRef.current.length > 0) {
-        const estimatedTime = lastReceivedTimeRef.current + elapsedSinceLastMsg;
-        const active = parsedCuesRef.current.filter(c => estimatedTime >= c.start && estimatedTime <= c.end);
-        setActiveCues(active);
-
-        if (onProgress) {
-          onProgress({
-            event: 'timeupdate',
-            currentTime: estimatedTime
+      // Intercept iframe fullscreen and redirect to container
+      if (document.fullscreenElement === iframeRef.current && containerRef.current) {
+        console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
+        document.exitFullscreen().then(() => {
+          containerRef.current?.requestFullscreen().catch(err => {
+            console.error("[PLAYER] Failed to redirect fullscreen:", err);
           });
-        }
+        });
       }
-    }, 500);
+    };
 
-    return () => clearInterval(interval);
-  }, [isPlaying, onProgress]);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
+
+  // Re-filter cues whenever subtitleOffset changes
+  useEffect(() => {
+    if (parsedCuesRef.current.length > 0) {
+      const offsetSec = subtitleOffset / 1000;
+      const active = parsedCuesRef.current.filter(
+        c => lastReceivedTimeRef.current >= (c.start + offsetSec) && lastReceivedTimeRef.current <= (c.end + offsetSec)
+      );
+      setActiveCues(active);
+    }
+  }, [subtitleOffset]);
 
   // 3. SUPPRESS TAURI NATIVE DIALOGS from VidLink's built-in subtitle failure alerts
   // Tauri intercepts window.alert/confirm/prompt as native macOS dialogs — block them
@@ -874,8 +896,30 @@ export default function PremiumVidLinkPlayer({
     }
   }, [peerSyncTrigger]);
 
+  const toggleFullscreen = () => {
+    if (!containerRef.current) return;
+    
+    import('../utils/tauriUtils').then(({ isTauri }) => {
+      if (isTauri()) {
+        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+          const win = getCurrentWindow();
+          win.isFullscreen().then(f => win.setFullscreen(!f));
+        });
+        return;
+      }
+
+      if (!document.fullscreenElement) {
+        containerRef.current?.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  };
+
   return (
-    <div className="w-full h-full bg-black relative flex flex-col overflow-hidden">
+    <div ref={containerRef} className="w-full h-full bg-black relative flex flex-col overflow-hidden">
       {/* Top Controls */}
       <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
         {type === 'tv' && onEpisodeChange && (
@@ -910,6 +954,24 @@ export default function PremiumVidLinkPlayer({
         >
           <Subtitles size={14} />
           <span className="text-[10px] font-black uppercase">Studio</span>
+        </button>
+
+        {/* Fullscreen Button */}
+        <button 
+          onClick={toggleFullscreen}
+          className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/50 hover:bg-white/20 hover:text-white"
+          title={isFullscreen 
+            ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
+            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
+          }
+        >
+          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+          <span className="text-[10px] font-black uppercase">
+            {isFullscreen 
+              ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Minimize') 
+              : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
+            }
+          </span>
         </button>
 
         {/* Ad-Blocker Badge */}
