@@ -6,12 +6,21 @@ import { IMAGE_BASE_URL_POSTER, API_KEY, API_BASE_URL } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { Content } from '../types';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
+import { useUI } from '../contexts/UIContext';
 
 const KurdishCCPage: React.FC = () => {
     const [items, setItems] = useState<Content[]>([]);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const { language } = useTranslation();
+    const { glassConfig = {
+        redOpacity: 0.15,
+        darkOpacity: 0.85,
+        blurAmount: 20,
+        saturation: 120,
+        borderOpacity: 0.1,
+        aberrationIntensity: 0.5
+    } } = useUI();
     const isRtl = (language === 'ku' || language === 'badini');
     const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
@@ -114,7 +123,7 @@ const KurdishCCPage: React.FC = () => {
                             className="cursor-pointer group relative"
                             whileHover={{ y: -8, scale: 1.02 }}
                         >
-                            <div className="relative aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-border-color group-hover:border-red-500/50 transition-all duration-700 shadow-2xl">
+                            <div className="relative aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-border-color group-hover:border-brand/50 transition-all duration-700 shadow-2xl bg-neutral-950/80">
                                 {item.poster_path ? (
                                     <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt={item.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
                                 ) : (
@@ -123,6 +132,22 @@ const KurdishCCPage: React.FC = () => {
                                     </div>
                                 )}
                                 
+                                {/* Liquid Glass Hover Overlay */}
+                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
+                                     style={{
+                                       background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
+                                       backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+                                       WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+                                       borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                                       boxShadow: `
+                                         inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
+                                         inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
+                                         inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
+                                       `,
+                                       transform: 'translate3d(0, 0, 0)'
+                                     }}
+                                />
+
                                 <div className="absolute top-4 left-4 z-30">
                                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600/90 backdrop-blur-md rounded-xl border border-red-500/50 shadow-[0_4px_15px_rgba(229,9,20,0.4)]">
                                         <Subtitles size={12} className="text-white" />
@@ -130,7 +155,7 @@ const KurdishCCPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
+                                <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5 pointer-events-none">
                                     <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
                                 </div>
                             </div>

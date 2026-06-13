@@ -128,7 +128,14 @@ const SearchPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { isAdmin, glassConfig } = useUI();
+  const { isAdmin, glassConfig = {
+    redOpacity: 0.15,
+    darkOpacity: 0.85,
+    blurAmount: 20,
+    saturation: 120,
+    borderOpacity: 0.1,
+    aberrationIntensity: 0.5
+  } } = useUI();
   const { addNotification } = useNotification();
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
 
@@ -462,16 +469,20 @@ const SearchPage: React.FC = () => {
                     />
 
                     {/* Liquid Glass Hover Overlay */}
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none border border-white/10 overflow-hidden">
-                      <div 
-                        className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
-                        style={{
-                          background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                          opacity: (glassConfig.displacementScale / 120) * 0.9,
-                          animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
-                        }}
-                      />
-                    </div>
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
+                         style={{
+                           background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
+                           backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+                           WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+                           borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                           boxShadow: `
+                             inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
+                             inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
+                             inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
+                           `,
+                           transform: 'translate3d(0, 0, 0)'
+                         }}
+                    />
 
                     {/* IMDb Badge */}
                     {item.vote_average !== undefined && item.vote_average > 0 && (
