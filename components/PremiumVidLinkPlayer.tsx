@@ -1061,28 +1061,37 @@ export default function PremiumVidLinkPlayer({
               exit={{ opacity: 0 }}
               className="absolute bottom-[15%] left-0 right-0 z-[100] pointer-events-none w-full flex justify-center px-4"
             >
-              <div 
-                className={`px-6 py-3 rounded-2xl text-center max-w-[90%] transition-all duration-300 ${showSubBackground ? 'shadow-2xl border border-white/10' : ''}`}
-                style={{ 
-                  backgroundColor: showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'transparent',
-                  backdropFilter: showSubBackground && subBlur ? 'blur(12px)' : 'none',
-                  border: showSubBackground ? undefined : 'none',
-                  boxShadow: showSubBackground ? undefined : 'none',
-                  textShadow: showSubBackground 
-                    ? '0 2px 4px rgba(0,0,0,0.8)'
-                    : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
-                  fontSize: `${subFontSize}px`,
-                  color: subColor,
-                  fontWeight: 900,
-                  fontFamily: "'Zain', 'Outfit', sans-serif"
-                }}
-              >
-                {activeCues.map((cue, i) => (
-                  <p key={i} className="text-center tracking-tight leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] custom-subtitle-text">
-                    {cue.text}
-                  </p>
-                ))}
-              </div>
+              {(() => {
+                const hasRtl = activeCues.some(cue => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(cue.text || ''));
+                return (
+                  <div 
+                    className={`px-6 py-3 rounded-2xl text-center max-w-[90%] transition-all duration-300 ${showSubBackground ? 'shadow-2xl border border-white/10' : ''}`}
+                    style={{ 
+                      direction: hasRtl ? 'rtl' : 'ltr',
+                      unicodeBidi: hasRtl ? 'plaintext' : 'normal',
+                      textAlign: 'center',
+                      backgroundColor: showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'transparent',
+                      backdropFilter: showSubBackground && subBlur ? 'blur(12px)' : 'none',
+                      border: showSubBackground ? undefined : 'none',
+                      boxShadow: showSubBackground ? undefined : 'none',
+                      textShadow: showSubBackground 
+                        ? '0 2px 4px rgba(0,0,0,0.8)'
+                        : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
+                      fontSize: `${subFontSize}px`,
+                      color: subColor,
+                      fontWeight: 800, // Optimized weight for Zain font
+                      fontFamily: "'Zain', 'Outfit', sans-serif",
+                      lineHeight: hasRtl ? '1.5' : '1.4'
+                    }}
+                  >
+                    {activeCues.map((cue, i) => (
+                      <p key={i} className="text-center tracking-tight leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] custom-subtitle-text">
+                        {cue.text}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
         </AnimatePresence>

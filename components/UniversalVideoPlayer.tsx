@@ -2228,10 +2228,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             
                             if (!activeCue) return null;
 
+                            const isRtl = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(activeCue.text);
+
                             return (
                                 <div 
-                                    className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-300 leading-relaxed max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''}`}
+                                    className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-300 max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''}`}
                                     style={{ 
+                                        direction: isRtl ? 'rtl' : 'ltr',
+                                        unicodeBidi: isRtl ? 'plaintext' : 'normal',
+                                        textAlign: 'center',
                                         backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
                                         backdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
                                         WebkitBackdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
@@ -2242,7 +2247,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
                                         textWrap: 'balance',
                                         wordBreak: 'break-word',
-                                        lineHeight: '1.4'
+                                        lineHeight: isRtl ? '1.5' : '1.4'
                                     }}
                                 >
                                     {activeCue.text.split('\n').map((line, idx) => (
