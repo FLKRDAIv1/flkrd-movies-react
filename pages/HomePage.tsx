@@ -15,12 +15,21 @@ import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { API_KEY, API_BASE_URL } from '../constants';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import StoryReels from '../components/StoryReels';
+import { useUI } from '../contexts/UIContext';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [item, setItem] = useState<Content | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t, language } = useTranslation();
+  const { glassConfig = {
+    redOpacity: 0.15,
+    darkOpacity: 0.85,
+    blurAmount: 20,
+    saturation: 120,
+    borderOpacity: 0.1,
+    aberrationIntensity: 0.5
+  } } = useUI();
 
   useEffect(() => {
     const getData = async () => {
@@ -57,7 +66,22 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
         
-        <div className={`absolute bottom-10 md:bottom-20 ${(language === 'ku' || language === 'badini') ? 'right-8 md:right-32' : 'left-8 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[90%] md:max-w-5xl`}>
+        <div className={`absolute bottom-6 md:bottom-16 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-32' : 'left-6 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-3xl p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border backdrop-blur-2xl transition-all duration-500 hover:border-brand/30`}
+             style={{
+               background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95})`,
+               backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+               WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+               borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+               boxShadow: `
+                 inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                 inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
+                 inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
+                 0 35px 70px rgba(0, 0, 0, 0.85)
+               `,
+               transform: 'translate3d(0, 0, 0)',
+               willChange: 'transform, border-color'
+             }}
+        >
           {/* Metadata Grid (Corner-Style) */}
           <div className={`hidden md:flex flex-col gap-6 mb-12 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
               <div className="flex items-center gap-4">

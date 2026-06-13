@@ -14,7 +14,31 @@ type DocLanguage = 'en' | 'ku' | 'badini';
 
 const DocPage: React.FC = () => {
   const { language: appLang } = useTranslation();
-  const { accentColor } = useUI();
+  const { accentColor, glassConfig = {
+    redOpacity: 0.15,
+    darkOpacity: 0.85,
+    blurAmount: 20,
+    saturation: 120,
+    borderOpacity: 0.1,
+    aberrationIntensity: 0.5
+  } } = useUI();
+
+  const glassCardStyle = {
+    background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+    backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+    WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+    borderStyle: 'solid',
+    borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+    borderRadius: '2.5rem',
+    boxShadow: `
+      inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+      inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
+      inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
+      0 20px 40px rgba(0, 0, 0, 0.5)
+    `,
+    transform: 'translate3d(0, 0, 0)',
+    willChange: 'transform, border-color'
+  };
   
   // Local doc language state, initialized to app language
   const [docLang, setDocLang] = useState<DocLanguage>(() => {
@@ -316,7 +340,15 @@ const DocPage: React.FC = () => {
         </a>
 
         {/* Floating 3-Language Selector Pill */}
-        <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-full border border-white/10">
+        <div className="flex items-center gap-1.5 p-1 rounded-full border backdrop-blur-md transition-all duration-300"
+             style={{
+               background: `rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+               backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+               WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+               borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+               boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25})`
+             }}
+        >
           {(['en', 'ku', 'badini'] as DocLanguage[]).map((lang) => (
             <button
               key={lang}
@@ -389,7 +421,21 @@ const DocPage: React.FC = () => {
         
         {/* Side Panel (Navigation) */}
         <div className="lg:col-span-1 flex flex-col gap-4">
-          <div className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-6 backdrop-blur-xl sticky top-28 space-y-8">
+          <div className="border rounded-[2.5rem] p-6 backdrop-blur-xl sticky top-28 space-y-8 transition-all duration-500 overflow-hidden relative"
+               style={{
+                 background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+                 backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                 WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                 borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                 boxShadow: `
+                   inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                   inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
+                   inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
+                   0 20px 40px rgba(0, 0, 0, 0.5)
+                 `,
+                 transform: 'translate3d(0, 0, 0)'
+               }}
+          >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10">
                 <BookOpen size={18} style={{ color: accentColor }} />
@@ -499,7 +545,7 @@ const DocPage: React.FC = () => {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-8"
               >
-                <div className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl">
+                <div className="p-8 md:p-10 backdrop-blur-xl" style={glassCardStyle}>
                   <div className="flex items-center gap-3.5 mb-4">
                     <Sparkles size={20} style={{ color: accentColor }} />
                     <h2 className="text-xl md:text-2xl font-[1000] text-white uppercase italic tracking-tighter">
@@ -742,7 +788,8 @@ const DocPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                className="rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                style={glassCardStyle}
               >
                 <div className="flex items-center gap-3.5 mb-2">
                   <HelpCircle size={20} style={{ color: accentColor }} />
@@ -845,7 +892,8 @@ const DocPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                className="rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                style={glassCardStyle}
               >
                 <div className="flex items-center gap-3.5 mb-2">
                   <Cpu size={20} style={{ color: accentColor }} />
@@ -977,7 +1025,8 @@ const DocPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                className="rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                style={glassCardStyle}
               >
                 <div className="flex items-center gap-3.5 mb-2">
                   <ShieldCheck size={20} style={{ color: accentColor }} />
@@ -1141,7 +1190,8 @@ const DocPage: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="bg-white/[0.01] border border-white/5 rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                className="rounded-[2.5rem] p-8 md:p-10 backdrop-blur-xl space-y-8"
+                style={glassCardStyle}
               >
                 <div className="flex items-center gap-3.5 mb-2">
                   <Shield size={20} style={{ color: accentColor }} />
