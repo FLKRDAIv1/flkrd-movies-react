@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
             rewrite: (path) => path.replace(/^\/api\/subtitle/, '/api/v1/subtitles'),
             changeOrigin: true,
             headers: {
-              'Api-Key': 'TMK1BRNZCmW3AfZaJBZiGlieOD8Cq1hl',
+              'Api-Key': env.VITE_OPENSUBTITLES_API_KEY ? env.VITE_OPENSUBTITLES_API_KEY.split(',')[1] || env.VITE_OPENSUBTITLES_API_KEY.split(',')[0] : '',
               'User-Agent': 'flkrd_movies_v1',
               'Accept': 'application/json'
             }

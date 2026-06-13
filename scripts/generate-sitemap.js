@@ -1,7 +1,35 @@
 import fs from 'fs';
 import path from 'path';
 
-const API_KEY = "39ad6c4210f7e4357f3b5762fcaeb1db";
+// Load environment variables locally if not already set (e.g. on Vercel)
+if (!process.env.VITE_TMDB_API_KEY) {
+  try {
+    const dotenvPaths = ['.env.local', '.env'];
+    for (const dotenvPath of dotenvPaths) {
+      const p = path.resolve(dotenvPath);
+      if (fs.existsSync(p)) {
+        const envContent = fs.readFileSync(p, 'utf-8');
+        envContent.split('\n').forEach(line => {
+          const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+          if (match) {
+            const key = match[1];
+            let value = match[2] || '';
+            // Remove quotes if present
+            if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+            if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+            if (!process.env[key]) {
+              process.env[key] = value;
+            }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("[SITEMAP GENERATOR] Could not load local env files:", err.message);
+  }
+}
+
+const API_KEY = process.env.VITE_TMDB_API_KEY || "";
 const BASE_URL = "https://api.themoviedb.org/3";
 const SITEMAP_PATH = path.resolve('public/sitemap.xml');
 

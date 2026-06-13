@@ -2,9 +2,9 @@
 // IMPORTANT: In a real-world application, the API_KEY should be stored in environment variables
 import translations from './translations';
 
-export const API_KEY = "39ad6c4210f7e4357f3b5762fcaeb1db";
-export const OPENSUBTITLES_API_KEY = "4BixV2IOdGyewzC3a0Dvqq1MYbfZ3yFx";
-export const SUBDL_API_KEY = "subdl_s-YmuDA2wsocYnVVHrGzkUkZIWthD4F0fszNqBRfvL8";
+export const API_KEY = import.meta.env.VITE_TMDB_API_KEY || "";
+export const OPENSUBTITLES_API_KEY = import.meta.env.VITE_OPENSUBTITLES_API_KEY ? import.meta.env.VITE_OPENSUBTITLES_API_KEY.split(',')[0] : "";
+export const SUBDL_API_KEY = import.meta.env.VITE_SUBDL_API_KEY ? import.meta.env.VITE_SUBDL_API_KEY.split(',')[0] : "";
 
 const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 

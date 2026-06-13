@@ -1,17 +1,16 @@
 // This is a Vercel Serverless Function. 
 // It proxies all subtitle requests (Kurdish Scraper, OpenSubtitles, and SubDL) to bypass CORS and Cloudflare blocks.
 
-const TMDB_API_KEY = '39ad6c4210f7e4357f3b5762fcaeb1db';
+const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
 const USER_AGENT = 'flkrd_movies_v1';
 
-const OPENSUBTITLES_KEYS = [
-    '4BixV2IOdGyewzC3a0Dvqq1MYbfZ3yFx',
-    'TMK1BRNZCmW3AfZaJBZiGlieOD8Cq1hl'
-];
+const OPENSUBTITLES_KEYS = process.env.VITE_OPENSUBTITLES_API_KEY
+    ? process.env.VITE_OPENSUBTITLES_API_KEY.split(',').map(k => k.trim())
+    : [];
 
-const SUBDL_KEYS = [
-    'subdl_s-YmuDA2wsocYnVVHrGzkUkZIWthD4F0fszNqBRfvL8'
-];
+const SUBDL_KEYS = process.env.VITE_SUBDL_API_KEY
+    ? process.env.VITE_SUBDL_API_KEY.split(',').map(k => k.trim())
+    : [];
 
 /**
  * Resolve IMDb ID or TMDb ID to an English title using TMDB API

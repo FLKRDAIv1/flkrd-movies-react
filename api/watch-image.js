@@ -6,7 +6,7 @@ const h = React.createElement;
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fmahzalaxbkmhbpcally.supabase.co';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtYWh6YWxheGJrbWhicGNhbGx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3NjQ0NDYsImV4cCI6MjA5MzM0MDQ0Nn0.d4y612cjG6bSHL6vNK1YdxFmKjCJ6YpDIV7oG9XFis4';
-const TMDB_API_KEY = '39ad6c4210f7e4357f3b5762fcaeb1db';
+const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
