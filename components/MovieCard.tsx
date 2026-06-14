@@ -33,7 +33,6 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
     aberrationIntensity: 0.5
   } } = useUI();
   const [isAdded, setIsAdded] = useState(false);
-  const [isClicked, setIsClicked] = useState(false);
 
   const isCustom = String(item.id).startsWith('custom_');
   const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
@@ -105,7 +104,6 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
   };
 
   const navigateToDetail = () => {
-    setIsClicked(true);
     if (mediaType === 'dubbed' || isCustom) {
       navigate(`/dubbed-details/${String(item.id).replace('custom_', '')}`, { state: { customData: item } });
     } else {
@@ -186,19 +184,14 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
 
           {/* Liquid Glass Hover Overlay */}
           <div 
-            className={`absolute inset-0 opacity-0 ${isClicked ? '' : 'group-hover/card:opacity-100'} transition-all duration-500 z-10 pointer-events-none border`}
+            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
             style={{
-              background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-              backdropFilter: isClicked ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-              WebkitBackdropFilter: isClicked ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-              borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+              background: 'transparent',
+              borderColor: 'rgba(255, 255, 255, 0.15)',
               boxShadow: `
-                inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1)
               `,
-              transform: 'translate3d(0, 0, 0)',
-              display: isClicked ? 'none' : 'block'
+              transform: 'translate3d(0, 0, 0)'
             }}
           />
 
