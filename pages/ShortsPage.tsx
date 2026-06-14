@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Volume2, VolumeX, CheckCircle2, 
-  X, Play, ShieldCheck, Heart, WifiOff, Zap, Calendar, Tag, Info, Star, Music2, RotateCcw
+  X, Play, ShieldCheck, Heart, WifiOff, Zap, Calendar, Tag, Info, Star, Music2, RotateCcw,
+  ArrowDown, ArrowUp
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -51,6 +52,18 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   const [showHeartPop, setShowHeartPop] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [isVideoLoading, setIsVideoLoading] = useState(true);
+  const [shouldRenderVideo, setShouldRenderVideo] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setShouldRenderVideo(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShouldRenderVideo(true);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [active]);
   const lastTapRef = useRef<number>(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { isAdmin } = useUI();
@@ -158,7 +171,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
   };
 
   return (
-    <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start bg-[#050505] flex items-center justify-center overflow-hidden">
+    <div className="h-[calc(var(--vh,1vh)*100)] w-full relative snap-start snap-always bg-[#050505] flex items-center justify-center overflow-hidden">
       {/* Full-Screen Ambient Blurred Backdrop for PC */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none hidden md:block">
         <img 
@@ -195,14 +208,9 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
                 className="w-full h-full object-cover opacity-60 scale-110 blur-xl"
                 alt=""
               />
-              {isVideoLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Spinner />
-                </div>
-              )}
             </div>
 
-            {trailerKey && active && hasInteracted && (
+            {trailerKey && active && hasInteracted && shouldRenderVideo && (
               <div className="w-full h-full relative pointer-events-none z-[1]">
                 <div className="w-full h-full scale-[2.2] md:scale-100 brightness-[0.75] md:brightness-100">
                   <iframe 
@@ -218,9 +226,32 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
               </div>
             )}
 
+            {/* Clear Poster Artwork Layer while video is loading/idle */}
+            <AnimatePresence>
+              {(isVideoLoading || !shouldRenderVideo) && (
+                <motion.div 
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-0 z-20 w-full h-full"
+                >
+                  <img 
+                    src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path || movie.backdrop_path}`} 
+                    className="w-full h-full object-cover"
+                    alt={movie.title}
+                  />
+                  {isVideoLoading && shouldRenderVideo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                      <Spinner />
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Cinematic Vignette Overlay inside the card */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/90 z-20 pointer-events-none" />
-            <div className="absolute inset-0 shadow-[inset_0_0_120px_rgba(0,0,0,0.85)] z-21 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/90 z-21 pointer-events-none" />
+            <div className="absolute inset-0 shadow-[inset_0_0_120px_rgba(0,0,0,0.85)] z-22 pointer-events-none" />
           </div>
 
           {/* Magnetic Heart Interaction Layer inside the card */}
@@ -456,31 +487,120 @@ const ShortsPage: React.FC = () => {
     }
   }, [displayedMovies.length, activeIndex]);
 
+  const scrollTimeoutRef = useRef<number | null>(null);
+
+  // Clean up any remaining animation frame timers
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        cancelAnimationFrame(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Keyboard navigation for PC ( TikTok-like Snap Scroll )
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!containerRef.current) return;
+      
+      const containerHeight = containerRef.current.clientHeight || window.innerHeight;
+
+      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+        e.preventDefault();
+        if (isScrollingRef.current) return;
+        if (activeIndex < displayedMovies.length - 1) {
+          isScrollingRef.current = true;
+          const nextIndex = activeIndex + 1;
+          containerRef.current.scrollTo({
+            top: nextIndex * containerHeight,
+            behavior: 'smooth'
+          });
+          setTimeout(() => { isScrollingRef.current = false; }, 450);
+        }
+      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+        e.preventDefault();
+        if (isScrollingRef.current) return;
+        if (activeIndex > 0) {
+          isScrollingRef.current = true;
+          const prevIndex = activeIndex - 1;
+          containerRef.current.scrollTo({
+            top: prevIndex * containerHeight,
+            behavior: 'smooth'
+          });
+          setTimeout(() => { isScrollingRef.current = false; }, 450);
+        }
+      } else if (e.key === ' ') {
+        e.preventDefault();
+        if (isScrollingRef.current) return;
+        if (e.shiftKey) {
+          if (activeIndex > 0) {
+            isScrollingRef.current = true;
+            const prevIndex = activeIndex - 1;
+            containerRef.current.scrollTo({
+              top: prevIndex * containerHeight,
+              behavior: 'smooth'
+            });
+            setTimeout(() => { isScrollingRef.current = false; }, 450);
+          }
+        } else {
+          if (activeIndex < displayedMovies.length - 1) {
+            isScrollingRef.current = true;
+            const nextIndex = activeIndex + 1;
+            containerRef.current.scrollTo({
+              top: nextIndex * containerHeight,
+              behavior: 'smooth'
+            });
+            setTimeout(() => { isScrollingRef.current = false; }, 450);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeIndex, displayedMovies.length]);
+
   // ── Engine V5: Controller-Synchronized Feed (Stabilized) ──
   const { lastAction } = useGamepad();
   useEffect(() => {
-    if (isScrollingRef.current) return;
+    if (isScrollingRef.current || !containerRef.current) return;
+
+    const containerHeight = containerRef.current.clientHeight || window.innerHeight;
 
     if (lastAction === 'DOWN' && activeIndex < displayedMovies.length - 1) {
         isScrollingRef.current = true;
-        containerRef.current?.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
-        setTimeout(() => { isScrollingRef.current = false; }, 600);
+        const nextIndex = activeIndex + 1;
+        containerRef.current.scrollTo({ top: nextIndex * containerHeight, behavior: 'smooth' });
+        setTimeout(() => { isScrollingRef.current = false; }, 450);
     }
     if (lastAction === 'UP' && activeIndex > 0) {
         isScrollingRef.current = true;
-        containerRef.current?.scrollBy({ top: -window.innerHeight, behavior: 'smooth' });
-        setTimeout(() => { isScrollingRef.current = false; }, 600);
+        const prevIndex = activeIndex - 1;
+        containerRef.current.scrollTo({ top: prevIndex * containerHeight, behavior: 'smooth' });
+        setTimeout(() => { isScrollingRef.current = false; }, 450);
     }
   }, [lastAction, activeIndex, displayedMovies.length]);
 
   const handleScroll = () => {
-    if (!containerRef.current) return;
-    const index = Math.round(containerRef.current.scrollTop / (window.innerHeight));
-    if (index !== activeIndex) { 
-        setActiveIndex(index); 
-        sessionStorage.setItem(STORAGE_KEY, index.toString()); 
+    if (scrollTimeoutRef.current) {
+      cancelAnimationFrame(scrollTimeoutRef.current);
     }
-    if (index >= displayedMovies.length - 4) loadShorts();
+
+    scrollTimeoutRef.current = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const scrollTop = containerRef.current.scrollTop;
+      const containerHeight = containerRef.current.clientHeight || window.innerHeight;
+      const index = Math.round(scrollTop / containerHeight);
+      
+      if (index !== activeIndex && index >= 0 && index < displayedMovies.length) {
+        setActiveIndex(index);
+        sessionStorage.setItem(STORAGE_KEY, index.toString());
+      }
+      
+      if (index >= displayedMovies.length - 4) {
+        loadShorts();
+      }
+    });
   };
 
   const handleToggleFollow = (id: number) => {
@@ -534,7 +654,7 @@ const ShortsPage: React.FC = () => {
       <div 
         ref={containerRef} 
         onScroll={handleScroll} 
-        className="h-full w-full overflow-y-scroll snap-y snap-proximity scrollbar-hide bg-[#050505] overscroll-none"
+        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide bg-[#050505] overscroll-none"
         style={{ height: 'calc(var(--vh, 1vh) * 100)' }}
       >
         {displayedMovies.length > 0 ? displayedMovies.map((movie, index) => {
@@ -543,7 +663,7 @@ const ShortsPage: React.FC = () => {
             return (
               <div 
                 key={`${movie.id}-${index}`} 
-                className="w-full snap-start bg-[#050505] flex-shrink-0" 
+                className="w-full snap-start snap-always bg-[#050505] flex-shrink-0" 
                 style={{ height: 'calc(var(--vh, 1vh) * 100)' }} 
               />
             );
@@ -563,6 +683,46 @@ const ShortsPage: React.FC = () => {
           );
         }) : (
             <SkeletonShorts />
+        )}
+      </div>
+
+      {/* Floating Scroll Navigation Controls on PC */}
+      <div className="hidden md:flex flex-col gap-3 fixed right-8 bottom-28 z-50 pointer-events-auto">
+        {activeIndex > 0 && (
+          <button 
+            onClick={() => {
+              if (isScrollingRef.current || !containerRef.current) return;
+              isScrollingRef.current = true;
+              const containerHeight = containerRef.current.clientHeight || window.innerHeight;
+              containerRef.current.scrollTo({
+                top: (activeIndex - 1) * containerHeight,
+                behavior: 'smooth'
+              });
+              setTimeout(() => { isScrollingRef.current = false; }, 450);
+            }}
+            className="p-4 rounded-full bg-white/5 border border-white/10 text-white backdrop-blur-xl hover:bg-white/10 hover:border-white/20 active:scale-95 transition-all shadow-2xl"
+            title="Scroll Up"
+          >
+            <ArrowUp className="w-6 h-6" />
+          </button>
+        )}
+        {activeIndex < displayedMovies.length - 1 && (
+          <button 
+            onClick={() => {
+              if (isScrollingRef.current || !containerRef.current) return;
+              isScrollingRef.current = true;
+              const containerHeight = containerRef.current.clientHeight || window.innerHeight;
+              containerRef.current.scrollTo({
+                top: (activeIndex + 1) * containerHeight,
+                behavior: 'smooth'
+              });
+              setTimeout(() => { isScrollingRef.current = false; }, 450);
+            }}
+            className="p-4 rounded-full bg-white/5 border border-white/10 text-white backdrop-blur-xl hover:bg-white/10 hover:border-white/20 active:scale-95 transition-all shadow-2xl"
+            title="Scroll Down"
+          >
+            <ArrowDown className="w-6 h-6" />
+          </button>
         )}
       </div>
 
