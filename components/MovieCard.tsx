@@ -33,6 +33,11 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
     aberrationIntensity: 0.5
   } } = useUI();
   const [isAdded, setIsAdded] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+
+  useEffect(() => {
+    setIsClicked(false);
+  }, [item.id]);
 
   const isCustom = String(item.id).startsWith('custom_');
   const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
@@ -104,6 +109,7 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
   };
 
   const navigateToDetail = () => {
+    setIsClicked(true);
     if (mediaType === 'dubbed' || isCustom) {
       navigate(`/dubbed-details/${String(item.id).replace('custom_', '')}`, { state: { customData: item } });
     } else {
@@ -184,14 +190,17 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
 
           {/* Liquid Glass Hover Overlay */}
           <div 
-            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
+            className={`absolute inset-0 opacity-0 ${isClicked ? '' : 'group-hover/card:opacity-100'} transition-all duration-500 z-10 pointer-events-none border`}
             style={{
-              background: 'transparent',
-              borderColor: 'rgba(255, 255, 255, 0.15)',
+              background: 'rgba(255, 255, 255, 0.03)',
+              backdropFilter: isClicked ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+              WebkitBackdropFilter: isClicked ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
+              borderColor: 'rgba(255, 255, 255, 0.12)',
               boxShadow: `
                 inset 0 1px 0 0 rgba(255, 255, 255, 0.1)
               `,
-              transform: 'translate3d(0, 0, 0)'
+              transform: 'translate3d(0, 0, 0)',
+              display: isClicked ? 'none' : 'block'
             }}
           />
 
@@ -271,11 +280,11 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
         <div 
           className="mt-2 px-1.5 py-1.5 flex flex-col gap-0.5 rounded-2xl border"
           style={{
-            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 0.7}), transparent 90%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.9})`,
-            backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px)`,
-            borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity * 0.7})`,
+            background: `rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.9})`,
+            backdropFilter: 'none',
+            borderColor: `rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.5})`,
             boxShadow: `
-              inset 0 1px 0 0 rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.15}),
+              inset 0 1px 0 0 rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.1}),
               0 4px 10px rgba(0, 0, 0, 0.4)
             `
           }}

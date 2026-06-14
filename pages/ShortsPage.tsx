@@ -21,6 +21,7 @@ import { Trash2 } from 'lucide-react';
 
 const STORAGE_KEY = 'flkrd_shorts_last_index';
 const FOLLOWED_KEY = 'flkrd_followed_movies';
+const origin = window.location.origin.startsWith('http') ? window.location.origin : '';
 
 interface TrailerItemProps {
   movie: Content;
@@ -148,7 +149,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     }
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
-      const command = isMutedGlobal ? 'mute' : 'unmute';
+      const command = isMutedGlobal ? 'mute' : 'unMute';
       iframe.contentWindow.postMessage(
         JSON.stringify({
           event: 'command',
@@ -215,7 +216,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
                 <div className="w-full h-full scale-[2.2] md:scale-100 brightness-[0.75] md:brightness-100">
                   <iframe 
                     ref={iframeRef}
-                    src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1`}
+                    src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&enablejsapi=1${origin ? `&origin=${origin}` : ''}`}
                     className={`w-full h-full transition-opacity duration-1000 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
