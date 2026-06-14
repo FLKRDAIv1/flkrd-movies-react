@@ -7,6 +7,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { Content } from '../types';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { useUI } from '../contexts/UIContext';
+import MovieCard from '../components/MovieCard';
 
 const KurdishCCPage: React.FC = () => {
     const [items, setItems] = useState<Content[]>([]);
@@ -112,54 +113,14 @@ const KurdishCCPage: React.FC = () => {
                     <span className="text-sec-text font-black uppercase tracking-[0.5em] animate-pulse text-sm">Syncing with OpenSubtitles...</span>
                 </div>
             ) : items.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 md:gap-8 relative z-10">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 relative z-10">
                     {items.map((item, index) => (
-                        <motion.div
+                        <MovieCard
                             key={`${item.id}-${index}`}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                            onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)}
-                            className="cursor-pointer group relative"
-                            whileHover={{ y: -8, scale: 1.02 }}
-                        >
-                            <div className="relative aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-border-color group-hover:border-brand/50 transition-all duration-700 shadow-2xl bg-neutral-950/80">
-                                {item.poster_path ? (
-                                    <img src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`} alt={item.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" />
-                                ) : (
-                                    <div className="w-full h-full bg-box-bg flex items-center justify-center">
-                                        <Clapperboard size={40} className="text-sec-text/30" />
-                                    </div>
-                                )}
-                                
-                                {/* Liquid Glass Hover Overlay */}
-                                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
-                                     style={{
-                                       background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-                                       backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                       WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                       borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                       boxShadow: `
-                                         inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                                         inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                                         inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-                                       `,
-                                       transform: 'translate3d(0, 0, 0)'
-                                     }}
-                                />
-
-                                <div className="absolute top-4 left-4 z-30">
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600/90 backdrop-blur-md rounded-xl border border-red-500/50 shadow-[0_4px_15px_rgba(229,9,20,0.4)]">
-                                        <Subtitles size={12} className="text-white" />
-                                        <span className="text-[9px] font-black text-white uppercase tracking-wider">KU CC</span>
-                                    </div>
-                                </div>
-
-                                <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5 pointer-events-none">
-                                    <p className="text-white text-[10px] md:text-xs font-black uppercase italic truncate mb-2">{item.title || item.name}</p>
-                                </div>
-                            </div>
-                        </motion.div>
+                            item={item}
+                            type={item.media_type as any}
+                            className="w-full"
+                        />
                     ))}
                 </div>
             ) : (

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 import { useUI } from '../contexts/UIContext';
 
@@ -634,7 +635,37 @@ export default function PremiumVidLinkPlayer({
         const cleanId = activeId.toString();
         const isImdb = cleanId.startsWith('tt');
         
-        // 1. First, search for direct match by IMDb or TMDb ID
+        // Try IndexedDB first
+        const allMovies = await db.getMovies();
+        if (allMovies && allMovies.length > 0) {
+          const cleanString = (str: string) => {
+            if (!str) return '';
+            return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+          };
+          const targetTitleClean = title ? cleanString(title) : '';
+          
+          const match = allMovies.find((m: any) => {
+            if (isImdb && m.imdb_id === cleanId) return true;
+            if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
+
+            if (targetTitleClean) {
+              const dbTitleClean = cleanString(m.title);
+              const dbKurdishClean = cleanString(m.kurdishTitle);
+              
+              if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+              if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+            }
+            return false;
+          });
+          
+          if (match) {
+            console.log("[VIP-PLAYER] Kurdish Dubbed Version established via IndexedDB:", match);
+            setKurdishDub(match);
+            return;
+          }
+        }
+
+        // If not found in IndexedDB, fallback to direct Supabase query
         let query = supabase.from('dubbed_movies').select('id, title, kurdishTitle, videoUrl, media_type, imdb_id, tmdb_id');
         if (isImdb) {
           query = query.eq('imdb_id', cleanId);
@@ -647,14 +678,14 @@ export default function PremiumVidLinkPlayer({
         
         const { data, error } = await query;
         if (data && data.length > 0) {
-          console.log("[VIP-PLAYER] Kurdish Dubbed Version established via ID:", data[0]);
+          console.log("[VIP-PLAYER] Kurdish Dubbed Version established via ID query:", data[0]);
           setKurdishDub(data[0]);
           return;
         }
 
-        // 2. Fallback: Query all dubbed movies and match by title (for older records where IDs are not set)
-        const { data: allMovies } = await supabase.from('dubbed_movies').select('id, title, kurdishTitle, videoUrl, media_type, imdb_id, tmdb_id');
-        if (allMovies && allMovies.length > 0) {
+        // Fallback: Query all dubbed movies from Supabase and match by title
+        const { data: allSupabaseMovies } = await supabase.from('dubbed_movies').select('id, title, kurdishTitle, videoUrl, media_type, imdb_id, tmdb_id');
+        if (allSupabaseMovies && allSupabaseMovies.length > 0) {
           const cleanString = (str: string) => {
             if (!str) return '';
             return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
@@ -662,7 +693,7 @@ export default function PremiumVidLinkPlayer({
 
           const targetTitleClean = title ? cleanString(title) : '';
           
-          const match = allMovies.find((m: any) => {
+          const match = allSupabaseMovies.find((m: any) => {
             if (isImdb && m.imdb_id === cleanId) return true;
             if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
 

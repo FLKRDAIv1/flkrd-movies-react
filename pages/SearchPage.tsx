@@ -13,6 +13,7 @@ import { clearTMDBCache } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
+import MovieCard from '../components/MovieCard';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
@@ -444,113 +445,14 @@ const SearchPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
               {results.map((item) => (
-                <motion.div
+                <MovieCard
                   key={item.id}
-                  variants={itemVariants}
-                  onClick={() => {
-                    if (item.media_type === 'dubbed') {
-                      navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
-                    } else {
-                      navigate(`/details/${item.media_type}/${item.id}`, { state: { customData: item } });
-                    }
-                  }}
-                  className="cursor-pointer group relative bg-card-bg transition-all duration-500 rounded-[2.5rem] overflow-hidden border border-border-color hover:border-brand/50 shadow-2xl"
-                  whileTap={{ scale: 0.95 }}
-                  whileHover={{ y: -10 }}
-                >
-                   <div className="aspect-[2/3] relative overflow-hidden bg-white/5">
-                    <img 
-                      src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
-                      alt={item.title || item.name} 
-                      className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110 opacity-80 group-hover:opacity-100" 
-                      loading="lazy"
-                    />
-
-                    {/* Liquid Glass Hover Overlay */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
-                         style={{
-                           background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-                           backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                           WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                           borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                           boxShadow: `
-                             inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                             inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                             inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-                           `,
-                           transform: 'translate3d(0, 0, 0)'
-                         }}
-                    />
-
-                    {/* IMDb Badge */}
-                    {item.vote_average !== undefined && item.vote_average > 0 && (
-                      <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
-                        <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
-                        <span className="font-black text-[8px] md:text-xs leading-none">{item.vote_average.toFixed(1)}</span>
-                      </div>
-                    )}
-
-                    {/* Kurdish CC Badge (Auto-detect via queue) */}
-                    {!String(item.id).startsWith('custom_') && (
-                      <div className="z-20 relative">
-                        <KurdishCCBadge tmdbId={Number(item.id)} type={(item.media_type as 'movie' | 'tv') || 'movie'} />
-                      </div>
-                    )}
-                    
-                    <div className="absolute top-4 right-4 z-30 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                        {item.media_type === 'dubbed' && (
-                          <motion.div
-                            animate={{ scale: [1, 1.1, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="flex items-center gap-2 px-3 py-1 bg-brand rounded-full shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.5)] border border-white/20"
-                          >
-                            <Mic2 size={12} className="text-white" />
-                            <span className="text-[10px] font-black uppercase text-white tracking-widest">DUBBED</span>
-                          </motion.div>
-                        )}
-
-                        {isAdmin && (
-                          <LiquidButton
-                            variant="destructive"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const cleanId = String(item.id).replace('custom_', '');
-                              const mediaType = item.media_type || (String(item.id).startsWith('custom_') ? 'dubbed' : 'movie');
-                              if (window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) {
-                                try {
-                                  const success = await bannedService.banContent(cleanId, mediaType);
-                                  if (success) {
-                                    addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
-                                    clearTMDBCache();
-                                    setResults(prev => prev.filter(r => r.id !== item.id));
-                                  }
-                                } catch (err) {
-                                  console.error("Ban failed:", err);
-                                }
-                              }
-                            }}
-                            className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </LiquidButton>
-                        )}
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-100 flex flex-col justify-end p-6">
-                      <Portal id="notification-portal">
-                        <div className="fixed top-24 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-10 sm:top-28 z-[200] w-full max-w-sm space-y-4 pointer-events-none px-4 sm:px-0">
-                        </div>
-                      </Portal>
-                      <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                        <p className="text-white text-sm md:text-lg font-[1000] uppercase italic tracking-tighter leading-none mb-3 line-clamp-2 drop-shadow-lg">
-                          {item.title || item.name}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
+                  item={item}
+                  type={item.media_type as 'movie' | 'tv' | 'dubbed'}
+                  className="w-full"
+                />
               ))}
             </div>
           </motion.div>

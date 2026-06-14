@@ -16,6 +16,7 @@ import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
+import MovieCard from '../components/MovieCard';
 import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
@@ -425,11 +426,20 @@ const DubbedMoviesPage: React.FC = () => {
                 try {
                     await setDynamicStatus('QUERYING ZANA POSTGRES...', 400);
                     
-                    const { data, error } = await supabase
+                    const dbFetchPromise = supabase
                         .from('dubbed_movies')
-                        .select('*')
+                        .select('id, title, description, imageBase64, created_at, level')
                         .order('created_at', { ascending: false })
                         .range(0, PAGE_SIZE - 1);
+
+                    const response = await Promise.race([
+                        dbFetchPromise,
+                        new Promise<{ data: null, error: any }>((_, reject) => 
+                            setTimeout(() => reject(new Error("Supabase request timed out")), 12000)
+                        )
+                    ]);
+                    
+                    const { data, error } = response;
 
                     if (error) throw error;
                     
@@ -452,10 +462,10 @@ const DubbedMoviesPage: React.FC = () => {
                         await setDynamicStatus('APPLYING TAG PRIORITY SORTING ALGORITHMS...', 500);
                         const bannedIds = await bannedService.fetchBannedList();
                         const formattedCustom = customMovies
-                            .filter((m: any) => !bannedIds.has(String(m.id)))
+                            .filter((m: any) => !bannedIds.has(String(m.id).replace('custom_', '')))
                             .map((movie: any) => ({
                             ...movie,
-                            id: `custom_${movie.id}`,
+                            id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
                             poster_path: movie.imageBase64,
                             backdrop_path: movie.bannerBase64 || movie.imageBase64,
                             title: movie.title,
@@ -521,10 +531,10 @@ const DubbedMoviesPage: React.FC = () => {
                     if (data) {
                         const bannedIds = await bannedService.fetchBannedList();
                         const formatted = data
-                            .filter((movie: any) => !bannedIds.has(String(movie.id)))
+                            .filter((movie: any) => !bannedIds.has(String(movie.id).replace('custom_', '')))
                             .map((movie: any) => ({
                             ...movie,
-                            id: `custom_${movie.id}`,
+                            id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
                             poster_path: movie.imageBase64,
                             backdrop_path: movie.bannerBase64 || movie.imageBase64,
                             title: movie.title,
@@ -547,8 +557,9 @@ const DubbedMoviesPage: React.FC = () => {
                         db.saveMovies(formatted).catch(() => {});
                     }
                 } else if (payload.eventType === 'UPDATE') {
+                    const eventId = String(payload.new.id).startsWith('custom_') ? payload.new.id : `custom_${payload.new.id}`;
                     setDubbedContent(prev => {
-                        const next = prev.map(m => String(m.id) === `custom_${payload.new.id}` ? {
+                        const next = prev.map(m => String(m.id) === eventId ? {
                             ...m,
                             ...payload.new,
                             poster_path: (payload.new as any).imageBase64,
@@ -598,7 +609,7 @@ const DubbedMoviesPage: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('dubbed_movies')
-                .select('*')
+                .select('id, title, description, imageBase64, created_at, level')
                 .order('created_at', { ascending: false })
                 .range(from, to);
 
@@ -610,7 +621,7 @@ const DubbedMoviesPage: React.FC = () => {
                     .filter((m: any) => !bannedIds.has(String(m.id)))
                     .map((movie: any) => ({
                     ...movie,
-                    id: `custom_${movie.id}`,
+                    id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
                     poster_path: movie.imageBase64,
                     backdrop_path: movie.bannerBase64 || movie.imageBase64,
                     title: movie.title,
@@ -676,7 +687,7 @@ const DubbedMoviesPage: React.FC = () => {
                 // Fetch first 40 nodes on force sync for better coverage
                 const { data, error } = await supabase
                     .from('dubbed_movies')
-                    .select('*')
+                    .select('id, title, description, imageBase64, created_at, level')
                     .order('created_at', { ascending: false })
                     .range(0, 39);
 
@@ -692,7 +703,7 @@ const DubbedMoviesPage: React.FC = () => {
                     .filter((m: any) => !bannedIds.has(String(m.id)))
                     .map((movie: any) => ({
                     ...movie,
-                    id: `custom_${movie.id}`,
+                    id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
                     poster_path: movie.imageBase64,
                     backdrop_path: movie.bannerBase64 || movie.imageBase64,
                     title: movie.title,
@@ -889,7 +900,8 @@ const DubbedMoviesPage: React.FC = () => {
             if (!banSignal) throw new Error("Registry reject");
 
             // 2. Dubbed Physical Deletion
-            await supabase.from('dubbed_movies').delete().eq('id', movie.id.replace('custom_', ''));
+            const dbId = String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`;
+            await supabase.from('dubbed_movies').delete().eq('id', dbId);
             
             addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
             
@@ -991,7 +1003,7 @@ const DubbedMoviesPage: React.FC = () => {
             if (freshList) {
                 const formattedCustom = freshList.map((movie: any) => ({
                     ...movie,
-                    id: `custom_${movie.id}`,
+                    id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
                     poster_path: movie.imageBase64,
                     backdrop_path: movie.bannerBase64 || movie.imageBase64,
                     title: movie.title,
@@ -1044,15 +1056,12 @@ const DubbedMoviesPage: React.FC = () => {
         setIsUpdating(true);
 
         try {
-            // 1. Robust ID Extraction Logic
-            const rawIdString = nodeToEdit.id.startsWith('custom_') 
-                ? nodeToEdit.id.replace('custom_', '') 
-                : nodeToEdit.id;
+            // 1. Robust ID Normalization: DB expects ID starting with 'custom_'
+            const dbId = nodeToEdit.id.startsWith('custom_') 
+                ? nodeToEdit.id 
+                : `custom_${nodeToEdit.id}`;
 
-            // Ensure numeric integrity for Supabase BigInts
-            const numericId = !isNaN(Number(rawIdString)) ? Number(rawIdString) : rawIdString;
-
-            console.log(`[ZANA PROTOCOL] Initiating Node Modification: ${numericId}`);
+            console.log(`[ZANA PROTOCOL] Initiating Node Modification: ${dbId}`);
 
             // 2. Perform Supabase Update
             const { error } = await supabase
@@ -1067,7 +1076,7 @@ const DubbedMoviesPage: React.FC = () => {
                     imdb_id: editData.imdb_id ? editData.imdb_id.trim() : null,
                     tmdb_id: editData.tmdb_id && !isNaN(Number(editData.tmdb_id)) ? parseInt(editData.tmdb_id, 10) : null
                 })
-                .eq('id', numericId);
+                .eq('id', dbId);
 
             if (error) {
                 console.error('[DATABASE UPDATE ERROR]', error);
@@ -1133,23 +1142,20 @@ const DubbedMoviesPage: React.FC = () => {
         if (!movieToDelete) return;
         setIsUpdating(true);
         try {
-            // 1. Robust ID Extraction
-            const rawIdString = movieToDelete.startsWith('custom_') 
-                ? movieToDelete.replace('custom_', '') 
-                : movieToDelete;
+            // 1. Robust ID Normalization: DB expects ID starting with 'custom_'
+            const dbId = movieToDelete.startsWith('custom_') 
+                ? movieToDelete 
+                : `custom_${movieToDelete}`;
 
-            // Handle potential type mismatch (Supabase BIGINT expects number or string of number)
-            const numericId = !isNaN(Number(rawIdString)) ? Number(rawIdString) : rawIdString;
-
-            console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${numericId}`);
+            console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${dbId}`);
 
             // 2. Database Execution (Try RPC Call first, fallback to direct DELETE if it fails)
-            console.log(`[ZANA PROTOCOL] Executing deletion RPC for Node: ${numericId}`);
+            console.log(`[ZANA PROTOCOL] Executing deletion RPC for Node: ${dbId}`);
             let deleteSuccess = false;
             
             try {
                 const { error: rpcError } = await supabase
-                    .rpc('delete_dubbed_movie', { target_id: numericId });
+                    .rpc('delete_dubbed_movie', { target_id: dbId });
                 
                 if (!rpcError) {
                     deleteSuccess = true;
@@ -1162,11 +1168,11 @@ const DubbedMoviesPage: React.FC = () => {
             }
 
             if (!deleteSuccess) {
-                console.log(`[ZANA PROTOCOL] Falling back to standard direct deletion on 'dubbed_movies' table for ID: ${numericId}`);
+                console.log(`[ZANA PROTOCOL] Falling back to standard direct deletion on 'dubbed_movies' table for ID: ${dbId}`);
                 const { error: directError } = await supabase
                     .from('dubbed_movies')
                     .delete()
-                    .eq('id', numericId);
+                    .eq('id', dbId);
                 
                 if (directError) {
                     console.error('[SUPABASE DIRECT DELETE ERROR]', directError);
@@ -1463,8 +1469,8 @@ const DubbedMoviesPage: React.FC = () => {
                     <span className="text-2xl font-bold">+</span>
                 </button>
 
-                {loading && dubbedContent.length === 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
+                 {loading && dubbedContent.length === 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 px-4 md:px-12">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                             <div key={n} className="flex flex-col gap-6 animate-pulse">
                                 <div className="aspect-[2/3] rounded-[2.5rem] md:rounded-[4rem] bg-white/5 border border-white/10 relative overflow-hidden">
@@ -1502,85 +1508,14 @@ const DubbedMoviesPage: React.FC = () => {
                         </div>
                     </motion.div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-8 md:gap-14 px-4 md:px-12">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 px-4 md:px-12">
                         {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).map((movie, index) => (
-
-                            <motion.div
+                            <MovieCard
                                 key={movie.id}
-                                initial={isPerformanceMode ? { opacity: 0 } : { opacity: 0, y: 30 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ 
-                                    delay: isPerformanceMode ? 0 : index * 0.05, 
-                                    duration: isPerformanceMode ? 0.3 : 0.8, 
-                                    ease: "easeOut" 
-                                }}
-                                onClick={() => navigate(`/dubbed-details/${movie.id}`)}
-                                className="group cursor-pointer relative"
-                            >
-                                <div className="relative aspect-[2/3] rounded-[2.5rem] md:rounded-[4rem] overflow-hidden border border-white/10 shadow-2xl transition-all duration-700 group-hover:scale-[1.05] group-hover:border-brand/50 group-hover:shadow-[0_40px_80px_rgba(0,0,0,0.8)]">
-                                    <LazyBase64Image
-                                        src={movie.imageBase64 || (movie.poster_path?.startsWith('data:') || movie.poster_path?.startsWith('http') ? movie.poster_path : (movie.poster_path ? `${IMAGE_BASE_URL}${movie.poster_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'))}
-                                        className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                                        alt={movie.title}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    
-                                    {/* Liquid Glass Hover Overlay */}
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
-                                         style={{
-                                           background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-                                           backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                           WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                           borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                           boxShadow: `
-                                             inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                                             inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                                             inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-                                           `,
-                                           transform: 'translate3d(0, 0, 0)'
-                                         }}
-                                    />
-
-
-                                    <div className="absolute top-4 right-4 md:top-8 md:right-8 opacity-0 group-hover:opacity-100 transition-all duration-500 scale-75 group-hover:scale-100 flex flex-col gap-3">
-                                        <div className="bg-brand p-4 rounded-full shadow-2xl">
-                                            <Play size={24} fill="white" className="text-white" />
-                                        </div>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleShare(e, movie); }}
-                                            className="bg-black/40 backdrop-blur-xl border border-white/10 p-4 rounded-full text-white hover:bg-white/20 transition-all"
-                                        >
-                                            <Share size={18} />
-                                        </button>
-
-                                        {isAdmin && (
-                                            <button
-                                                onClick={(e) => handleBan(e, movie)}
-                                                className="bg-red-600/80 backdrop-blur-xl border border-red-500 p-4 rounded-full text-white hover:bg-red-600 hover:scale-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,0,0,0.4)]"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {movie.level && (
-                                        <div className={`absolute top-4 left-4 md:top-8 md:left-8 px-4 py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-2xl backdrop-blur-sm ${movie.level === 'KING' ? 'bg-yellow-500 text-black' : 'bg-brand text-white'}`}>
-                                            {movie.level === 'KING' && <Star size={10} fill="currentColor" />}
-                                            {movie.level}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-6 md:mt-8 space-y-2 px-2 md:px-4">
-                                    <div className="flex items-center gap-2 text-[8px] md:text-[10px] font-black text-brand uppercase tracking-widest opacity-80 group-hover:opacity-100 transition-opacity">
-                                        <Activity size={10} />
-                                        {movie.release_date?.split('-')[0] || '2025'} • {t('dubbedMovies')}
-                                    </div>
-                                    <h3 className="text-sm md:text-2xl font-[1000] text-gray-200 group-hover:text-white transition-colors duration-300 line-clamp-1 uppercase tracking-tighter italic">
-                                        {(language === 'ku' || language === 'badini') ? movie.kurdishTitle : movie.title}
-                                    </h3>
-                                </div>
-                            </motion.div>
+                                item={movie}
+                                type="dubbed"
+                                className="w-full"
+                            />
                         ))}
                     </div>
                 )}

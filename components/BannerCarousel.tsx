@@ -35,9 +35,9 @@ const HeroBanner: React.FC = () => {
       const enrichedItems = await Promise.all(topItems.map(async (item: any) => {
         try {
           const type = item.media_type || 'movie';
-          const res = await fetch(`https://api.themoviedb.org/3/${type}/${item.id}/images?api_key=${API_KEY}`);
-          const imageData = await res.json();
-          const logo = imageData.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
+          const endpoint = `/${type}/${item.id}/images?api_key=${API_KEY}`;
+          const imageData = await fetchData(endpoint, 'en');
+          const logo = imageData?.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
           return { ...item, logo };
         } catch (e) {
           return item;

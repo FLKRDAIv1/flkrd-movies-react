@@ -166,12 +166,21 @@ const HomePage: React.FC = () => {
   const loadDubbed = useCallback(async () => {
     let rawItems = [];
     try {
-      // 1. Direct Supabase Fetch (Optimized)
-      const { data, error } = await supabase
+      // 1. Direct Supabase Fetch (Optimized with 12s Timeout)
+      const dbFetchPromise = supabase
         .from('dubbed_movies')
-        .select('id, title, description, imageBase64, bannerBase64, created_at, level')
+        .select('id, title, description, imageBase64, created_at, level')
         .order('created_at', { ascending: false })
         .limit(20);
+
+      const response = await Promise.race([
+        dbFetchPromise,
+        new Promise<{ data: null, error: any }>((_, reject) => 
+          setTimeout(() => reject(new Error("Supabase request timed out")), 12000)
+        )
+      ]);
+      
+      const { data, error } = response;
       
       if (!error && data) {
         rawItems = data;
@@ -193,10 +202,10 @@ const HomePage: React.FC = () => {
           .filter((m: any) => !bannedIds.has(String(m.id)))
           .map((m: any) => ({
           ...m,
-          id: `custom_${m.id}`,
+          id: String(m.id).startsWith('custom_') ? m.id : `custom_${m.id}`,
           media_type: 'dubbed',
           poster_path: m.imageBase64,
-          backdrop_path: m.bannerBase64 || m.imageBase64,
+          backdrop_path: m.bannerBase64 || m.imageBase64 || '',
           title: m.title,
           kurdishTitle: m.title,
           overview: m.description,
@@ -236,9 +245,9 @@ const HomePage: React.FC = () => {
       const results = await Promise.all(
         top12.map(async entry => {
           try {
-            const res = await fetch(`${API_BASE_URL}/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}&language=${langCode}`);
-            if (!res.ok) return null;
-            const d = await res.json();
+            const endpoint = `/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}`;
+            const d = await fetchData(endpoint, language);
+            if (!d) return null;
             return { ...d, media_type: entry.type } as Content;
           } catch { return null; }
         })
@@ -247,7 +256,7 @@ const HomePage: React.FC = () => {
     } catch (err) {
       console.error("[HP] Kurdish CC Load Error:", err);
     }
-  }, [langCode]);
+  }, [language]);
 
   useEffect(() => {
     // Parallel Initialization Protocol

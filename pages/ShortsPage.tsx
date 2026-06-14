@@ -379,7 +379,8 @@ const ShortsPage: React.FC = () => {
     return saved ? parseInt(saved, 10) : 0;
   });
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const pageRef = useRef(1);
+  const loadingRef = useRef(false);
   const [isMutedGlobal, setIsMutedGlobal] = useState(true);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [viewMode, setViewMode] = useState<'followers' | 'explore'>('explore');
@@ -415,9 +416,12 @@ const ShortsPage: React.FC = () => {
   };
 
   const loadShorts = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     const lang = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
     try {
-      const data = await fetchData(`${requests.fetchTrendingMovies(lang)}&page=${page}`, language);
+      const pageToFetch = pageRef.current;
+      const data = await fetchData(`${requests.fetchTrendingMovies(lang)}&page=${pageToFetch}`, language);
       if (data && Array.isArray(data)) { 
           setMovies(prev => {
               const existingIds = new Set(prev.map(m => m.id));
@@ -428,14 +432,15 @@ const ShortsPage: React.FC = () => {
               });
               return [...prev, ...uniqueNew];
           }); 
-          setPage(p => p + 1); 
+          pageRef.current = pageToFetch + 1; 
       }
     } catch (e) {
       console.error("[SHORTS ENGINE] Initialization failure:", e);
     } finally { 
       setLoading(false); 
+      loadingRef.current = false;
     }
-  }, [language, page]);
+  }, [language]);
 
   useEffect(() => { loadShorts(); }, [loadShorts]);
 

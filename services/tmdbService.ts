@@ -51,8 +51,13 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
 
   // 1. Instant Memory Access + Purely In-Memory SWR (Stale-While-Revalidate)
   if (sessionCache.has(cacheKey)) {
-    // Await the banned list loading so we can instantly and accurately filter out banned IDs
-    await bannedService.fetchBannedList();
+    // Only block if we have NEVER fetched the banned list before
+    if (!bannedService.hasFetched()) {
+      await bannedService.fetchBannedList();
+    } else {
+      // Fire-and-forget background update
+      bannedService.fetchBannedList().catch(() => {});
+    }
 
     // Silently revalidate in the background
     (async () => {
@@ -116,8 +121,13 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
   if (sessionCache.has(cacheKey)) {
     const data = sessionCache.get(cacheKey);
 
-    // Await the banned list loading so we can instantly and accurately filter out banned IDs
-    await bannedService.fetchBannedList();
+    // Only block if we have NEVER fetched the banned list before
+    if (!bannedService.hasFetched()) {
+      await bannedService.fetchBannedList();
+    } else {
+      // Fire-and-forget background update
+      bannedService.fetchBannedList().catch(() => {});
+    }
 
     // Background revalidation
     (async () => {

@@ -22,6 +22,7 @@ export const useWatchProgress = ({
   voteAverage = 0,
 }: UseWatchProgressProps) => {
   const stringId = String(movieId).replace('custom_', '');
+  const userIdRef = useRef<string | null>(null);
   const lastSavedTimeRef = useRef<number>(0);
   const progressRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 });
   const isLoadedRef = useRef<boolean>(false);
@@ -31,6 +32,17 @@ export const useWatchProgress = ({
     progressRef.current = { currentTime: 0, duration: 0 };
     isLoadedRef.current = false;
     lastSavedTimeRef.current = 0;
+
+    // Asynchronously resolve user session once on mount/id change
+    const resolveUser = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        userIdRef.current = session?.user?.id || null;
+      } catch (e) {
+        console.warn("[WatchProgress] Session lookup failed:", e);
+      }
+    };
+    resolveUser();
   }, [movieId, movieType]);
 
   // Helper to update localStorage and sync watch history globally in client-side tabs
@@ -75,9 +87,8 @@ export const useWatchProgress = ({
   // Core API saving function to database (Supabase)
   const saveProgressToDatabase = useCallback(async (time: number, duration: number) => {
     try {
-      // 1. Get authenticated user
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) return; // Silent return for unauthenticated users
+      const userId = userIdRef.current;
+      if (!userId) return; // Silent return for unauthenticated users
 
       const isCompleted = duration > 0 && time / duration >= 0.95;
       const finalProgress = isCompleted ? 0 : time;
@@ -87,7 +98,7 @@ export const useWatchProgress = ({
         .from('user_watch_progress')
         .upsert(
           {
-            user_id: user.id,
+            user_id: userId,
             movie_id: stringId,
             movie_type: movieType,
             progress_seconds: finalProgress,
@@ -114,15 +125,17 @@ export const useWatchProgress = ({
     let duration = 0;
 
     try {
-      // 1. Retrieve current user
-      const { data: { user } } = await supabase.auth.getUser();
+      // 1. Retrieve current session user synchronously from local storage if available
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       
-      if (user) {
+      if (userId) {
+        userIdRef.current = userId;
         // 2. Query Supabase progress
         const { data, error } = await supabase
           .from('user_watch_progress')
           .select('progress_seconds, total_duration')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('movie_id', stringId)
           .eq('movie_type', movieType)
           .maybeSingle();
@@ -212,30 +225,28 @@ export const useWatchProgress = ({
 
       // Unmount logic: Force sync using refs to obtain exact latest coordinates
       const { currentTime, duration } = progressRef.current;
-      if (currentTime > 10 && duration > 0) {
+      const userId = userIdRef.current;
+      if (userId && currentTime > 10 && duration > 0) {
         const syncUnmount = async () => {
           try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const isCompleted = duration > 0 && currentTime / duration >= 0.95;
-              const finalProgress = isCompleted ? 0 : currentTime;
+            const isCompleted = duration > 0 && currentTime / duration >= 0.95;
+            const finalProgress = isCompleted ? 0 : currentTime;
 
-              const { error } = await supabase
-                .from('user_watch_progress')
-                .upsert(
-                  {
-                    user_id: user.id,
-                    movie_id: stringId,
-                    movie_type: movieType,
-                    progress_seconds: finalProgress,
-                    total_duration: duration,
-                    updated_at: new Date().toISOString(),
-                  },
-                  { onConflict: 'user_id,movie_id,movie_type' }
-                );
-              if (error) throw error;
-              console.log(`[WatchProgress Unmount] Synced ${stringId} at ${Math.floor(finalProgress)}s`);
-            }
+            const { error } = await supabase
+              .from('user_watch_progress')
+              .upsert(
+                {
+                  user_id: userId,
+                  movie_id: stringId,
+                  movie_type: movieType,
+                  progress_seconds: finalProgress,
+                  total_duration: duration,
+                  updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'user_id,movie_id,movie_type' }
+              );
+            if (error) throw error;
+            console.log(`[WatchProgress Unmount] Synced ${stringId} at ${Math.floor(finalProgress)}s`);
           } catch (e) {
             console.warn("[WatchProgress Unmount] Save failed:", e);
           }

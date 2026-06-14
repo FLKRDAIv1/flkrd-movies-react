@@ -9,6 +9,7 @@ import { fetchByStudio, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_LOGO, API_KEY, API
 import Spinner from '../components/Spinner';
 import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
+import MovieCard from '../components/MovieCard';
 import { useNotification } from '../contexts/NotificationContext';
 
 const StudioPage: React.FC = () => {
@@ -194,47 +195,16 @@ const StudioPage: React.FC = () => {
             </motion.div>
             
             {results.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
-                    {results.map((item, index) => {
-                        const isAdded = myListIds.has(item.id);
-                        return (
-                            <motion.div
-                                key={`${item.id}-${index}`}
-                                ref={index === results.length - 1 ? lastElementRef : null}
-                                onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`)}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: (index % 12) * 0.05 }}
-                                className="cursor-pointer group relative"
-                                whileHover={{ scale: 1.05, zIndex: 10 }}
-                            >
-                                <div className="aspect-[2/3] overflow-hidden rounded-[2rem] border-2 border-white/5 group-hover:border-red-600/50 shadow-2xl transition-all duration-500 relative">
-                                    <img
-                                        src={`${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
-                                        alt={item.title || item.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                    />
-                                    
-                                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                                        <button
-                                            onClick={(e) => handleToggleMyList(e, item)}
-                                            className={`p-2 rounded-xl backdrop-blur-xl border transition-all ${isAdded ? 'bg-red-600 border-red-500 text-white' : 'bg-black/40 border-white/10 text-white hover:bg-white/20'}`}
-                                        >
-                                            {isAdded ? <Check size={16} strokeWidth={3} /> : <Plus size={16} strokeWidth={3} />}
-                                        </button>
-                                    </div>
-
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-5">
-                                        <h3 className="text-white text-xs font-black uppercase italic truncate mb-3">{item.title || item.name}</h3>
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-red-600 p-1.5 rounded-full"><Play size={10} fill="white" className="text-white ml-0.5" /></div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">Play Node</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        );
-                    })}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
+                    {results.map((item, index) => (
+                        <MovieCard
+                            ref={index === results.length - 1 ? lastElementRef : null}
+                            key={`${item.id}-${index}`}
+                            item={item}
+                            type={item.media_type as any}
+                            className="w-full"
+                        />
+                    ))}
                 </div>
             ) : (
                 <div className="text-center py-32 bg-white/5 rounded-[4rem] border border-white/5 backdrop-blur-xl">

@@ -6,23 +6,30 @@ class BannedService {
     private CACHE_TTL = 60000; // 1 minute
     private initPromise: Promise<Set<string>> | null = null;
 
-    async fetchBannedList(force = false) {
-        if (this.initPromise && !force) return this.initPromise;
-        
-        this.initPromise = (async () => {
-            const now = Date.now();
-            if (!force && now - this.lastFetch < this.CACHE_TTL && this.bannedIds.size > 0) {
-                return this.bannedIds;
-            }
+    hasFetched(): boolean {
+        return this.lastFetch > 0;
+    }
 
+    private async performFetch(now: number): Promise<Set<string>> {
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = (async () => {
             try {
-                const { data, error } = await supabase
+                const dbFetchPromise = supabase
                     .from('banned_content')
                     .select('content_id');
                 
+                const response = await Promise.race([
+                    dbFetchPromise,
+                    new Promise<{ data: null, error: any }>((_, reject) => 
+                        setTimeout(() => reject(new Error("Supabase request timed out")), 6000)
+                    )
+                ]);
+                
+                const { data, error } = response;
                 if (error) throw error;
                 
-                this.bannedIds = new Set(data.map(item => String(item.content_id)));
+                this.bannedIds = new Set((data || []).map(item => String(item.content_id)));
                 this.lastFetch = now;
                 console.log("[BANNED SERVICE] Quantum registry updated:", this.bannedIds.size);
                 return this.bannedIds;
@@ -35,6 +42,21 @@ class BannedService {
         })();
 
         return this.initPromise;
+    }
+
+    async fetchBannedList(force = false): Promise<Set<string>> {
+        const now = Date.now();
+        if (!force && this.lastFetch > 0) {
+            if (now - this.lastFetch < this.CACHE_TTL) {
+                return this.bannedIds;
+            }
+            // Background update
+            this.performFetch(now).catch(err => {
+                console.error("[BANNED SERVICE] Background fetch failed:", err);
+            });
+            return this.bannedIds;
+        }
+        return this.performFetch(now);
     }
 
     isBanned(id: string | number): boolean {

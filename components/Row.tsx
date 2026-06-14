@@ -12,6 +12,7 @@ import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from './KurdishCCBadge';
 import { LiquidButton } from './ui/liquid-glass-button';
+import MovieCard from './MovieCard';
 
 interface RowProps {
   title: string;
@@ -218,116 +219,15 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
           {content.map((item, index) => {
               const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
               if (!item.poster_path || !mediaType) return null;
-              const isAdded = myListIds.has(item.id);
-              const hasProgress = 'progress' in item;
-              const progressPct = hasProgress ? Math.min(100, ((item as WatchProgress).progress / ((item as WatchProgress).duration || 3600)) * 100) : 0;
-              
-              const handlePrefetch = () => {
-                if (String(item.id).startsWith('custom_') || mediaType === 'dubbed') {
-                  import('../pages/DubbedDetailPage');
-                } else {
-                  import('../pages/DetailPage');
-                  import('../pages/TVDetailPage');
-                }
-              };
-              
               return (
-              <motion.div
-                key={`${item.id}-${index}-${mediaType}`}
-                onClick={() => navigateToDetail(item)}
-                onMouseEnter={handlePrefetch}
-                className="flex-shrink-0 w-36 md:w-64 group/card relative cursor-pointer py-2 overflow-visible"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                whileHover={{ scale: 1.04, y: -6 }}
-                whileTap={{ scale: 0.96 }}
-                transition={{
-                    type: "spring",
-                    stiffness: 260,
-                    damping: 20
-                }}
-              >
-                <div className="relative aspect-[2/3] w-full rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-2 border-border-color transition-all duration-500 hover:border-brand shadow-xl bg-neutral-950/80">
-                  <img
-                    src={(item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
-                    alt={(item as Content).title || (item as Content).name}
-                    className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
-                    loading="lazy"
-                  />
-
-                  {/* Liquid Glass Hover Overlay */}
-                  <div className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
-                       style={{
-                         background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-                         backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                         WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                         borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                         boxShadow: `
-                           inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                           inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                           inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-                         `,
-                         transform: 'translate3d(0, 0, 0)'
-                       }}
-                  />
-
-                  {/* IMDb Badge */}
-                  {(item as Content).vote_average !== undefined && (item as Content).vote_average > 0 && (
-                    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
-                      <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
-                      <span className="font-black text-[8px] md:text-xs leading-none">{(item as Content).vote_average.toFixed(1)}</span>
-                    </div>
-                  )}
-
-                  {/* Kurdish CC Badge (Auto-detect via queue) */}
-                  {!String(item.id).startsWith('custom_') && (
-                    <div className="z-20 relative">
-                      <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType as 'movie' | 'tv'} />
-                    </div>
-                  )}
-
-                  <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
-                      {!isProgressRow && (
-                        <LiquidButton
-                          variant={isAdded ? "default" : "secondary"}
-                          onClick={(e) => handleToggleMyList(e, item, mediaType as 'movie' | 'tv')}
-                          className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${isAdded ? 'bg-brand text-white' : 'text-white'}`}
-                        >
-                          {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
-                        </LiquidButton>
-                      )}
-                      
-                      {isProgressRow && (
-                          <LiquidButton
-                              variant="default"
-                              onClick={(e) => handleRemoveProgress(e, item.id, String(mediaType))}
-                              className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
-                          >
-                              <X className="w-4 h-4" strokeWidth={4} />
-                          </LiquidButton>
-                      )}
-
-                      {isAdmin && (
-                        <LiquidButton
-                          variant="destructive"
-                          onClick={(e) => handleBan(e, item)}
-                          className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </LiquidButton>
-                      )}
-                  </div>
-
-                  {hasProgress && (
-                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60 z-20 overflow-hidden">
-                          <div className="h-full bg-brand" style={{ width: `${progressPct}%` }} />
-                      </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          )}
+                <MovieCard
+                  key={`${item.id}-${index}-${mediaType}`}
+                  item={item}
+                  type={mediaType as 'movie' | 'tv' | 'dubbed'}
+                  isProgressRow={isProgressRow}
+                />
+              );
+          })}
 
           {hasMore && (
             <div className="flex-shrink-0 w-32 md:w-48 flex items-center justify-center p-8">

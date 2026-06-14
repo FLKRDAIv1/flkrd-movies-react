@@ -209,28 +209,22 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const pageVariants = {
     initial: {
         opacity: 0,
-        y: 16,
-        scale: 0.985
+        y: 8
     },
     animate: {
         opacity: 1,
         y: 0,
-        scale: 1,
         transition: {
-            type: "spring",
-            mass: 0.45,
-            stiffness: 180,
-            damping: 24,
-            restDelta: 0.001
+            duration: 0.25,
+            ease: "easeOut"
         }
     },
     exit: {
         opacity: 0,
-        y: -12,
-        scale: 0.985,
+        y: -6,
         transition: {
-            duration: 0.22,
-            ease: [0.32, 0, 0.67, 0] // easeInCubic
+            duration: 0.18,
+            ease: "easeIn"
         }
     }
 };
@@ -441,9 +435,12 @@ const AppContent: React.FC<{
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const location = useLocation();
 
-    // Track page visits
+    // Track page visits (deferred to prevent blocking navigation transitions)
     useEffect(() => {
-        logVisit(location.pathname + location.search);
+        const timer = setTimeout(() => {
+            logVisit(location.pathname + location.search);
+        }, 500);
+        return () => clearTimeout(timer);
     }, [location.pathname, location.search]);
 
     // Determine watch room or cinema directly from router location

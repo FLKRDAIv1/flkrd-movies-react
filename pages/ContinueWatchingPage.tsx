@@ -10,6 +10,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { SkeletonGrid } from '../components/Skeleton';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
+import MovieCard from '../components/MovieCard';
 
 const ContinueWatchingPage: React.FC = () => {
     const [items, setItems] = useState<WatchProgress[]>([]);
@@ -117,81 +118,22 @@ const ContinueWatchingPage: React.FC = () => {
             </div>
 
             {items.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
                     {items.map((item, index) => {
                         const progressPct = Math.min(100, (item.progress / item.duration) * 100);
-                        const isDubbed = String(item.type) === 'dubbed';
                         return (
-                            <motion.div
-                                key={`${item.id}-${item.type}`}
-                                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                onClick={() => handleResume(item)}
-                                className="cursor-pointer group relative transform transition-all duration-500"
-                                whileHover={{ scale: 1.08, zIndex: 30 }}
-                            >
-                                <div className="aspect-[2/3] overflow-hidden rounded-[2.5rem] border-2 border-white/5 group-hover:border-brand/50 shadow-2xl transition-all relative bg-neutral-950/80">
-                                    <img
-                                        src={item.poster_path?.startsWith('http') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`}
-                                        alt={item.title}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                    />
-                                    
-                                    {/* Liquid Glass Hover Overlay */}
-                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10 pointer-events-none border"
-                                         style={{
-                                           background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-                                           backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                           WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-                                           borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                           boxShadow: `
-                                             inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                                             inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                                             inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-                                           `,
-                                           transform: 'translate3d(0, 0, 0)'
-                                         }}
-                                    />
-
-                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                                        <LiquidButton
-                                            variant="destructive"
-                                            onClick={(e) => handleRemove(e, item.id, String(item.type))}
-                                            title={t('removeFromProgress')}
-                                            className="!p-2.5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
-                                        >
-                                            <X size={18} strokeWidth={3} />
-                                        </LiquidButton>
-                                    </div>
-
-                                    {isDubbed && (
-                                        <div className="absolute top-4 left-4 bg-brand text-white text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest shadow-lg z-20">
-                                            DUBBED
-                                        </div>
-                                    )}
-
-                                    <div className="absolute bottom-0 left-0 right-0 h-2 bg-black/60 backdrop-blur-md z-30">
-                                        <motion.div 
-                                            initial={{ width: 0 }}
-                                            animate={{ width: `${progressPct}%` }}
-                                            className="h-full bg-gradient-to-r from-brand to-brand/70 shadow-[0_0_15px_var(--brand-red)]"
-                                        />
-                                    </div>
-
-                                    <div className="absolute inset-0 z-20 opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6 pb-8 pointer-events-none">
-                                        <p className="text-white text-sm font-black uppercase italic truncate mb-2">{item.title}</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="bg-brand p-1.5 rounded-full"><Play size={10} fill="white" className="text-white" /></div>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-sec-text">Resume Link</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-3 flex items-center justify-between px-2">
+                            <div key={`${item.id}-${item.type}`} className="flex flex-col animate-[fade-in_0.5s_ease-out]">
+                                <MovieCard
+                                    item={item}
+                                    type={item.type as any}
+                                    isProgressRow={true}
+                                    className="w-full"
+                                />
+                                <div className="mt-2 flex items-center justify-between px-2">
                                     <span className="text-[10px] font-black text-red-500 uppercase tracking-widest italic">{Math.floor(progressPct)}% Complete</span>
                                     <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{Math.floor((item.duration - item.progress) / 60)}m Left</span>
                                 </div>
-                            </motion.div>
+                            </div>
                         );
                     })}
                 </div>

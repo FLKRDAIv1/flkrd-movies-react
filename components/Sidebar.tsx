@@ -1,5 +1,5 @@
 
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useMemo } from 'react';
 import { NavLink, useLocation, Location } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Home, Tv, Film, Bookmark, Search, Globe, Mic2, PlayCircle, ChevronRight } from 'lucide-react';
@@ -130,7 +130,7 @@ const Sidebar: React.FC = () => {
   const { t } = useTranslation();
   const { glassConfig } = useUI();
 
-  const sidebarVariants = {
+  const sidebarVariants = useMemo(() => ({
     open: { 
       width: "16.5rem",
       transition: { 
@@ -147,7 +147,7 @@ const Sidebar: React.FC = () => {
         damping: 40 * (0.35 / glassConfig.elasticity) 
       }
     },
-  };
+  }), [glassConfig.elasticity]);
 
   return (
     <>

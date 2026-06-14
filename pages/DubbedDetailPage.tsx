@@ -47,34 +47,80 @@ const DubbedDetailPage: React.FC = () => {
     const extractEmbedSrc = (source: string) => {
         if (!source) return "";
 
+        // 0. Clean and normalize the source string from any escaping
+        let cleanSource = source;
+        try {
+            // Replace escaped quotes
+            cleanSource = cleanSource
+                .replace(/\\"/g, '"')
+                .replace(/\\'/g, "'")
+                // Replace escaped forward slashes
+                .replace(/\\\//g, '/')
+                // Remove any remaining backslashes that might precede quotes or slashes
+                .replace(/\\/g, '');
+        } catch (e) {
+            console.warn("Error cleaning source URL/iframe:", e);
+        }
+
         let finalUrl = "";
 
         // 1. Extract from iframe if needed
-        if (source.includes('<iframe')) {
-            const match = source.match(/src=["'](.*?)["']/);
+        if (cleanSource.toLowerCase().includes('<iframe')) {
+            // Match src="..." or src='...'
+            const match = cleanSource.match(/src=["'](.*?)["']/i);
             if (match && match[1]) {
                 finalUrl = match[1];
+            } else {
+                // Fallback: match src=... without quotes or with any quotes
+                const fallbackMatch = cleanSource.match(/src=(?:["']|\\")?([^\s"'>\\]+)/i);
+                if (fallbackMatch && fallbackMatch[1]) {
+                    finalUrl = fallbackMatch[1];
+                }
             }
-        } else if (source.startsWith('http')) {
-            finalUrl = source;
+        } else {
+            // Trim whitespace
+            const trimmed = cleanSource.trim();
+            if (trimmed.toLowerCase().startsWith('http')) {
+                finalUrl = trimmed;
+            } else {
+                // If it doesn't start with http, search for any http link inside it
+                const linkMatch = cleanSource.match(/https?:\/\/[^\s"'><]+/i);
+                if (linkMatch) {
+                    finalUrl = linkMatch[0];
+                }
+            }
         }
 
         if (!finalUrl) return "";
 
-        // 2. Professional Injection: Automatically fix VidKing and others
+        // 1.5 Convert raw rashaba.com URLs to direct /e/ embeds
+        if (finalUrl.includes('rashaba.com') && !finalUrl.includes('/e/') && !finalUrl.includes('/embed/')) {
+            try {
+                const matches = finalUrl.match(/\/([a-zA-Z0-9]{12,20})\/?$/) || finalUrl.match(/\/([a-zA-Z0-9]{12,20})\//);
+                const rid = matches ? matches[1] : finalUrl.split('/').filter(Boolean).pop();
+                if (rid) {
+                    finalUrl = `https://rashaba.com/e/${rid}`;
+                }
+            } catch (e) {
+                console.warn("Rashaba URL formatting failed:", e);
+            }
+        }
+
+        // 2. Professional Injection: Automatically fix Autoplay, VidKing, and others
         try {
+            const url = new URL(finalUrl);
+            if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
+            if (!url.searchParams.has('play')) url.searchParams.append('play', '1');
             if (finalUrl.includes('vidking.net')) {
-                const url = new URL(finalUrl);
                 if (!url.searchParams.has('sub')) url.searchParams.append('sub', '1');
                 if (!url.searchParams.has('subtitles')) url.searchParams.append('subtitles', '1');
-                if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
                 if (!url.searchParams.has('color')) url.searchParams.append('color', accentColor?.replace('#', '') || 'e50914');
-                finalUrl = url.toString();
             }
+            finalUrl = url.toString();
         } catch (e) {
             // Fallback for malformed URLs
-            if (finalUrl.includes('vidking.net') && !finalUrl.includes('sub=')) {
-                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'sub=1&subtitles=1&autoplay=1';
+            if (!finalUrl.includes('autoplay=')) {
+                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'autoplay=1&play=1';
             }
         }
 
@@ -186,84 +232,111 @@ const DubbedDetailPage: React.FC = () => {
             if (isMounted) setLoading(false);
         }, 10000); // 10s absolute maximum fallback
 
-    const loadContent = async () => {
-        if (!id) return;
-        setLoading(true);
+        const loadContent = async () => {
+            if (!id) return;
 
-        try {
             const idStr = id.toString();
             const cleanId = idStr.replace('custom_', '');
-            const numericId = !isNaN(Number(cleanId)) ? Number(cleanId) : cleanId;
+            const dbId = idStr.startsWith('custom_') ? idStr : `custom_${idStr}`;
 
-            // 1. Parallel Enrichment: Supabase/Local + TMDB
-            const [supabaseResult, tmdbResult] = await Promise.all([
-                // Fetch basic data from Supabase or IndexedDB
-                (async () => {
-                    if (idStr.startsWith('custom_')) {
+            let hasPreHydrated = false;
+
+            // --- STEP 1: INSTANT LOCAL PRE-HYDRATION ---
+            try {
+                const cached = await db.getMovies();
+                const localMovie = cached.find(m => String(m.id) === dbId || String(m.id).replace('custom_', '') === cleanId)
+                    || CUSTOM_DUBBED_ARCHIVE.find(m => String(m.id) === cleanId || String(m.id) === idStr);
+                
+                if (localMovie && isMounted) {
+                    setSupabaseData({
+                        ...localMovie,
+                        id: String(localMovie.id).startsWith('custom_') ? localMovie.id : `custom_${localMovie.id}`,
+                        poster_path: localMovie.imageBase64,
+                        backdrop_path: localMovie.bannerBase64 || localMovie.imageBase64,
+                        customStream: localMovie.videoUrl,
+                        kurdishTitle: localMovie.title,
+                        kurdishOverview: localMovie.description
+                    });
+                    setLoading(false); // Instantly bypass skeleton
+                    hasPreHydrated = true;
+                }
+            } catch (e) {
+                console.warn("Local IndexedDB pre-hydration failed", e);
+            }
+
+            // --- STEP 2: BACKGROUND ENRICHMENT ---
+            try {
+                if (!location.state?.customData && !hasPreHydrated) {
+                    setLoading(true);
+                }
+
+                // Parallel Enrichment: Supabase + TMDB
+                const [supabaseResult, tmdbResult] = await Promise.all([
+                    (async () => {
+                        console.log("[DUB DETAIL] Fetching from Supabase. id =", dbId, "cleanId =", cleanId);
                         const { data, error } = await supabase
                             .from('dubbed_movies')
                             .select('*')
-                            .eq('id', numericId)
+                            .eq('id', dbId)
                             .single();
                         
-                        if (data && !error) return data;
-                        
-                        // Fallback to IndexedDB
-                        const cached = await db.getMovies();
-                        return cached.find(m => String(m.id) === idStr || String(m.id).includes(String(numericId)));
-                    }
-                    return null;
-                })(),
+                        if (error) {
+                            console.error("[DUB DETAIL] Supabase error:", error);
+                        }
+                        if (data && !error) {
+                            console.log("[DUB DETAIL] Supabase data fetched successfully:", data);
+                            return data;
+                        }
+                        return null;
+                    })(),
 
-                // Fetch TMDB Metadata in parallel
-                (async () => {
-                    const numId = Number(cleanId);
-                    if (!isNaN(numId) && numId > 200) {
-                        try {
-                            return await fetchData(`/movie/${numId}?api_key=${API_KEY}&language=en-US&append_to_response=credits`, language);
-                        } catch (e) { return null; }
-                    }
-                    return null;
-                })()
-            ]);
+                    (async () => {
+                        const numId = Number(cleanId);
+                        if (!isNaN(numId) && numId > 200) {
+                            try {
+                                return await fetchData(`/movie/${numId}?api_key=${API_KEY}&language=en-US&append_to_response=credits`, language);
+                            } catch (e) { return null; }
+                        }
+                        return null;
+                    })()
+                ]);
 
-            if (supabaseResult && isMounted) {
-                const titleStr = supabaseResult.title || 'Kurdish Dubbed Movie';
-                document.title = (language === 'ku' || language === 'badini')
-                  ? `سەیرکردنی فیلمی دۆبلاژکراوی کوردی ${titleStr} | FLKRD`
-                  : `Watch ${titleStr} Kurdish Dubbed Movie | FLKRD`;
+                if (supabaseResult && isMounted) {
+                    const titleStr = supabaseResult.title || 'Kurdish Dubbed Movie';
+                    document.title = (language === 'ku' || language === 'badini')
+                      ? `سەیرکردنی فیلمی دۆبلاژکراوی کوردی ${titleStr} | FLKRD`
+                      : `Watch ${titleStr} Kurdish Dubbed Movie | FLKRD`;
 
-                setSupabaseData({
-                    ...supabaseResult,
-                    id: `custom_${supabaseResult.id}`,
-                    poster_path: supabaseResult.imageBase64,
-                    backdrop_path: supabaseResult.bannerBase64 || supabaseResult.imageBase64,
-                    customStream: supabaseResult.videoUrl,
-                    kurdishTitle: supabaseResult.title,
-                    kurdishOverview: supabaseResult.description
-                });
+                    setSupabaseData({
+                        ...supabaseResult,
+                        id: String(supabaseResult.id).startsWith('custom_') ? supabaseResult.id : `custom_${supabaseResult.id}`,
+                        poster_path: supabaseResult.imageBase64,
+                        backdrop_path: supabaseResult.bannerBase64 || supabaseResult.imageBase64,
+                        customStream: supabaseResult.videoUrl,
+                        kurdishTitle: supabaseResult.title,
+                        kurdishOverview: supabaseResult.description
+                    });
+                }
+
+                if (tmdbResult && isMounted) {
+                    setContent(tmdbResult);
+                }
+
+            } catch (err) {
+                console.error("Critical loader crash:", err);
+            } finally {
+                if (isMounted) setLoading(false);
             }
+        };
 
-            if (tmdbResult && isMounted) {
-                setContent(tmdbResult);
-            }
-
-        } catch (err) {
-            console.error("Critical loader crash:", err);
-            addNotification({ type: 'error', title: 'Connection Issue', message: 'Could not sync with Zana Servers. Loading locally...' });
-        } finally {
-            if (isMounted) setLoading(false);
+        loadContent();
+        const mainEl = document.querySelector('main');
+        if (mainEl) {
+          mainEl.scrollTo({ top: 0, behavior: 'instant' });
         }
-    };
 
-    loadContent();
-    const mainEl = document.querySelector('main');
-    if (mainEl) {
-      mainEl.scrollTo({ top: 0, behavior: 'instant' });
-    }
-
-    return () => { isMounted = false; };
-}, [id, language]);
+        return () => { isMounted = false; };
+    }, [id, language]);
 
 const handlePlayerLoad = useCallback(() => {
     setIsPlayerLoading(false);
