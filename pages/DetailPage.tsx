@@ -13,6 +13,7 @@ import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbServic
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
 import { SkeletonDetailPage } from '../components/Skeleton';
 import Row from '../components/Row';
+import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
@@ -75,6 +76,29 @@ const DetailPage: React.FC = () => {
   });
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
+  const [actorDetails, setActorDetails] = useState<any | null>(null);
+  const [isActorLoading, setIsActorLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedActorId) {
+      setActorDetails(null);
+      return;
+    }
+    const fetchActorInfo = async () => {
+      setIsActorLoading(true);
+      try {
+        const data = await fetchData(`/person/${selectedActorId}?api_key=${API_KEY}&language=en-US&append_to_response=combined_credits`, language);
+        if (data) {
+          setActorDetails(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch actor details:", err);
+      } finally {
+        setIsActorLoading(false);
+      }
+    };
+    fetchActorInfo();
+  }, [selectedActorId, language]);
   const [logoPath, setLogoPath] = useState<string | null>(null);
   const [trailerKey, setTrailerKey] = useState<string | null>(null);
   const [isTrailerModalOpen, setIsTrailerModalOpen] = useState(false);
@@ -772,6 +796,137 @@ const DetailPage: React.FC = () => {
         )}
       </div>
 
+      <AnimatePresence>
+        {selectedActorId && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[99999] flex items-center justify-center p-4 md:p-10"
+            onClick={() => setSelectedActorId(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-4xl bg-[#0a0a0a]/90 border border-white/10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
+              dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
+              style={{
+                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
+                backdropFilter: 'blur(30px) saturate(130%)',
+                WebkitBackdropFilter: 'blur(30px) saturate(130%)',
+                boxShadow: '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button 
+                onClick={() => setSelectedActorId(null)}
+                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-white/5 hover:bg-red-600 rounded-2xl text-white transition-all z-50 group hover:rotate-90`}
+              >
+                <X size={20} />
+              </button>
+
+              {isActorLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-20">
+                  <Spinner />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500 mt-4">Retrieving Actor Dossier...</p>
+                </div>
+              ) : actorDetails ? (
+                <>
+                  {/* Left Column: Image */}
+                  <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
+                    <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
+                      <img 
+                        src={actorDetails.profile_path ? `${IMAGE_BASE_URL}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                        alt={actorDetails.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    <div className="space-y-4 px-2 text-center md:text-start">
+                      <h3 className="text-2xl md:text-3xl font-[1000] uppercase italic tracking-tighter text-white leading-tight">
+                        {actorDetails.name}
+                      </h3>
+                      {actorDetails.birthday && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Born</span>
+                          <span className="text-xs font-bold text-gray-400">
+                            {actorDetails.birthday} {actorDetails.place_of_birth ? `in ${actorDetails.place_of_birth}` : ''}
+                          </span>
+                        </div>
+                      )}
+                      {actorDetails.known_for_department && (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Department</span>
+                          <span className="text-xs font-bold text-brand uppercase tracking-wider">
+                            {actorDetails.known_for_department}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Biography & Filmography */}
+                  <div className="flex-1 flex flex-col gap-6 md:gap-8 md:overflow-y-auto md:max-h-[60vh] scrollbar-hide pr-2 text-start">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 italic">{(language === 'ku' || language === 'badini') ? 'ژیاننامە' : 'Biography'}</h4>
+                      </div>
+                      <p className="text-gray-300 text-sm leading-relaxed font-bold italic opacity-95">
+                        {actorDetails.biography || ((language === 'ku' || language === 'badini') ? "زانیاری لەسەر ئەم ئەکتەرە بەردەست نییە." : "No biography compiled for this subject node.")}
+                      </p>
+                    </div>
+
+                    {actorDetails.combined_credits?.cast?.length > 0 && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
+                          <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 italic">{(language === 'ku' || language === 'badini') ? 'کارە دیارەکان' : 'Featured Works'}</h4>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" dir="ltr">
+                          {actorDetails.combined_credits.cast
+                            .filter((c: any) => c.poster_path)
+                            .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
+                            .slice(0, 6)
+                            .map((movie: any) => (
+                              <div 
+                                key={movie.id} 
+                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                                onClick={() => {
+                                  setSelectedActorId(null);
+                                  navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`);
+                                }}
+                              >
+                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-white/5">
+                                  <img 
+                                    src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
+                                    alt={movie.title || movie.name}
+                                    className="w-full h-full object-cover group-hover/work:scale-105 transition-transform duration-500"
+                                    loading="lazy"
+                                  />
+                                </div>
+                                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tight truncate text-white block text-center mt-1">
+                                  {movie.title || movie.name}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 text-center py-20 text-gray-500">
+                  Failed to load actor profile.
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

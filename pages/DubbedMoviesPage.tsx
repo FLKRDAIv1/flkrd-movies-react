@@ -428,7 +428,7 @@ const DubbedMoviesPage: React.FC = () => {
                     
                     const dbFetchPromise = supabase
                         .from('dubbed_movies')
-                        .select('id, title, description, imageBase64, created_at, level')
+                        .select('id, title, description, videoUrl, imageBase64, bannerBase64, created_at, level')
                         .order('created_at', { ascending: false })
                         .range(0, PAGE_SIZE - 1);
 
@@ -609,7 +609,7 @@ const DubbedMoviesPage: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('dubbed_movies')
-                .select('id, title, description, imageBase64, created_at, level')
+                .select('id, title, description, videoUrl, imageBase64, bannerBase64, created_at, level')
                 .order('created_at', { ascending: false })
                 .range(from, to);
 
@@ -687,7 +687,7 @@ const DubbedMoviesPage: React.FC = () => {
                 // Fetch first 40 nodes on force sync for better coverage
                 const { data, error } = await supabase
                     .from('dubbed_movies')
-                    .select('id, title, description, imageBase64, created_at, level')
+                    .select('id, title, description, videoUrl, imageBase64, bannerBase64, created_at, level')
                     .order('created_at', { ascending: false })
                     .range(0, 39);
 
