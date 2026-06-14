@@ -53,17 +53,29 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     localStorage.getItem('flkrd_performance_turbo') === 'true'
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [glassConfig, setGlassConfig] = useState<GlassConfig>({
-    blurAmount: 20,
-    saturation: 130,
-    redOpacity: 0.18,
-    darkOpacity: 0.65,
-    borderOpacity: 0.20,
-    displacementScale: 30,
-    aberrationIntensity: 2,
-    elasticity: 0.35,
-    cornerRadius: 28,
+  const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
+    try {
+      const saved = localStorage.getItem('flkrd_glass_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      blurAmount: 20,
+      saturation: 130,
+      redOpacity: 0.18,
+      darkOpacity: 0.65,
+      borderOpacity: 0.20,
+      displacementScale: 30,
+      aberrationIntensity: 2,
+      elasticity: 0.35,
+      cornerRadius: 28,
+    };
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('flkrd_glass_config', JSON.stringify(glassConfig));
+    } catch (e) {}
+  }, [glassConfig]);
   const [isAdmin, setIsAdminState] = useState(() => {
     const isAdminStored = localStorage.getItem('isFlkrdAdmin') === 'true';
     if (!isAdminStored) return false;
