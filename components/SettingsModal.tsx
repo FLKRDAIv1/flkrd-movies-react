@@ -289,6 +289,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [detailedVisits, setDetailedVisits] = useState<RawVisitLog[]>([]);
   const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
   const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
+  const [timeRange, setTimeRange] = useState<'4h' | '24h' | '7d' | '1y'>('7d');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
 
@@ -359,12 +360,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         if (data.cls_avg !== undefined) setCls(data.cls_avg);
       }
 
-      // 2. Fetch raw detailed logs (last 100 rows)
+      // 2. Fetch raw detailed logs (last 1000 rows)
       const { data: rawData, error: rawError } = await supabase
         .from('site_analytics')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .limit(1000);
 
       if (rawError) throw rawError;
       if (rawData) {
@@ -374,6 +375,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       console.warn('[ANALYTICS] Failed to fetch site analytics:', e);
     }
   };
+
+  useEffect(() => {
+    setSelectedDateFilter(null);
+  }, [timeRange]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -1879,12 +1884,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               {selectedDateFilter ? (
                                 <span className="flex items-center gap-1.5 text-green-400">
                                   <Calendar size={10} />
-                                  {language === 'ku' || language === 'badini' ? `ڕۆژی ${selectedDateFilter}` : `Date: ${selectedDateFilter}`}
+                                  {language === 'ku' || language === 'badini' ? 'فلتەری ڕۆژ / کات' : 'Filtered Stats'}
                                 </span>
                               ) : (
+                                timeRange === '4h' ? (language === 'ku' || language === 'badini' ? 'هاتووچۆی ٤ کاتژمێری ڕابردوو' : 'Traffic (Last 4 Hours)') :
+                                timeRange === '24h' ? (language === 'ku' || language === 'badini' ? 'هاتووچۆی ٢٤ کاتژمێری ڕابردوو' : 'Traffic (Last 24 Hours)') :
+                                timeRange === '1y' ? (language === 'ku' || language === 'badini' ? 'هاتووچۆی ١ ساڵی ڕابردوو' : 'Traffic (Last Year)') :
                                 t('last7DaysTraffic')
                               )}
                             </span>
+                            
                             {selectedDateFilter ? (
                               <button 
                                 onClick={() => setSelectedDateFilter(null)}
@@ -1893,183 +1902,308 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 {language === 'ku' || language === 'badini' ? 'سڕینەوەی فلتەر' : 'Clear Filter'}
                               </button>
                             ) : (
-                              <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                                Live Trend line
-                              </span>
+                              /* Clean range switcher buttons */
+                              <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-0.5 rounded-full">
+                                {(['4h', '24h', '7d', '1y'] as const).map((range) => {
+                                  const active = timeRange === range;
+                                  return (
+                                    <button
+                                      key={range}
+                                      onClick={() => setTimeRange(range)}
+                                      className={`text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full transition-all active:scale-95 ${
+                                        active 
+                                          ? 'bg-white text-black font-extrabold shadow' 
+                                          : 'text-gray-400 hover:text-white'
+                                      }`}
+                                    >
+                                      {range}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
 
-                          {/* Custom SVG Line Chart */}
-                          <div className="w-full h-36 relative">
-                            {(() => {
-                              const daily = analytics.daily_traffic || [];
-                              const maxCount = Math.max(...daily.map(d => d.count), 1);
-                              const width = 500;
-                              const height = 140;
-                              const paddingLeft = 15;
-                              const paddingRight = 15;
-                              const paddingTop = 15;
-                              const paddingBottom = 15;
+                          {/* Dynamic SVG Line Chart & Labels Wrapper */}
+                          {(() => {
+                            const now = new Date();
+                            const daily = analytics?.daily_traffic || [];
 
-                              const pts = daily.map((day, idx) => {
-                                const x = paddingLeft + (idx / Math.max(1, daily.length - 1)) * (width - paddingLeft - paddingRight);
-                                const y = height - paddingBottom - (day.count / maxCount) * (height - paddingTop - paddingBottom);
-                                return { x, y, count: day.count, date: day.date };
-                              });
+                            // 1. Generate range dataset
+                            const getAggregatedData = () => {
+                              if (timeRange === '7d') {
+                                return daily.map(d => ({
+                                  date: d.date,
+                                  label: new Date(d.date).toLocaleDateString(
+                                    language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', 
+                                    { weekday: 'short' }
+                                  ),
+                                  count: d.count
+                                }));
+                              }
 
-                              // Calculate smooth Bezier Curve points
-                              const pathD = pts.reduce((acc, p, idx, arr) => {
-                                if (idx === 0) return `M ${p.x} ${p.y}`;
-                                const prev = arr[idx - 1];
-                                const cpX1 = prev.x + (p.x - prev.x) / 3;
-                                const cpY1 = prev.y;
-                                const cpX2 = prev.x + 2 * (p.x - prev.x) / 3;
-                                const cpY2 = p.y;
-                                return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p.x} ${p.y}`;
-                              }, '');
+                              if (timeRange === '4h') {
+                                const res = [];
+                                for (let i = 7; i >= 0; i--) {
+                                  const start = new Date(now.getTime() - (i + 1) * 30 * 60 * 1000);
+                                  const end = new Date(now.getTime() - i * 30 * 60 * 1000);
+                                  const count = detailedVisits.filter(v => {
+                                    const d = new Date(v.created_at);
+                                    return d >= start && d < end;
+                                  }).length;
+                                  const label = start.toLocaleTimeString(
+                                    language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', 
+                                    { hour: '2-digit', minute: '2-digit', hour12: false }
+                                  );
+                                  res.push({ date: start.toISOString(), label, count });
+                                }
+                                return res;
+                              }
 
-                              const areaD = pts.length > 0 
-                                ? `${pathD} L ${pts[pts.length - 1].x} ${height - paddingBottom} L ${pts[0].x} ${height - paddingBottom} Z`
-                                : '';
+                              if (timeRange === '24h') {
+                                const res = [];
+                                for (let i = 11; i >= 0; i--) {
+                                  const start = new Date(now.getTime() - (i + 1) * 2 * 60 * 60 * 1000);
+                                  const end = new Date(now.getTime() - i * 2 * 60 * 60 * 1000);
+                                  const count = detailedVisits.filter(v => {
+                                    const d = new Date(v.created_at);
+                                    return d >= start && d < end;
+                                  }).length;
+                                  const label = start.toLocaleTimeString(
+                                    language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', 
+                                    { hour: '2-digit', minute: '2-digit', hour12: false }
+                                  );
+                                  res.push({ date: start.toISOString(), label, count });
+                                }
+                                return res;
+                              }
 
-                              return (
-                                <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-                                  <defs>
-                                    <linearGradient id="overlay-chart-gradient" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor={accentColor} stopOpacity="0.25" />
-                                      <stop offset="100%" stopColor={accentColor} stopOpacity="0.0" />
-                                    </linearGradient>
-                                    {/* High fidelity glow filter */}
-                                    <filter id="chart-glow" x="-20%" y="-20%" width="140%" height="140%">
-                                      <feGaussianBlur stdDeviation="3.5" result="blur" />
-                                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                    </filter>
-                                  </defs>
-                                  
-                                  {/* Gridlines */}
-                                  <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
-                                  <line x1={0} y1={(height - paddingBottom + paddingTop) / 2} x2={width} y2={(height - paddingBottom + paddingTop) / 2} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
-                                  <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="rgba(255,255,255,0.08)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
-                                  
-                                  {pts.length > 0 && (
-                                    <>
-                                      {/* Area Fill */}
-                                      <path d={areaD} fill="url(#overlay-chart-gradient)" style={{ pointerEvents: 'none' }} />
-                                      {/* Outer Glow Path */}
-                                      <path d={pathD} fill="none" stroke={accentColor} strokeWidth="5.5" opacity="0.3" filter="url(#chart-glow)" style={{ pointerEvents: 'none' }} />
-                                      {/* Sharp Core Path */}
-                                      <path d={pathD} fill="none" stroke={accentColor} strokeWidth="2.2" style={{ pointerEvents: 'none' }} />
-                                    </>
-                                  )}
-                                  
-                                  {/* Interactive Nodes containing Guidelines, visible dots, tooltips, and big hit areas */}
-                                  {pts.map((p, idx) => {
+                              if (timeRange === '1y') {
+                                const res = [];
+                                for (let i = 11; i >= 0; i--) {
+                                  const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                                  const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+                                  const count = detailedVisits.filter(v => {
+                                    const d = new Date(v.created_at);
+                                    return d >= start && d < end;
+                                  }).length;
+                                  const label = start.toLocaleDateString(
+                                    language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', 
+                                    { month: 'short' }
+                                  );
+                                  res.push({ date: start.toISOString().split('T')[0], label, count });
+                                }
+                                return res;
+                              }
+                              return [];
+                            };
+
+                            const dataset = getAggregatedData();
+                            const maxCount = Math.max(...dataset.map(d => d.count), 1);
+                            const width = 500;
+                            const height = 140;
+                            const paddingLeft = 15;
+                            const paddingRight = 15;
+                            const paddingTop = 15;
+                            const paddingBottom = 15;
+
+                            const pts = dataset.map((day, idx) => {
+                              const x = paddingLeft + (idx / Math.max(1, dataset.length - 1)) * (width - paddingLeft - paddingRight);
+                              const y = height - paddingBottom - (day.count / maxCount) * (height - paddingTop - paddingBottom);
+                              return { x, y, count: day.count, date: day.date, label: day.label };
+                            });
+
+                            // Calculate smooth Bezier Curve points
+                            const pathD = pts.reduce((acc, p, idx, arr) => {
+                              if (idx === 0) return `M ${p.x} ${p.y}`;
+                              const prev = arr[idx - 1];
+                              const cpX1 = prev.x + (p.x - prev.x) / 3;
+                              const cpY1 = prev.y;
+                              const cpX2 = prev.x + 2 * (p.x - prev.x) / 3;
+                              const cpY2 = p.y;
+                              return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p.x} ${p.y}`;
+                            }, '');
+
+                            const areaD = pts.length > 0 
+                              ? `${pathD} L ${pts[pts.length - 1].x} ${height - paddingBottom} L ${pts[0].x} ${height - paddingBottom} Z`
+                              : '';
+
+                            return (
+                              <>
+                                <div className="w-full h-36 relative">
+                                  <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                                    <defs>
+                                      <linearGradient id="overlay-chart-gradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor={accentColor} stopOpacity="0.25" />
+                                        <stop offset="100%" stopColor={accentColor} stopOpacity="0.0" />
+                                      </linearGradient>
+                                      {/* High fidelity glow filter */}
+                                      <filter id="chart-glow" x="-20%" y="-20%" width="140%" height="140%">
+                                        <feGaussianBlur stdDeviation="3.5" result="blur" />
+                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                      </filter>
+                                    </defs>
+                                    
+                                    {/* Gridlines */}
+                                    <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
+                                    <line x1={0} y1={(height - paddingBottom + paddingTop) / 2} x2={width} y2={(height - paddingBottom + paddingTop) / 2} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
+                                    <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="rgba(255,255,255,0.08)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
+                                    
+                                    {pts.length > 0 && (
+                                      <>
+                                        {/* Area Fill */}
+                                        <path d={areaD} fill="url(#overlay-chart-gradient)" style={{ pointerEvents: 'none' }} />
+                                        {/* Outer Glow Path */}
+                                        <path d={pathD} fill="none" stroke={accentColor} strokeWidth="5.5" opacity="0.3" filter="url(#chart-glow)" style={{ pointerEvents: 'none' }} />
+                                        {/* Sharp Core Path */}
+                                        <path d={pathD} fill="none" stroke={accentColor} strokeWidth="2.2" style={{ pointerEvents: 'none' }} />
+                                      </>
+                                    )}
+                                    
+                                    {/* Interactive Nodes containing Guidelines, visible dots, tooltips, and big hit areas */}
+                                    {pts.map((p, idx) => {
+                                      const isSelected = selectedDateFilter === p.date;
+                                      return (
+                                        <g 
+                                          key={`interactive-node-${idx}`} 
+                                          className="group/node cursor-pointer"
+                                          onClick={() => setSelectedDateFilter(isSelected ? null : p.date)}
+                                        >
+                                          {/* Guideline line */}
+                                          <line 
+                                            x1={p.x} 
+                                            y1={paddingTop} 
+                                            x2={p.x} 
+                                            y2={height - paddingBottom} 
+                                            stroke={isSelected ? accentColor : "rgba(255,255,255,0.15)"} 
+                                            strokeWidth="1.2" 
+                                            strokeDasharray={isSelected ? "none" : "2 3"} 
+                                            className={`transition-opacity duration-300 pointer-events-none ${isSelected ? 'opacity-70' : 'opacity-0 group-hover/node:opacity-30'}`} 
+                                          />
+
+                                          {/* Floating text count tooltip */}
+                                          <g className={`transition-all duration-300 pointer-events-none ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5 group-hover/node:opacity-100 group-hover/node:translate-y-0'}`}>
+                                            <rect 
+                                              x={p.x - 22} 
+                                              y={Math.max(2, p.y - 23)} 
+                                              width="44" 
+                                              height="13" 
+                                              rx="6.5" 
+                                              fill="#080808" 
+                                              stroke={isSelected ? accentColor : "rgba(255,255,255,0.2)"} 
+                                              strokeWidth="1" 
+                                            />
+                                            <text 
+                                              x={p.x} 
+                                              y={Math.max(11, p.y - 14)} 
+                                              fill="#fff" 
+                                              fontSize="8" 
+                                              fontWeight="900" 
+                                              textAnchor="middle" 
+                                              fontFamily="monospace"
+                                            >
+                                              {p.count}
+                                            </text>
+                                          </g>
+
+                                          {/* Pulsing ring for active selection */}
+                                          {isSelected && (
+                                            <circle cx={p.x} cy={p.y} r="8" fill="none" stroke={accentColor} strokeWidth="1" className="animate-ping pointer-events-none" />
+                                          )}
+
+                                          {/* Outer soft halo on hover */}
+                                          <circle cx={p.x} cy={p.y} r="10" fill={accentColor} opacity="0" className="group-hover/node:opacity-15 transition-opacity pointer-events-none" />
+
+                                          {/* Visible point circle */}
+                                          <circle 
+                                            cx={p.x} 
+                                            cy={p.y} 
+                                            r={isSelected ? "5.5" : "3.5"} 
+                                            fill={isSelected ? accentColor : "#fff"} 
+                                            stroke={isSelected ? "#fff" : accentColor} 
+                                            strokeWidth="2" 
+                                            className="transition-all duration-300 group-hover/node:scale-125 pointer-events-none" 
+                                          />
+
+                                          {/* Giant transparent touch hit target (18px radius / 36px diameter) */}
+                                          <circle 
+                                            cx={p.x} 
+                                            cy={p.y} 
+                                            r="18" 
+                                            fill="transparent" 
+                                            style={{ pointerEvents: 'all' }}
+                                          />
+                                        </g>
+                                      );
+                                    })}
+                                  </svg>
+                                </div>
+
+                                {/* Dynamic timeline labels */}
+                                <div className="flex justify-between px-1 mt-2 text-[8px] font-black text-gray-500 font-mono">
+                                  {pts.map((p) => {
                                     const isSelected = selectedDateFilter === p.date;
                                     return (
-                                      <g 
-                                        key={`interactive-node-${idx}`} 
-                                        className="group/node cursor-pointer"
+                                      <span 
+                                        key={p.date}
                                         onClick={() => setSelectedDateFilter(isSelected ? null : p.date)}
+                                        className={`cursor-pointer transition-all ${isSelected ? 'text-white font-extrabold scale-110' : 'text-gray-500 hover:text-gray-300'}`}
                                       >
-                                        {/* Guideline line */}
-                                        <line 
-                                          x1={p.x} 
-                                          y1={paddingTop} 
-                                          x2={p.x} 
-                                          y2={height - paddingBottom} 
-                                          stroke={isSelected ? accentColor : "rgba(255,255,255,0.15)"} 
-                                          strokeWidth="1.2" 
-                                          strokeDasharray={isSelected ? "none" : "2 3"} 
-                                          className={`transition-opacity duration-300 pointer-events-none ${isSelected ? 'opacity-70' : 'opacity-0 group-hover/node:opacity-30'}`} 
-                                        />
-
-                                        {/* Floating text count tooltip */}
-                                        <g className={`transition-all duration-300 pointer-events-none ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5 group-hover/node:opacity-100 group-hover/node:translate-y-0'}`}>
-                                          <rect 
-                                            x={p.x - 22} 
-                                            y={Math.max(2, p.y - 23)} 
-                                            width="44" 
-                                            height="13" 
-                                            rx="6.5" 
-                                            fill="#080808" 
-                                            stroke={isSelected ? accentColor : "rgba(255,255,255,0.2)"} 
-                                            strokeWidth="1" 
-                                          />
-                                          <text 
-                                            x={p.x} 
-                                            y={Math.max(11, p.y - 14)} 
-                                            fill="#fff" 
-                                            fontSize="8" 
-                                            fontWeight="900" 
-                                            textAnchor="middle" 
-                                            fontFamily="monospace"
-                                          >
-                                            {p.count}
-                                          </text>
-                                        </g>
-
-                                        {/* Pulsing ring for active selection */}
-                                        {isSelected && (
-                                          <circle cx={p.x} cy={p.y} r="8" fill="none" stroke={accentColor} strokeWidth="1" className="animate-ping pointer-events-none" />
-                                        )}
-
-                                        {/* Outer soft halo on hover */}
-                                        <circle cx={p.x} cy={p.y} r="10" fill={accentColor} opacity="0" className="group-hover/node:opacity-15 transition-opacity pointer-events-none" />
-
-                                        {/* Visible point circle */}
-                                        <circle 
-                                          cx={p.x} 
-                                          cy={p.y} 
-                                          r={isSelected ? "5.5" : "3.5"} 
-                                          fill={isSelected ? accentColor : "#fff"} 
-                                          stroke={isSelected ? "#fff" : accentColor} 
-                                          strokeWidth="2" 
-                                          className="transition-all duration-300 group-hover/node:scale-125 pointer-events-none" 
-                                        />
-
-                                        {/* Giant transparent touch hit target (18px radius / 36px diameter) */}
-                                        <circle 
-                                          cx={p.x} 
-                                          cy={p.y} 
-                                          r="18" 
-                                          fill="transparent" 
-                                          style={{ pointerEvents: 'all' }}
-                                        />
-                                      </g>
+                                        {p.label}
+                                      </span>
                                     );
                                   })}
-                                </svg>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Weekday labels */}
-                          <div className="flex justify-between px-1 mt-2 text-[8px] font-black text-gray-500 font-mono">
-                            {analytics.daily_traffic.map((day) => {
-                              const isSelected = selectedDateFilter === day.date;
-                              return (
-                                <span 
-                                  key={day.date}
-                                  onClick={() => setSelectedDateFilter(isSelected ? null : day.date)}
-                                  className={`cursor-pointer transition-all ${isSelected ? 'text-white font-extrabold scale-110' : 'text-gray-500 hover:text-gray-300'}`}
-                                >
-                                  {new Date(day.date).toLocaleDateString(language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', { weekday: 'short' })}
-                                </span>
-                              );
-                            })}
-                          </div>
+                                </div>
+                              </>
+                            );
+                          })()}
 
                           {/* Click Details Panel - Shows detailed breakdown for the clicked trend point */}
                           {selectedDateFilter ? (() => {
-                            const dayData = analytics.daily_traffic.find(d => d.date === selectedDateFilter);
+                            // Compute the correct visit window for this node based on the timeRange
+                            const selectedStart = new Date(selectedDateFilter);
+                            let selectedEnd: Date;
+                            let bucketLabel = '';
+
+                            if (timeRange === '4h') {
+                              selectedEnd = new Date(selectedStart.getTime() + 30 * 60 * 1000);
+                              bucketLabel = selectedStart.toLocaleTimeString(
+                                language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
+                                { hour: '2-digit', minute: '2-digit', hour12: false }
+                              );
+                            } else if (timeRange === '24h') {
+                              selectedEnd = new Date(selectedStart.getTime() + 2 * 60 * 60 * 1000);
+                              bucketLabel = selectedStart.toLocaleTimeString(
+                                language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
+                                { hour: '2-digit', minute: '2-digit', hour12: false }
+                              );
+                            } else if (timeRange === '1y') {
+                              selectedEnd = new Date(selectedStart.getFullYear(), selectedStart.getMonth() + 1, 1);
+                              bucketLabel = selectedStart.toLocaleDateString(
+                                language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
+                                { month: 'long', year: 'numeric' }
+                              );
+                            } else {
+                              // 7d — date bucket (YYYY-MM-DD key)
+                              selectedEnd = new Date(selectedStart.getTime() + 24 * 60 * 60 * 1000);
+                              bucketLabel = selectedStart.toLocaleDateString(
+                                language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
+                                { weekday: 'long', month: 'short', day: 'numeric' }
+                              );
+                            }
+
                             const dayVisits = detailedVisits.filter(v => {
-                              const dStr = new Date(v.created_at).toISOString().split('T')[0];
-                              return dStr === selectedDateFilter;
+                              const d = new Date(v.created_at);
+                              return d >= selectedStart && d < selectedEnd;
                             });
 
-                            const totalCount = dayData ? dayData.count : dayVisits.length;
-                            
-                            // Country Stats for selected day
+                            // For 7d, also include count from the RPC summary if visits bucket is empty
+                            const rpcDayData = timeRange === '7d' 
+                              ? analytics.daily_traffic.find(d => d.date === selectedDateFilter.split('T')[0])
+                              : null;
+                            const totalCount = dayVisits.length > 0 ? dayVisits.length : (rpcDayData?.count ?? 0);
+
+                            // Country Stats for selected bucket
                             const countryCounts: Record<string, number> = {};
                             dayVisits.forEach(v => {
                               const c = v.country || 'Unknown';
@@ -2078,39 +2212,47 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             const sortedCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
                             const topCountry = sortedCountries[0]?.[0] || (analytics.country_stats[0]?.country || 'N/A');
 
-                            // Vitals Averages for selected day
-                            const fcps = dayVisits.map(v => v.fcp).filter((val): val is number => val !== null);
-                            const avgFcp = fcps.length > 0 
-                              ? (fcps.reduce((a, b) => a + b, 0) / fcps.length).toFixed(2) + 's' 
-                              : fcp.toFixed(2) + 's (Avg)';
+                            // Vitals Averages for selected bucket
+                            const fcpVals = dayVisits.map(v => v.fcp).filter((val): val is number => val !== null && val > 0);
+                            const avgFcp = fcpVals.length > 0
+                              ? (fcpVals.reduce((a, b) => a + b, 0) / fcpVals.length).toFixed(2) + 's'
+                              : fcp.toFixed(2) + 's (global avg)';
 
                             // Unique paths visited
-                            const pathsSet = new Set(dayVisits.map(v => v.page_path));
-                            const uniquePages = pathsSet.size > 0 ? pathsSet.size : 'N/A';
-
-                            const formattedDate = new Date(selectedDateFilter).toLocaleDateString(
-                              language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
-                              { weekday: 'long', month: 'short', day: 'numeric' }
-                            );
+                            const pathsSet = new Set(dayVisits.map(v => v.page_path).filter(Boolean));
+                            const uniquePages = pathsSet.size > 0 ? pathsSet.size : (totalCount > 0 ? '—' : 'N/A');
 
                             return (
-                              <motion.div 
+                              <motion.div
+                                key={selectedDateFilter}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 className="mt-5 pt-5 border-t border-white/5"
                               >
                                 <div className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between">
-                                  <span>{language === 'ku' || language === 'badini' ? `ئاماری ڕۆژی ${formattedDate}` : `Details for ${formattedDate}`}</span>
-                                  <span className="text-[7.5px] text-green-400 font-bold uppercase">{language === 'ku' || language === 'badini' ? 'ئەکتیڤە' : 'Selected'}</span>
+                                  <span>
+                                    {language === 'ku' || language === 'badini'
+                                      ? `ئاماری: ${bucketLabel}`
+                                      : `Details for ${bucketLabel}`}
+                                  </span>
+                                  <span className="text-[7.5px] text-green-400 font-bold uppercase">
+                                    {language === 'ku' || language === 'badini' ? 'ئەکتیڤە' : 'Selected'}
+                                  </span>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
                                   <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
-                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'کۆی هاتووچۆ' : 'Total Traffic'}</span>
-                                    <span className="text-base font-black text-white mt-1">{totalCount} <span className="text-[8px] font-bold text-gray-400">visits</span></span>
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">
+                                      {language === 'ku' || language === 'badini' ? 'کۆی هاتووچۆ' : 'Total Traffic'}
+                                    </span>
+                                    <span className="text-base font-black text-white mt-1">
+                                      {totalCount} <span className="text-[8px] font-bold text-gray-400">visits</span>
+                                    </span>
                                   </div>
-                                  
+
                                   <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
-                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'وڵاتی سەرەکی' : 'Top Country'}</span>
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">
+                                      {language === 'ku' || language === 'badini' ? 'وڵاتی سەرەکی' : 'Top Country'}
+                                    </span>
                                     <span className="text-xs font-black text-white mt-1 truncate flex items-center gap-1.5">
                                       {topCountry !== 'N/A' && <span className="text-sm">{getFlagEmoji(topCountry)}</span>}
                                       {topCountry}
@@ -2118,22 +2260,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                   </div>
 
                                   <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
-                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'تێکڕای خێرایی' : 'Avg Speed (FCP)'}</span>
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">
+                                      {language === 'ku' || language === 'badini' ? 'تێکڕای خێرایی' : 'Avg FCP'}
+                                    </span>
                                     <span className="text-xs font-mono font-bold text-green-400 mt-1">{avgFcp}</span>
                                   </div>
 
                                   <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
-                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'لاپەڕە جیاوازەکان' : 'Unique Pages'}</span>
-                                    <span className="text-xs font-black text-white mt-1">{uniquePages} <span className="text-[8px] font-bold text-gray-400">URLs</span></span>
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">
+                                      {language === 'ku' || language === 'badini' ? 'لاپەڕە جیاوازەکان' : 'Unique Pages'}
+                                    </span>
+                                    <span className="text-xs font-black text-white mt-1">
+                                      {uniquePages} <span className="text-[8px] font-bold text-gray-400">URLs</span>
+                                    </span>
                                   </div>
                                 </div>
                               </motion.div>
                             );
                           })() : (
                             <div className="mt-5 pt-4 border-t border-white/5 text-center text-gray-500 text-[8px] font-black uppercase tracking-wider">
-                              {language === 'ku' || language === 'badini' 
-                                ? 'سەرنج: کلیک لەسەر هەر خاڵێکی سەر هێڵەکە بکە بۆ بینینی وردەکاری و خێرایی ئەو ڕۆژە' 
-                                : 'Tip: Click any data node in the trend line above to inspect speed and country logs for that date'}
+                              {language === 'ku' || language === 'badini'
+                                ? 'سەرنج: کلیک لەسەر هەر خاڵێکی هێڵی ترێندەکە بکە بۆ بینینی وردەکاری و ئاماری ئەو ماوەیە'
+                                : `Tip: Click any data node to inspect traffic details for that ${timeRange === '4h' ? '30-min slot' : timeRange === '24h' ? '2-hour window' : timeRange === '1y' ? 'month' : 'day'}`}
                             </div>
                           )}
                         </Card>
