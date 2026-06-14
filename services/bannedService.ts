@@ -19,11 +19,17 @@ class BannedService {
                     .from('banned_content')
                     .select('content_id');
                 
+                let timeoutId: any;
+                const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {
+                    timeoutId = setTimeout(() => reject(new Error("Supabase request timed out")), 20000);
+                });
+                
                 const response = await Promise.race([
-                    dbFetchPromise,
-                    new Promise<{ data: null, error: any }>((_, reject) => 
-                        setTimeout(() => reject(new Error("Supabase request timed out")), 6000)
-                    )
+                    dbFetchPromise.then(val => {
+                        clearTimeout(timeoutId);
+                        return val;
+                    }),
+                    timeoutPromise
                 ]);
                 
                 const { data, error } = response;

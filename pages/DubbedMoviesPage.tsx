@@ -432,11 +432,17 @@ const DubbedMoviesPage: React.FC = () => {
                         .order('created_at', { ascending: false })
                         .range(0, PAGE_SIZE - 1);
 
+                    let timeoutId: any;
+                    const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {
+                        timeoutId = setTimeout(() => reject(new Error("Supabase request timed out")), 30000);
+                    });
+
                     const response = await Promise.race([
-                        dbFetchPromise,
-                        new Promise<{ data: null, error: any }>((_, reject) => 
-                            setTimeout(() => reject(new Error("Supabase request timed out")), 12000)
-                        )
+                        dbFetchPromise.then(val => {
+                            clearTimeout(timeoutId);
+                            return val;
+                        }),
+                        timeoutPromise
                     ]);
                     
                     const { data, error } = response;
@@ -481,9 +487,7 @@ const DubbedMoviesPage: React.FC = () => {
                             const dateA = new Date(a.created_at || 0).getTime();
                             const dateB = new Date(b.created_at || 0).getTime();
                             if (dateA !== dateB) return dateB - dateA;
-                            const numIdA = Number(String(a.id).replace('custom_', ''));
-                            const numIdB = Number(String(b.id).replace('custom_', ''));
-                            return numIdB - numIdA;
+                            return String(b.id).localeCompare(String(a.id));
                         });
 
                         setDubbedContent(formattedCustom);
@@ -679,8 +683,9 @@ const DubbedMoviesPage: React.FC = () => {
         addNotification({ type: 'info', title: 'Network Call', message: 'Re-syncing catalog from Zana Servers directly...' });
 
         try {
+            let timeoutId: any;
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Operation timeout (12s limit)')), 12000)
+                timeoutId = setTimeout(() => reject(new Error('Operation timeout (30s limit)')), 30000)
             );
 
             const fetchPromise = (async () => {
@@ -695,7 +700,13 @@ const DubbedMoviesPage: React.FC = () => {
                 return data;
             })();
 
-            const data = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+            const data = await Promise.race([
+                fetchPromise.then(val => {
+                    clearTimeout(timeoutId);
+                    return val;
+                }),
+                timeoutPromise
+            ]) as any[];
 
             if (data && data.length > 0) {
                 const bannedIds = await bannedService.fetchBannedList();

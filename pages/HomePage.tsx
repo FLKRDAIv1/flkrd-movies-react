@@ -166,18 +166,24 @@ const HomePage: React.FC = () => {
   const loadDubbed = useCallback(async () => {
     let rawItems = [];
     try {
-      // 1. Direct Supabase Fetch (Optimized with 12s Timeout)
+      // 1. Direct Supabase Fetch (Optimized with 30s Timeout & Cleanup)
       const dbFetchPromise = supabase
         .from('dubbed_movies')
         .select('id, title, description, imageBase64, created_at, level')
         .order('created_at', { ascending: false })
         .limit(20);
 
+      let timeoutId: any;
+      const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error("Supabase request timed out")), 30000);
+      });
+
       const response = await Promise.race([
-        dbFetchPromise,
-        new Promise<{ data: null, error: any }>((_, reject) => 
-          setTimeout(() => reject(new Error("Supabase request timed out")), 12000)
-        )
+        dbFetchPromise.then(val => {
+          clearTimeout(timeoutId);
+          return val;
+        }),
+        timeoutPromise
       ]);
       
       const { data, error } = response;
@@ -215,9 +221,9 @@ const HomePage: React.FC = () => {
         }));
 
         formatted.sort((a: any, b: any) => {
-          const idA = Number(String(a.id).replace('custom_', ''));
-          const idB = Number(String(b.id).replace('custom_', ''));
-          return idB - idA;
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
         });
 
         setDubbedItems(formatted.slice(0, 20));

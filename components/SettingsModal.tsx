@@ -6,7 +6,7 @@ import {
   ChevronRight, Activity, Cpu, RefreshCw, Download,
   Smartphone, Laptop, ArrowUpRight, Apple,
   BookOpen, Layers, HelpCircle, FileText, ShieldCheck, Copy,
-  Tablet, Users, Eye, Globe, TrendingUp
+  Tablet, Users, Eye, Globe, TrendingUp, Search, ArrowLeft, Calendar
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -266,9 +266,31 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     }>;
   }
 
+  interface RawVisitLog {
+    id: string;
+    created_at: string;
+    session_id: string;
+    country: string;
+    device_type: string;
+    page_path: string;
+    referrer: string;
+    user_agent: string;
+    fcp: number | null;
+    lcp: number | null;
+    inp: number | null;
+    cls: number | null;
+  }
+
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(false);
+
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [detailedVisits, setDetailedVisits] = useState<RawVisitLog[]>([]);
+  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null);
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [viewingSessionId, setViewingSessionId] = useState<string | null>(null);
 
   // Web Performance state for Vercel-style insights
   const [performanceScore, setPerformanceScore] = useState(94);
@@ -276,6 +298,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [lcp, setLcp] = useState(2.08);
   const [inp, setInp] = useState(55);
   const [cls, setCls] = useState(0.03);
+
+  const parseUserAgent = (ua: string) => {
+    if (!ua) return { browser: 'Unknown', os: 'Unknown' };
+    let browser = 'Other';
+    let os = 'Other';
+
+    // Parse OS
+    if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+    else if (ua.includes('Android')) os = 'Android';
+    else if (ua.includes('Windows')) os = 'Windows';
+    else if (ua.includes('Macintosh') || ua.includes('Mac OS X')) os = 'macOS';
+    else if (ua.includes('Linux')) os = 'Linux';
+
+    // Parse Browser
+    if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('SamsungBrowser')) browser = 'Samsung Browser';
+    else if (ua.includes('Opera') || ua.includes('OPR')) browser = 'Opera';
+    else if (ua.includes('Edge') || ua.includes('Edg')) browser = 'Edge';
+    else if (ua.includes('Chrome')) browser = 'Chrome';
+    else if (ua.includes('Safari')) browser = 'Safari';
+
+    return { browser, os };
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -302,6 +347,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
   const fetchAnalytics = async () => {
     try {
+      // 1. Fetch summary stats via RPC
       const { data, error } = await supabase.rpc('get_site_analytics_summary');
       if (error) throw error;
       if (data) {
@@ -311,6 +357,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         if (data.lcp_avg !== undefined) setLcp(data.lcp_avg);
         if (data.inp_avg !== undefined) setInp(data.inp_avg);
         if (data.cls_avg !== undefined) setCls(data.cls_avg);
+      }
+
+      // 2. Fetch raw detailed logs (last 100 rows)
+      const { data: rawData, error: rawError } = await supabase
+        .from('site_analytics')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (rawError) throw rawError;
+      if (rawData) {
+        setDetailedVisits(rawData as RawVisitLog[]);
       }
     } catch (e) {
       console.warn('[ANALYTICS] Failed to fetch site analytics:', e);
@@ -1552,7 +1610,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <AnimatePresence>
       {showAnalyticsPanel && (
         <Portal id="visitor-analytics-portal">
-          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
+          <div className={`fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto transition-all duration-300 ${isFullscreen ? 'p-0' : 'p-4 md:p-6'}`}>
             {/* Backdrop with premium glassmorphism blur */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -1569,10 +1627,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-4xl my-8 shadow-[0_50px_100px_rgba(0,0,0,0.8)] z-10 flex flex-col overflow-hidden max-h-[90vh]"
+              className={`relative shadow-[0_50px_100px_rgba(0,0,0,0.8)] z-10 flex flex-col overflow-hidden transition-all duration-300 ${
+                isFullscreen 
+                  ? 'w-screen h-screen max-w-full max-h-screen my-0 rounded-none' 
+                  : 'w-full max-w-4xl my-8 max-h-[90vh]'
+              }`}
               style={{ 
                 pointerEvents: 'auto',
-                borderRadius: `${glassConfig.cornerRadius}px`
+                borderRadius: isFullscreen ? '0px' : `${glassConfig.cornerRadius}px`
               }}
             >
               {/* Isolated Liquid-Glass background overlay */}
@@ -1613,7 +1675,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               <div className="absolute top-0 left-0 w-full h-1.5 z-20" style={{ backgroundColor: accentColor, boxShadow: `0 0 20px ${accentColor}` }} />
 
               {/* Sharp content container above background overlay */}
-              <div className="relative z-10 w-full h-full flex flex-col overflow-hidden max-h-[90vh]">
+              <div className={`relative z-10 w-full h-full flex flex-col overflow-hidden ${isFullscreen ? 'max-h-screen' : 'max-h-[90vh]'}`}>
                 {/* Header */}
               <div className="relative px-6 py-6 md:px-8 md:py-6 border-b border-white/5 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-4">
@@ -1638,6 +1700,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setIsFullscreen(!isFullscreen)}
+                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
+                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                  >
+                    {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  </button>
                   <button 
                     onClick={() => {
                       setLoadingAnalytics(true);
@@ -1807,11 +1876,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           <div className="flex items-center justify-between mb-4">
                             <span className="text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-2">
                               <TrendingUp size={12} style={{ color: accentColor }} />
-                              {t('last7DaysTraffic')}
+                              {selectedDateFilter ? (
+                                <span className="flex items-center gap-1.5 text-green-400">
+                                  <Calendar size={10} />
+                                  {language === 'ku' || language === 'badini' ? `ڕۆژی ${selectedDateFilter}` : `Date: ${selectedDateFilter}`}
+                                </span>
+                              ) : (
+                                t('last7DaysTraffic')
+                              )}
                             </span>
-                            <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
-                              Live Trend line
-                            </span>
+                            {selectedDateFilter ? (
+                              <button 
+                                onClick={() => setSelectedDateFilter(null)}
+                                className="text-[8px] font-black text-red-500 hover:text-red-400 uppercase tracking-widest bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20 active:scale-95 transition-all"
+                              >
+                                {language === 'ku' || language === 'badini' ? 'سڕینەوەی فلتەر' : 'Clear Filter'}
+                              </button>
+                            ) : (
+                              <span className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">
+                                Live Trend line
+                              </span>
+                            )}
                           </div>
 
                           {/* Custom SVG Line Chart */}
@@ -1821,9 +1906,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               const maxCount = Math.max(...daily.map(d => d.count), 1);
                               const width = 500;
                               const height = 140;
-                              const paddingLeft = 10;
-                              const paddingRight = 10;
-                              const paddingTop = 10;
+                              const paddingLeft = 15;
+                              const paddingRight = 15;
+                              const paddingTop = 15;
                               const paddingBottom = 15;
 
                               const pts = daily.map((day, idx) => {
@@ -1832,38 +1917,127 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 return { x, y, count: day.count, date: day.date };
                               });
 
-                              const pathD = pts.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+                              // Calculate smooth Bezier Curve points
+                              const pathD = pts.reduce((acc, p, idx, arr) => {
+                                if (idx === 0) return `M ${p.x} ${p.y}`;
+                                const prev = arr[idx - 1];
+                                const cpX1 = prev.x + (p.x - prev.x) / 3;
+                                const cpY1 = prev.y;
+                                const cpX2 = prev.x + 2 * (p.x - prev.x) / 3;
+                                const cpY2 = p.y;
+                                return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p.x} ${p.y}`;
+                              }, '');
+
                               const areaD = pts.length > 0 
                                 ? `${pathD} L ${pts[pts.length - 1].x} ${height - paddingBottom} L ${pts[0].x} ${height - paddingBottom} Z`
                                 : '';
 
                               return (
-                                <svg className="w-full h-full" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                                <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
                                   <defs>
                                     <linearGradient id="overlay-chart-gradient" x1="0" y1="0" x2="0" y2="1">
-                                      <stop offset="0%" stopColor={accentColor} stopOpacity="0.3" />
+                                      <stop offset="0%" stopColor={accentColor} stopOpacity="0.25" />
                                       <stop offset="100%" stopColor={accentColor} stopOpacity="0.0" />
                                     </linearGradient>
+                                    {/* High fidelity glow filter */}
+                                    <filter id="chart-glow" x="-20%" y="-20%" width="140%" height="140%">
+                                      <feGaussianBlur stdDeviation="3.5" result="blur" />
+                                      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                    </filter>
                                   </defs>
                                   
                                   {/* Gridlines */}
-                                  <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3" />
-                                  <line x1={0} y1={(height - paddingBottom + paddingTop) / 2} x2={width} y2={(height - paddingBottom + paddingTop) / 2} stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="3" />
-                                  <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+                                  <line x1={0} y1={paddingTop} x2={width} y2={paddingTop} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
+                                  <line x1={0} y1={(height - paddingBottom + paddingTop) / 2} x2={width} y2={(height - paddingBottom + paddingTop) / 2} stroke="rgba(255,255,255,0.02)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
+                                  <line x1={0} y1={height - paddingBottom} x2={width} y2={height - paddingBottom} stroke="rgba(255,255,255,0.08)" strokeWidth="1" style={{ pointerEvents: 'none' }} />
                                   
                                   {pts.length > 0 && (
                                     <>
-                                      <path d={areaD} fill="url(#overlay-chart-gradient)" />
-                                      <path d={pathD} fill="none" stroke={accentColor} strokeWidth="2.5" />
+                                      {/* Area Fill */}
+                                      <path d={areaD} fill="url(#overlay-chart-gradient)" style={{ pointerEvents: 'none' }} />
+                                      {/* Outer Glow Path */}
+                                      <path d={pathD} fill="none" stroke={accentColor} strokeWidth="5.5" opacity="0.3" filter="url(#chart-glow)" style={{ pointerEvents: 'none' }} />
+                                      {/* Sharp Core Path */}
+                                      <path d={pathD} fill="none" stroke={accentColor} strokeWidth="2.2" style={{ pointerEvents: 'none' }} />
                                     </>
                                   )}
                                   
-                                  {pts.map((p, idx) => (
-                                    <g key={idx} className="group/node">
-                                      <circle cx={p.x} cy={p.y} r="3.5" fill="#fff" stroke={accentColor} strokeWidth="2" className="cursor-pointer transition-all hover:scale-150" />
-                                      <circle cx={p.x} cy={p.y} r="8" fill={accentColor} opacity="0" className="group-hover/node:opacity-30 transition-opacity pointer-events-none" />
-                                    </g>
-                                  ))}
+                                  {/* Interactive Nodes containing Guidelines, visible dots, tooltips, and big hit areas */}
+                                  {pts.map((p, idx) => {
+                                    const isSelected = selectedDateFilter === p.date;
+                                    return (
+                                      <g 
+                                        key={`interactive-node-${idx}`} 
+                                        className="group/node cursor-pointer"
+                                        onClick={() => setSelectedDateFilter(isSelected ? null : p.date)}
+                                      >
+                                        {/* Guideline line */}
+                                        <line 
+                                          x1={p.x} 
+                                          y1={paddingTop} 
+                                          x2={p.x} 
+                                          y2={height - paddingBottom} 
+                                          stroke={isSelected ? accentColor : "rgba(255,255,255,0.15)"} 
+                                          strokeWidth="1.2" 
+                                          strokeDasharray={isSelected ? "none" : "2 3"} 
+                                          className={`transition-opacity duration-300 pointer-events-none ${isSelected ? 'opacity-70' : 'opacity-0 group-hover/node:opacity-30'}`} 
+                                        />
+
+                                        {/* Floating text count tooltip */}
+                                        <g className={`transition-all duration-300 pointer-events-none ${isSelected ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1.5 group-hover/node:opacity-100 group-hover/node:translate-y-0'}`}>
+                                          <rect 
+                                            x={p.x - 22} 
+                                            y={Math.max(2, p.y - 23)} 
+                                            width="44" 
+                                            height="13" 
+                                            rx="6.5" 
+                                            fill="#080808" 
+                                            stroke={isSelected ? accentColor : "rgba(255,255,255,0.2)"} 
+                                            strokeWidth="1" 
+                                          />
+                                          <text 
+                                            x={p.x} 
+                                            y={Math.max(11, p.y - 14)} 
+                                            fill="#fff" 
+                                            fontSize="8" 
+                                            fontWeight="900" 
+                                            textAnchor="middle" 
+                                            fontFamily="monospace"
+                                          >
+                                            {p.count}
+                                          </text>
+                                        </g>
+
+                                        {/* Pulsing ring for active selection */}
+                                        {isSelected && (
+                                          <circle cx={p.x} cy={p.y} r="8" fill="none" stroke={accentColor} strokeWidth="1" className="animate-ping pointer-events-none" />
+                                        )}
+
+                                        {/* Outer soft halo on hover */}
+                                        <circle cx={p.x} cy={p.y} r="10" fill={accentColor} opacity="0" className="group-hover/node:opacity-15 transition-opacity pointer-events-none" />
+
+                                        {/* Visible point circle */}
+                                        <circle 
+                                          cx={p.x} 
+                                          cy={p.y} 
+                                          r={isSelected ? "5.5" : "3.5"} 
+                                          fill={isSelected ? accentColor : "#fff"} 
+                                          stroke={isSelected ? "#fff" : accentColor} 
+                                          strokeWidth="2" 
+                                          className="transition-all duration-300 group-hover/node:scale-125 pointer-events-none" 
+                                        />
+
+                                        {/* Giant transparent touch hit target (18px radius / 36px diameter) */}
+                                        <circle 
+                                          cx={p.x} 
+                                          cy={p.y} 
+                                          r="18" 
+                                          fill="transparent" 
+                                          style={{ pointerEvents: 'all' }}
+                                        />
+                                      </g>
+                                    );
+                                  })}
                                 </svg>
                               );
                             })()}
@@ -1871,12 +2045,97 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
                           {/* Weekday labels */}
                           <div className="flex justify-between px-1 mt-2 text-[8px] font-black text-gray-500 font-mono">
-                            {analytics.daily_traffic.map((day) => (
-                              <span key={day.date}>
-                                {new Date(day.date).toLocaleDateString(language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', { weekday: 'short' })}
-                              </span>
-                            ))}
+                            {analytics.daily_traffic.map((day) => {
+                              const isSelected = selectedDateFilter === day.date;
+                              return (
+                                <span 
+                                  key={day.date}
+                                  onClick={() => setSelectedDateFilter(isSelected ? null : day.date)}
+                                  className={`cursor-pointer transition-all ${isSelected ? 'text-white font-extrabold scale-110' : 'text-gray-500 hover:text-gray-300'}`}
+                                >
+                                  {new Date(day.date).toLocaleDateString(language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', { weekday: 'short' })}
+                                </span>
+                              );
+                            })}
                           </div>
+
+                          {/* Click Details Panel - Shows detailed breakdown for the clicked trend point */}
+                          {selectedDateFilter ? (() => {
+                            const dayData = analytics.daily_traffic.find(d => d.date === selectedDateFilter);
+                            const dayVisits = detailedVisits.filter(v => {
+                              const dStr = new Date(v.created_at).toISOString().split('T')[0];
+                              return dStr === selectedDateFilter;
+                            });
+
+                            const totalCount = dayData ? dayData.count : dayVisits.length;
+                            
+                            // Country Stats for selected day
+                            const countryCounts: Record<string, number> = {};
+                            dayVisits.forEach(v => {
+                              const c = v.country || 'Unknown';
+                              countryCounts[c] = (countryCounts[c] || 0) + 1;
+                            });
+                            const sortedCountries = Object.entries(countryCounts).sort((a, b) => b[1] - a[1]);
+                            const topCountry = sortedCountries[0]?.[0] || (analytics.country_stats[0]?.country || 'N/A');
+
+                            // Vitals Averages for selected day
+                            const fcps = dayVisits.map(v => v.fcp).filter((val): val is number => val !== null);
+                            const avgFcp = fcps.length > 0 
+                              ? (fcps.reduce((a, b) => a + b, 0) / fcps.length).toFixed(2) + 's' 
+                              : fcp.toFixed(2) + 's (Avg)';
+
+                            // Unique paths visited
+                            const pathsSet = new Set(dayVisits.map(v => v.page_path));
+                            const uniquePages = pathsSet.size > 0 ? pathsSet.size : 'N/A';
+
+                            const formattedDate = new Date(selectedDateFilter).toLocaleDateString(
+                              language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US',
+                              { weekday: 'long', month: 'short', day: 'numeric' }
+                            );
+
+                            return (
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="mt-5 pt-5 border-t border-white/5"
+                              >
+                                <div className="text-[8.5px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                                  <span>{language === 'ku' || language === 'badini' ? `ئاماری ڕۆژی ${formattedDate}` : `Details for ${formattedDate}`}</span>
+                                  <span className="text-[7.5px] text-green-400 font-bold uppercase">{language === 'ku' || language === 'badini' ? 'ئەکتیڤە' : 'Selected'}</span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+                                  <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'کۆی هاتووچۆ' : 'Total Traffic'}</span>
+                                    <span className="text-base font-black text-white mt-1">{totalCount} <span className="text-[8px] font-bold text-gray-400">visits</span></span>
+                                  </div>
+                                  
+                                  <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'وڵاتی سەرەکی' : 'Top Country'}</span>
+                                    <span className="text-xs font-black text-white mt-1 truncate flex items-center gap-1.5">
+                                      {topCountry !== 'N/A' && <span className="text-sm">{getFlagEmoji(topCountry)}</span>}
+                                      {topCountry}
+                                    </span>
+                                  </div>
+
+                                  <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'تێکڕای خێرایی' : 'Avg Speed (FCP)'}</span>
+                                    <span className="text-xs font-mono font-bold text-green-400 mt-1">{avgFcp}</span>
+                                  </div>
+
+                                  <div className="bg-[#0b0b0b]/60 border border-white/5 rounded-2xl p-3 flex flex-col justify-between">
+                                    <span className="text-[7px] text-gray-500 font-black uppercase tracking-widest">{language === 'ku' || language === 'badini' ? 'لاپەڕە جیاوازەکان' : 'Unique Pages'}</span>
+                                    <span className="text-xs font-black text-white mt-1">{uniquePages} <span className="text-[8px] font-bold text-gray-400">URLs</span></span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })() : (
+                            <div className="mt-5 pt-4 border-t border-white/5 text-center text-gray-500 text-[8px] font-black uppercase tracking-wider">
+                              {language === 'ku' || language === 'badini' 
+                                ? 'سەرنج: کلیک لەسەر هەر خاڵێکی سەر هێڵەکە بکە بۆ بینینی وردەکاری و خێرایی ئەو ڕۆژە' 
+                                : 'Tip: Click any data node in the trend line above to inspect speed and country logs for that date'}
+                            </div>
+                          )}
                         </Card>
                       </div>
                     </div>
@@ -1961,59 +2220,322 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </Card>
                     </div>
 
-                    {/* Path Breakdown */}
+                    {/* Detailed Visitor Activity Logs */}
                     <Card className="p-5 flex flex-col gap-4 bg-white/[0.01] border-white/5">
-                      <span className="text-[9px] font-black text-white uppercase tracking-widest flex items-center gap-2 border-b border-white/5 pb-2">
-                        <Layers size={12} style={{ color: accentColor }} />
-                        Vercel Path Breakdown & Speed Metrics
-                      </span>
-                      
-                      <div className="space-y-2">
-                        {analytics.recent_visits.length > 0 ? (
-                          analytics.recent_visits.map((visit) => {
-                            let rating = 'Great';
-                            let ratingColor = '#34c759';
-                            let ratingBg = 'rgba(52,199,89,0.1)';
-                            
-                            if (visit.page_path.includes('/watch/') || visit.page_path.includes('/details/')) {
-                              rating = 'Needs Improvement';
-                              ratingColor = '#ff9500';
-                              ratingBg = 'rgba(255,149,0,0.1)';
-                            }
-                            
+                      {/* Card Header with search and toggle controls */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                        <div className="flex items-center gap-2.5">
+                          <Layers size={14} style={{ color: accentColor }} />
+                          <span className="text-[10px] font-black text-white uppercase tracking-wider">
+                            {viewingSessionId ? (
+                              <span className="flex items-center gap-1.5 text-green-400">
+                                {language === 'ku' || language === 'badini' 
+                                  ? `ڕێڕەوی سەردان: ${viewingSessionId.substring(0, 8)}...` 
+                                  : `Session Journey: ${viewingSessionId.substring(0, 8)}...`}
+                              </span>
+                            ) : selectedDateFilter ? (
+                              <span className="text-gray-300">
+                                {language === 'ku' || language === 'badini' 
+                                  ? `سەردانەکانی ڕۆژی ${selectedDateFilter}` 
+                                  : `Visits for ${selectedDateFilter}`}
+                              </span>
+                            ) : (
+                              language === 'ku' || language === 'badini' 
+                                ? 'وردەکاری سەردانەکان' 
+                                : 'Real-time Detailed Visit Logs'
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Controls: Search, Session Reset */}
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                          {viewingSessionId && (
+                            <button
+                              onClick={() => setViewingSessionId(null)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-black text-gray-400 hover:text-white transition-all active:scale-95"
+                            >
+                              <ArrowLeft size={10} />
+                              {language === 'ku' || language === 'badini' ? 'هەموو سەردانەکان' : 'Show All Visits'}
+                            </button>
+                          )}
+                          
+                          {!viewingSessionId && (
+                            <div className="relative min-w-[200px]">
+                              <input
+                                type="text"
+                                placeholder={language === 'ku' || language === 'badini' ? 'بگەڕێ بۆ لاپەڕە، وڵات، ڕێڕەو...' : 'Search path, country, referrer...'}
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-black/40 border border-white/10 rounded-full py-1.5 pl-8 pr-4 text-[10px] text-white placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all font-semibold"
+                              />
+                              <Search size={10} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                              {searchQuery && (
+                                <button 
+                                  onClick={() => setSearchQuery('')}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-gray-500 hover:text-white"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Log List Rendering */}
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 scrollbar-thin">
+                        {(() => {
+                          // Filter the detailedVisits array
+                          let filtered = detailedVisits;
+
+                          // 1. Date filter
+                          if (selectedDateFilter) {
+                            filtered = filtered.filter(visit => {
+                              const dateStr = new Date(visit.created_at).toISOString().split('T')[0];
+                              return dateStr === selectedDateFilter;
+                            });
+                          }
+
+                          // 2. Session ID filter
+                          if (viewingSessionId) {
+                            filtered = filtered.filter(visit => visit.session_id === viewingSessionId);
+                            // Sort chronologically for timeline journey
+                            filtered = [...filtered].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                          }
+
+                          // 3. Search query filter
+                          if (searchQuery && !viewingSessionId) {
+                            const q = searchQuery.toLowerCase();
+                            filtered = filtered.filter(visit => 
+                              (visit.page_path || '').toLowerCase().includes(q) ||
+                              (visit.country || '').toLowerCase().includes(q) ||
+                              (visit.referrer || '').toLowerCase().includes(q) ||
+                              (visit.device_type || '').toLowerCase().includes(q) ||
+                              (visit.user_agent || '').toLowerCase().includes(q)
+                            );
+                          }
+
+                          if (filtered.length === 0) {
                             return (
-                              <div key={visit.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-2xl bg-[#0b0b0b]/60 border border-white/5 hover:border-white/10 transition-all gap-4">
-                                <div className="flex items-center gap-3 min-w-0">
-                                  <span className="text-sm flex-shrink-0">{getFlagEmoji(visit.country)}</span>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-[10px] font-mono text-gray-300 truncate max-w-[280px]" dir="ltr">
-                                      {visit.page_path}
-                                    </span>
-                                    <span className="text-[7.5px] text-gray-500 font-black uppercase tracking-widest mt-0.5" dir="ltr">
-                                      Referrer: {visit.referrer || 'Direct'} • {visit.device_type}
+                              <div className="text-center py-12 text-gray-500 text-[10px] uppercase tracking-widest font-black flex flex-col items-center gap-2">
+                                <span>No visits matching criteria</span>
+                                <button 
+                                  onClick={() => {
+                                    setSelectedDateFilter(null);
+                                    setSearchQuery('');
+                                    setViewingSessionId(null);
+                                  }}
+                                  className="text-[9px] text-green-500 hover:underline mt-1 font-bold lowercase tracking-normal"
+                                >
+                                  Reset all filters
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          // Timeline Flow for Session Journey
+                          if (viewingSessionId) {
+                            return (
+                              <div className="relative border-l border-white/5 ml-4 pl-6 py-2 space-y-6">
+                                {filtered.map((visit, idx) => {
+                                  const isFirst = idx === 0;
+                                  const isLast = idx === filtered.length - 1;
+                                  
+                                  return (
+                                    <div key={visit.id} className="relative group">
+                                      {/* Circle Node on Timeline */}
+                                      <div 
+                                        className="absolute -left-[31px] top-1.5 w-[11px] h-[11px] rounded-full border-2 border-[#121212] transition-all group-hover:scale-125 z-10"
+                                        style={{ 
+                                          backgroundColor: isLast ? '#34c759' : isFirst ? accentColor : '#888',
+                                          boxShadow: isLast ? '0 0 8px rgba(52,199,89,0.5)' : ''
+                                        }}
+                                      />
+
+                                      <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center justify-between gap-4">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-gray-400 font-mono">Step {idx + 1}</span>
+                                            <span className="text-[11px] font-mono font-bold text-white hover:text-green-400 transition-colors" dir="ltr">
+                                              {visit.page_path}
+                                            </span>
+                                          </div>
+                                          <span className="text-[9px] font-mono text-gray-500">
+                                            {new Date(visit.created_at).toLocaleTimeString(language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                          </span>
+                                        </div>
+
+                                        {/* Performance metrics indicators in timeline step */}
+                                        <div className="flex items-center gap-3 text-[8px] font-mono text-gray-400 font-bold uppercase tracking-wider">
+                                          {visit.referrer && visit.referrer !== 'Direct' && (
+                                            <span>via: <strong className="text-gray-300 font-bold uppercase">{visit.referrer}</strong></span>
+                                          )}
+                                          {visit.fcp && <span>FCP: <strong className={visit.fcp < 1.8 ? 'text-green-500' : visit.fcp < 3.0 ? 'text-orange-500' : 'text-red-500'}>{visit.fcp}s</strong></span>}
+                                          {visit.lcp && <span>LCP: <strong className={visit.lcp < 2.5 ? 'text-green-500' : visit.lcp < 4.0 ? 'text-orange-500' : 'text-red-500'}>{visit.lcp}s</strong></span>}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+
+                          // Default list items
+                          return filtered.map((visit) => {
+                            const isExpanded = expandedVisitId === visit.id;
+                            const { browser, os } = parseUserAgent(visit.user_agent);
+
+                            // Get rating colors helper
+                            const getVitalsColor = (val: number | null, type: 'fcp' | 'lcp' | 'inp' | 'cls') => {
+                              if (val === null) return { text: 'text-gray-500', border: 'border-white/5', bg: 'bg-white/[0.01]' };
+                              let good = true;
+                              let warning = false;
+
+                              if (type === 'fcp') {
+                                good = val <= 1.8;
+                                warning = val > 1.8 && val <= 3.0;
+                              } else if (type === 'lcp') {
+                                good = val <= 2.5;
+                                warning = val > 2.5 && val <= 4.0;
+                              } else if (type === 'inp') {
+                                good = val <= 200;
+                                warning = val > 200 && val <= 500;
+                              } else if (type === 'cls') {
+                                good = val <= 0.1;
+                                warning = val > 0.1 && val <= 0.25;
+                              }
+
+                              if (good) return { text: 'text-green-500', border: 'border-green-500/20', bg: 'bg-green-500/5' };
+                              if (warning) return { text: 'text-amber-500', border: 'border-amber-500/20', bg: 'bg-amber-500/5' };
+                              return { text: 'text-red-500', border: 'border-red-500/20', bg: 'bg-red-500/5' };
+                            };
+
+                            const fcpStyle = getVitalsColor(visit.fcp, 'fcp');
+                            const lcpStyle = getVitalsColor(visit.lcp, 'lcp');
+                            const inpStyle = getVitalsColor(visit.inp, 'inp');
+                            const clsStyle = getVitalsColor(visit.cls, 'cls');
+
+                            return (
+                              <div 
+                                key={visit.id} 
+                                className={`flex flex-col p-4 rounded-2xl bg-[#0b0b0b]/60 border transition-all cursor-pointer ${isExpanded ? 'border-white/20 shadow-lg' : 'border-white/5 hover:border-white/10'}`}
+                                onClick={() => setExpandedVisitId(isExpanded ? null : visit.id)}
+                              >
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="text-sm flex-shrink-0" title={visit.country}>{getFlagEmoji(visit.country)}</span>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="text-[10px] font-mono text-gray-300 truncate max-w-[280px]" dir="ltr">
+                                        {visit.page_path}
+                                      </span>
+                                      <span className="text-[7.5px] text-gray-500 font-black uppercase tracking-widest mt-0.5" dir="ltr">
+                                        Referrer: {visit.referrer || 'Direct'} • {visit.device_type} • {browser} ({os})
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-3 flex-shrink-0 justify-between md:justify-end">
+                                    {/* Inline Vitals Indicators */}
+                                    <div className="flex items-center gap-1.5">
+                                      {visit.fcp && (
+                                        <span className={`text-[7px] font-mono px-1.5 py-0.5 rounded border ${fcpStyle.text} ${fcpStyle.border} ${fcpStyle.bg}`}>
+                                          FCP: {visit.fcp}s
+                                        </span>
+                                      )}
+                                      {visit.lcp && (
+                                        <span className={`text-[7px] font-mono px-1.5 py-0.5 rounded border ${lcpStyle.text} ${lcpStyle.border} ${lcpStyle.bg}`}>
+                                          LCP: {visit.lcp}s
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <span className="text-[9px] font-mono font-bold text-gray-400 font-bold">
+                                      {getRelativeTime(visit.created_at, language)}
                                     </span>
                                   </div>
                                 </div>
-                                
-                                <div className="flex items-center gap-4 flex-shrink-0 justify-between md:justify-end">
-                                  <span 
-                                    className="text-[8px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border"
-                                    style={{ color: ratingColor, borderColor: `${ratingColor}33`, backgroundColor: ratingBg }}
+
+                                {/* Expandable Details Frame */}
+                                {isExpanded && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    className="mt-4 pt-4 border-t border-white/5 flex flex-col gap-4 text-left"
+                                    dir="ltr"
+                                    onClick={(e) => e.stopPropagation()} // Prevent collapse on click inside
                                   >
-                                    {rating}
-                                  </span>
-                                  <span className="text-[9px] font-mono font-bold text-gray-400">
-                                    {getRelativeTime(visit.created_at, language)}
-                                  </span>
-                                </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      {/* Visitor Meta details */}
+                                      <div className="bg-black/30 border border-white/5 rounded-xl p-3 space-y-1.5">
+                                        <h4 className="text-[8px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Visitor Info</h4>
+                                        <div className="text-[9px] font-semibold text-gray-400 space-y-1">
+                                          <p>OS / Browser: <span className="text-white font-bold">{os} / {browser}</span></p>
+                                          <p>User Agent: <span className="text-gray-300 font-mono break-all text-[8px]">{visit.user_agent}</span></p>
+                                          <p className="flex items-center gap-1.5">
+                                            Session ID: 
+                                            <span className="text-gray-300 font-mono select-all bg-white/5 px-1.5 py-0.5 rounded">{visit.session_id}</span>
+                                          </p>
+                                          <p>Exact Time: <span className="text-white">{new Date(visit.created_at).toLocaleString()}</span></p>
+                                        </div>
+                                      </div>
+
+                                      {/* Vitals breakdown */}
+                                      <div className="bg-black/30 border border-white/5 rounded-xl p-3 space-y-1.5">
+                                        <h4 className="text-[8px] font-black text-gray-500 uppercase tracking-widest border-b border-white/5 pb-1">Vitals Metrics</h4>
+                                        <div className="grid grid-cols-2 gap-2 text-center">
+                                          <div className={`p-2 rounded border ${fcpStyle.bg} ${fcpStyle.border}`}>
+                                            <span className="text-[8px] text-gray-400 block font-bold">FCP</span>
+                                            <span className={`text-[10px] font-mono font-bold ${fcpStyle.text}`}>{visit.fcp ? `${visit.fcp}s` : 'N/A'}</span>
+                                          </div>
+                                          <div className={`p-2 rounded border ${lcpStyle.bg} ${lcpStyle.border}`}>
+                                            <span className="text-[8px] text-gray-400 block font-bold">LCP</span>
+                                            <span className={`text-[10px] font-mono font-bold ${lcpStyle.text}`}>{visit.lcp ? `${visit.lcp}s` : 'N/A'}</span>
+                                          </div>
+                                          <div className={`p-2 rounded border ${inpStyle.bg} ${inpStyle.border}`}>
+                                            <span className="text-[8px] text-gray-400 block font-bold">INP</span>
+                                            <span className={`text-[10px] font-mono font-bold ${inpStyle.text}`}>{visit.inp ? `${visit.inp}ms` : 'N/A'}</span>
+                                          </div>
+                                          <div className={`p-2 rounded border ${clsStyle.bg} ${clsStyle.border}`}>
+                                            <span className="text-[8px] text-gray-400 block font-bold">CLS</span>
+                                            <span className={`text-[10px] font-mono font-bold ${clsStyle.text}`}>{visit.cls !== null ? visit.cls : 'N/A'}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Actions Bar */}
+                                    <div className="flex justify-end gap-2 border-t border-white/5 pt-3 mt-1">
+                                      <button
+                                        onClick={() => setViewingSessionId(visit.session_id)}
+                                        className="px-3.5 py-1.5 rounded-full bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-[8px] font-black text-green-500 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5"
+                                      >
+                                        <Layers size={10} />
+                                        {language === 'ku' || language === 'badini' ? 'بینینی گەشتی سەردانکەر' : 'Show Session Journey'}
+                                      </button>
+                                      <button
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(visit.session_id);
+                                            addNotification({
+                                              type: 'success',
+                                              title: 'Session ID Copied',
+                                              message: 'The session identifier has been copied to clipboard.'
+                                            });
+                                          } catch(e) {}
+                                        }}
+                                        className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[8px] font-black text-gray-400 hover:text-white uppercase tracking-widest transition-all active:scale-95 flex items-center gap-1.5"
+                                      >
+                                        <Copy size={10} />
+                                        Copy ID
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                )}
                               </div>
                             );
-                          })
-                        ) : (
-                          <div className="text-center py-6 text-gray-500 text-[9px] uppercase tracking-widest font-bold">
-                            No recent path visits recorded
-                          </div>
-                        )}
+                          });
+                        })()}
                       </div>
                     </Card>
                   </div>
