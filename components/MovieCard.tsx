@@ -190,24 +190,6 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
             loading="lazy"
           />
 
-          {/* Liquid Glass Hover Overlay */}
-          <div 
-            className={`absolute inset-0 opacity-0 ${(!isTouchDevice && !isClicked) ? 'group-hover/card:opacity-100' : ''} transition-all duration-500 z-10 pointer-events-none border`}
-            style={{
-              background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.45})`,
-              backdropFilter: (isTouchDevice || isClicked) ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-              WebkitBackdropFilter: (isTouchDevice || isClicked) ? 'none' : `blur(${glassConfig.blurAmount * 0.4}px) saturate(${glassConfig.saturation}%)`,
-              borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-              boxShadow: `
-                inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.25}),
-                inset ${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(255, 0, 80, 0.03),
-                inset -${glassConfig.aberrationIntensity * 0.1}px 0 0.5px rgba(0, 200, 255, 0.03)
-              `,
-              transform: 'translate3d(0, 0, 0)',
-              display: (isTouchDevice || isClicked) ? 'none' : 'block'
-            }}
-          />
-
           {/* IMDb Rating Badge */}
           {rating > 0 && (
             <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
