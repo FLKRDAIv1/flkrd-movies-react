@@ -10,6 +10,13 @@ import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 import { useUI } from '../contexts/UIContext';
 import { Season, SeasonDetails } from '../types';
+import {
+    fetchSubtitleEdits,
+    saveSubtitleLineEdit,
+    deleteSubtitleLineEdit,
+    subscribeSubtitleEdits,
+    type SubtitleEditKey,
+} from '../services/subtitleEditService';
 
 interface UniversalVideoPlayerProps {
     src: string;
@@ -218,6 +225,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [kuCCNotificationVisible, setKuCCNotificationVisible] = useState(true);
     const [isUploadingSub, setIsUploadingSub] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+    // --- Subtitle Line Edit State ---
+    // Map of cue_index → edited_text loaded from Supabase
+    const [subEditMap, setSubEditMap] = useState<Map<number, string>>(new Map());
+    // Which cue the admin is currently editing (null = modal closed)
+    const [editingCue, setEditingCue] = useState<{ index: number; original: string; current: string } | null>(null);
+    const [subEditSaving, setSubEditSaving] = useState(false);
 
     const setAvailableSubsWithVirtual = useCallback((newSubs: SubtitleResult[]) => {
         const safeSubs = Array.isArray(newSubs) ? newSubs : [];
@@ -780,6 +794,32 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         discoverKurdishCC();
     }, [imdbId, contentType, season, episode, tmdbId]);
 
+    // --- Load subtitle edits from Supabase and subscribe to Realtime changes ---
+    useEffect(() => {
+        const targetId = tmdbId || imdbId;
+        if (!targetId || !localSubtitleUrl) return;
+
+        const key: SubtitleEditKey = {
+            tmdbId: String(targetId),
+            mediaType: contentType || 'movie',
+            season: season ?? 0,
+            episode: episode ?? 0,
+            language: 'ku',
+        };
+
+        // Initial fetch
+        fetchSubtitleEdits(key).then(map => setSubEditMap(map));
+
+        // Real-time subscription — updates map whenever admin saves an edit
+        const channel = subscribeSubtitleEdits(key, (updatedMap) => {
+            setSubEditMap(new Map(updatedMap));
+        });
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [tmdbId, imdbId, contentType, season, episode, localSubtitleUrl]);
+
     // Background discovery of Kurdish Dubbed movies from Supabase Cloud
     useEffect(() => {
         const checkKurdishDub = async () => {
@@ -965,9 +1005,80 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     };
 
+    // --- Admin: Save subtitle line edit to Supabase (visible to all users via Realtime) ---
+    const handleSaveSubtitleEdit = async () => {
+        if (!editingCue) return;
+        const targetId = tmdbId || imdbId;
+        if (!targetId) return;
+
+        const key: SubtitleEditKey = {
+            tmdbId: String(targetId),
+            mediaType: contentType || 'movie',
+            season: season ?? 0,
+            episode: episode ?? 0,
+            language: 'ku',
+        };
+
+        setSubEditSaving(true);
+        const ok = await saveSubtitleLineEdit(
+            key,
+            editingCue.index,
+            editingCue.original,
+            editingCue.current.trim()
+        );
+        setSubEditSaving(false);
+
+        if (ok) {
+            // Optimistically update local map for instant display (Realtime will confirm)
+            setSubEditMap(prev => {
+                const next = new Map(prev);
+                next.set(editingCue.index, editingCue.current.trim());
+                return next;
+            });
+            setEditingCue(null);
+            // Resume video playback after saving
+            if (videoRef.current && videoRef.current.paused) {
+                videoRef.current.play().catch(() => {});
+            }
+        }
+    };
+
+    // --- Admin: Restore subtitle line to original (deletes edit from Supabase) ---
+    const handleRestoreSubtitleEdit = async () => {
+        if (!editingCue) return;
+        const targetId = tmdbId || imdbId;
+        if (!targetId) return;
+
+        const key: SubtitleEditKey = {
+            tmdbId: String(targetId),
+            mediaType: contentType || 'movie',
+            season: season ?? 0,
+            episode: episode ?? 0,
+            language: 'ku',
+        };
+
+        setSubEditSaving(true);
+        const ok = await deleteSubtitleLineEdit(key, editingCue.index);
+        setSubEditSaving(false);
+
+        if (ok) {
+            setSubEditMap(prev => {
+                const next = new Map(prev);
+                next.delete(editingCue.index);
+                return next;
+            });
+            setEditingCue(null);
+            // Resume video playback after restoring
+            if (videoRef.current && videoRef.current.paused) {
+                videoRef.current.play().catch(() => {});
+            }
+        }
+    };
+
     useEffect(() => {
         // Disabled onboarding prompt automatically on play as requested by the user
     }, []);
+
 
     const handleOnboardingComplete = () => {
         setShowAdGuardOnboarding(false);
@@ -2238,57 +2349,236 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Custom Subtitle Overlay */}
             <AnimatePresence mode="wait">
                 {subtitleCues.length > 0 && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute bottom-[10%] md:bottom-[15%] left-0 right-0 z-50 flex justify-center pointer-events-none px-4 md:px-6 w-full"
-                        style={{ 
-                            fontSize: `clamp(14px, ${subtitleSize}px, 6.5vw)`, 
+                        className="absolute bottom-[10%] md:bottom-[15%] left-0 right-0 z-50 flex justify-center px-4 md:px-6 w-full"
+                        style={{
+                            fontSize: `clamp(14px, ${subtitleSize}px, 6.5vw)`,
                             color: subtitleColor,
-                            fontFamily: "'Zain', 'Outfit', sans-serif" 
+                            fontFamily: "'Zain', 'Outfit', sans-serif",
+                            // Only block pointer events when not admin so video controls still work
+                            pointerEvents: isAdmin ? 'auto' : 'none',
                         }}
                     >
                         {(() => {
-                            // Apply offset dynamically (subtitleOffset is in milliseconds)
                             const offsetSec = subtitleOffset / 1000;
-                            // Find active cue with a tiny buffer for smoother transitions
-                            const activeCue = subtitleCues.find(cue => 
+                            // Find the active cue index (not just the cue object) so we can use it as edit key
+                            const activeCueIndex = subtitleCues.findIndex(cue =>
                                 currentTime >= (cue.start + offsetSec - 0.1) && currentTime <= (cue.end + offsetSec + 0.1)
                             );
-                            
-                            if (!activeCue) return null;
+                            if (activeCueIndex === -1) return null;
 
-                            const isRtl = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(activeCue.text);
+                            const activeCue = subtitleCues[activeCueIndex];
+                            // Apply admin edit if one exists for this cue
+                            const displayText = subEditMap.has(activeCueIndex)
+                                ? subEditMap.get(activeCueIndex)!
+                                : activeCue.text;
+
+                            const isRtl = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(displayText);
+                            const isEdited = subEditMap.has(activeCueIndex);
 
                             return (
-                                <div 
-                                    className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-300 max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''}`}
-                                    style={{ 
-                                        direction: isRtl ? 'rtl' : 'ltr',
-                                        unicodeBidi: isRtl ? 'plaintext' : 'normal',
-                                        textAlign: 'center',
-                                        backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
-                                        backdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
-                                        WebkitBackdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
-                                        border: showSubBackground ? undefined : 'none',
-                                        boxShadow: showSubBackground ? undefined : 'none',
-                                        textShadow: showSubBackground 
-                                            ? '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)'
-                                            : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
-                                        textWrap: 'balance',
-                                        wordBreak: 'break-word',
-                                        lineHeight: isRtl ? '1.5' : '1.4'
-                                    }}
-                                >
-                                    {activeCue.text.split('\n').map((line, idx) => (
-                                        <div key={`${line}-${idx}`} className="text-center drop-shadow-2xl">
-                                            {line}
+                                <div className="relative flex flex-col items-center select-none">
+                                    {/* Admin edit badge */}
+                                    {isAdmin && (
+                                        <div
+                                            className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                                            style={{ pointerEvents: 'auto' }}
+                                        >
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-black/70 text-white/60 px-2 py-0.5 rounded-full border border-white/10">
+                                                {language === 'ku' || language === 'badini' ? 'دەسکاری' : 'Edit line'}
+                                            </span>
                                         </div>
-                                    ))}
+                                    )}
+
+                                    <div
+                                        onClick={() => {
+                                            if (!isAdmin) return;
+                                            // Pause video when opening the edit modal
+                                            if (videoRef.current && !videoRef.current.paused) {
+                                                videoRef.current.pause();
+                                            }
+                                            setEditingCue({
+                                                index: activeCueIndex,
+                                                original: activeCue.text,
+                                                current: displayText,
+                                            });
+                                        }}
+                                        className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-200 max-w-[95vw] sm:max-w-[85vw] ${
+                                            showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''
+                                        } ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-white/30 active:scale-[0.99]' : ''} ${isEdited ? 'ring-1 ring-yellow-400/40' : ''}`}
+                                        style={{
+                                            direction: isRtl ? 'rtl' : 'ltr',
+                                            unicodeBidi: isRtl ? 'plaintext' : 'normal',
+                                            textAlign: 'center',
+                                            backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
+                                            backdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
+                                            WebkitBackdropFilter: showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(20px)' : 'none',
+                                            border: isEdited ? '1px solid rgba(250,204,21,0.3)' : showSubBackground ? undefined : 'none',
+                                            boxShadow: showSubBackground ? undefined : 'none',
+                                            textShadow: showSubBackground
+                                                ? '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)'
+                                                : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
+                                            textWrap: 'balance',
+                                            wordBreak: 'break-word',
+                                            lineHeight: isRtl ? '1.5' : '1.4',
+                                        }}
+                                    >
+                                        {displayText.split('\n').map((line, idx) => (
+                                            <div key={`${line}-${idx}`} className="text-center drop-shadow-2xl">
+                                                {line}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Edited indicator for admins */}
+                                    {isAdmin && isEdited && (
+                                        <div className="mt-1 text-[8px] font-black uppercase tracking-widest text-yellow-400/70">
+                                            {language === 'ku' || language === 'badini' ? '✎ دەسکارییەک کراوە' : '✎ Edited'}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })()}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* ═══════════════════════════════════════════════════════════
+                 Admin Subtitle Line Edit Modal
+                 Only visible to admins; backdrop prevents video interactions
+            ═══════════════════════════════════════════════════════════ */}
+            <AnimatePresence>
+                {isAdmin && editingCue !== null && (
+                    <motion.div
+                        key="sub-edit-modal"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-[200] flex items-end justify-center pb-16 px-4"
+                        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+                        onClick={(e) => {
+                            if (e.target === e.currentTarget) {
+                                setEditingCue(null);
+                                // Resume video when dismissing by backdrop click
+                                if (videoRef.current && videoRef.current.paused) {
+                                    videoRef.current.play().catch(() => {});
+                                }
+                            }
+                        }}
+                    >
+                        <motion.div
+                            initial={{ y: 40, opacity: 0, scale: 0.97 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            exit={{ y: 40, opacity: 0, scale: 0.97 }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+                            className="w-full max-w-xl bg-[#0e0e0e] border border-white/10 rounded-3xl p-5 shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-yellow-400">✎</span>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                                        {language === 'ku' || language === 'badini' ? 'دەسکاری ریزی ژێرنووس' : 'Edit Subtitle Line'}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                                        #{editingCue.index + 1}
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setEditingCue(null);
+                                        if (videoRef.current) videoRef.current.play().catch(() => {});
+                                    }}
+                                    className="text-white/40 hover:text-white transition-colors text-lg leading-none"
+                                >✕</button>
+                            </div>
+
+                            {/* Original text */}
+                            <div className="mb-3 px-3 py-2 bg-white/[0.03] border border-white/5 rounded-2xl">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-1">
+                                    {language === 'ku' || language === 'badini' ? 'دەق ئەسڵی' : 'Original'}
+                                </p>
+                                <p className="text-sm text-white/50 leading-relaxed" dir="auto">{editingCue.original}</p>
+                            </div>
+
+                            {/* Editable textarea */}
+                            <div className="mb-4">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-white/50 mb-2">
+                                    {language === 'ku' || language === 'badini' ? 'دەقی تازە' : 'New Text'}
+                                </p>
+                                {/* RTL-aware textarea: detect Kurdish Unicode range */}
+                                {(() => {
+                                    const isKurdishText = /[\u0600-\u06FF]/.test(editingCue.current || editingCue.original);
+                                    return (
+                                        <textarea
+                                            autoFocus
+                                            value={editingCue.current}
+                                            onChange={(e) => setEditingCue(prev => prev ? { ...prev, current: e.target.value } : null)}
+                                            rows={3}
+                                            dir={isKurdishText ? 'rtl' : 'ltr'}
+                                            lang={isKurdishText ? 'ckb' : 'en'}
+                                            className="w-full bg-white/[0.06] border border-white/10 rounded-2xl px-4 py-3 text-white text-sm font-medium resize-none outline-none focus:border-yellow-400/40 focus:ring-1 focus:ring-yellow-400/20 transition-all placeholder:text-white/20"
+                                            style={{
+                                                fontFamily: isKurdishText ? "'Zain', 'Rabar_041', sans-serif" : "'Outfit', sans-serif",
+                                                textAlign: isKurdishText ? 'right' : 'left',
+                                                lineHeight: isKurdishText ? '1.8' : '1.5',
+                                                fontSize: isKurdishText ? '15px' : '14px',
+                                            }}
+                                            placeholder={language === 'ku' || language === 'badini' ? 'ریزەکە لێرە بنووسە...' : 'Type the corrected line here...'}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Escape') {
+                                                    setEditingCue(null);
+                                                    if (videoRef.current && videoRef.current.paused) videoRef.current.play().catch(() => {});
+                                                }
+                                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleSaveSubtitleEdit();
+                                            }}
+                                        />
+                                    );
+                                })()}
+                                <p className="text-[8px] text-white/20 mt-1">
+                                    {language === 'ku' || language === 'badini' ? 'Ctrl+Enter بۆ پاشەکەوتکردن • Esc بۆ داخستن' : 'Ctrl+Enter to save • Esc to close'}
+                                </p>
+                            </div>
+
+
+                            {/* Action buttons */}
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={handleSaveSubtitleEdit}
+                                    disabled={subEditSaving || !editingCue.current.trim()}
+                                    className="flex-1 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-yellow-400 text-black hover:bg-yellow-300 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-yellow-400/20"
+                                >
+                                    {subEditSaving ? '...' : (language === 'ku' || language === 'badini' ? 'پاشەکەوتکردن' : 'Save for All')}
+                                </button>
+
+                                {subEditMap.has(editingCue.index) && (
+                                    <button
+                                        onClick={handleRestoreSubtitleEdit}
+                                        disabled={subEditSaving}
+                                        className="px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-red-500/20 text-red-400 hover:bg-red-500/30 active:scale-95 transition-all border border-red-500/20 disabled:opacity-40"
+                                    >
+                                        {language === 'ku' || language === 'badini' ? 'گێڕانەوە' : 'Restore'}
+                                    </button>
+                                )}
+
+                                <button
+                                    onClick={() => {
+                                        setEditingCue(null);
+                                        // Resume video on cancel
+                                        if (videoRef.current && videoRef.current.paused) {
+                                            videoRef.current.play().catch(() => {});
+                                        }
+                                    }}
+                                    className="px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-white/5 text-white/50 hover:bg-white/10 active:scale-95 transition-all border border-white/10"
+                                >
+                                    {language === 'ku' || language === 'badini' ? 'هەڵوەشاندنەوە' : 'Cancel'}
+                                </button>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
