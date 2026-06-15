@@ -1,0 +1,580 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		D893A5832FCF340E00A2B9D3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D893A56B2FCF340C00A2B9D3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D893A5722FCF340C00A2B9D3;
+			remoteInfo = "FLKRD MOVIES";
+		};
+		D893A58D2FCF340E00A2B9D3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D893A56B2FCF340C00A2B9D3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D893A5722FCF340C00A2B9D3;
+			remoteInfo = "FLKRD MOVIES";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D893A5732FCF340C00A2B9D3 /* FLKRD MOVIES.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FLKRD MOVIES.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D893A5822FCF340E00A2B9D3 /* FLKRD MOVIESTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FLKRD MOVIESTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D893A58C2FCF340E00A2B9D3 /* FLKRD MOVIESUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FLKRD MOVIESUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D893A5752FCF340C00A2B9D3 /* FLKRD MOVIES */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLKRD MOVIES";
+			sourceTree = "<group>";
+		};
+		D893A5852FCF340E00A2B9D3 /* FLKRD MOVIESTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLKRD MOVIESTests";
+			sourceTree = "<group>";
+		};
+		D893A58F2FCF340E00A2B9D3 /* FLKRD MOVIESUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "FLKRD MOVIESUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D893A5702FCF340C00A2B9D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A57F2FCF340E00A2B9D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A5892FCF340E00A2B9D3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D893A56A2FCF340C00A2B9D3 = {
+			isa = PBXGroup;
+			children = (
+				D893A5752FCF340C00A2B9D3 /* FLKRD MOVIES */,
+				D893A5852FCF340E00A2B9D3 /* FLKRD MOVIESTests */,
+				D893A58F2FCF340E00A2B9D3 /* FLKRD MOVIESUITests */,
+				D893A5742FCF340C00A2B9D3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D893A5742FCF340C00A2B9D3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D893A5732FCF340C00A2B9D3 /* FLKRD MOVIES.app */,
+				D893A5822FCF340E00A2B9D3 /* FLKRD MOVIESTests.xctest */,
+				D893A58C2FCF340E00A2B9D3 /* FLKRD MOVIESUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D893A5722FCF340C00A2B9D3 /* FLKRD MOVIES */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D893A5962FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIES" */;
+			buildPhases = (
+				D893A56F2FCF340C00A2B9D3 /* Sources */,
+				D893A5702FCF340C00A2B9D3 /* Frameworks */,
+				D893A5712FCF340C00A2B9D3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D893A5752FCF340C00A2B9D3 /* FLKRD MOVIES */,
+			);
+			name = "FLKRD MOVIES";
+			packageProductDependencies = (
+			);
+			productName = "FLKRD MOVIES";
+			productReference = D893A5732FCF340C00A2B9D3 /* FLKRD MOVIES.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D893A5812FCF340E00A2B9D3 /* FLKRD MOVIESTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D893A5992FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIESTests" */;
+			buildPhases = (
+				D893A57E2FCF340E00A2B9D3 /* Sources */,
+				D893A57F2FCF340E00A2B9D3 /* Frameworks */,
+				D893A5802FCF340E00A2B9D3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D893A5842FCF340E00A2B9D3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D893A5852FCF340E00A2B9D3 /* FLKRD MOVIESTests */,
+			);
+			name = "FLKRD MOVIESTests";
+			packageProductDependencies = (
+			);
+			productName = "FLKRD MOVIESTests";
+			productReference = D893A5822FCF340E00A2B9D3 /* FLKRD MOVIESTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D893A58B2FCF340E00A2B9D3 /* FLKRD MOVIESUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D893A59C2FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIESUITests" */;
+			buildPhases = (
+				D893A5882FCF340E00A2B9D3 /* Sources */,
+				D893A5892FCF340E00A2B9D3 /* Frameworks */,
+				D893A58A2FCF340E00A2B9D3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D893A58E2FCF340E00A2B9D3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D893A58F2FCF340E00A2B9D3 /* FLKRD MOVIESUITests */,
+			);
+			name = "FLKRD MOVIESUITests";
+			packageProductDependencies = (
+			);
+			productName = "FLKRD MOVIESUITests";
+			productReference = D893A58C2FCF340E00A2B9D3 /* FLKRD MOVIESUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D893A56B2FCF340C00A2B9D3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					D893A5722FCF340C00A2B9D3 = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					D893A5812FCF340E00A2B9D3 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = D893A5722FCF340C00A2B9D3;
+					};
+					D893A58B2FCF340E00A2B9D3 = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = D893A5722FCF340C00A2B9D3;
+					};
+				};
+			};
+			buildConfigurationList = D893A56E2FCF340C00A2B9D3 /* Build configuration list for PBXProject "FLKRD MOVIES" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D893A56A2FCF340C00A2B9D3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D893A5742FCF340C00A2B9D3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D893A5722FCF340C00A2B9D3 /* FLKRD MOVIES */,
+				D893A5812FCF340E00A2B9D3 /* FLKRD MOVIESTests */,
+				D893A58B2FCF340E00A2B9D3 /* FLKRD MOVIESUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D893A5712FCF340C00A2B9D3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A5802FCF340E00A2B9D3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A58A2FCF340E00A2B9D3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D893A56F2FCF340C00A2B9D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A57E2FCF340E00A2B9D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D893A5882FCF340E00A2B9D3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D893A5842FCF340E00A2B9D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D893A5722FCF340C00A2B9D3 /* FLKRD MOVIES */;
+			targetProxy = D893A5832FCF340E00A2B9D3 /* PBXContainerItemProxy */;
+		};
+		D893A58E2FCF340E00A2B9D3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D893A5722FCF340C00A2B9D3 /* FLKRD MOVIES */;
+			targetProxy = D893A58D2FCF340E00A2B9D3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D893A5942FCF340E00A2B9D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D893A5952FCF340E00A2B9D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		D893A5972FCF340E00A2B9D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "FLKRD MOVIES/FLKRD MOVIES.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIES";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D893A5982FCF340E00A2B9D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "FLKRD MOVIES/FLKRD MOVIES.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIES";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D893A59A2FCF340E00A2B9D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIESTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLKRD MOVIES.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLKRD MOVIES";
+			};
+			name = Debug;
+		};
+		D893A59B2FCF340E00A2B9D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIESTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/FLKRD MOVIES.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FLKRD MOVIES";
+			};
+			name = Release;
+		};
+		D893A59D2FCF340E00A2B9D3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIESUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "FLKRD MOVIES";
+			};
+			name = Debug;
+		};
+		D893A59E2FCF340E00A2B9D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = WLAG3CDZ4U;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "flkrdstudio.FLKRD-MOVIESUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = "FLKRD MOVIES";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D893A56E2FCF340C00A2B9D3 /* Build configuration list for PBXProject "FLKRD MOVIES" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D893A5942FCF340E00A2B9D3 /* Debug */,
+				D893A5952FCF340E00A2B9D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D893A5962FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIES" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D893A5972FCF340E00A2B9D3 /* Debug */,
+				D893A5982FCF340E00A2B9D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D893A5992FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIESTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D893A59A2FCF340E00A2B9D3 /* Debug */,
+				D893A59B2FCF340E00A2B9D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D893A59C2FCF340E00A2B9D3 /* Build configuration list for PBXNativeTarget "FLKRD MOVIESUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D893A59D2FCF340E00A2B9D3 /* Debug */,
+				D893A59E2FCF340E00A2B9D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D893A56B2FCF340C00A2B9D3 /* Project object */;
+}

@@ -30,6 +30,9 @@ dubbed_movies_backup.json
 .vercel
 .env*.local
 
+# Xcode
+xcuserdata/
+
 # Large binary release artifacts (distributed via GitHub Releases)
 public/*.dmg
 public/*.apk
