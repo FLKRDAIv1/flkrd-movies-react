@@ -143,24 +143,28 @@ const containerVariants = {
     show: {
         opacity: 1,
         transition: {
-            staggerChildren: 0.04
+            staggerChildren: 0.05,
+            delayChildren: 0.08
         }
     }
 };
 
 const cardVariants = {
-    hidden: { opacity: 0, y: 15, scale: 0.95 },
+    hidden: { opacity: 0, x: 35, filter: 'blur(6px)', scale: 0.95 },
     show: { 
         opacity: 1, 
-        y: 0, 
+        x: 0, 
+        filter: 'blur(0px)',
         scale: 1,
         transition: { 
             type: 'spring', 
-            stiffness: 120, 
-            damping: 14 
+            stiffness: 90, 
+            damping: 18,
+            mass: 0.8
         } 
     }
 };
+
 
 const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     src,
@@ -2686,9 +2690,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
                         style={{ 
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
-                            background: 'linear-gradient(to bottom, rgba(5, 5, 5, 0.85), rgba(12, 12, 12, 0.75)), radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.15), transparent 75%)',
-                            backdropFilter: 'blur(35px) saturate(150%)',
-                            WebkitBackdropFilter: 'blur(35px) saturate(150%)'
+                            background: 'radial-gradient(circle at 50% -20%, rgba(220, 38, 38, 0.28), transparent 72%), linear-gradient(to bottom, rgba(8, 8, 12, 0.45) 0%, rgba(3, 3, 5, 0.6) 100%)',
+                            backdropFilter: 'blur(35px) saturate(210%)',
+                            WebkitBackdropFilter: 'blur(35px) saturate(210%)',
+                            boxShadow: '0 20px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
                         }}
                     >
                         {/* Header Row */}
@@ -2702,7 +2707,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             : ((language === 'ku' || language === 'badini') ? 'فیلمە هاوشێوەکان' : 'SIMILAR FILMS')}
                                     </span>
                                 </div>
-                                <span className={`font-bold text-gray-500 tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[10px]'}`}>
+                                <span className={`font-bold text-white/90 tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[10px]'}`}>
                                     {title}
                                 </span>
                             </div>
@@ -2730,20 +2735,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     onClick={() => {
                                                         if (onSeasonChange) onSeasonChange(s.season_number);
                                                     }}
-                                                    className={`relative px-5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
+                                                    className={`relative px-5 py-2 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
                                                         isCurrentSeason 
-                                                            ? 'border-red-500/20' 
-                                                            : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.06]'
-                                                    } ${(language === 'ku' || language === 'badini') ? 'text-[13px] py-1' : 'text-[10px] py-2.5'}`}
+                                                            ? 'border-red-500/30 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white' 
+                                                            : 'border-white/5 bg-white/[0.03] text-white/70 hover:border-white/20 hover:bg-white/[0.08]'
+                                                    } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}
                                                 >
-                                                    {isCurrentSeason ? (
-                                                        <motion.div 
-                                                            layoutId="activeSeasonPill"
-                                                            className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-                                                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                                                        />
-                                                    ) : null}
-                                                    <span className={`relative z-10 ${isCurrentSeason ? 'text-white font-black' : 'text-gray-400 hover:text-white'}`}>
+                                                    <span className="relative z-10 font-black">
                                                         {(language === 'ku' || language === 'badini') 
                                                             ? `سیزنی ${s.season_number}`
                                                             : `Season ${s.season_number}`}
@@ -2770,7 +2768,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             variants={containerVariants}
                                             initial="hidden"
                                             animate="show"
-                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
+                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-5 py-2 px-6 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-white/[0.01] [&::-webkit-scrollbar-thumb]:bg-white/[0.08] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-red-600/50 scroll-smooth"
                                         >
                                             {!currentSeasonDetails ? (
                                                 <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
@@ -2796,13 +2794,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
                                                                 setShowEpisodesPortal(false);
                                                             }}
-                                                            className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                                                            className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${
                                                                 isActive
-                                                                    ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
-                                                                    : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
+                                                                    ? 'bg-gradient-to-br from-red-600/[0.08] to-rose-500/[0.02] border-red-500/50 shadow-[0_8px_32px_rgba(220,38,38,0.25)]'
+                                                                    : 'bg-white/[0.02] border-white/[0.04] hover:border-white/12 hover:bg-white/[0.06] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
                                                             }`}
                                                         >
-                                                            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                            {/* Sheen sweep animation */}
+                                                            <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
+
+                                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
                                                                 {ep.still_path ? (
                                                                     <img 
                                                                         src={`${IMAGE_BASE_URL}${ep.still_path}`} 
@@ -2815,8 +2816,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 )}
 
                                                                 <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                    <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                                                                        <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                                                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                        <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
                                                                     </div>
                                                                 </div>
 
@@ -2843,15 +2844,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             </div>
 
                                                             <div className="flex flex-col px-1">
-                                                                <span className={`uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
+                                                                <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
                                                                     {(language === 'ku' || language === 'badini') 
                                                                         ? `ئەڵقەی ${ep.episode_number}` 
                                                                         : `Episode ${ep.episode_number}`}
                                                                 </span>
-                                                                <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
+                                                                <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
                                                                     {ep.name}
                                                                 </h4>
-                                                                <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={ep.overview}>
+                                                                <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-300 ${(language === 'ku' || language === 'badini') ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
                                                                     {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
                                                                 </p>
                                                             </div>
@@ -2878,7 +2879,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         variants={containerVariants}
                                         initial="hidden"
                                         animate="show"
-                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
+                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-5 py-2 px-6 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-white/[0.01] [&::-webkit-scrollbar-thumb]:bg-white/[0.08] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-red-600/50 scroll-smooth"
                                     >
                                         {movieRecommendations.length === 0 ? (
                                             <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
@@ -2901,13 +2902,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             navigate(`/details/movie/${movie.id}`);
                                                             setShowEpisodesPortal(false);
                                                         }}
-                                                        className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                                                        className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${
                                                             isActive
-                                                                ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
-                                                                : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
+                                                                ? 'bg-gradient-to-br from-red-600/[0.08] to-rose-500/[0.02] border-red-500/50 shadow-[0_8px_32px_rgba(220,38,38,0.25)]'
+                                                                : 'bg-white/[0.02] border-white/[0.04] hover:border-white/12 hover:bg-white/[0.06] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
                                                         }`}
                                                     >
-                                                        <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                        {/* Sheen sweep animation */}
+                                                        <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
+
+                                                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
                                                             {movie.backdrop_path ? (
                                                                 <img 
                                                                     src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`} 
@@ -2920,8 +2924,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             )}
 
                                                             <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                                                                    <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                                                <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                    <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
                                                                 </div>
                                                             </div>
 
@@ -2941,10 +2945,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         </div>
 
                                                         <div className="flex flex-col px-1 text-left">
-                                                            <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
+                                                            <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
                                                                 {movie.title || movie.name}
                                                             </h4>
-                                                            <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={movie.overview}>
+                                                            <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-300 ${(language === 'ku' || language === 'badini') ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={movie.overview}>
                                                                 {movie.overview || ((language === 'ku' || language === 'badini') ? 'کورتەی ئەم فیلمە بەردەست نییە' : 'No description available for this movie.')}
                                                             </p>
                                                         </div>
