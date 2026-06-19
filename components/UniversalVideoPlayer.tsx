@@ -7,7 +7,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { subtitleService, SubtitleResult } from '../services/subtitleService';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
-import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
+import { fetchTranslations, fetchTmdbIdFromImdb, fetchData } from '../services/tmdbService';
+import { API_KEY } from '../constants';
+import { useNavigate } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
 import { Season, SeasonDetails } from '../types';
 import {
@@ -182,6 +184,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     startFullscreen
 }) => {
     const { isAdmin } = useUI();
+    const navigate = useNavigate();
+    const [movieRecommendations, setMovieRecommendations] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (contentType === 'movie' && tmdbId) {
+            const fetchRecs = async () => {
+                try {
+                    const cleanId = String(tmdbId).replace('custom_', '');
+                    const endpoint = `/movie/${cleanId}/recommendations?api_key=${API_KEY}`;
+                    const data = await fetchData(endpoint, (language === 'ku' || language === 'badini') ? 'ku' : 'en');
+                    if (data && Array.isArray(data)) {
+                        setMovieRecommendations(data.slice(0, 15));
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch player movie recommendations:", e);
+                }
+            };
+            fetchRecs();
+        }
+    }, [tmdbId, contentType, language]);
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -1709,14 +1731,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                     {/* Top-Right: Settings Menu */}
                     <div className="absolute top-4 right-4 z-40 flex flex-row items-center gap-2">
-                        {contentType === 'tv' && onEpisodeChange && (
+                        {((contentType === 'tv' && onEpisodeChange) || (contentType === 'movie' && movieRecommendations.length > 0)) && (
                             <button 
                                 onClick={() => {
                                     setShowEpisodesPortal(!showEpisodesPortal);
                                     setShowSubSettings(false);
                                 }}
                                 className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
-                                title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
+                                title={(language === 'ku' || language === 'badini') 
+                                    ? (contentType === 'tv' ? 'ئەڵقەکان' : 'فیلمەکان') 
+                                    : (contentType === 'tv' ? 'Episodes' : 'More Movies')}
                             >
                                 <Tv size={18} className={showEpisodesPortal ? 'text-red-500 scale-110' : ''} />
                             </button>
@@ -2651,16 +2675,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 )}
             </AnimatePresence>
 
-            {/* Episodes Portal Drawer v2 (Top-Down Sliding Cinema Overlay) */}
+            {/* Media Portal Drawer (Top-Down Sliding Cinema Overlay) */}
             <AnimatePresence>
-                {showEpisodesPortal && contentType === 'tv' && onEpisodeChange && (
+                {showEpisodesPortal && (
                     <motion.div 
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
                         transition={{ type: 'spring', damping: 24, stiffness: 100 }}
-                        className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
-                        style={{ fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif" }}
+                        className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+                        style={{ 
+                            fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
+                            background: 'linear-gradient(to bottom, rgba(5, 5, 5, 0.85), rgba(12, 12, 12, 0.75)), radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.15), transparent 75%)',
+                            backdropFilter: 'blur(35px) saturate(150%)',
+                            WebkitBackdropFilter: 'blur(35px) saturate(150%)'
+                        }}
                     >
                         {/* Header Row */}
                         <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
@@ -2668,7 +2697,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 <div className="bg-red-600/10 border border-red-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
                                     <Tv size={12} className="text-red-500 animate-pulse" />
                                     <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
-                                        {(language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL'}
+                                        {contentType === 'tv' 
+                                            ? ((language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL')
+                                            : ((language === 'ku' || language === 'badini') ? 'فیلمە هاوشێوەکان' : 'SIMILAR FILMS')}
                                     </span>
                                 </div>
                                 <span className={`font-bold text-gray-500 tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[10px]'}`}>
@@ -2683,159 +2714,248 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             </button>
                         </div>
 
-                        {/* Season Buttons Horizontal Row */}
-                        <div className="flex flex-col gap-1.5 shrink-0 text-left">
-                            <span className={`font-black text-gray-500 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
-                                {(language === 'ku' || language === 'badini') ? 'سیزنەکان' : 'SEASONS'}
-                            </span>
-                            <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide">
-                                {seasons.map((s) => {
-                                    const isCurrentSeason = season === s.season_number;
-                                    return (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => {
-                                                if (onSeasonChange) onSeasonChange(s.season_number);
-                                            }}
-                                            className={`relative px-5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
-                                                isCurrentSeason 
-                                                    ? 'border-red-500/20' 
-                                                    : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.06]'
-                                            } ${(language === 'ku' || language === 'badini') ? 'text-[13px] py-1' : 'text-[10px] py-2.5'}`}
-                                        >
-                                            {isCurrentSeason ? (
-                                                <motion.div 
-                                                    layoutId="activeSeasonPill"
-                                                    className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-                                                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                                                />
-                                            ) : null}
-                                            <span className={`relative z-10 ${isCurrentSeason ? 'text-white font-black' : 'text-gray-400 hover:text-white'}`}>
-                                                {(language === 'ku' || language === 'badini') 
-                                                    ? `سیزنی ${s.season_number}`
-                                                    : `Season ${s.season_number}`}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* Episodes Horizontal Swiper Container */}
-                        <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
-                            <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
-                                {(language === 'ku' || language === 'badini') 
-                                    ? `ئەڵقەکانی سیزنی ${season}`
-                                    : `SEASON ${season} EPISODES`}
-                            </span>
-                            
-                            <div className="relative flex-1 overflow-hidden mt-1">
-                                {/* Edge Gradient Overlays */}
-                                <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
-                                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
-
-                                <motion.div 
-                                    variants={containerVariants}
-                                    initial="hidden"
-                                    animate="show"
-                                    className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
-                                >
-                                    {!currentSeasonDetails ? (
-                                        <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
-                                            <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                            <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
-                                                {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING EPISODES...'}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        currentSeasonDetails.episodes.map((ep) => {
-                                            const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
-                                            const isWatched = watchedEpisodes.has(epKey);
-                                            const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
-                                            const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
-                                            
+                        {contentType === 'tv' && onEpisodeChange ? (
+                            <>
+                                {/* Season Buttons Horizontal Row */}
+                                <div className="flex flex-col gap-1.5 shrink-0 text-left">
+                                    <span className={`font-black text-gray-500 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
+                                        {(language === 'ku' || language === 'badini') ? 'سیزنەکان' : 'SEASONS'}
+                                    </span>
+                                    <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide">
+                                        {seasons.map((s) => {
+                                            const isCurrentSeason = season === s.season_number;
                                             return (
-                                                <motion.div
-                                                    key={ep.id}
-                                                    variants={cardVariants}
-                                                    whileHover={{ y: -6, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
-                                                    whileTap={{ scale: 0.98 }}
+                                                <button
+                                                    key={s.id}
                                                     onClick={() => {
-                                                        if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
-                                                        setShowEpisodesPortal(false);
+                                                        if (onSeasonChange) onSeasonChange(s.season_number);
                                                     }}
-                                                    className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
-                                                        isActive
-                                                            ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
-                                                            : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
-                                                    }`}
+                                                    className={`relative px-5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
+                                                        isCurrentSeason 
+                                                            ? 'border-red-500/20' 
+                                                            : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.06]'
+                                                    } ${(language === 'ku' || language === 'badini') ? 'text-[13px] py-1' : 'text-[10px] py-2.5'}`}
                                                 >
-                                                    {/* Card Image Wrapper */}
-                                                    <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
-                                                        {ep.still_path ? (
-                                                            <img 
-                                                                src={`${IMAGE_BASE_URL}${ep.still_path}`} 
-                                                                alt="" 
-                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                                                                loading="lazy"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
-                                                        )}
+                                                    {isCurrentSeason ? (
+                                                        <motion.div 
+                                                            layoutId="activeSeasonPill"
+                                                            className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+                                                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                                                        />
+                                                    ) : null}
+                                                    <span className={`relative z-10 ${isCurrentSeason ? 'text-white font-black' : 'text-gray-400 hover:text-white'}`}>
+                                                        {(language === 'ku' || language === 'badini') 
+                                                            ? `سیزنی ${s.season_number}`
+                                                            : `Season ${s.season_number}`}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
 
-                                                        {/* Hover Play Button Overlay */}
-                                                        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                            <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                                                                <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                {/* Episodes Horizontal Swiper Container */}
+                                <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
+                                    <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
+                                        {(language === 'ku' || language === 'badini') 
+                                            ? `ئەڵقەکانی سیزنی ${season}`
+                                            : `SEASON ${season} EPISODES`}
+                                    </span>
+                                    
+                                    <div className="relative flex-1 overflow-hidden mt-1">
+                                        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
+                                        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
+
+                                        <motion.div 
+                                            variants={containerVariants}
+                                            initial="hidden"
+                                            animate="show"
+                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
+                                        >
+                                            {!currentSeasonDetails ? (
+                                                <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
+                                                    <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                                    <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
+                                                        {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING EPISODES...'}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                currentSeasonDetails.episodes.map((ep) => {
+                                                    const epKey = `${currentSeasonDetails.season_number}-${ep.episode_number}`;
+                                                    const isWatched = watchedEpisodes.has(epKey);
+                                                    const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
+                                                    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+                                                    
+                                                    return (
+                                                        <motion.div
+                                                            key={ep.id}
+                                                            variants={cardVariants}
+                                                            whileHover={{ y: -6, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+                                                            whileTap={{ scale: 0.98 }}
+                                                            onClick={() => {
+                                                                if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                                                                setShowEpisodesPortal(false);
+                                                            }}
+                                                            className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                                                                isActive
+                                                                    ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
+                                                                    : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
+                                                            }`}
+                                                        >
+                                                            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                                {ep.still_path ? (
+                                                                    <img 
+                                                                        src={`${IMAGE_BASE_URL}${ep.still_path}`} 
+                                                                        alt="" 
+                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                                                        loading="lazy"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                                                                )}
+
+                                                                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                    <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                        <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                                                    </div>
+                                                                </div>
+
+                                                                {ep.vote_average > 0 && (
+                                                                    <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
+                                                                        <span className="text-[8px] leading-none">★</span>
+                                                                        <span>{ep.vote_average.toFixed(1)}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {isActive && (
+                                                                    <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                                                        <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {isWatched && !isActive && (
+                                                                    <div className={`absolute top-2 right-2 bg-green-500/25 backdrop-blur-md text-green-400 rounded-lg border border-green-500/30 flex items-center gap-0.5 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
+                                                                        <span>✓</span>
+                                                                        <span>{(language === 'ku' || language === 'badini') ? 'بینراوە' : 'WATCHED'}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
+
+                                                            <div className="flex flex-col px-1">
+                                                                <span className={`uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
+                                                                    {(language === 'ku' || language === 'badini') 
+                                                                        ? `ئەڵقەی ${ep.episode_number}` 
+                                                                        : `Episode ${ep.episode_number}`}
+                                                                </span>
+                                                                <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
+                                                                    {ep.name}
+                                                                </h4>
+                                                                <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={ep.overview}>
+                                                                    {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
+                                                                </p>
+                                                            </div>
+                                                        </motion.div>
+                                                    );
+                                                })
+                                            )}
+                                        </motion.div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            /* Movie Swiper Container */
+                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
+                                <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
+                                    {(language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'RECOMMENDED MOVIES'}
+                                </span>
+                                
+                                <div className="relative flex-1 overflow-hidden mt-1">
+                                    <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
+                                    <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
+
+                                    <motion.div 
+                                        variants={containerVariants}
+                                        initial="hidden"
+                                        animate="show"
+                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
+                                    >
+                                        {movieRecommendations.length === 0 ? (
+                                            <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
+                                                <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                                <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
+                                                    {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING MOVIES...'}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            movieRecommendations.map((movie) => {
+                                                const isActive = String(movie.id) === String(tmdbId);
+                                                
+                                                return (
+                                                    <motion.div
+                                                        key={movie.id}
+                                                        variants={cardVariants}
+                                                        whileHover={{ y: -6, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+                                                        whileTap={{ scale: 0.98 }}
+                                                        onClick={() => {
+                                                            navigate(`/details/movie/${movie.id}`);
+                                                            setShowEpisodesPortal(false);
+                                                        }}
+                                                        className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                                                            isActive
+                                                                ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
+                                                                : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
+                                                        }`}
+                                                    >
+                                                        <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                            {movie.backdrop_path ? (
+                                                                <img 
+                                                                    src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`} 
+                                                                    alt="" 
+                                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                                                    loading="lazy"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                                                            )}
+
+                                                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                    <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                                                </div>
+                                                            </div>
+
+                                                            {movie.vote_average > 0 && (
+                                                                <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
+                                                                    <span className="text-[8px] leading-none">★</span>
+                                                                    <span>{movie.vote_average.toFixed(1)}</span>
+                                                                </div>
+                                                            )}
+
+                                                            {isActive && (
+                                                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                                                    <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
 
-                                                        {/* Rating Badge */}
-                                                        {ep.vote_average > 0 && (
-                                                            <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
-                                                                <span className="text-[8px] leading-none">★</span>
-                                                                <span>{ep.vote_average.toFixed(1)}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Active / Current indicator */}
-                                                        {isActive && (
-                                                            <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                                                <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Watched status tick */}
-                                                        {isWatched && !isActive && (
-                                                            <div className={`absolute top-2 right-2 bg-green-500/25 backdrop-blur-md text-green-400 rounded-lg border border-green-500/30 flex items-center gap-0.5 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
-                                                                <span>✓</span>
-                                                                <span>{(language === 'ku' || language === 'badini') ? 'بینراوە' : 'WATCHED'}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Card Metadata */}
-                                                    <div className="flex flex-col px-1">
-                                                        <span className={`uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
-                                                            {(language === 'ku' || language === 'badini') 
-                                                                ? `ئەڵقەی ${ep.episode_number}` 
-                                                                : `Episode ${ep.episode_number}`}
-                                                        </span>
-                                                        <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
-                                                            {ep.name}
-                                                        </h4>
-                                                        <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={ep.overview}>
-                                                            {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
-                                                        </p>
-                                                    </div>
-                                                </motion.div>
-                                            );
-                                        })
-                                    )}
-                                </motion.div>
+                                                        <div className="flex flex-col px-1 text-left">
+                                                            <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
+                                                                {movie.title || movie.name}
+                                                            </h4>
+                                                            <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={movie.overview}>
+                                                                {movie.overview || ((language === 'ku' || language === 'badini') ? 'کورتەی ئەم فیلمە بەردەست نییە' : 'No description available for this movie.')}
+                                                            </p>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })
+                                        )}
+                                    </motion.div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
