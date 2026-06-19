@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Star, Mic2, Info, Share, Zap, Activity, MessageSquare, Calendar, Monitor, Clock, Globe, User, Film, Layers, ShieldCheck, Maximize, ArrowLeft, Check, Layers as LayersIcon, ExternalLink, Link as LinkIcon, Send, Facebook, ArrowRight, Shield, PlayCircle, Sparkles
+    Star, Mic2, Info, Share, Zap, Activity, MessageSquare, Calendar, Monitor, Clock, Globe, User, Film, Layers, ShieldCheck, Maximize, ArrowLeft, Check, Layers as LayersIcon, ExternalLink, Link as LinkIcon, Send, Facebook, ArrowRight, Shield, PlayCircle, Sparkles, X
 } from 'lucide-react';
 import { Content, WatchProgress } from '../types';
 import { fetchData } from '../services/tmdbService';

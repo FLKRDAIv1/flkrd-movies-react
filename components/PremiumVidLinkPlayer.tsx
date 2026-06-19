@@ -28,6 +28,7 @@ interface PremiumVidLinkPlayerProps {
   onEpisodeChange?: (season: number, episode: number) => void;
   onSeasonChange?: (season: number) => void;
   startFullscreen?: boolean;
+  onClose?: () => void;
 }
 
 const containerVariants = {
@@ -71,7 +72,8 @@ export default function PremiumVidLinkPlayer({
   watchedEpisodes = new Set(),
   onEpisodeChange,
   onSeasonChange,
-  startFullscreen
+  startFullscreen,
+  onClose
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const { isAdmin } = useUI();
@@ -803,6 +805,17 @@ export default function PremiumVidLinkPlayer({
             console.error("[PLAYER] Failed to redirect fullscreen:", err);
           });
         });
+        return;
+      }
+
+      // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
+      if (!isFull && startFullscreen && onClose) {
+        setTimeout(() => {
+          if (!document.fullscreenElement) {
+            console.log("[PLAYER] Exited native fullscreen. Closing player...");
+            onClose();
+          }
+        }, 250);
       }
     };
 
@@ -817,7 +830,7 @@ export default function PremiumVidLinkPlayer({
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
       document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
     };
-  }, []);
+  }, [startFullscreen, onClose]);
 
   useEffect(() => {
     if (!isSimulatedFullscreen) return;
@@ -825,11 +838,12 @@ export default function PremiumVidLinkPlayer({
       if (e.key === 'Escape') {
         setIsSimulatedFullscreen(false);
         setIsFullscreen(false);
+        if (onClose) onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSimulatedFullscreen]);
+  }, [isSimulatedFullscreen, onClose]);
 
   // Re-filter cues whenever subtitleOffset changes
   useEffect(() => {

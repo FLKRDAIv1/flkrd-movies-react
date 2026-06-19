@@ -527,6 +527,7 @@ const DetailPage: React.FC = () => {
                   imdbId={imdbId || undefined}
                   onProgress={handlePlayerProgress}
                   startFullscreen={true}
+                  onClose={() => setIsPlayerModalOpen(false)}
                 />
               ) : (
                 <UniversalVideoPlayer
@@ -541,6 +542,7 @@ const DetailPage: React.FC = () => {
                   title={content?.title}
                   tmdbId={id}
                   startFullscreen={true}
+                  onClose={() => setIsPlayerModalOpen(false)}
                 />
               )}
 

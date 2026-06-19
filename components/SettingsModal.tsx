@@ -2337,7 +2337,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           {Object.keys(analytics.device_stats).length > 0 ? (
                             Object.entries(analytics.device_stats).map(([device, count]) => {
                               const total = analytics.total_visits || 1;
-                              const pct = Math.round((count / total) * 100);
+                              const pct = Math.round(((count as number) / total) * 100);
                               return (
                                 <div key={device} className="flex flex-col gap-1.5">
                                   <div className="flex justify-between items-center text-[10px] font-bold text-gray-300">

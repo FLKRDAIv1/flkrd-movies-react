@@ -262,7 +262,7 @@ const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return (
         <AnimatePresence mode="wait">
-            <Routes location={animatedLocation} key={animatedLocation.pathname}>
+            <Routes {...({ location: animatedLocation, key: animatedLocation.pathname } as any)}>
                 {children}
             </Routes>
         </AnimatePresence>

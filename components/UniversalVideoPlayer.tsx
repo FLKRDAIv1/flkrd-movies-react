@@ -40,6 +40,7 @@ interface UniversalVideoPlayerProps {
     onEpisodeChange?: (season: number, episode: number) => void;
     onSeasonChange?: (season: number) => void;
     startFullscreen?: boolean;
+    onClose?: () => void;
 }
 
 declare global {
@@ -185,7 +186,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     watchedEpisodes = new Set(),
     onEpisodeChange,
     onSeasonChange,
-    startFullscreen
+    startFullscreen,
+    onClose
 }) => {
     const { isAdmin } = useUI();
     const navigate = useNavigate();
@@ -1251,6 +1253,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         console.error("[PLAYER] Failed to redirect fullscreen:", err);
                     });
                 });
+                return;
+            }
+
+            // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
+            if (!isFull && startFullscreen && onClose) {
+                setTimeout(() => {
+                    if (!document.fullscreenElement) {
+                        console.log("[PLAYER] Exited native fullscreen. Closing player...");
+                        onClose();
+                    }
+                }, 250);
             }
         };
 
@@ -1265,7 +1278,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
             document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
         };
-    }, []);
+    }, [startFullscreen, onClose]);
 
     useEffect(() => {
         if (!isSimulatedFullscreen) return;
@@ -1273,11 +1286,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             if (e.key === 'Escape') {
                 setIsSimulatedFullscreen(false);
                 setIsFullscreen(false);
+                if (onClose) onClose();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isSimulatedFullscreen]);
+    }, [isSimulatedFullscreen, onClose]);
 
     useEffect(() => {
         return () => {
