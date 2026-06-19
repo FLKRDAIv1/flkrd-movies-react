@@ -2,6 +2,18 @@
   command = "npm run build"
   publish = "dist"
 
+[[edge_functions]]
+  path = "/details/movie/*"
+  function = "seo"
+
+[[edge_functions]]
+  path = "/details/tv/*"
+  function = "seo"
+
+[[edge_functions]]
+  path = "/dubbed-details/*"
+  function = "seo"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

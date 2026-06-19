@@ -19,6 +19,18 @@
       "destination": "/api/watch?ticket_id=:ticket_id"
     },
     {
+      "source": "/details/movie/:id",
+      "destination": "/api/seo?type=movie&id=:id"
+    },
+    {
+      "source": "/details/tv/:id",
+      "destination": "/api/seo?type=tv&id=:id"
+    },
+    {
+      "source": "/dubbed-details/:id",
+      "destination": "/api/seo?type=dubbed&id=:id"
+    },
+    {
       "source": "/((?!assets/|.*\\..*$).*)",
       "destination": "/index.html"
     }
