@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize } from 'lucide-react';
+import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize, Infinity as InfinityIcon } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import AdGuardOnboarding from './AdGuardOnboarding';
@@ -41,6 +41,8 @@ interface UniversalVideoPlayerProps {
     onSeasonChange?: (season: number) => void;
     startFullscreen?: boolean;
     onClose?: () => void;
+    isFullscreen?: boolean;
+    toggleFullscreen?: () => void;
 }
 
 declare global {
@@ -187,7 +189,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     onEpisodeChange,
     onSeasonChange,
     startFullscreen,
-    onClose
+    onClose,
+    isFullscreen: isFullscreenProp,
+    toggleFullscreen: toggleFullscreenProp
 }) => {
     const { isAdmin } = useUI();
     const navigate = useNavigate();
@@ -218,7 +222,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
+    const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
+    const setIsFullscreen = isFullscreenProp !== undefined ? () => {} : setLocalIsFullscreen;
     const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
@@ -967,6 +973,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
     const toggleFullscreen = () => {
+        if (toggleFullscreenProp) {
+            toggleFullscreenProp();
+            return;
+        }
         if (!containerRef.current) return;
         
         // Handle Tauri Fullscreen
@@ -2422,14 +2432,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             const isEdited = subEditMap.has(activeCueIndex);
 
                             return (
-                                <div className="relative flex flex-col items-center select-none">
+                                <div className="relative flex flex-col items-center select-none group">
                                     {/* Admin edit badge */}
                                     {isAdmin && (
                                         <div
-                                            className="absolute -top-7 left-1/2 -translate-x-1/2 flex items-center gap-1 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                                            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 cursor-pointer z-30"
                                             style={{ pointerEvents: 'auto' }}
+                                            onClick={() => {
+                                                if (videoRef.current && !videoRef.current.paused) {
+                                                    videoRef.current.pause();
+                                                }
+                                                setEditingCue({
+                                                    index: activeCueIndex,
+                                                    original: activeCue.text,
+                                                    current: displayText,
+                                                });
+                                            }}
                                         >
-                                            <span className="text-[9px] font-black uppercase tracking-widest bg-black/70 text-white/60 px-2 py-0.5 rounded-full border border-white/10">
+                                            <span className="text-[9px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-full border border-red-500/45 shadow-[0_0_15px_rgba(220,38,38,0.5)] flex items-center gap-1 hover:scale-105 active:scale-95 transition-all">
+                                                <InfinityIcon size={10} className="animate-pulse" />
                                                 {language === 'ku' || language === 'badini' ? 'دەسکاری' : 'Edit line'}
                                             </span>
                                         </div>
