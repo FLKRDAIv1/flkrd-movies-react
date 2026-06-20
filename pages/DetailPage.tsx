@@ -515,7 +515,6 @@ const DetailPage: React.FC = () => {
             </div>
 
             <div className="flex-1 w-full relative bg-black overflow-hidden">
-              
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
                   tmdbId={id!}
@@ -548,21 +547,51 @@ const DetailPage: React.FC = () => {
 
               <AnimatePresence>
                 {showSourceSwitcher && (
-                  <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 bottom-0 w-72 bg-black/95 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-red-600 animate-pulse shadow-[0_0_10px_#e50914]" />
-                        <h3 className="text-sm font-black uppercase italic tracking-tighter text-white">Streaming Nodes</h3>
+                  <motion.div 
+                    initial={{ x: '100%', opacity: 0 }} 
+                    animate={{ x: 0, opacity: 1 }} 
+                    exit={{ x: '100%', opacity: 0 }} 
+                    transition={{ type: 'spring', damping: 28, stiffness: 240 }}
+                    className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-black/40 backdrop-blur-2xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden"
+                  >
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          x: [0, 20, 0],
+                          y: [0, -30, 0],
+                        }}
+                        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute -top-1/3 -right-1/3 w-72 h-72 rounded-full bg-red-600/10 blur-[80px]"
+                      />
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.3, 1],
+                          x: [0, -30, 0],
+                          y: [0, 30, 0],
+                        }}
+                        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+                        className="absolute -bottom-1/3 -left-1/3 w-72 h-72 rounded-full bg-purple-600/10 blur-[100px]"
+                      />
+                    </div>
+
+                    <div className="relative z-10 flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Activity size={12} className="text-red-500 animate-pulse" />
+                          <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">FLKRD CORE</span>
+                        </div>
+                        <h3 className="text-base font-black tracking-tight text-white uppercase italic">Streaming Nodes</h3>
                       </div>
                       <button 
                         onClick={() => setShowSourceSwitcher(false)}
-                        className="p-2 hover:bg-white/10 rounded-full transition-all group"
+                        className="p-2.5 bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-white rounded-full transition-all group"
                       >
-                        <X size={20} className="text-gray-400 group-hover:rotate-90 transition-transform" />
+                        <X size={16} className="group-hover:rotate-90 transition-transform" />
                       </button>
                     </div>
 
-                    <div className="space-y-3 pb-12">
+                    <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1">
                       {sources.map((s, idx) => {
                         const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
                                        s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
@@ -570,85 +599,63 @@ const DetailPage: React.FC = () => {
                                        s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
 
                         const isActive = activeSource === s.name;
-                        
-                        // Simulated data for "Special" feel
-                        const speed = s.name === 'FLKRD SERVER' ? '1.4 GB/s' : s.name === 'FLKRD SERVER 1' ? '1.2 GB/s' : '980 MB/s';
-                        const latency = s.name === 'FLKRD SERVER' ? '24ms' : '45ms';
+                        let loadPct = 18; let speed = '1.8 Gbps'; let latency = '18ms'; let statusText = 'Optimal'; let statusColor = 'text-green-400'; let statusBg = 'bg-green-400/10 border-green-400/20';
+
+                        if (s.name === 'FLKRD SERVER') { loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast'; } 
+                        else if (s.name === 'FLKRD SERVER 1') { loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable'; } 
+                        else if (s.name === 'FLKRD SERVER 2') { loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized'; } 
+                        else if (s.name === 'FLKRD SERVER 3') { loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal'; } 
+                        else if (s.name === 'FLKRD SERVER 4') { loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20'; } 
+                        else if (s.name === 'FLKRD SERVER 5') { loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct'; } 
+                        else if (s.name === 'FLKRD SERVER 6') { loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard'; } 
+                        else if (s.name === 'FLKRD SERVER 7') { loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20'; }
 
                         return (
                           <motion.button 
                             key={s.name}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: idx * 0.05 }}
-                            whileHover={{ scale: 1.02, x: -4 }}
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: idx * 0.04 }}
+                            whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => { 
-                              setActiveSource(s.name); 
-                              setIsPlayerLoading(true); 
-                              setShowSourceSwitcher(false); 
-                            }} 
-                            className={`w-full p-5 rounded-[1.5rem] flex flex-col gap-3 transition-all border group relative overflow-hidden ${
-                              isActive 
-                                ? 'bg-white/[0.03] border-red-600/30 shadow-[0_20px_40px_rgba(0,0,0,0.4)]' 
-                                : 'bg-transparent border-transparent hover:border-white/10 hover:bg-white/[0.02]'
-                            }`}
+                            onClick={() => { setActiveSource(s.name); setIsPlayerLoading(true); setShowSourceSwitcher(false); }} 
+                            className={`w-full p-4 rounded-[22px] flex flex-col gap-3 transition-all border group relative overflow-hidden backdrop-blur-md ${isActive ? 'bg-white/[0.08] border-red-500/40 shadow-[0_12px_32px_rgba(229,9,20,0.15)]' : 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]'}`}
                           >
-                            {/* Accent Line for Active State */}
-                            {isActive && (
-                              <motion.div 
-                                layoutId="active-accent-line"
-                                className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-red-600 rounded-full shadow-[0_0_15px_#e50914]"
-                              />
-                            )}
-
-                            <div className="flex items-center justify-between relative z-10">
-                              <div className="flex items-center gap-4">
-                                <div className="relative flex items-center justify-center w-10 h-10">
+                            {isActive && <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-transparent pointer-events-none" />}
+                            {isActive && <motion.div layoutId="active-accent-line" className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#e50914]" />}
+                            <div className="flex items-center justify-between w-full relative z-10">
+                              <div className="flex items-center gap-3">
+                                <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
                                   {s.name === 'FLKRD SERVER 4' ? (
-                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-[#1d9bf0] drop-shadow-[0_2px_8px_rgba(29,155,240,0.4)]">
-                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                                    </svg>
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" /></svg>
                                   ) : iconPath ? (
-                                    <img src={iconPath} className="w-full h-full object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                                    <img src={iconPath} className="w-7 h-7 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
                                   ) : (
-                                    <span className={`text-lg font-black italic ${isActive ? 'text-red-500' : 'text-gray-700'}`}>
-                                      {idx + 1}
-                                    </span>
+                                    <Cpu size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
                                   )}
-                                  {isActive && (
-                                    <motion.div 
-                                      animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                                      transition={{ duration: 2, repeat: Infinity }}
-                                      className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
-                                    />
-                                  )}
+                                  {isActive && <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-red-600/10 blur-xl rounded-full" />}
                                 </div>
-                                <div className="flex flex-col items-start">
-                                  <span className={`text-xs font-black uppercase tracking-widest ${isActive ? 'text-white' : 'text-gray-500'}`}>
-                                    {s.name}
-                                  </span>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className={`text-[8px] font-bold ${isActive ? 'text-red-500' : 'text-gray-600'}`}>
-                                      {speed}
-                                    </span>
-                                    {s.badge === 'ku' && (
-                                      <div className="flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-[0_4px_12px_rgba(29,155,240,0.15)] shrink-0 scale-90">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
-                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-[#1d9bf0] shrink-0">
-                                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                                        </svg>
-                                        <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">VERIFIED</span>
-                                      </div>
-                                    )}
-                                  </div>
+                                <div className="flex flex-col items-start text-left">
+                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white' : 'text-gray-300'}`}>{s.name}</span>
+                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Node VK-{idx + 1}</span>
                                 </div>
                               </div>
                               <div className="flex flex-col items-end gap-1">
-                                <span className={`text-[8px] font-black italic tracking-tighter ${isActive ? 'text-white/40' : 'text-gray-700'}`}>{latency}</span>
-                                {isActive && <div className="w-1 h-1 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_#e50914]" />}
+                                <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${statusBg} ${statusColor}`}>{statusText}</div>
                               </div>
                             </div>
+                            <div className="h-[1px] w-full bg-white/5" />
+                            <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10">
+                              <div className="flex items-center gap-1.5"><Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} /><span>{speed}</span></div>
+                              <div className="flex items-center gap-1.5"><Timer size={10} className="text-gray-500" /><span>{latency}</span></div>
+                              <div className="flex items-center gap-1"><Cpu size={10} className="text-gray-500" /><span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span></div>
+                            </div>
+                            {s.badge === 'ku' && (
+                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
+                                <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">KURDISH</span>
+                              </div>
+                            )}
                           </motion.button>
                         );
                       })}
