@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, Infinity as InfinityIcon } from 'lucide-react';
+import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -30,6 +30,9 @@ interface PremiumVidLinkPlayerProps {
   onSeasonChange?: (season: number) => void;
   startFullscreen?: boolean;
   onClose?: () => void;
+  activeSource?: string;
+  setActiveSource?: (source: string) => void;
+  sources?: any[];
 }
 
 const containerVariants = {
@@ -74,7 +77,10 @@ export default function PremiumVidLinkPlayer({
   onEpisodeChange,
   onSeasonChange,
   startFullscreen,
-  onClose
+  onClose,
+  activeSource,
+  setActiveSource,
+  sources = []
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const { isAdmin } = useUI();
@@ -83,6 +89,7 @@ export default function PremiumVidLinkPlayer({
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [showSubSettings, setShowSubSettings] = useState(false);
   const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
+  const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
 
   // --- Subtitle Line Edit State ---
   const [subEditMap, setSubEditMap] = useState<Map<number, string>>(new Map());
@@ -1141,6 +1148,7 @@ export default function PremiumVidLinkPlayer({
             onClick={() => {
               setShowEpisodesPortal(!showEpisodesPortal);
               setShowSubSettings(false);
+              setShowSourceSwitcher(false);
             }}
             className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
               showEpisodesPortal 
@@ -1159,6 +1167,7 @@ export default function PremiumVidLinkPlayer({
             setShowSubSettings(!showSubSettings);
             if (!showSubSettings) handleSearchAllSubs();
             setShowEpisodesPortal(false);
+            setShowSourceSwitcher(false);
           }}
           className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
             showSubSettings 
@@ -1169,6 +1178,26 @@ export default function PremiumVidLinkPlayer({
           <Subtitles size={14} />
           <span className="text-[10px] font-black uppercase">Studio</span>
         </button>
+
+        {/* Relink Button for Fullscreen */}
+        {isFullscreen && sources && sources.length > 0 && (
+          <button 
+            onClick={() => {
+              setShowSourceSwitcher(!showSourceSwitcher);
+              setShowSubSettings(false);
+              setShowEpisodesPortal(false);
+            }}
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
+              showSourceSwitcher
+                ? 'bg-red-600 border-red-500 text-white animate-pulse'
+                : 'bg-white/10 border-white/20 text-white/50 hover:bg-white/20 hover:text-white'
+            }`}
+            title="Relink"
+          >
+            <RefreshCcw size={14} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
+            <span className="text-[10px] font-black uppercase">Relink</span>
+          </button>
+        )}
 
         {/* Fullscreen Button */}
         <button 
@@ -2084,6 +2113,184 @@ export default function PremiumVidLinkPlayer({
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Media Source Switcher Drawer for Fullscreen Mode */}
+      <AnimatePresence>
+        {showSourceSwitcher && isFullscreen && sources && sources.length > 0 && (
+          <motion.div 
+            initial={{ x: '100%', opacity: 0 }} 
+            animate={{ x: 0, opacity: 1 }} 
+            exit={{ x: '100%', opacity: 0 }} 
+            transition={{ type: 'spring', damping: 30, stiffness: 250 }}
+            className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-[#070707]/90 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+          >
+            {/* High Performance Hardware Accelerated Gradient Glow (Zero CPU Overhead) */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+              <div className="absolute -top-1/4 -right-1/4 w-80 h-80 rounded-full bg-gradient-to-br from-red-600/10 to-rose-600/5 blur-[90px] will-change-transform opacity-75" />
+              <div className="absolute -bottom-1/4 -left-1/4 w-80 h-80 rounded-full bg-gradient-to-tr from-purple-600/10 to-pink-600/5 blur-[100px] will-change-transform opacity-75" />
+            </div>
+
+            <div className="relative z-10 flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <Activity size={12} className="text-red-500 animate-pulse" />
+                  <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">FLKRD CORE</span>
+                </div>
+                <h3 className="text-base font-black tracking-tight text-white uppercase italic text-left">Streaming Nodes</h3>
+              </div>
+              <button 
+                onClick={() => setShowSourceSwitcher(false)}
+                className="p-2.5 bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-white rounded-full transition-all group"
+              >
+                <X size={16} className="group-hover:rotate-90 transition-transform" />
+              </button>
+            </div>
+
+            <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+              {sources.map((s, idx) => {
+                const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
+                               s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
+                               s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : 
+                               s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
+
+                const isActive = activeSource === s.name;
+                
+                let loadPct = 18;
+                let speed = '1.8 Gbps';
+                let latency = '18ms';
+                let statusText = 'Optimal';
+                let statusColor = 'text-green-400';
+                let statusBg = 'bg-green-400/10 border-green-400/20';
+
+                if (s.name === 'FLKRD SERVER') {
+                  loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast';
+                } else if (s.name === 'FLKRD SERVER 1') {
+                  loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable';
+                } else if (s.name === 'FLKRD SERVER 2') {
+                  loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized';
+                } else if (s.name === 'FLKRD SERVER 3') {
+                  loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal';
+                } else if (s.name === 'FLKRD SERVER 4') {
+                  loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20';
+                } else if (s.name === 'FLKRD SERVER 5') {
+                  loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct';
+                } else if (s.name === 'FLKRD SERVER 6') {
+                  loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard';
+                } else if (s.name === 'FLKRD SERVER 7') {
+                  loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20';
+                }
+
+                return (
+                  <button 
+                    key={s.name}
+                    onClick={() => { 
+                      if (setActiveSource) {
+                        setActiveSource(s.name); 
+                      }
+                      setShowSourceSwitcher(false); 
+                    }} 
+                    className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
+                      isActive 
+                        ? 'bg-white/[0.07] border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                        : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-transparent pointer-events-none" />
+                    )}
+
+                    {isActive && (
+                      <motion.div 
+                        layoutId="active-accent-line-prem-fs"
+                        className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444]"
+                      />
+                    )}
+
+                    <div className="flex items-center justify-between w-full relative z-10">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
+                          {s.name === 'FLKRD SERVER 4' ? (
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]">
+                              <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                            </svg>
+                          ) : iconPath ? (
+                            <img src={iconPath} className="w-7 h-7 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                          ) : (
+                            <Cpu size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
+                          )}
+
+                          {isActive && (
+                            <motion.div 
+                              animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
+                              transition={{ duration: 3, repeat: Infinity }}
+                              className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
+                            />
+                          )}
+                        </div>
+
+                        <div className="flex flex-col items-start text-left">
+                          <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>
+                            {s.name}
+                          </span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
+                            Node VK-{idx + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1">
+                        <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${statusBg} ${statusColor}`}>
+                          {statusText}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-[1px] w-full bg-white/5" />
+
+                    <div className="flex flex-col gap-2 w-full mt-1">
+                      <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10 text-left">
+                        <div className="flex items-center gap-1.5 flex-row">
+                          <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
+                          <span>{speed}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 flex-row">
+                          <Timer size={10} className="text-gray-500" />
+                          <span>{latency}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-row">
+                          <Cpu size={10} className="text-gray-500" />
+                          <span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span>
+                        </div>
+                      </div>
+
+                      {/* Visual Load Progress Bar */}
+                      <div className="w-full bg-white/5 rounded-full h-[3px] overflow-hidden relative">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            loadPct > 60 
+                              ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]' 
+                              : 'bg-gradient-to-r from-red-500 to-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                          }`} 
+                          style={{ width: `${loadPct}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {s.badge === 'ku' && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
+                        <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">KURDISH</span>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

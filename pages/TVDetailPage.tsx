@@ -630,6 +630,9 @@ const TVDetailPage: React.FC = () => {
                   }}
                   startFullscreen={true}
                   onClose={() => setIsPlayerModalOpen(false)}
+                  activeSource={activeSource}
+                  setActiveSource={setActiveSource}
+                  sources={sources}
                 />
               ) : (
                 <UniversalVideoPlayer
@@ -655,6 +658,9 @@ const TVDetailPage: React.FC = () => {
                   }}
                   startFullscreen={true}
                   onClose={() => setIsPlayerModalOpen(false)}
+                  activeSource={activeSource}
+                  setActiveSource={setActiveSource}
+                  sources={sources}
                 />
               )}
 
@@ -664,29 +670,13 @@ const TVDetailPage: React.FC = () => {
                     initial={{ x: '100%', opacity: 0 }} 
                     animate={{ x: 0, opacity: 1 }} 
                     exit={{ x: '100%', opacity: 0 }} 
-                    transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-                    className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-black/40 backdrop-blur-2xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden"
+                    transition={{ type: 'spring', damping: 30, stiffness: 250 }}
+                    className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-[#070707]/90 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
                   >
-                    {/* Animated Liquid Background Glow inside sidebar */}
+                    {/* High Performance Hardware Accelerated Gradient Glow (Zero CPU Overhead) */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          x: [0, 20, 0],
-                          y: [0, -30, 0],
-                        }}
-                        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
-                        className="absolute -top-1/3 -right-1/3 w-72 h-72 rounded-full bg-red-600/10 blur-[80px]"
-                      />
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          x: [0, -30, 0],
-                          y: [0, 30, 0],
-                        }}
-                        transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-                        className="absolute -bottom-1/3 -left-1/3 w-72 h-72 rounded-full bg-purple-600/10 blur-[100px]"
-                      />
+                      <div className="absolute -top-1/4 -right-1/4 w-80 h-80 rounded-full bg-gradient-to-br from-red-600/10 to-rose-600/5 blur-[90px] will-change-transform opacity-75" />
+                      <div className="absolute -bottom-1/4 -left-1/4 w-80 h-80 rounded-full bg-gradient-to-tr from-purple-600/10 to-pink-600/5 blur-[100px] will-change-transform opacity-75" />
                     </div>
 
                     <div className="relative z-10 flex items-center justify-between mb-8 pb-4 border-b border-white/5">
@@ -695,7 +685,7 @@ const TVDetailPage: React.FC = () => {
                           <Activity size={12} className="text-red-500 animate-pulse" />
                           <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">FLKRD CORE</span>
                         </div>
-                        <h3 className="text-base font-black tracking-tight text-white uppercase italic">Streaming Nodes</h3>
+                        <h3 className="text-base font-black tracking-tight text-white uppercase italic text-left">Streaming Nodes</h3>
                       </div>
                       <button 
                         onClick={() => setShowSourceSwitcher(false)}
@@ -753,10 +743,10 @@ const TVDetailPage: React.FC = () => {
                               setIsPlayerLoading(true); 
                               setShowSourceSwitcher(false); 
                             }} 
-                            className={`w-full p-4 rounded-[22px] flex flex-col gap-3 transition-all border group relative overflow-hidden backdrop-blur-md ${
+                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
                               isActive 
-                                ? 'bg-white/[0.08] border-red-500/40 shadow-[0_12px_32px_rgba(229,9,20,0.15)]' 
-                                : 'bg-white/[0.02] border-white/5 hover:border-white/15 hover:bg-white/[0.04]'
+                                ? 'bg-white/[0.07] border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                                : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
                             }`}
                           >
                             {/* Glow decoration for active */}
@@ -768,7 +758,7 @@ const TVDetailPage: React.FC = () => {
                             {isActive && (
                               <motion.div 
                                 layoutId="active-accent-line-tv"
-                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#e50914]"
+                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444]"
                               />
                             )}
 
@@ -788,15 +778,15 @@ const TVDetailPage: React.FC = () => {
 
                                   {isActive && (
                                     <motion.div 
-                                      animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-                                      transition={{ duration: 2, repeat: Infinity }}
+                                      animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
+                                      transition={{ duration: 3, repeat: Infinity }}
                                       className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
                                     />
                                   )}
                                 </div>
 
                                 <div className="flex flex-col items-start text-left">
-                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white' : 'text-gray-300'}`}>
+                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>
                                     {s.name}
                                   </span>
                                   <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
@@ -815,21 +805,34 @@ const TVDetailPage: React.FC = () => {
                             {/* Node Metrics Divider */}
                             <div className="h-[1px] w-full bg-white/5" />
 
-                            {/* Real-time stats section */}
-                            <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10">
-                              <div className="flex items-center gap-1.5">
-                                <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
-                                <span>{speed}</span>
-                              </div>
-                              
-                              <div className="flex items-center gap-1.5">
-                                <Timer size={10} className="text-gray-500" />
-                                <span>{latency}</span>
+                            <div className="flex flex-col gap-2 w-full mt-1">
+                              <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10 text-left">
+                                <div className="flex items-center gap-1.5 flex-row">
+                                  <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
+                                  <span>{speed}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5 flex-row">
+                                  <Timer size={10} className="text-gray-500" />
+                                  <span>{latency}</span>
+                                </div>
+
+                                <div className="flex items-center gap-1 flex-row">
+                                  <Cpu size={10} className="text-gray-500" />
+                                  <span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span>
+                                </div>
                               </div>
 
-                              <div className="flex items-center gap-1">
-                                <Cpu size={10} className="text-gray-500" />
-                                <span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span>
+                              {/* Visual Load Progress Bar */}
+                              <div className="w-full bg-white/5 rounded-full h-[3px] overflow-hidden relative">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-500 ${
+                                    loadPct > 60 
+                                      ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]' 
+                                      : 'bg-gradient-to-r from-red-500 to-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
+                                  }`} 
+                                  style={{ width: `${loadPct}%` }}
+                                />
                               </div>
                             </div>
 
