@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +6,7 @@ import {
   Layers, Info, Clapperboard, Calendar, PlayCircle,
   Clock, Globe, ShieldCheck, Zap, User, ArrowRight,
   Download, MessageSquare, Maximize, Activity, List, LayoutGrid,
-  ChevronLeft, ChevronRight, Link as LinkIcon, Send, Facebook, AlertTriangle, RefreshCcw, ArrowLeft, Shield, MapPin, Award, Timer, TrendingUp, Volume2, VolumeX, Cpu
+  ChevronLeft, ChevronRight, Link as LinkIcon, Send, Facebook, AlertTriangle, RefreshCcw, ArrowLeft, Shield, MapPin, Award, Timer, TrendingUp, Volume2, VolumeX, Cpu, Loader2, Lock, LockOpen
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
@@ -70,6 +70,149 @@ const DetailPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Content[]>([]);
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const playerModalRef = useRef<HTMLDivElement>(null);
+
+  const [isUpcomingUnlocked, setIsUpcomingUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  const formatReleaseDate = (dateStr: string, lang: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthsKu = ['کانوونی دووەم', 'شوبات', 'ئازار', 'نیسان', 'ئایار', 'حوزەیران', 'تەممووز', 'ئاب', 'ئەیلوول', 'تشرینی یەکەم', 'تشرینی دووەم', 'کانوونی یەکەم'];
+      const monthsBadini = ['کانوونا دووێ', 'شبات', 'ئادار', 'نیسان', 'مایس', 'حوزەیران', 'تەموز', 'تەباخ', 'ئەیلوول', 'تشرینا ئێکێ', 'تشرینا دووێ', 'کانوونا ئێکێ'];
+
+      const day = date.getDate();
+      const year = date.getFullYear();
+      const monthIdx = date.getMonth();
+
+      if (lang === 'ku') {
+        return `${day}ی ${monthsKu[monthIdx]}ی ${year}`;
+      } else if (lang === 'badini') {
+        return `${day}ێ ${monthsBadini[monthIdx]}ێ ${year}`;
+      } else {
+        return `${monthsEn[monthIdx]} ${day}, ${year}`;
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const isUpcoming = useMemo(() => {
+    if (!content?.release_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const rDate = new Date(content.release_date);
+    return rDate > today;
+  }, [content?.release_date]);
+
+  const isAdmin = useMemo(() => {
+    try {
+      const storedName = localStorage.getItem('flkrd_username') || '';
+      const storedRole = localStorage.getItem('flkrd_role') || '';
+      return storedName.toLowerCase().includes('admin') || storedRole.toLowerCase() === 'admin';
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const handleUnlockUpcoming = () => {
+    if (isUnlocking || isUpcomingUnlocked) return;
+    
+    if (!isAdmin) {
+      addNotification({
+        type: 'info',
+        title: (language === 'ku' || language === 'badini') ? 'ناوەڕۆکی چاوەڕوانکراو' : 'UPCOMING CONTENT',
+        message: (language === 'ku' || language === 'badini')
+          ? `ئەم بەرهەمە قفڵ کراوە تا ${formatReleaseDate(content.release_date, language)}.`
+          : `This content is locked until ${formatReleaseDate(content.release_date, language)}.`,
+      });
+      return;
+    }
+
+    setIsUnlocking(true);
+    
+    addNotification({
+      type: 'info',
+      title: (language === 'ku' || language === 'badini') ? 'چاککردنی بەستەر' : 'NODE DECRYPTION',
+      message: (language === 'ku' || language === 'badini')
+        ? 'سیستم خەریکی پەیوەستبوونە بە نۆدی داهاتوو...'
+        : 'Synchronizing neural nodes with future archive...',
+    });
+
+    setTimeout(() => {
+      setIsUnlocking(false);
+      setIsUpcomingUnlocked(true);
+      addNotification({
+        type: 'success',
+        title: (language === 'ku' || language === 'badini') ? 'پەیوەست بوو' : 'ACCESS GRANTED',
+        message: (language === 'ku' || language === 'badini')
+          ? 'ئێستا دەتوانیت پەخشەکە دەستپێبکەیت.'
+          : 'Archive node decrypted successfully. Tap again to stream.',
+      });
+    }, 1500);
+  };
+
+  useEffect(() => {
+    const syncFS = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', syncFS);
+    document.addEventListener('webkitfullscreenchange', syncFS);
+    document.addEventListener('mozfullscreenchange', syncFS);
+    document.addEventListener('MSFullscreenChange', syncFS);
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFS);
+      document.removeEventListener('webkitfullscreenchange', syncFS);
+      document.removeEventListener('mozfullscreenchange', syncFS);
+      document.removeEventListener('MSFullscreenChange', syncFS);
+    };
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!playerModalRef.current) return;
+    
+    import('../utils/tauriUtils').then(({ isTauri }) => {
+      if (isTauri()) {
+        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+          const win = getCurrentWindow();
+          win.isFullscreen().then(f => win.setFullscreen(!f));
+        });
+        return;
+      }
+
+      const container = document.documentElement;
+      const hasNativeFullscreen = !!container.requestFullscreen || 
+                                  !!(container as any).webkitRequestFullscreen ||
+                                  !!(container as any).mozRequestFullScreen ||
+                                  !!(container as any).msRequestFullscreen;
+
+      if (!hasNativeFullscreen) {
+        setIsFullscreen(prev => !prev);
+        return;
+      }
+
+      if (!document.fullscreenElement) {
+        const req = container.requestFullscreen || 
+                    (container as any).webkitRequestFullscreen || 
+                    (container as any).mozRequestFullScreen || 
+                    (container as any).msRequestFullscreen;
+        req.call(container).catch((err: any) => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+          setIsFullscreen(true);
+        });
+      } else {
+        const exit = document.exitFullscreen || 
+                     (document as any).webkitExitFullscreen || 
+                     (document as any).mozCancelFullScreen || 
+                     (document as any).msExitFullscreen;
+        exit.call(document);
+      }
+    });
+  };
+
   const [activeSource, setActiveSource] = useState(() => {
     const ranked = getRankedSources(false);
     return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
@@ -270,6 +413,8 @@ const DetailPage: React.FC = () => {
   useEffect(() => {
     const fetchContentDetails = async () => {
       if (!id) return;
+      setIsUpcomingUnlocked(false);
+      setIsUnlocking(false);
       if (!content) setLoading(true);
       try {
         const apiLang = 'en-US';
@@ -372,7 +517,7 @@ const DetailPage: React.FC = () => {
                       const bestTrack = results.find(r => 
                           r.attributes.language === 'ku' || 
                           r.attributes.language === 'ckb' || 
-                          r.attributes.display_name.toLowerCase().includes('kurd')
+                          r.attributes.display_name?.toLowerCase().includes('kurd')
                       ) || results[0];
 
                       const downloadLink = bestTrack.attributes.file_id !== 0 
@@ -445,8 +590,37 @@ const DetailPage: React.FC = () => {
     const saved = progressData.find((p: any) => p.id === content?.id && p.type === 'movie');
     setInitialProgress(saved ? saved.progress : 0);
 
+    // Attempt immediate native fullscreen request on user gesture
+    try {
+      const container = document.documentElement;
+      const req = container.requestFullscreen || 
+                  (container as any).webkitRequestFullscreen || 
+                  (container as any).mozRequestFullScreen || 
+                  (container as any).msRequestFullscreen;
+      if (req) {
+        req.call(container).catch((err: any) => {
+          console.warn("[FULLSCREEN] Immediate request rejected:", err);
+        });
+      }
+    } catch (e) {
+      console.warn("[FULLSCREEN] Immediate request failed:", e);
+    }
+
     setIsPlayerLoading(true);
     setIsPlayerModalOpen(true);
+  };
+
+  const handleClosePlayer = () => {
+    setIsPlayerModalOpen(false);
+    if (document.fullscreenElement) {
+      const exit = document.exitFullscreen || 
+                   (document as any).webkitExitFullscreen || 
+                   (document as any).mozCancelFullScreen || 
+                   (document as any).msExitFullscreen;
+      if (exit) {
+        exit.call(document).catch(() => {});
+      }
+    }
   };
 
   const handleToggleMyList = () => {
@@ -497,9 +671,9 @@ const DetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
+          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
             <div className="w-full flex items-center justify-between p-4 md:p-6 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
-              <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
+              <button onClick={handleClosePlayer} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
                 <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
               </button>
               <div className="flex flex-col items-center text-center">
@@ -526,7 +700,10 @@ const DetailPage: React.FC = () => {
                   imdbId={imdbId || undefined}
                   onProgress={handlePlayerProgress}
                   startFullscreen={true}
-                  onClose={() => setIsPlayerModalOpen(false)}
+                  onClose={handleClosePlayer}
+                  isFullscreen={isFullscreen}
+                  toggleFullscreen={toggleFullscreen}
+                  onLoad={() => setIsPlayerLoading(false)}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
                   sources={sources}
@@ -544,7 +721,9 @@ const DetailPage: React.FC = () => {
                   title={content?.title}
                   tmdbId={id}
                   startFullscreen={true}
-                  onClose={() => setIsPlayerModalOpen(false)}
+                  onClose={handleClosePlayer}
+                  isFullscreen={isFullscreen}
+                  toggleFullscreen={toggleFullscreen}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
                   sources={sources}
@@ -552,7 +731,7 @@ const DetailPage: React.FC = () => {
               )}
 
               <AnimatePresence>
-                {showSourceSwitcher && (
+                {showSourceSwitcher && !isFullscreen && (
                   <motion.div 
                     initial={{ x: '100%', opacity: 0 }} 
                     animate={{ x: 0, opacity: 1 }} 
@@ -609,39 +788,121 @@ const DetailPage: React.FC = () => {
                             transition={{ duration: 0.3, delay: idx * 0.04 }}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => { setActiveSource(s.name); setIsPlayerLoading(true); setShowSourceSwitcher(false); }} 
-                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${isActive ? 'bg-white/[0.07] border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'}`}
+                            onClick={() => { 
+                              if (isActive) return;
+                              setActiveSource(s.name); 
+                              setIsPlayerLoading(true); 
+                              setTimeout(() => {
+                                setShowSourceSwitcher(false); 
+                              }, 800);
+                            }} 
+                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
+                              isActive 
+                                ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                                : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
+                            }`}
                           >
-                            {isActive && <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-transparent pointer-events-none" />}
-                            {isActive && <motion.div layoutId="active-accent-line-detail" className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444]" />}
+                            {isActive && (
+                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
+                                <div 
+                                  className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
+                                  style={{
+                                    background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
+                                    animation: 'neon-border-spin 3s linear infinite',
+                                  }}
+                                />
+                                <div 
+                                  className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
+                                  style={{
+                                    background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
+                                    backdropFilter: 'blur(16px)',
+                                    WebkitBackdropFilter: 'blur(16px)',
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Accent Line for Active State */}
+                            {isActive && (
+                              <motion.div 
+                                layoutId="active-accent-line-detail"
+                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
+                              />
+                            )}
+
                             <div className="flex items-center justify-between w-full relative z-10">
                               <div className="flex items-center gap-3">
+                                {/* Server Badge/Logo Icon wrapper */}
                                 <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
-                                  {s.name === 'FLKRD SERVER 4' ? (
-                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]"><path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" /></svg>
+                                  {isActive && isPlayerLoading ? (
+                                    <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                                  ) : s.name === 'FLKRD SERVER 4' ? (
+                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]">
+                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
+                                    </svg>
                                   ) : iconPath ? (
                                     <img src={iconPath} className="w-7 h-7 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
                                   ) : (
                                     <Cpu size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
                                   )}
-                                  {isActive && <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 3, repeat: Infinity }} className="absolute inset-0 bg-red-600/10 blur-xl rounded-full" />}
+
+                                  {isActive && !isPlayerLoading && (
+                                    <motion.div 
+                                      animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
+                                      transition={{ duration: 3, repeat: Infinity }}
+                                      className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
+                                    />
+                                  )}
                                 </div>
+
                                 <div className="flex flex-col items-start text-left">
-                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>{s.name}</span>
-                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">Node VK-{idx + 1}</span>
+                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>
+                                    {s.name}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
+                                    Node VK-{idx + 1}
+                                  </span>
                                 </div>
                               </div>
+
                               <div className="flex flex-col items-end gap-1">
-                                <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${statusBg} ${statusColor}`}>{statusText}</div>
+                                <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                                  isActive 
+                                    ? isPlayerLoading 
+                                      ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' 
+                                      : 'bg-green-500/10 border-green-500/20 text-green-500'
+                                    : statusBg
+                                } ${isActive ? '' : statusColor}`}>
+                                  {isActive 
+                                    ? isPlayerLoading 
+                                      ? ((language === 'ku' || language === 'badini') ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') 
+                                      : ((language === 'ku' || language === 'badini') ? 'پەیوەستە' : 'Connected')
+                                    : statusText}
+                                </div>
                               </div>
                             </div>
-                            <div className="h-[1px] w-full bg-white/5" />
-                            <div className="flex flex-col gap-2 w-full mt-1">
+
+                            {/* Node Metrics Divider */}
+                            <div className="h-[1px] w-full bg-white/5 relative z-10" />
+
+                            <div className="flex flex-col gap-2 w-full mt-1 relative z-10">
                               <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10 text-left">
-                                <div className="flex items-center gap-1.5 flex-row"><Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} /><span>{speed}</span></div>
-                                <div className="flex items-center gap-1.5 flex-row"><Timer size={10} className="text-gray-500" /><span>{latency}</span></div>
-                                <div className="flex items-center gap-1 flex-row"><Cpu size={10} className="text-gray-500" /><span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span></div>
+                                <div className="flex items-center gap-1.5 flex-row">
+                                  <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
+                                  <span>{speed}</span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5 flex-row">
+                                  <Timer size={10} className="text-gray-500" />
+                                  <span>{latency}</span>
+                                </div>
+
+                                <div className="flex items-center gap-1 flex-row">
+                                  <Cpu size={10} className="text-gray-500" />
+                                  <span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span>
+                                </div>
                               </div>
+
                               {/* Visual Load Progress Bar */}
                               <div className="w-full bg-white/5 rounded-full h-[3px] overflow-hidden relative">
                                 <div 
@@ -654,8 +915,10 @@ const DetailPage: React.FC = () => {
                                 />
                               </div>
                             </div>
+
+                            {/* Kurdish cc badge */}
                             {s.badge === 'ku' && (
-                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75">
+                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75 z-10">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
                                 <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">KURDISH</span>
                               </div>
@@ -753,7 +1016,88 @@ const DetailPage: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5">
-            <LiquidButton ref={playButtonRef} variant="default" onClick={handlePlayClick} className="font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3"><Play size={20} fill="currentColor" /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}</span></LiquidButton>
+            {isUpcoming && !isUpcomingUnlocked ? (
+              <LiquidButton 
+                ref={playButtonRef}
+                variant="default"
+                onClick={handleUnlockUpcoming}
+                disabled={isUnlocking}
+                className="font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 border border-red-500/20 hover:border-red-500/40 relative overflow-hidden group/lock"
+              >
+                <span className="absolute inset-0 bg-red-600/5 animate-[pulse_2s_infinite] pointer-events-none" />
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/lock:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+
+                <motion.div
+                  animate={isUnlocking ? {
+                    rotate: [0, -15, 15, -15, 15, 0],
+                    scale: [1, 1.2, 1.2, 1.2, 1.2, 1],
+                  } : {
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={isUnlocking ? {
+                    duration: 1.2,
+                    ease: "easeInOut"
+                  } : {
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="shrink-0"
+                >
+                  {isUnlocking ? (
+                    <LockOpen size={20} className="text-yellow-500" />
+                  ) : (
+                    <Lock size={20} className="text-red-500" />
+                  )}
+                </motion.div>
+
+                <span className="text-sm md:text-xl uppercase italic tracking-tighter text-left z-10 flex flex-col">
+                  {isUnlocking ? (
+                    <span className="text-yellow-500 animate-pulse">
+                      {(language === 'ku' || language === 'badini') ? 'کردنەوەی قفڵ...' : 'DECRYPTING NODE...'}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-[10px] text-red-400 font-black tracking-widest block leading-none mb-1">
+                        {(language === 'ku' || language === 'badini') ? 'چاوەڕوانکراو' : 'UPCOMING'}
+                      </span>
+                      <span>
+                        {t('releasingOn', { date: formatReleaseDate(content.release_date, language) })}
+                      </span>
+                    </>
+                  )}
+                </span>
+              </LiquidButton>
+            ) : (
+              <LiquidButton 
+                ref={playButtonRef} 
+                variant="default" 
+                onClick={handlePlayClick} 
+                className={`font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 transition-all ${isUpcomingUnlocked ? 'border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] bg-emerald-950/20' : ''}`}
+              >
+                {isUpcomingUnlocked ? (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                    >
+                      <LockOpen size={20} className="text-emerald-500" />
+                    </motion.div>
+                    <span className="text-sm md:text-xl uppercase italic tracking-tighter text-emerald-400">
+                      {t('movieAvailableNow')}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={20} fill="currentColor" />
+                    <span className="text-sm md:text-xl uppercase italic tracking-tighter">
+                      {initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}
+                    </span>
+                  </>
+                )}
+              </LiquidButton>
+            )}
             {trailerKey && (
               <LiquidButton variant="default" onClick={() => setIsTrailerModalOpen(true)} className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl"><PlayCircle size={20} /><span className="text-sm md:text-xl uppercase italic tracking-tighter">{t('playTrailer')}</span></LiquidButton>
             )}
@@ -904,9 +1248,9 @@ const DetailPage: React.FC = () => {
                             .filter((c: any) => c.poster_path)
                             .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
                             .slice(0, 6)
-                            .map((movie: any) => (
+                            .map((movie: any, idx: number) => (
                               <div 
-                                key={movie.id} 
+                                key={`${movie.id}-${movie.media_type || 'media'}-${idx}`} 
                                 className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
                                 onClick={() => {
                                   setSelectedActorId(null);

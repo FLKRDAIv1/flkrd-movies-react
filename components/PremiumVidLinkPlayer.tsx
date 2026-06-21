@@ -30,6 +30,9 @@ interface PremiumVidLinkPlayerProps {
   onSeasonChange?: (season: number) => void;
   startFullscreen?: boolean;
   onClose?: () => void;
+  isFullscreen?: boolean;
+  toggleFullscreen?: () => void;
+  onLoad?: () => void;
   activeSource?: string;
   setActiveSource?: (source: string) => void;
   sources?: any[];
@@ -78,6 +81,9 @@ export default function PremiumVidLinkPlayer({
   onSeasonChange,
   startFullscreen,
   onClose,
+  isFullscreen: isFullscreenProp,
+  toggleFullscreen: toggleFullscreenProp,
+  onLoad: onLoadProp,
   activeSource,
   setActiveSource,
   sources = []
@@ -108,7 +114,9 @@ export default function PremiumVidLinkPlayer({
   const lastMessageTimeRef = React.useRef<number>(performance.now());
   const lastReceivedTimeRef = React.useRef<number>(0);
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
+  const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
+  const setIsFullscreen = isFullscreenProp !== undefined ? () => {} : setLocalIsFullscreen;
   const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -1092,6 +1100,10 @@ export default function PremiumVidLinkPlayer({
   }, [peerSyncTrigger]);
 
   const toggleFullscreen = () => {
+    if (toggleFullscreenProp) {
+      toggleFullscreenProp();
+      return;
+    }
     if (!containerRef.current) return;
     
     import('../utils/tauriUtils').then(({ isTauri }) => {
@@ -1251,7 +1263,10 @@ export default function PremiumVidLinkPlayer({
           webkit-playsinline="true"
           // @ts-ignore
           x-webkit-airplay="deny"
-          onLoad={() => setIsPlayerLoading(false)}
+          onLoad={() => {
+            setIsPlayerLoading(false);
+            if (onLoadProp) onLoadProp();
+          }}
         ></iframe>
 
 
@@ -2171,48 +2186,58 @@ export default function PremiumVidLinkPlayer({
                   loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable';
                 } else if (s.name === 'FLKRD SERVER 2') {
                   loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized';
-                } else if (s.name === 'FLKRD SERVER 3') {
-                  loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal';
-                } else if (s.name === 'FLKRD SERVER 4') {
-                  loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20';
-                } else if (s.name === 'FLKRD SERVER 5') {
-                  loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct';
-                } else if (s.name === 'FLKRD SERVER 6') {
-                  loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard';
-                } else if (s.name === 'FLKRD SERVER 7') {
-                  loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20';
-                }
-
-                return (
+                }                return (
                   <button 
                     key={s.name}
                     onClick={() => { 
+                      if (isActive) return;
                       if (setActiveSource) {
                         setActiveSource(s.name); 
                       }
-                      setShowSourceSwitcher(false); 
+                      setIsPlayerLoading(true);
+                      setTimeout(() => {
+                        setShowSourceSwitcher(false);
+                      }, 800);
                     }} 
                     className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
                       isActive 
-                        ? 'bg-white/[0.07] border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                        ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
                         : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
                     }`}
                   >
                     {isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-transparent pointer-events-none" />
+                      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
+                        <div 
+                          className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
+                          style={{
+                            background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
+                            animation: 'neon-border-spin 3s linear infinite',
+                          }}
+                        />
+                        <div 
+                          className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
+                          style={{
+                            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                          }}
+                        />
+                      </div>
                     )}
 
                     {isActive && (
                       <motion.div 
                         layoutId="active-accent-line-prem-fs"
-                        className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444]"
+                        className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
                       />
                     )}
 
                     <div className="flex items-center justify-between w-full relative z-10">
                       <div className="flex items-center gap-3">
                         <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
-                          {s.name === 'FLKRD SERVER 4' ? (
+                          {isActive && isPlayerLoading ? (
+                            <Loader2 className="w-5 h-5 text-red-500 animate-spin" />
+                          ) : s.name === 'FLKRD SERVER 4' ? (
                             <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]">
                               <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
                             </svg>
@@ -2222,7 +2247,7 @@ export default function PremiumVidLinkPlayer({
                             <Cpu size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
                           )}
 
-                          {isActive && (
+                          {isActive && !isPlayerLoading && (
                             <motion.div 
                               animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
                               transition={{ duration: 3, repeat: Infinity }}
@@ -2242,15 +2267,25 @@ export default function PremiumVidLinkPlayer({
                       </div>
 
                       <div className="flex flex-col items-end gap-1">
-                        <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${statusBg} ${statusColor}`}>
-                          {statusText}
+                        <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                          isActive 
+                            ? isPlayerLoading 
+                              ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' 
+                              : 'bg-green-500/10 border-green-500/20 text-green-500'
+                            : statusBg
+                        } ${isActive ? '' : statusColor}`}>
+                          {isActive 
+                            ? isPlayerLoading 
+                              ? ((language === 'ku' || language === 'badini') ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') 
+                              : ((language === 'ku' || language === 'badini') ? 'پەیوەستە' : 'Connected')
+                            : statusText}
                         </div>
                       </div>
                     </div>
 
-                    <div className="h-[1px] w-full bg-white/5" />
+                    <div className="h-[1px] w-full bg-white/5 relative z-10" />
 
-                    <div className="flex flex-col gap-2 w-full mt-1">
+                    <div className="flex flex-col gap-2 w-full mt-1 relative z-10">
                       <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10 text-left">
                         <div className="flex items-center gap-1.5 flex-row">
                           <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
@@ -2282,7 +2317,7 @@ export default function PremiumVidLinkPlayer({
                     </div>
 
                     {s.badge === 'ku' && (
-                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75">
+                      <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75 z-10">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
                         <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">KURDISH</span>
                       </div>

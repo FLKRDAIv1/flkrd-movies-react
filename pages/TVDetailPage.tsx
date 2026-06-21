@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +6,7 @@ import {
   Clapperboard, Layers, Info, Sparkles, User, Film,
   Star, Calendar, Tv, Zap, Clock, Activity, ListChecks,
   ChevronRight, PlayCircle, Link as LinkIcon, Send, Facebook, ArrowRight,
-  ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2, Cpu
+  ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2, Cpu, Loader2, Lock, LockOpen
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, SeasonDetails, Episode, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
@@ -103,6 +103,88 @@ const TVDetailPage: React.FC = () => {
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(1);
+
+  const [isUpcomingUnlocked, setIsUpcomingUnlocked] = useState(false);
+  const [isUnlocking, setIsUnlocking] = useState(false);
+
+  const formatReleaseDate = (dateStr: string, lang: string) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const monthsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthsKu = ['کانوونی دووەم', 'شوبات', 'ئازار', 'نیسان', 'ئایار', 'حوزەیران', 'تەممووز', 'ئاب', 'ئەیلوول', 'تشرینی یەکەم', 'تشرینی دووەم', 'کانوونی یەکەم'];
+      const monthsBadini = ['کانوونا دووێ', 'شبات', 'ئادار', 'نیسان', 'مایس', 'حوزەیران', 'تەموز', 'تەباخ', 'ئەیلوول', 'تشرینا ئێکێ', 'تشرینا دووێ', 'کانوونا ئێکێ'];
+
+      const day = date.getDate();
+      const year = date.getFullYear();
+      const monthIdx = date.getMonth();
+
+      if (lang === 'ku') {
+        return `${day}ی ${monthsKu[monthIdx]}ی ${year}`;
+      } else if (lang === 'badini') {
+        return `${day}ێ ${monthsBadini[monthIdx]}ێ ${year}`;
+      } else {
+        return `${monthsEn[monthIdx]} ${day}, ${year}`;
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const isUpcoming = useMemo(() => {
+    if (!content?.first_air_date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const rDate = new Date(content.first_air_date);
+    return rDate > today;
+  }, [content?.first_air_date]);
+
+  const isAdmin = useMemo(() => {
+    try {
+      const storedName = localStorage.getItem('flkrd_username') || '';
+      const storedRole = localStorage.getItem('flkrd_role') || '';
+      return storedName.toLowerCase().includes('admin') || storedRole.toLowerCase() === 'admin';
+    } catch (e) {
+      return false;
+    }
+  }, []);
+
+  const handleUnlockUpcoming = () => {
+    if (isUnlocking || isUpcomingUnlocked) return;
+    
+    if (!isAdmin) {
+      addNotification({
+        type: 'info',
+        title: (language === 'ku' || language === 'badini') ? 'ناوەڕۆکی چاوەڕوانکراو' : 'UPCOMING CONTENT',
+        message: (language === 'ku' || language === 'badini')
+          ? `ئەم زنجیرەیە قفڵ کراوە تا ${formatReleaseDate(content.first_air_date, language)}.`
+          : `This content is locked until ${formatReleaseDate(content.first_air_date, language)}.`,
+      });
+      return;
+    }
+
+    setIsUnlocking(true);
+    
+    addNotification({
+      type: 'info',
+      title: (language === 'ku' || language === 'badini') ? 'چاککردنی بەستەر' : 'NODE DECRYPTION',
+      message: (language === 'ku' || language === 'badini')
+        ? 'سیستم خەریکی پەیوەستبوونە بە نۆدی داهاتوو...'
+        : 'Synchronizing neural nodes with future archive...',
+    });
+
+    setTimeout(() => {
+      setIsUnlocking(false);
+      setIsUpcomingUnlocked(true);
+      addNotification({
+        type: 'success',
+        title: (language === 'ku' || language === 'badini') ? 'پەیوەست بوو' : 'ACCESS GRANTED',
+        message: (language === 'ku' || language === 'badini')
+          ? 'ئێستا دەتوانیت پەخشەکە دەستپێبکەیت.'
+          : 'Archive node decrypted successfully. Tap again to stream.',
+      });
+    }, 1500);
+  };
   const [selectedEpisode, setSelectedEpisode] = useState(1);
   const [seasonDetails, setSeasonDetails] = useState<SeasonDetails | null>(null);
   const [activeSource, setActiveSource] = useState(() => {
@@ -407,6 +489,8 @@ const TVDetailPage: React.FC = () => {
     setTrailerKey(null);
     setSelectedActorId(null);
     setActorDetails(null);
+    setIsUpcomingUnlocked(false);
+    setIsUnlocking(false);
 
     const fetchContentDetails = async () => {
       if (!id) return;
@@ -907,10 +991,86 @@ const TVDetailPage: React.FC = () => {
             <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-md"><Calendar size={14} className="text-gray-400" /><span className="text-xs font-black text-gray-400">{content.first_air_date?.split('-')[0]}</span></div>
           </div>
           <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-10">
-            <LiquidButton variant="default" onClick={() => handlePlayClick()} className="font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3">
-              <Play size={20} fill="currentColor" />
-              <span className="text-base md:text-xl uppercase italic tracking-tighter">{initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}</span>
-            </LiquidButton>
+            {isUpcoming && !isUpcomingUnlocked ? (
+              <LiquidButton 
+                variant="default"
+                onClick={handleUnlockUpcoming}
+                disabled={isUnlocking}
+                className="font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 border border-red-500/20 hover:border-red-500/40 relative overflow-hidden group/lock"
+              >
+                <span className="absolute inset-0 bg-red-600/5 animate-[pulse_2s_infinite] pointer-events-none" />
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/lock:animate-[shimmer_1.5s_infinite] pointer-events-none" />
+
+                <motion.div
+                  animate={isUnlocking ? {
+                    rotate: [0, -15, 15, -15, 15, 0],
+                    scale: [1, 1.2, 1.2, 1.2, 1.2, 1],
+                  } : {
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={isUnlocking ? {
+                    duration: 1.2,
+                    ease: "easeInOut"
+                  } : {
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="shrink-0"
+                >
+                  {isUnlocking ? (
+                    <LockOpen size={20} className="text-yellow-500" />
+                  ) : (
+                    <Lock size={20} className="text-red-500" />
+                  )}
+                </motion.div>
+
+                <span className="text-sm md:text-xl uppercase italic tracking-tighter text-left z-10 flex flex-col">
+                  {isUnlocking ? (
+                    <span className="text-yellow-500 animate-pulse">
+                      {(language === 'ku' || language === 'badini') ? 'کردنەوەی قفڵ...' : 'DECRYPTING NODE...'}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-[10px] text-red-400 font-black tracking-widest block leading-none mb-1">
+                        {(language === 'ku' || language === 'badini') ? 'چاوەڕوانکراو' : 'UPCOMING'}
+                      </span>
+                      <span>
+                        {t('releasingOn', { date: formatReleaseDate(content.first_air_date, language) })}
+                      </span>
+                    </>
+                  )}
+                </span>
+              </LiquidButton>
+            ) : (
+              <LiquidButton 
+                variant="default" 
+                onClick={() => handlePlayClick()} 
+                className={`font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 transition-all ${isUpcomingUnlocked ? 'border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] bg-emerald-950/20' : ''}`}
+              >
+                {isUpcomingUnlocked ? (
+                  <>
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                    >
+                      <LockOpen size={20} className="text-emerald-500" />
+                    </motion.div>
+                    <span className="text-sm md:text-xl uppercase italic tracking-tighter text-emerald-400">
+                      {t('tvShowAvailableNow')}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={20} fill="currentColor" />
+                    <span className="text-sm md:text-xl uppercase italic tracking-tighter">
+                      {initialProgress > 10 ? ((language === 'ku' || language === 'badini') ? 'بەردەوامبە' : 'RESUME STREAM') : ((language === 'ku' || language === 'badini') ? 'دەستپێکردن' : 'START STREAM')}
+                    </span>
+                  </>
+                )}
+              </LiquidButton>
+            )}
 
             {/* CO-WATCH PARTY Button */}
             <button

@@ -93,6 +93,9 @@ const translations = {
     neuralInsight: "Smart Search",
     askCore: "Ask AI",
     thinking: "Thinking...",
+    releasingOn: "Releasing on {date}",
+    movieAvailableNow: "Now the movie is available",
+    tvShowAvailableNow: "Now the show is available",
 
     // Search Page
     didYouMean: "Did you mean:",
@@ -313,6 +316,9 @@ const translations = {
     neuralInsight: "گەڕانی زیرەک",
     askCore: "لە زیرەکی دەستکرد بپرسە",
     thinking: "خەریکی بیرکردنەوەیە...",
+    releasingOn: "بڵاودەبێتەوە لە {date}",
+    movieAvailableNow: "ئێستا فیلمەکە بەردەستە",
+    tvShowAvailableNow: "ئێستا زنجیرەکە بەردەستە",
 
     // Search Page
     didYouMean: "مەبەستت ئەمەیە؟",
@@ -533,6 +539,9 @@ const translations = {
     neuralInsight: "گەڕیانا زیرەک",
     askCore: "ژ زیرەکیا دەستکرد بپرسە",
     thinking: "خەریکە بیر دکەت...",
+    releasingOn: "دێ هێتە بەلاڤکرن ل {date}",
+    movieAvailableNow: "نوکە فیلم یا بەردەستە",
+    tvShowAvailableNow: "نوکە زنجیرە یا بەردەستە",
 
     // Search Page
     didYouMean: "مەبەست تە ئەڤەیە؟",

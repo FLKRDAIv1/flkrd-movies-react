@@ -262,7 +262,7 @@ const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return (
         <AnimatePresence mode="wait">
-            <Routes {...({ location: animatedLocation, key: animatedLocation.pathname } as any)}>
+            <Routes {...{ key: animatedLocation.pathname } as any} location={animatedLocation}>
                 {children}
             </Routes>
         </AnimatePresence>
@@ -309,7 +309,13 @@ const startPerformanceObserver = (visitId: string) => {
                 if (inp !== null) updates.inp = Math.round(inp);
 
                 if (Object.keys(updates).length > 0) {
-                    await supabase.from('site_analytics').update(updates).eq('id', visitId);
+                    await supabase.rpc('update_site_analytics', {
+                        visit_id: visitId,
+                        fcp_val: updates.fcp,
+                        lcp_val: updates.lcp,
+                        cls_val: updates.cls,
+                        inp_val: updates.inp
+                    });
                 }
             } catch (e) {
                 // ignore
@@ -442,6 +448,93 @@ const AppContent: React.FC<{
         }, 500);
         return () => clearTimeout(timer);
     }, [location.pathname, location.search]);
+
+    // Google Translate Auto-Translate Cookie Synchronizer
+    useEffect(() => {
+        const setGoogleTranslateCookie = (lang: string) => {
+            let transVal = '';
+            if (lang === 'ku') {
+                transVal = '/en/ckb';
+            } else if (lang === 'badini') {
+                transVal = '/en/ku';
+            }
+
+            const getCookie = (name: string) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop()?.split(';').shift();
+                return '';
+            };
+
+            const currentVal = getCookie('googtrans');
+            if (currentVal !== transVal) {
+                // Clear existing cookies
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
+                document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.localhost";
+
+                if (transVal) {
+                    // Set new cookies
+                    document.cookie = `googtrans=${transVal}; path=/;`;
+                    document.cookie = `googtrans=${transVal}; path=/; domain=${window.location.hostname};`;
+                    document.cookie = `googtrans=${transVal}; path=/; domain=.localhost;`;
+                }
+
+                // Force full page reload to trigger Google Translate to load cookies and translate the DOM
+                setTimeout(() => {
+                    window.location.reload();
+                }, 300);
+            }
+        };
+
+        setGoogleTranslateCookie(language);
+    }, [language]);
+
+    // ── Google Translate Dynamic Banner Destroyer ──
+    useEffect(() => {
+        const destroyTranslateUI = () => {
+            const selectors = [
+                'iframe.goog-te-banner-frame',
+                '.goog-te-banner-frame',
+                'iframe[class*="goog"]',
+                'iframe[id*="goog"]',
+                '#goog-gt-tt',
+                '.goog-te-balloon-frame'
+            ];
+
+            selectors.forEach(sel => {
+                const els = document.querySelectorAll(sel);
+                els.forEach(el => {
+                    const htmlEl = el as HTMLElement;
+                    if (htmlEl.style.display !== 'none') {
+                        htmlEl.style.setProperty('display', 'none', 'important');
+                        htmlEl.style.setProperty('visibility', 'hidden', 'important');
+                        htmlEl.style.setProperty('height', '0px', 'important');
+                        htmlEl.style.setProperty('opacity', '0', 'important');
+                    }
+                });
+            });
+
+            // Prevent layout shifting
+            if (document.body.style.top !== '0px' && document.body.style.top !== '') {
+                document.body.style.setProperty('top', '0px', 'important');
+            }
+            if (document.documentElement.style.marginTop !== '0px' && document.documentElement.style.marginTop !== '') {
+                document.documentElement.style.setProperty('margin-top', '0px', 'important');
+            }
+        };
+
+        destroyTranslateUI();
+        const interval = setInterval(destroyTranslateUI, 100);
+
+        const observer = new MutationObserver(destroyTranslateUI);
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        return () => {
+            clearInterval(interval);
+            observer.disconnect();
+        };
+    }, []);
 
     // Determine watch room or cinema directly from router location
     const isWatchPage = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/watch-room/');

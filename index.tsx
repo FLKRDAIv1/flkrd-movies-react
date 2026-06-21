@@ -6,6 +6,23 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { UIProvider } from './contexts/UIContext';
 import { GamepadProvider } from './contexts/GamepadContext';
 
+// ── Google Translate Node Manipulation Crash Prevention ──
+const nativeInsertBefore = Node.prototype.insertBefore;
+Node.prototype.insertBefore = function <T extends Node>(newNode: T, referenceNode: Node | null): T {
+  if (referenceNode && referenceNode.parentNode !== this) {
+    return newNode;
+  }
+  return nativeInsertBefore.call(this, newNode, referenceNode) as T;
+};
+
+const nativeRemoveChild = Node.prototype.removeChild;
+Node.prototype.removeChild = function <T extends Node>(child: T): T {
+  if (child.parentNode !== this) {
+    return child;
+  }
+  return nativeRemoveChild.call(this, child) as T;
+};
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
