@@ -223,6 +223,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const isSelectingFileRef = useRef(false);
+    const wasFullscreenRef = useRef(false);
     const [isHls, setIsHls] = useState(false);
     const [isIframe, setIsIframe] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -293,8 +295,75 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         setAvailableSubs([virtualSub, ...filtered]);
     }, [subtitleUrl]);
 
+    const restoreFullscreenIfNeeded = () => {
+        if (wasFullscreenRef.current) {
+            wasFullscreenRef.current = false;
+            
+            import('../utils/tauriUtils').then(({ isTauri }) => {
+                if (isTauri()) {
+                    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+                        const win = getCurrentWindow();
+                        win.isFullscreen().then(f => {
+                            if (!f) win.setFullscreen(true);
+                        });
+                    });
+                    return;
+                }
+
+                if (!document.fullscreenElement && containerRef.current) {
+                    console.log("[PLAYER] Restoring browser fullscreen...");
+                    const reqFS = containerRef.current.requestFullscreen || 
+                                  (containerRef.current as any).webkitRequestFullscreen ||
+                                  (containerRef.current as any).mozRequestFullScreen ||
+                                  (containerRef.current as any).msRequestFullscreen;
+                    if (reqFS) {
+                        reqFS.call(containerRef.current).catch(err => {
+                            console.warn("[PLAYER] Failed to restore fullscreen:", err);
+                        });
+                    }
+                }
+            });
+        }
+        isSelectingFileRef.current = false;
+    };
+
+    const handleUploadClick = () => {
+        isSelectingFileRef.current = true;
+        
+        import('../utils/tauriUtils').then(({ isTauri }) => {
+            if (isTauri()) {
+                import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+                    const win = getCurrentWindow();
+                    win.isFullscreen().then(f => {
+                        wasFullscreenRef.current = f;
+                    });
+                });
+            } else {
+                wasFullscreenRef.current = !!document.fullscreenElement;
+            }
+        });
+
+        const input = document.getElementById('admin-sub-upload-input');
+        if (input) {
+            (input as HTMLInputElement).click();
+        }
+
+        const handleFocus = () => {
+            setTimeout(() => {
+                restoreFullscreenIfNeeded();
+            }, 500);
+            window.removeEventListener('focus', handleFocus);
+        };
+        setTimeout(() => {
+            window.addEventListener('focus', handleFocus);
+        }, 300);
+    };
+
     const handleAdminSubUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
+        
+        restoreFullscreenIfNeeded();
+
         if (!files || files.length === 0) return;
 
         setIsUploadingSub(true);
@@ -1275,8 +1344,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
             if (!isFull && startFullscreen && onClose) {
+                if (isSelectingFileRef.current) {
+                    console.log("[PLAYER] Exited native fullscreen due to file selection. Ignoring onClose.");
+                    return;
+                }
                 setTimeout(() => {
-                    if (!document.fullscreenElement) {
+                    if (!document.fullscreenElement && !isSelectingFileRef.current) {
                         console.log("[PLAYER] Exited native fullscreen. Closing player...");
                         onClose();
                     }
@@ -1886,7 +1959,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                     onChange={handleAdminSubUpload}
                                                                 />
                                                                 <button
-                                                                    onClick={() => document.getElementById('admin-sub-upload-input')?.click()}
+                                                                    onClick={handleUploadClick}
                                                                     disabled={isUploadingSub}
                                                                     className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50"
                                                                 >
