@@ -459,26 +459,51 @@ const AppContent: React.FC<{
                 transVal = '/en/ku';
             }
 
-            const getCookie = (name: string) => {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop()?.split(';').shift();
-                return '';
+            // Robust cookie retrieval that handles multiple cookie declarations
+            const getCookies = (name: string): string[] => {
+                return document.cookie
+                    .split(';')
+                    .map(c => c.trim())
+                    .filter(c => c.startsWith(name + '='))
+                    .map(c => decodeURIComponent(c.substring(name.length + 1)));
             };
 
-            const currentVal = getCookie('googtrans');
-            if (currentVal !== transVal) {
-                // Clear existing cookies
+            const currentVals = getCookies('googtrans');
+            // Check if our target transVal is already in the active cookies list
+            const hasMatch = transVal 
+                ? currentVals.includes(transVal) 
+                : (currentVals.length === 0 || currentVals.every(v => !v));
+
+            if (!hasMatch) {
+                const hostParts = window.location.hostname.split('.');
+                const rootDomain = hostParts.length >= 2 ? '.' + hostParts.slice(-2).join('.') : '';
+
+                // Clear existing cookies from all possible domains
                 document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
                 document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.localhost";
+                if (rootDomain) {
+                    document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + rootDomain;
+                }
 
                 if (transVal) {
-                    // Set new cookies
+                    // Set new cookies across domains
                     document.cookie = `googtrans=${transVal}; path=/;`;
                     document.cookie = `googtrans=${transVal}; path=/; domain=${window.location.hostname};`;
                     document.cookie = `googtrans=${transVal}; path=/; domain=.localhost;`;
+                    if (rootDomain) {
+                        document.cookie = `googtrans=${transVal}; path=/; domain=${rootDomain};`;
+                    }
                 }
+
+                // Safety guard: prevent reloading more than once in 15 seconds to avoid infinite loops
+                const now = Date.now();
+                const lastReload = sessionStorage.getItem('flkrd_last_translate_reload');
+                if (lastReload && (now - parseInt(lastReload, 10)) < 15000) {
+                    console.warn("[GOOGLE TRANSLATE] Loop prevention guard: skipped reload because another reload happened within the last 15 seconds.");
+                    return;
+                }
+                sessionStorage.setItem('flkrd_last_translate_reload', now.toString());
 
                 // Force full page reload to trigger Google Translate to load cookies and translate the DOM
                 setTimeout(() => {
