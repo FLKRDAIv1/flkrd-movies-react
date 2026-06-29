@@ -19,8 +19,9 @@ interface MovieCardProps {
   className?: string;
 }
 
-export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
-  ({ item, type, isProgressRow, className }, ref) => {
+export const MovieCard = React.memo(
+  React.forwardRef<HTMLDivElement, MovieCardProps>(
+    ({ item, type, isProgressRow, className }, ref) => {
   const navigate = useNavigate();
   const { language, t } = useTranslation();
   const { addNotification } = useNotification();
@@ -296,7 +297,7 @@ export const MovieCard = React.forwardRef<HTMLDivElement, MovieCardProps>(
       </div>
     </motion.div>
   );
-});
+}));
 
 MovieCard.displayName = 'MovieCard';
 

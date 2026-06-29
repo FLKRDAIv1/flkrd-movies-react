@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon } from 'lucide-react';
+import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon, Sun, Sliders } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -105,6 +105,76 @@ export default function PremiumVidLinkPlayer({
   const [vttContent, setVttContent] = useState<string | null>(null);
   const [isUploadingSub, setIsUploadingSub] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+  // --- Lighting & Filter State ---
+  const [brightness, setBrightness] = useState(() => {
+    try {
+      return Number(localStorage.getItem('flkrd_player_brightness') || '1');
+    } catch (e) {
+      return 1;
+    }
+  });
+  const [contrast, setContrast] = useState(() => {
+    try {
+      return Number(localStorage.getItem('flkrd_player_contrast') || '1');
+    } catch (e) {
+      return 1;
+    }
+  });
+  const [saturation, setSaturation] = useState(() => {
+    try {
+      return Number(localStorage.getItem('flkrd_player_saturation') || '1');
+    } catch (e) {
+      return 1;
+    }
+  });
+
+  // Debounce localStorage writes to prevent blocking I/O lag during slider dragging
+  const saveTimeoutRef = React.useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+  const saveToLocalStorageDebounced = (key: string, value: string) => {
+    if (saveTimeoutRef.current[key]) {
+      clearTimeout(saveTimeoutRef.current[key]);
+    }
+    saveTimeoutRef.current[key] = setTimeout(() => {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {}
+    }, 250); // 250ms debounce window
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      Object.values(saveTimeoutRef.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const handleBrightnessChange = (val: number) => {
+    setBrightness(val);
+    saveToLocalStorageDebounced('flkrd_player_brightness', val.toString());
+  };
+  const handleContrastChange = (val: number) => {
+    setContrast(val);
+    saveToLocalStorageDebounced('flkrd_player_contrast', val.toString());
+  };
+  const handleSaturationChange = (val: number) => {
+    setSaturation(val);
+    saveToLocalStorageDebounced('flkrd_player_saturation', val.toString());
+  };
+  const handleResetFilters = () => {
+    setBrightness(1);
+    setContrast(1);
+    setSaturation(1);
+    Object.values(saveTimeoutRef.current).forEach(clearTimeout);
+    saveTimeoutRef.current = {};
+    try {
+      localStorage.setItem('flkrd_player_brightness', '1');
+      localStorage.setItem('flkrd_player_contrast', '1');
+      localStorage.setItem('flkrd_player_saturation', '1');
+    } catch (e) {}
+  };
   // Ref so the VidLink postMessage handler always reads the latest vttContent
   // (avoids stale closure — the handler was only re-registered on [onProgress] change)
   const vttContentRef = React.useRef<string | null>(null);
@@ -211,7 +281,7 @@ export default function PremiumVidLinkPlayer({
   // Doblaj & Multi-Language Audio States
   const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
   const [kurdishDub, setKurdishDub] = useState<any | null>(null);
-  const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub'>('sub');
+  const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting'>('sub');
   const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
   const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
   const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -1251,6 +1321,9 @@ export default function PremiumVidLinkPlayer({
           ref={iframeRef}
           src={overrideSrc || videoUrl}
           className="w-full h-full border-0"
+          style={{ 
+            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+          }}
           // NOTE: sandbox attribute intentionally omitted — VidLink Pro detects
           // sandboxed iframes and blocks playback with "Please Disable Sandbox".
           // Tauri's WKWebView security handles isolation at the process level.
@@ -1381,7 +1454,13 @@ export default function PremiumVidLinkPlayer({
                   onClick={() => setSubStudioTab('dub')}
                   className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj & Audio'}
+                  {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj'}
+                </button>
+                <button 
+                  onClick={() => setSubStudioTab('lighting')}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'lighting' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                >
+                  {(language === 'ku' || language === 'badini') ? 'ڕووناکی' : 'Lighting'}
                 </button>
               </div>
 
@@ -1568,7 +1647,7 @@ export default function PremiumVidLinkPlayer({
                 )}
               </div>
               </>
-              ) : (
+              ) : subStudioTab === 'dub' ? (
                 <div className="flex flex-col gap-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
@@ -1762,6 +1841,63 @@ export default function PremiumVidLinkPlayer({
                       );
                     })}
                   </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-5 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Sun size={12} className="text-yellow-500 animate-pulse" />
+                        {(language === 'ku' || language === 'badini') ? 'ڕووناکی فیلم' : 'Video Brightness'}
+                      </label>
+                      <span className="text-[10px] font-bold text-yellow-500">{Math.round(brightness * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" min="0.5" max="2.5" step="0.05"
+                      value={brightness}
+                      onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Sliders size={12} className="text-red-500" />
+                        {(language === 'ku' || language === 'badini') ? 'کۆنتراست (تۆخی)' : 'Video Contrast'}
+                      </label>
+                      <span className="text-[10px] font-bold text-red-500">{Math.round(contrast * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" min="0.5" max="2.0" step="0.05"
+                      value={contrast}
+                      onChange={(e) => handleContrastChange(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-red-600"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <Sparkles size={12} className="text-blue-500" />
+                        {(language === 'ku' || language === 'badini') ? 'تێربوونی ڕەنگ' : 'Video Saturation'}
+                      </label>
+                      <span className="text-[10px] font-bold text-blue-500">{Math.round(saturation * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" min="0.5" max="2.0" step="0.05"
+                      value={saturation}
+                      onChange={(e) => handleSaturationChange(Number(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleResetFilters}
+                    className="w-full mt-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all"
+                  >
+                    {(language === 'ku' || language === 'badini') ? 'ڕێکخستنەوە بۆ بنەڕەتی' : 'RESET TO DEFAULT'}
+                  </button>
                 </div>
               )}
 

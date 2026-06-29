@@ -244,4 +244,4 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   );
 };
 
-export default Row;
+export default React.memo(Row);
