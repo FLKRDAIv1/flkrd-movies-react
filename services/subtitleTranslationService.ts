@@ -50,30 +50,7 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
 async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
   let lastError: Error | null = null;
   
-  // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
-  const gasUrl = import.meta.env.VITE_GOOGLE_TRANSLATE_GAS_URL || "";
-  if (gasUrl) {
-    try {
-      const response = await fetch(gasUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8' // avoids preflight OPTIONS CORS blocks
-        },
-        body: JSON.stringify({ text, source, target })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.translation) {
-          return data.translation;
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[SubtitleTranslationService] Google Apps Script failed:`, err.message);
-      lastError = err;
-    }
-  }
-
-  // 2. Invoke the deployed Supabase Edge Function (highly secure, bypasses CORS & URL length limits natively)
+  // 1. Invoke the deployed Supabase Edge Function (highly secure backend call, hides GAS URL, bypasses CORS completely)
   try {
     const { data, error } = await supabase.functions.invoke('translate', {
       body: { text, source, target }
@@ -84,7 +61,27 @@ async function translateText(text: string, source: string = 'en', target: string
       return data.translation;
     }
   } catch (err: any) {
-    console.warn(`[SubtitleTranslationService] Supabase Edge Function failed, running browser fallbacks:`, err.message);
+    console.warn(`[SubtitleTranslationService] Supabase Edge Function failed, running Vercel fallback:`, err.message);
+    lastError = err;
+  }
+
+  // 2. Call Vercel serverless function /api/translate as fallback (also executes on backend)
+  try {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text, source, target })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.translation) {
+        return data.translation;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[SubtitleTranslationService] Vercel Serverless fallback failed, running browser fallbacks:`, err.message);
     lastError = err;
   }
 
