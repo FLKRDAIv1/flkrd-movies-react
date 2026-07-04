@@ -47,7 +47,7 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
   return cues;
 }
 
-async function translateText(text: string | string[], source: string = 'en', target: string = 'ckb'): Promise<string | string[]> {
+async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
   let lastError: Error | null = null;
   
   // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
@@ -88,66 +88,50 @@ async function translateText(text: string | string[], source: string = 'en', tar
     lastError = err;
   }
 
-  // 3. Browser Fallback: Try MyMemory API (Native CORS, only accepts single string)
-  if (typeof text === 'string') {
-    try {
-      const mymymoryTarget = target === 'ckb' ? 'ku' : target;
-      const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymymoryTarget}`;
-      const response = await fetch(myMemoryUrl);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.responseData && data.responseData.translatedText) {
-          return data.responseData.translatedText;
-        }
+  // 3. Browser Fallback: Try MyMemory API (Native CORS)
+  try {
+    const mymymoryTarget = target === 'ckb' ? 'ku' : target;
+    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymymoryTarget}`;
+    const response = await fetch(myMemoryUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.responseData && data.responseData.translatedText) {
+        return data.responseData.translatedText;
       }
-    } catch (err: any) {
-      console.warn(`[SubtitleTranslationService] MyMemory API fallback failed:`, err.message);
-      lastError = err;
     }
-  } else {
-    // If text is an array, translate them sequentially for the fallback
-    try {
-      const results: string[] = [];
-      for (const item of text) {
-        const res = await translateText(item, source, target) as string;
-        results.push(res);
-      }
-      return results;
-    } catch (err: any) {
-      lastError = err;
-    }
+  } catch (err: any) {
+    console.warn(`[SubtitleTranslationService] MyMemory API fallback failed:`, err.message);
+    lastError = err;
   }
 
-  // 4. Last resort: Try Lingva POST via CORS proxies (only accepts single string)
-  if (typeof text === 'string') {
-    for (const instance of LINGVA_INSTANCES) {
-      const targetUrl = `${instance}/api/v1/${source}/${target}`;
-      const proxies = [
-        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
-      ];
+  // 4. Last resort: Try Lingva POST via CORS proxies
+  for (const instance of LINGVA_INSTANCES) {
+    const targetUrl = `${instance}/api/v1/${source}/${target}`;
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+    ];
 
-      for (const proxyUrl of proxies) {
-        try {
-          const response = await fetch(proxyUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({ text })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data && data.translation) {
-              return data.translation;
-            }
+    for (const proxyUrl of proxies) {
+      try {
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ text })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.translation) {
+            return data.translation;
           }
-        } catch (err: any) {
-          console.warn(`[SubtitleTranslationService] Last resort proxy POST failed for ${instance}:`, err.message);
-          lastError = err;
         }
+      } catch (err: any) {
+        console.warn(`[SubtitleTranslationService] Last resort proxy POST failed for ${instance}:`, err.message);
+        lastError = err;
       }
     }
   }
@@ -163,21 +147,21 @@ export async function translateCuesToKurdish(
   onProgress?: (progress: number) => void
 ): Promise<SubtitleCue[]> {
   const translatedCues = [...cues];
-  const chunkSize = 25; // Large chunk size is safe since we send clean JSON arrays!
+  const chunkSize = 20; // Safe and fast chunk size for line translation
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     const chunk = cues.slice(i, i + chunkSize);
-    const chunkTexts = chunk.map(c => c.text);
+    // Replace internal newlines in each cue text with a slash to avoid breaking translation separators
+    const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
+    
+    // Join using newline "\n" as separator
+    const combinedText = chunkTexts.join('\n');
     
     let translatedTexts: string[] = [];
     try {
-      const translation = await translateText(chunkTexts);
-      if (Array.isArray(translation)) {
-        translatedTexts = translation;
-      } else if (typeof translation === 'string') {
-        // If the fallback returned a single newline-separated block
-        translatedTexts = translation.split('\n');
-      }
+      const translation = await translateText(combinedText);
+      // Split by newline
+      translatedTexts = translation.split('\n');
       
       if (translatedTexts.length !== chunkTexts.length) {
         throw new Error(`Line count mismatch: expected ${chunkTexts.length}, got ${translatedTexts.length}.`);
@@ -188,7 +172,7 @@ export async function translateCuesToKurdish(
       translatedTexts = [];
       for (const text of chunkTexts) {
         try {
-          const singleTranslation = await translateText(text) as string;
+          const singleTranslation = await translateText(text);
           translatedTexts.push(singleTranslation.trim());
         } catch (e) {
           translatedTexts.push(text); // Fallback to original
@@ -197,9 +181,10 @@ export async function translateCuesToKurdish(
       }
     }
 
-    // Apply translations
+    // Apply translations and restore internal newlines
     for (let j = 0; j < chunk.length; j++) {
-      translatedCues[i + j].text = translatedTexts[j] || chunk[j].text;
+      const translatedText = translatedTexts[j] || chunk[j].text;
+      translatedCues[i + j].text = translatedText.replace(/\s*\/\s*/g, '\n');
     }
 
     if (onProgress) {
