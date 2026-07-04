@@ -3,6 +3,7 @@ import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activi
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
+import SubtitleManagerPanel from './SubtitleManagerPanel';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
@@ -195,6 +196,13 @@ export default function PremiumVidLinkPlayer({
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [subSearchQuery, setSubSearchQuery] = useState('');
   const [currentSubId, setCurrentSubId] = useState<number | null>(null);
+  const [hasSearchedCloud, setHasSearchedCloud] = useState(false);
+
+  useEffect(() => {
+    setHasSearchedCloud(false);
+    setAvailableSubs([]);
+  }, [imdbId, tmdbId, season, episode]);
+
   const [resolvedTmdbId, setResolvedTmdbId] = useState<string | null>(null);
   const [isResolvingId, setIsResolvingId] = useState(true);
   // Keep ref in sync with state
@@ -354,6 +362,37 @@ export default function PremiumVidLinkPlayer({
 
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
 
+  // Resume subtitle translation on reload if interrupted
+  useEffect(() => {
+    const cacheStr = localStorage.getItem('flkrd_translating_sub_cache');
+    if (!cacheStr) return;
+
+    try {
+      const cache = JSON.parse(cacheStr);
+      const targetId = resolvedTmdbId || tmdbId || imdbId;
+      
+      if (
+        cache &&
+        String(cache.targetId) === String(targetId) &&
+        Number(cache.season) === Number(season || 0) &&
+        Number(cache.episode) === Number(episode || 0)
+      ) {
+        // Clear immediately to prevent infinite loop on failure
+        localStorage.removeItem('flkrd_translating_sub_cache');
+        
+        // Wait a small delay for state and network to stabilize
+        const timer = setTimeout(() => {
+          console.log("[VIP-PLAYER] Resuming translation for:", cache.sub.attributes?.display_name);
+          handleStartTranslation(cache.sub);
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      }
+    } catch (e) {
+      console.error("[VIP-PLAYER] Resuming translation error:", e);
+    }
+  }, [resolvedTmdbId, tmdbId, imdbId, season, episode]);
+
   // Fetch translations dynamically from TMDB
   useEffect(() => {
     const fetchAllTranslations = async () => {
@@ -435,7 +474,7 @@ export default function PremiumVidLinkPlayer({
         if (extension === 'srt') {
           fileContent = 'WEBVTT\n\n' + fileContent
             .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-            .replace(/^\d+$/gm, '');
+            .replace(/^\d+\r?$/gm, '');
         }
 
         // Determine season and episode if content is TV
@@ -667,19 +706,20 @@ export default function PremiumVidLinkPlayer({
   };
 
   // Subtitle Search Logic
-  const handleSearchAllSubs = useCallback(async () => {
-    if (availableSubs.length > 0) return;
+  const handleSearchAllSubs = useCallback(async (force = false) => {
+    if (hasSearchedCloud && !force) return;
     setLoadingSubs(true);
     try {
       // Use IMDB ID if available, it's MUCH more reliable for OpenSubtitles
       const results = await subtitleService.searchSubtitles(imdbId || tmdbId, type);
       setAvailableSubsWithVirtual(results || []);
+      setHasSearchedCloud(true);
     } catch (e) {
       console.warn("[VIP-PLAYER] Sub Search Error:", e);
     } finally {
       setLoadingSubs(false);
     }
-  }, [tmdbId, type, availableSubs.length, setAvailableSubsWithVirtual]);
+  }, [tmdbId, imdbId, type, hasSearchedCloud, setAvailableSubsWithVirtual]);
 
   const handleSelectSub = async (sub: any) => {
     setLoadingSubs(true);
@@ -719,8 +759,18 @@ export default function PremiumVidLinkPlayer({
     setTranslatingName(sub.attributes?.display_name || 'Selected Track');
     setTranslationProgress(0);
     
+    // Save to cache for page refresh resumption
+    const targetId = resolvedTmdbId || tmdbId || imdbId;
+    if (targetId) {
+      localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
+        sub,
+        targetId,
+        season: season || 0,
+        episode: episode || 0
+      }));
+    }
+    
     try {
-      const targetId = resolvedTmdbId || tmdbId || imdbId;
       if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
       
       const result = await translateAndSavePipeline(
@@ -764,6 +814,7 @@ export default function PremiumVidLinkPlayer({
       setIsTranslating(false);
       setTranslationProgress(0);
       setTranslatingName('');
+      localStorage.removeItem('flkrd_translating_sub_cache');
     }
   };
 
@@ -1064,14 +1115,36 @@ export default function PremiumVidLinkPlayer({
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const isFull = !!document.fullscreenElement;
+      const isFull = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
       setIsFullscreen(isFull);
 
       // Intercept iframe fullscreen and redirect to container
-      if (document.fullscreenElement === iframeRef.current && containerRef.current) {
+      const activeFullscreenElement = 
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+
+      if (activeFullscreenElement === iframeRef.current && containerRef.current) {
         console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
-        document.exitFullscreen().then(() => {
-          containerRef.current?.requestFullscreen().catch(err => {
+        
+        const exit = document.exitFullscreen ||
+                     (document as any).webkitExitFullscreen ||
+                     (document as any).mozCancelFullScreen ||
+                     (document as any).msExitFullscreen;
+                     
+        const req = containerRef.current.requestFullscreen ||
+                    (containerRef.current as any).webkitRequestFullscreen ||
+                    (containerRef.current as any).mozRequestFullScreen ||
+                    (containerRef.current as any).msRequestFullscreen;
+
+        exit.call(document).then(() => {
+          req.call(containerRef.current).catch(err => {
             console.error("[PLAYER] Failed to redirect fullscreen:", err);
           });
         });
@@ -1081,7 +1154,13 @@ export default function PremiumVidLinkPlayer({
       // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
       if (!isFull && startFullscreen && onClose) {
         setTimeout(() => {
-          if (!document.fullscreenElement) {
+          const checkExit = !(
+            document.fullscreenElement ||
+            (document as any).webkitFullscreenElement ||
+            (document as any).mozFullScreenElement ||
+            (document as any).msFullscreenElement
+          );
+          if (checkExit) {
             console.log("[PLAYER] Exited native fullscreen. Closing player...");
             onClose();
           }
@@ -1102,18 +1181,7 @@ export default function PremiumVidLinkPlayer({
     };
   }, [startFullscreen, onClose]);
 
-  useEffect(() => {
-    if (!isSimulatedFullscreen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsSimulatedFullscreen(false);
-        setIsFullscreen(false);
-        if (onClose) onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isSimulatedFullscreen, onClose]);
+
 
   // Re-filter cues whenever subtitleOffset changes
   useEffect(() => {
@@ -1226,7 +1294,7 @@ export default function PremiumVidLinkPlayer({
     }
   }, [peerSyncTrigger]);
 
-  const toggleFullscreen = () => {
+    const toggleFullscreen = () => {
     if (toggleFullscreenProp) {
       toggleFullscreenProp();
       return;
@@ -1242,10 +1310,12 @@ export default function PremiumVidLinkPlayer({
         return;
       }
 
-      const hasNativeFullscreen = !!containerRef.current.requestFullscreen || 
-                                  !!(containerRef.current as any).webkitRequestFullscreen ||
-                                  !!(containerRef.current as any).mozRequestFullScreen ||
-                                  !!(containerRef.current as any).msRequestFullscreen;
+      const hasNativeFullscreen = !!(
+        containerRef.current.requestFullscreen ||
+        (containerRef.current as any).webkitRequestFullscreen ||
+        (containerRef.current as any).mozRequestFullScreen ||
+        (containerRef.current as any).msRequestFullscreen
+      );
 
       if (!hasNativeFullscreen) {
         setIsSimulatedFullscreen(prev => !prev);
@@ -1253,17 +1323,123 @@ export default function PremiumVidLinkPlayer({
         return;
       }
 
-      if (!document.fullscreenElement) {
-        containerRef.current?.requestFullscreen().catch(err => {
+      const isFull = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      if (!isFull) {
+        const req = containerRef.current.requestFullscreen ||
+                    (containerRef.current as any).webkitRequestFullscreen ||
+                    (containerRef.current as any).mozRequestFullScreen ||
+                    (containerRef.current as any).msRequestFullscreen;
+        
+        req.call(containerRef.current).catch((err: any) => {
           console.error(`Error attempting to enable full-screen mode: ${err.message}`);
           setIsSimulatedFullscreen(true);
           setIsFullscreen(true);
         });
       } else {
-        document.exitFullscreen();
+        const exit = document.exitFullscreen ||
+                     (document as any).webkitExitFullscreen ||
+                     (document as any).mozCancelFullScreen ||
+                     (document as any).msExitFullscreen;
+        exit.call(document);
       }
     });
   };
+
+  useEffect(() => {
+    const handlePlaybackKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      
+      // Escape -> Exit simulated fullscreen or close settings
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (showSubSettings) {
+          setShowSubSettings(false);
+        } else if (isSimulatedFullscreen) {
+          setIsSimulatedFullscreen(false);
+          setIsFullscreen(false);
+          if (onClose) onClose();
+        }
+      }
+
+      // Space / K -> Play/Pause
+      else if (e.key === ' ' || key === 'k') {
+        e.preventDefault();
+        if (isPlaying) {
+          pauseVideo();
+        } else {
+          playVideo();
+        }
+      }
+      
+      // ArrowLeft / J -> Seek backward 10s
+      else if (e.key === 'ArrowLeft' || key === 'j') {
+        e.preventDefault();
+        const targetTime = Math.max(0, lastReceivedTimeRef.current - 10);
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          win.postMessage(JSON.stringify({ event: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', version: '1.4.0', event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ command: 'seek', value: targetTime }), '*');
+        }
+        lastReceivedTimeRef.current = targetTime;
+      }
+      
+      // ArrowRight / L -> Seek forward 10s
+      else if (e.key === 'ArrowRight' || key === 'l') {
+        e.preventDefault();
+        const targetTime = lastReceivedTimeRef.current + 10;
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          win.postMessage(JSON.stringify({ event: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', version: '1.4.0', event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ event: 'command', command: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ command: 'seek', value: targetTime }), '*');
+        }
+        lastReceivedTimeRef.current = targetTime;
+      }
+
+      // F -> Toggle Fullscreen
+      else if (key === 'f') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+
+      // C -> Toggle Subtitles Overlay
+      else if (key === 'c') {
+        e.preventDefault();
+        setShowSubtitles(prev => !prev);
+      }
+
+      // S -> Toggle Settings Panel/Sidebar
+      else if (key === 's') {
+        e.preventDefault();
+        setShowSubSettings(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handlePlaybackKeyDown);
+    return () => window.removeEventListener('keydown', handlePlaybackKeyDown);
+  }, [isPlaying, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
 
   useEffect(() => {
     if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
@@ -1483,333 +1659,48 @@ export default function PremiumVidLinkPlayer({
         {/* SUBTITLE STUDIO SIDEBAR */}
         <AnimatePresence>
           {showSubSettings && (
-            <div className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none">
-              {/* Glassmorphic Backdrop overlay */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setShowSubSettings(false)}
-                className="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
-              />
-              
-              {/* Main Drawer Panel */}
-              <motion.div 
-                initial={{ y: '100%', opacity: 0.5 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: '100%', opacity: 0.5 }}
-                transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-                className="relative pointer-events-auto w-full md:w-[400px] h-[75vh] md:h-[80vh] bg-[#0c0c0e]/95 backdrop-blur-3xl border-t md:border border-white/10 rounded-t-[32px] md:rounded-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.5),0_32px_64px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
-                style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}
-              >
-                {/* Mobile Swipe Handle Indicator */}
-                <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto my-3 md:hidden shrink-0" />
-                
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-white/5 px-6 pb-4 pt-2 md:pt-4 shrink-0">
-                  <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase italic">
-                    <Subtitles size={16} className="text-red-600 animate-pulse" />
-                    {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
-                  </h3>
-                  <button onClick={() => setShowSubSettings(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth">
-
-              {/* Sleek Segmented Control Tab Bar */}
-              <div className="flex bg-[#141414]/90 p-1 rounded-2xl border border-white/5 relative z-10 shrink-0">
-                <button 
-                  onClick={() => setSubStudioTab('sub')}
-                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                    subStudioTab === 'sub' 
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  <Subtitles size={12} />
-                  {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
-                </button>
-                <button 
-                  onClick={() => setSubStudioTab('dub')}
-                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                    subStudioTab === 'dub' 
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  <Mic2 size={12} />
-                  {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj'}
-                </button>
-                <button 
-                  onClick={() => setSubStudioTab('lighting')}
-                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                    subStudioTab === 'lighting' 
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                      : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
-                >
-                  <Sliders size={12} />
-                  {(language === 'ku' || language === 'badini') ? 'ڕووناکی' : 'Lighting'}
-                </button>
-              </div>
-
-              {subStudioTab === 'sub' ? (
-                <>
-                  <div className="space-y-6">
-                    {isAdmin && (
-                      <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
-                            <ShieldCheck size={12} /> ADMIN SYSTEM
-                          </span>
-                          <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">CC Manager</span>
-                        </div>
-                        
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide leading-relaxed">
-                          {(language === 'ku' || language === 'badini') 
-                            ? 'فایلی ژێرنووسی تایبەت (.vtt یان .srt) ئاپلۆد بکە بۆ ئەم بابەتە' 
-                            : 'Upload a custom subtitle file (.vtt or .srt) for this movie/show.'}
-                        </p>
-
-                        <div className="flex flex-col gap-2">
-                          <input 
-                            type="file" 
-                            accept=".vtt,.srt" 
-                            id="admin-sub-upload-input-premium"
-                            multiple
-                            className="hidden" 
-                            onChange={handleAdminSubUpload}
-                          />
-                          <button
-                            onClick={() => document.getElementById('admin-sub-upload-input-premium')?.click()}
-                            disabled={isUploadingSub}
-                            className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50"
-                          >
-                            <Download size={12} className="rotate-180" />
-                            {isUploadingSub 
-                              ? ((language === 'ku' || language === 'badini') ? 'ئاپلۆد دەکرێت...' : 'UPLOADING...') 
-                              : ((language === 'ku' || language === 'badini') ? 'هەڵبژاردنی ژێرنووس' : 'UPLOAD CC FILE')}
-                          </button>
-                          
-                          {uploadStatus && (
-                            <span className={`text-[8px] font-black uppercase tracking-widest text-center mt-1 ${
-                              uploadStatus.type === 'success' ? 'text-green-500' : 'text-red-500'
-                            }`}>
-                              {uploadStatus.message}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'قەبارەی نووسین' : 'Font Size'}</label>
-                    <span className="text-[10px] font-bold text-red-500">{subFontSize}px</span>
-                  </div>
-                  <input type="range" min="16" max="42" value={subFontSize} onChange={(e) => setSubFontSize(Number(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none accent-red-600" />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'ڕەنگی نووسین' : 'Text Color'}</label>
-                  <div className="flex gap-2">
-                    {['#ffffff', '#ffff00', '#00ffff', '#00ff00', '#ff00ff', '#ff0000'].map(color => (
-                      <button 
-                        key={color} 
-                        onClick={() => setSubColor(color)}
-                        className={`w-6 h-6 rounded-full border-2 transition-transform ${subColor === color ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-50'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}</label>
-                    <span className="text-[10px] font-bold text-green-500">{Math.round(subBgOpacity * 100)}%</span>
-                  </div>
-                  <input type="range" min="0" max="1" step="0.1" value={subBgOpacity} onChange={(e) => setSubBgOpacity(Number(e.target.value))} className="w-full h-1 bg-white/10 rounded-full appearance-none accent-green-600" />
-                  
-                  <div className="flex items-center justify-between mt-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'کاریگەری شووشە' : 'Glassmorphism'}</label>
-                    <button onClick={() => setSubBlur(!subBlur)} className={`w-8 h-4 rounded-full relative transition-colors ${subBlur ? 'bg-red-600' : 'bg-white/10'}`}>
-                      <motion.div animate={{ x: subBlur ? 18 : 2 }} className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm" />
-                    </button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between mt-2 border-t border-white/5 pt-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'پێشاندانی پشتەوە' : 'Show Background'}</label>
-                    <button onClick={() => setShowSubBackground(!showSubBackground)} className={`w-8 h-4 rounded-full relative transition-colors ${showSubBackground ? 'bg-red-600' : 'bg-white/10'}`}>
-                      <motion.div animate={{ x: showSubBackground ? 18 : 2 }} className="absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Sync Control */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'خێرایی ژێرنووس (چرکە)' : 'Sync Offset'}</label>
-                    <span className="text-[10px] font-bold text-blue-500">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset / 1000}s</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => setSubtitleOffset(prev => prev - 500)} className="flex-1 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold">-0.5s</button>
-                    <button onClick={() => setSubtitleOffset(prev => prev + 500)} className="flex-1 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-bold">+0.5s</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Search Box */}
-              <div className="relative mt-2">
-                <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
-                <input 
-                  type="text"
-                  placeholder={(language === 'ku' || language === 'badini') ? 'گەڕان...' : 'Search language...'}
-                  value={subSearchQuery}
-                  onChange={(e) => setSubSearchQuery(e.target.value)}
-                  className="w-full bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-xs text-white focus:border-red-600/50 outline-none transition-all font-bold"
-                />
-              </div>
-
-              {/* Subtitle List */}
-              <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
-                {isTranslating ? (
-                  <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-red-600/20">
-                    <div className="relative">
-                      <div className="w-12 h-12 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
-                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-black text-red-500">
-                        {translationProgress}%
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center gap-1.5 text-center px-4">
-                      <span className="text-[10px] font-black text-white animate-pulse uppercase tracking-[0.2em]">
-                        {(language === 'ku' || language === 'badini') ? 'وەرگێڕانی ژێرنووس...' : 'TRANSLATING SUBTITLE...'}
-                      </span>
-                      <span className="text-[8px] font-bold text-gray-400 truncate max-w-[200px]">
-                        {translatingName}
-                      </span>
-                    </div>
-                  </div>
-                ) : loadingSubs ? (
-                  <div className="py-12 flex flex-col items-center gap-4 opacity-50">
-                    <Activity size={24} className="text-red-600 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Cloud Subs...</span>
-                  </div>
-                ) : (
-                  availableSubs.length > 0 ? (
-                    availableSubs
-                      .filter(sub => 
-                        (sub?.attributes?.display_name || '').toLowerCase().includes(subSearchQuery.toLowerCase()) ||
-                        (sub?.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())
-                      )
-                      .sort((a, b) => {
-                        const aLang = (a?.attributes?.language || '').toLowerCase();
-                        const bLang = (b?.attributes?.language || '').toLowerCase();
-                        const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur';
-                        const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur';
-                        if (aIsKu && !bIsKu) return -1;
-                        if (!aIsKu && bIsKu) return 1;
-                        return 0;
-                      })
-                      .map(sub => {
-                        const isKurdish = sub?.attributes?.language === 'ku' || sub?.attributes?.language === 'badini' || sub?.attributes?.language === 'ckb' || sub?.attributes?.language === 'kur';
-                        return (
-                          <div 
-                            key={sub.id}
-                            onClick={() => handleSelectSub(sub)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                handleSelectSub(sub);
-                              }
-                            }}
-                            className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group cursor-pointer ${
-                              sub.id === currentSubId 
-                                ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 text-white shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/30' 
-                                : isKurdish
-                                  ? 'bg-gradient-to-r from-red-600/5 to-transparent border-red-500/20 text-zinc-200 hover:border-red-500/40 hover:from-red-600/10 hover:text-white'
-                                  : 'bg-gradient-to-r from-white/[0.01] to-transparent border-white/5 text-zinc-400 hover:text-white hover:border-white/15 hover:from-white/[0.03]'
-                            }`}
-                          >
-                            {/* Glowing Background Overlay for Selected Track */}
-                            {sub.id === currentSubId && (
-                              <div className="absolute inset-0 bg-red-600/5 blur-[20px] rounded-full pointer-events-none" />
-                            )}
-
-                            {/* Sleek Language Flag/Icon Container */}
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border text-base shadow-sm transition-all duration-300 ${
-                              sub.id === currentSubId
-                                ? 'bg-red-500/20 border-red-500/40'
-                                : isKurdish
-                                  ? 'bg-red-600/10 border-red-500/20'
-                                  : 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20'
-                            }`}>
-                              <span className="scale-110 select-none">
-                                {getLanguageFlag(sub?.attributes?.language)}
-                              </span>
-                            </div>
-
-                            <div className="flex flex-col min-w-0 flex-1 relative z-10 text-left">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className={`text-[8px] font-black uppercase tracking-widest transition-colors duration-300 ${
-                                  sub.id === currentSubId 
-                                    ? 'text-red-400' 
-                                    : isKurdish 
-                                      ? 'text-red-500' 
-                                      : 'text-zinc-500 group-hover:text-zinc-400'
-                                }`}>
-                                  {sub?.attributes?.language || 'UNKNOWN'}
-                                </span>
-                                {isKurdish && (
-                                  <span className="text-[6px] bg-red-600 text-white px-1 py-0.5 rounded font-black tracking-widest uppercase flex items-center gap-0.5 shrink-0 shadow-sm shadow-red-600/25">
-                                    <Sparkles size={6} /> Verified
-                                  </span>
-                                )}
-                              </div>
-                              <span className={`text-[11px] font-bold truncate transition-colors duration-300 ${
-                                sub.id === currentSubId ? 'text-white' : 'text-zinc-300 group-hover:text-white'
-                              }`}>
-                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Subtitle Track'}
-                              </span>
-                            </div>
-
-                            <div className="ml-auto flex items-center gap-2 relative z-20 shrink-0">
-                              {!isKurdish && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStartTranslation(sub);
-                                  }}
-                                  title="Translate to Kurdish (Sorani)"
-                                  className="w-7 h-7 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-500/20 hover:border-red-500 hover:shadow-md hover:shadow-red-600/20 active:scale-90"
-                                >
-                                  <Languages size={11} />
-                                </button>
-                              )}
-                              <ArrowRight size={12} className={`transition-all duration-300 ${
-                                sub.id === currentSubId
-                                  ? 'text-red-500 scale-100 opacity-100'
-                                  : 'text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
-                              }`} />
-                            </div>
-                          </div>
-                        );
-                      })
-                  ) : (
-                    <div className="py-12 flex flex-col items-center gap-3 bg-white/[0.02] rounded-3xl border border-dashed border-white/10 opacity-50">
-                      <Search size={20} className="text-gray-600" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-center px-4">
-                        {(language === 'ku' || language === 'badini') ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'No cloud subtitles found'}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-              </>
-              ) : subStudioTab === 'dub' ? (
+            <SubtitleManagerPanel
+              isOpen={showSubSettings}
+              onClose={() => setShowSubSettings(false)}
+              activeTab={subStudioTab}
+              setActiveTab={setSubStudioTab}
+              isAdmin={isAdmin}
+              isUploadingSub={isUploadingSub}
+              uploadStatus={uploadStatus}
+              onFileChange={handleAdminSubUpload}
+              subtitleSize={subFontSize}
+              setSubtitleSize={setSubFontSize}
+              subtitleColor={subColor}
+              setSubtitleColor={setSubColor}
+              subBgOpacity={subBgOpacity}
+              setSubBgOpacity={setSubBgOpacity}
+              subBlur={subBlur}
+              setSubBlur={setSubBlur}
+              showSubBackground={showSubBackground}
+              setShowSubBackground={setShowSubBackground}
+              brightness={brightness}
+              setBrightness={handleBrightnessChange}
+              contrast={contrast}
+              setContrast={handleContrastChange}
+              saturation={saturation}
+              setSaturation={handleSaturationChange}
+              onResetFilters={handleResetFilters}
+              subtitleOffset={subtitleOffset}
+              setSubtitleOffset={setSubtitleOffset}
+              subSearchQuery={subSearchQuery}
+              setSubSearchQuery={setSubSearchQuery}
+              availableSubs={availableSubs}
+              currentSubId={currentSubId}
+              isSearchingSubs={loadingSubs}
+              onSelectSub={handleSelectSub}
+              onStartTranslation={handleStartTranslation}
+              onRetrySearch={handleSearchAllSubs}
+              getLanguageFlag={getLanguageFlag}
+              isTranslating={isTranslating}
+              translationProgress={translationProgress}
+              translatingName={translatingName}
+              language={language}
+              dubContent={
                 <div className="flex flex-col gap-4">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                     {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
@@ -1847,6 +1738,7 @@ export default function PremiumVidLinkPlayer({
 
                       {kurdishDub ? (
                         <button 
+                          type="button"
                           onClick={() => {
                             const getRashabaId = (url: string) => {
                               if (!url) return "mKkhrFhjQr3CKwz"; 
@@ -1889,6 +1781,7 @@ export default function PremiumVidLinkPlayer({
 
                     {/* 2. Original English Feed */}
                     <button 
+                      type="button"
                       onClick={() => {
                         setOverrideSrc(null);
                         setActiveAudioTrack('en');
@@ -1927,10 +1820,9 @@ export default function PremiumVidLinkPlayer({
                       return (
                         <button 
                           key={lang}
+                          type="button"
                           onClick={() => {
                             let activeId = imdbId || tmdbId || '';
-                            const isImdb = activeId.startsWith('tt');
-                            const tmdbParam = isImdb ? '' : '&tmdb=1';
                             
                             // Custom Dubbed Title Suffixes
                             let baseTitle = title || '';
@@ -2004,68 +1896,8 @@ export default function PremiumVidLinkPlayer({
                     })}
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-5 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Sun size={12} className="text-yellow-500 animate-pulse" />
-                        {(language === 'ku' || language === 'badini') ? 'ڕووناکی فیلم' : 'Video Brightness'}
-                      </label>
-                      <span className="text-[10px] font-bold text-yellow-500">{Math.round(brightness * 100)}%</span>
-                    </div>
-                    <input 
-                      type="range" min="0.5" max="2.5" step="0.05"
-                      value={brightness}
-                      onChange={(e) => handleBrightnessChange(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Sliders size={12} className="text-red-500" />
-                        {(language === 'ku' || language === 'badini') ? 'کۆنتراست (تۆخی)' : 'Video Contrast'}
-                      </label>
-                      <span className="text-[10px] font-bold text-red-500">{Math.round(contrast * 100)}%</span>
-                    </div>
-                    <input 
-                      type="range" min="0.5" max="2.0" step="0.05"
-                      value={contrast}
-                      onChange={(e) => handleContrastChange(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-red-600"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                        <Sparkles size={12} className="text-blue-500" />
-                        {(language === 'ku' || language === 'badini') ? 'تێربوونی ڕەنگ' : 'Video Saturation'}
-                      </label>
-                      <span className="text-[10px] font-bold text-blue-500">{Math.round(saturation * 100)}%</span>
-                    </div>
-                    <input 
-                      type="range" min="0.5" max="2.0" step="0.05"
-                      value={saturation}
-                      onChange={(e) => handleSaturationChange(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
-                    />
-                  </div>
-
-                  <button 
-                    onClick={handleResetFilters}
-                    className="w-full mt-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all"
-                  >
-                    {(language === 'ku' || language === 'badini') ? 'ڕێکخستنەوە بۆ بنەڕەتی' : 'RESET TO DEFAULT'}
-                  </button>
-                </div>
-              )}
-
-                </div>
-              </motion.div>
-            </div>
+              }
+            />
           )}
         </AnimatePresence>
 
@@ -2311,7 +2143,7 @@ export default function PremiumVidLinkPlayer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md z-[400] flex items-center justify-center p-4"
+            className="absolute inset-0 bg-black/40 backdrop-blur-xl z-[400] flex items-center justify-center p-4"
             onClick={() => {
               setEditingCue(null);
               playVideo();
@@ -2321,7 +2153,7 @@ export default function PremiumVidLinkPlayer({
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-xl bg-[#0e0e0e]/95 border border-white/10 rounded-3xl p-5 shadow-2xl relative"
+              className="w-full max-w-xl bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-3xl rounded-3xl p-5 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] relative shadow-red-500/5"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -2641,8 +2473,9 @@ function parseVttCues(vttText: string) {
       const [startStr, endStr] = timeLine.split('-->').map(s => s.trim());
       const start = parseTime(startStr);
       const end = parseTime(endStr);
-      const rawText = lines.slice(lines.indexOf(timeLine) + 1).join('\n');
-      const text = rawText
+      const rawTextLines = lines.slice(lines.indexOf(timeLine) + 1);
+      const filteredLines = rawTextLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
+      const text = filteredLines.join('\n')
         .replace(/<[^>]*>/g, '')
         .replace(/\{[^}]+\}/g, '')
         .trim();

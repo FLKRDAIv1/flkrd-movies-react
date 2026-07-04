@@ -334,7 +334,8 @@ export const subtitleService = {
     async downloadSubtitle(sub: SubtitleResult) {
         try {
             let link = sub.attributes.url;
-            if (sub.attributes.file_id !== 0) {
+            // Only resolve file_id through backend proxy if a direct URL is not present
+            if ((!link || link.trim() === '') && sub.attributes.file_id !== 0) {
                 link = await this.getDownloadLink(sub.attributes.file_id);
             }
             
@@ -440,7 +441,7 @@ export const subtitleService = {
                 if (!processedText.startsWith('WEBVTT')) {
                     processedText = 'WEBVTT\n\n' + processedText
                         .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                        .replace(/^\d+$/gm, '');
+                        .replace(/^\d+\r?$/gm, '');
                 }
 
                 if (offset !== 0) {
@@ -466,7 +467,7 @@ export const subtitleService = {
             if (!processedText.startsWith('WEBVTT')) {
                 processedText = 'WEBVTT\n\n' + processedText
                     .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                    .replace(/^\d+$/gm, '');
+                    .replace(/^\d+\r?$/gm, '');
             }
 
             if (offset !== 0) {

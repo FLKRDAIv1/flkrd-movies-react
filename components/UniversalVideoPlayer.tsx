@@ -6,6 +6,7 @@ import AdGuardOnboarding from './AdGuardOnboarding';
 import { AnimatePresence, motion } from 'framer-motion';
 import { subtitleService, SubtitleResult } from '../services/subtitleService';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
+import SubtitleManagerPanel from './SubtitleManagerPanel';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb, fetchData } from '../services/tmdbService';
@@ -173,6 +174,18 @@ const cardVariants = {
 };
 
 
+function cleanAndFormatVtt(text: string): string {
+    let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    // Remove lines that consist solely of digits (cue index lines) or contain timestamps / arrow lines
+    cleaned = cleaned.split('\n').filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->')).join('\n');
+    
+    if (!cleaned.trim().startsWith('WEBVTT')) {
+        cleaned = 'WEBVTT\n\n' + cleaned.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
+    }
+    return cleaned;
+}
+
 const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     src,
     onLoad,
@@ -239,6 +252,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffset] = useState(0);
     const [showSubSettings, setShowSubSettings] = useState(false);
+    const [showSubtitles, setShowSubtitles] = useState(true);
     const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
     const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
     const [availableSubs, setAvailableSubs] = useState<SubtitleResult[]>([]);
@@ -472,7 +486,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (extension === 'srt') {
                     fileContent = 'WEBVTT\n\n' + fileContent
                         .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                        .replace(/^\d+$/gm, '');
+                        .replace(/^\d+\r?$/gm, '');
                 }
 
                 // Determine season and episode if content is TV
@@ -766,7 +780,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (text && active) {
                     let processedText = text;
                     if (!processedText.startsWith('WEBVTT')) {
-                        processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
+                        processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+\r?$/gm, '');
                     }
                     const cues = subtitleService.parseVtt(processedText);
                     const hasKurdish = /[\u0600-\u06FF]/.test(processedText);
@@ -920,10 +934,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         try {
                             const text = await subtitleService.downloadSubtitle(customSub);
                             if (text) {
-                                let processedText = text;
-                                if (!processedText.startsWith('WEBVTT')) {
-                                    processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
-                                }
+                                const processedText = cleanAndFormatVtt(text);
                                 const blob = new Blob([processedText], { type: 'text/vtt' });
                                 setLocalSubtitleUrl(URL.createObjectURL(blob));
                                 setKurdishSub(customSub);
@@ -949,10 +960,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             try {
                                 const text = await subtitleService.downloadSubtitle(foundKu);
                                 if (text) {
-                                    let processedText = text;
-                                    if (!processedText.startsWith('WEBVTT')) {
-                                        processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
-                                    }
+                                const processedText = cleanAndFormatVtt(text);
                                     const blob = new Blob([processedText], { type: 'text/vtt' });
                                     setLocalSubtitleUrl(URL.createObjectURL(blob));
                                     setKuCCNotificationVisible(false); // Applied automatically, so no need for prompt banner
@@ -1107,10 +1115,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         try {
             const text = await subtitleService.downloadSubtitle(kurdishSub);
             if (text) {
-                let processedText = text;
-                if (!processedText.startsWith('WEBVTT')) {
-                    processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
-                }
+                const processedText = cleanAndFormatVtt(text);
                 const blob = new Blob([processedText], { type: 'text/vtt' });
                 const blobUrl = URL.createObjectURL(blob);
                 setLocalSubtitleUrl(blobUrl);
@@ -1123,46 +1128,62 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     };
 
-    const toggleFullscreen = () => {
-        if (toggleFullscreenProp) {
-            toggleFullscreenProp();
-            return;
-        }
-        if (!containerRef.current) return;
-        
-        // Handle Tauri Fullscreen
-        import('../utils/tauriUtils').then(({ isTauri }) => {
-            if (isTauri()) {
-                import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-                    const win = getCurrentWindow();
-                    win.isFullscreen().then(f => win.setFullscreen(!f));
-                });
-                return;
-            }
-
-            const hasNativeFullscreen = !!containerRef.current.requestFullscreen || 
-                                        !!(containerRef.current as any).webkitRequestFullscreen ||
-                                        !!(containerRef.current as any).mozRequestFullScreen ||
-                                        !!(containerRef.current as any).msRequestFullscreen;
-
-            if (!hasNativeFullscreen) {
-                setIsSimulatedFullscreen(prev => !prev);
-                setIsFullscreen(prev => !prev);
-                return;
-            }
-
-            // Handle Browser Fullscreen
-            if (!document.fullscreenElement) {
-                containerRef.current?.requestFullscreen().catch(err => {
-                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-                    setIsSimulatedFullscreen(true);
-                    setIsFullscreen(true);
-                });
-            } else {
-                document.exitFullscreen();
-            }
+      const toggleFullscreen = () => {
+    if (toggleFullscreenProp) {
+      toggleFullscreenProp();
+      return;
+    }
+    if (!containerRef.current) return;
+    
+    import('../utils/tauriUtils').then(({ isTauri }) => {
+      if (isTauri()) {
+        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+          const win = getCurrentWindow();
+          win.isFullscreen().then(f => win.setFullscreen(!f));
         });
-    };
+        return;
+      }
+
+      const hasNativeFullscreen = !!(
+        containerRef.current.requestFullscreen ||
+        (containerRef.current as any).webkitRequestFullscreen ||
+        (containerRef.current as any).mozRequestFullScreen ||
+        (containerRef.current as any).msRequestFullscreen
+      );
+
+      if (!hasNativeFullscreen) {
+        setIsSimulatedFullscreen(prev => !prev);
+        setIsFullscreen(prev => !prev);
+        return;
+      }
+
+      const isFull = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      if (!isFull) {
+        const req = containerRef.current.requestFullscreen ||
+                    (containerRef.current as any).webkitRequestFullscreen ||
+                    (containerRef.current as any).mozRequestFullScreen ||
+                    (containerRef.current as any).msRequestFullscreen;
+        
+        req.call(containerRef.current).catch((err: any) => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+          setIsSimulatedFullscreen(true);
+          setIsFullscreen(true);
+        });
+      } else {
+        const exit = document.exitFullscreen ||
+                     (document as any).webkitExitFullscreen ||
+                     (document as any).mozCancelFullScreen ||
+                     (document as any).msExitFullscreen;
+        exit.call(document);
+      }
+    });
+  };
 
     useEffect(() => {
         if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
@@ -1178,10 +1199,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             if (text) {
                 // Just create blob for native track fallback (HLS) and set localSubtitleUrl.
                 // The new unified useEffect will automatically fetch/parse/shift cues from this URL.
-                let processedText = text;
-                if (!processedText.startsWith('WEBVTT')) {
-                    processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+$/gm, '');
-                }
+                const processedText = cleanAndFormatVtt(text);
                 const blob = new Blob([processedText], { type: 'text/vtt' });
                 setLocalSubtitleUrl(URL.createObjectURL(blob));
                 setCurrentSubId(sub.id);
@@ -1192,13 +1210,54 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     };
 
+    // Resume subtitle translation on reload if interrupted
+    useEffect(() => {
+        const cacheStr = localStorage.getItem('flkrd_translating_sub_cache');
+        if (!cacheStr) return;
+
+        try {
+            const cache = JSON.parse(cacheStr);
+            const targetId = tmdbId || imdbId;
+            
+            if (
+                cache &&
+                String(cache.targetId) === String(targetId) &&
+                Number(cache.season) === Number(season || 0) &&
+                Number(cache.episode) === Number(episode || 0)
+            ) {
+                // Clear immediately to prevent infinite loop on failure
+                localStorage.removeItem('flkrd_translating_sub_cache');
+                
+                // Wait a small delay for state and network to stabilize
+                const timer = setTimeout(() => {
+                    console.log("[UNIVERSAL-PLAYER] Resuming translation for:", cache.sub.attributes?.display_name);
+                    handleStartTranslation(cache.sub);
+                }, 1500);
+                
+                return () => clearTimeout(timer);
+            }
+        } catch (e) {
+            console.error("[UNIVERSAL-PLAYER] Resuming translation error:", e);
+        }
+    }, [tmdbId, imdbId, season, episode]);
+
     const handleStartTranslation = async (sub: SubtitleResult) => {
         setIsTranslating(true);
         setTranslatingName(sub.attributes?.display_name || 'Selected Track');
         setTranslationProgress(0);
         
+        // Save to cache for page refresh resumption
+        const targetId = tmdbId || imdbId;
+        if (targetId) {
+            localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
+                sub,
+                targetId,
+                season: season || 0,
+                episode: episode || 0
+            }));
+        }
+        
         try {
-            const targetId = tmdbId || imdbId;
             if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
             
             const result = await translateAndSavePipeline(
@@ -1237,6 +1296,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             setIsTranslating(false);
             setTranslationProgress(0);
             setTranslatingName('');
+            localStorage.removeItem('flkrd_translating_sub_cache');
         }
     };
 
@@ -1449,14 +1509,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
         const handleFullscreenChange = () => {
-            const isFull = !!document.fullscreenElement;
+            const isFull = !!(
+                document.fullscreenElement ||
+                (document as any).webkitFullscreenElement ||
+                (document as any).mozFullScreenElement ||
+                (document as any).msFullscreenElement
+            );
             setIsFullscreen(isFull);
 
             // Intercept iframe fullscreen and redirect to container
-            if (document.fullscreenElement === iframeRef.current && containerRef.current) {
+            const activeFullscreenElement = 
+                document.fullscreenElement ||
+                (document as any).webkitFullscreenElement ||
+                (document as any).mozFullScreenElement ||
+                (document as any).msFullscreenElement;
+
+            if (activeFullscreenElement === iframeRef.current && containerRef.current) {
                 console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
-                document.exitFullscreen().then(() => {
-                    containerRef.current?.requestFullscreen().catch(err => {
+                
+                const exit = document.exitFullscreen ||
+                             (document as any).webkitExitFullscreen ||
+                             (document as any).mozCancelFullScreen ||
+                             (document as any).msExitFullscreen;
+                             
+                const req = containerRef.current.requestFullscreen ||
+                            (containerRef.current as any).webkitRequestFullscreen ||
+                            (containerRef.current as any).mozRequestFullScreen ||
+                            (containerRef.current as any).msRequestFullscreen;
+
+                exit.call(document).then(() => {
+                    req.call(containerRef.current).catch(err => {
                         console.error("[PLAYER] Failed to redirect fullscreen:", err);
                     });
                 });
@@ -1470,7 +1552,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     return;
                 }
                 setTimeout(() => {
-                    if (!document.fullscreenElement && !isSelectingFileRef.current) {
+                    const checkExit = !(
+                        document.fullscreenElement ||
+                        (document as any).webkitFullscreenElement ||
+                        (document as any).mozFullScreenElement ||
+                        (document as any).msFullscreenElement
+                    );
+                    if (checkExit && !isSelectingFileRef.current) {
                         console.log("[PLAYER] Exited native fullscreen. Closing player...");
                         onClose();
                     }
@@ -1492,17 +1580,126 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     }, [startFullscreen, onClose]);
 
     useEffect(() => {
-        if (!isSimulatedFullscreen) return;
-        const handleKeyDown = (e: KeyboardEvent) => {
+        const handlePlaybackKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.getAttribute('contenteditable') === 'true')) {
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+            
+            // Escape -> Exit simulated fullscreen or close settings
             if (e.key === 'Escape') {
-                setIsSimulatedFullscreen(false);
-                setIsFullscreen(false);
-                if (onClose) onClose();
+                e.preventDefault();
+                if (showSubSettings) {
+                    setShowSubSettings(false);
+                } else if (isSimulatedFullscreen) {
+                    setIsSimulatedFullscreen(false);
+                    setIsFullscreen(false);
+                    if (onClose) onClose();
+                }
+            }
+
+            // Space / K -> Play/Pause
+            else if (e.key === ' ' || key === 'k') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        const action = isPlaying ? 'pause' : 'play';
+                        win.postMessage(JSON.stringify({ event: action, method: action }), '*');
+                        win.postMessage(JSON.stringify({ method: isPlaying ? 'pause' : 'play' }), '*');
+                    }
+                    setIsPlaying(prev => !prev);
+                } else if (videoRef.current) {
+                    if (videoRef.current.paused) {
+                        videoRef.current.play().catch(() => {});
+                        setIsPlaying(true);
+                    } else {
+                        videoRef.current.pause();
+                        setIsPlaying(false);
+                    }
+                }
+            }
+            
+            // ArrowLeft / J -> Seek backward 10s
+            else if (e.key === 'ArrowLeft' || key === 'j') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        const newTime = Math.max(0, currentTime - 10);
+                        win.postMessage(JSON.stringify({ event: 'seekTo', value: newTime, method: 'seek', value1: newTime }), '*');
+                        win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: newTime }), '*');
+                    }
+                    setCurrentTime(prev => Math.max(0, prev - 10));
+                } else if (videoRef.current) {
+                    videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
+                }
+            }
+            
+            // ArrowRight / L -> Seek forward 10s
+            else if (e.key === 'ArrowRight' || key === 'l') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        const newTime = currentTime + 10;
+                        win.postMessage(JSON.stringify({ event: 'seekTo', value: newTime, method: 'seek', value1: newTime }), '*');
+                        win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: newTime }), '*');
+                    }
+                    setCurrentTime(prev => prev + 10);
+                } else if (videoRef.current) {
+                    videoRef.current.currentTime = Math.min(videoRef.current.duration || 99999, videoRef.current.currentTime + 10);
+                }
+            }
+
+            // ArrowUp -> Volume up 5%
+            else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (videoRef.current) {
+                    videoRef.current.volume = Math.min(1, videoRef.current.volume + 0.05);
+                }
+            }
+
+            // ArrowDown -> Volume down 5%
+            else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (videoRef.current) {
+                    videoRef.current.volume = Math.max(0, videoRef.current.volume - 0.05);
+                }
+            }
+
+            // M -> Toggle Mute
+            else if (key === 'm') {
+                e.preventDefault();
+                if (videoRef.current) {
+                    videoRef.current.muted = !videoRef.current.muted;
+                }
+            }
+
+            // F -> Toggle Fullscreen
+            else if (key === 'f') {
+                e.preventDefault();
+                toggleFullscreen();
+            }
+
+            // C -> Toggle Subtitles Overlay
+            else if (key === 'c') {
+                e.preventDefault();
+                setShowSubtitles(prev => !prev);
+            }
+
+            // S -> Toggle Settings Panel/Sidebar
+            else if (key === 's') {
+                e.preventDefault();
+                setShowSubSettings(prev => !prev);
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isSimulatedFullscreen, onClose]);
+
+        window.addEventListener('keydown', handlePlaybackKeyDown);
+        return () => window.removeEventListener('keydown', handlePlaybackKeyDown);
+    }, [isIframe, isPlaying, currentTime, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
 
     useEffect(() => {
         return () => {
@@ -1932,8 +2129,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Force Style & Hide Native Tracks */}
             <style>{`
                 video::cue {
-                    visibility: ${subtitleCues.length > 0 ? 'hidden' : 'visible'} !important;
+                    visibility: ${showSubtitles && subtitleCues.length === 0 ? 'visible' : 'hidden'} !important;
                     background: ${subtitleCues.length > 0 ? 'transparent' : 'rgba(0,0,0,0.7)'} !important;
+                    font-family: 'Zain', 'Outfit', sans-serif !important;
                 }
                 /* Hide native track container when custom overlay is active */
                 ${subtitleCues.length > 0 ? `
@@ -2011,396 +2209,56 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
                             title={isFullscreen 
                                 ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
-                                : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
-                            }
+                                : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
                         >
                             {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
                         </button>
 
                         <AnimatePresence>
                             {showSubSettings && (
-                                <div className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none">
-                                    {/* Glassmorphic Backdrop overlay */}
-                                    <motion.div 
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        onClick={() => setShowSubSettings(false)}
-                                        className="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
-                                    />
-                                    
-                                    {/* Main Drawer Panel */}
-                                    <motion.div 
-                                        initial={{ y: '100%', opacity: 0.5 }}
-                                        animate={{ y: 0, opacity: 1 }}
-                                        exit={{ y: '100%', opacity: 0.5 }}
-                                        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-                                        className="relative pointer-events-auto w-full md:w-[400px] h-[75vh] md:h-[80vh] bg-[#0c0c0e]/95 backdrop-blur-3xl border-t md:border border-white/10 rounded-t-[32px] md:rounded-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.5),0_32px_64px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
-                                        style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}
-                                    >
-                                        {/* Mobile Swipe Handle Indicator */}
-                                        <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto my-3 md:hidden shrink-0" />
-                                        
-                                        {/* Header */}
-                                        <div className="flex items-center justify-between border-b border-white/5 px-6 pb-4 pt-2 md:pt-4 shrink-0">
-                                            <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase">
-                                                <Subtitles size={16} className="text-red-500 animate-pulse" />
-                                                {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
-                                            </h3>
-                                            <button onClick={() => setShowSubSettings(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
-                                                <X size={16} />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth">
-                                        {/* Sleek Segmented Control Tab Bar */}
-                                        <div className="flex bg-[#141414]/90 p-1 rounded-2xl border border-white/5 relative z-10 shrink-0">
-                                            <button 
-                                                onClick={() => setSubStudioTab('sub')}
-                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                                                    subStudioTab === 'sub' 
-                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                                                        : 'text-zinc-500 hover:text-zinc-300'
-                                                }`}
-                                            >
-                                                <Subtitles size={12} />
-                                                {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
-                                            </button>
-                                            <button 
-                                                onClick={() => setSubStudioTab('dub')}
-                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                                                    subStudioTab === 'dub' 
-                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                                                        : 'text-zinc-500 hover:text-zinc-300'
-                                                }`}
-                                            >
-                                                <Mic2 size={12} />
-                                                {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj'}
-                                            </button>
-                                            <button 
-                                                onClick={() => setSubStudioTab('lighting')}
-                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
-                                                    subStudioTab === 'lighting' 
-                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
-                                                        : 'text-zinc-500 hover:text-zinc-300'
-                                                }`}
-                                            >
-                                                <Sliders size={12} />
-                                                {(language === 'ku' || language === 'badini') ? 'ڕووناکی' : 'Lighting'}
-                                            </button>
-                                        </div>
-
-                                        {subStudioTab === 'sub' ? (
-                                            <>
-                                                <div className="flex flex-col gap-4">
-                                                    {isAdmin && (
-                                                        <div className="bg-red-950/20 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3">
-                                                            <div className="flex items-center justify-between">
-                                                                <span className="text-[9px] font-black text-red-500 tracking-wider flex items-center gap-1.5 uppercase">
-                                                                    <ShieldCheck size={12} /> ADMIN SYSTEM
-                                                                </span>
-                                                                <span className="text-[8px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-widest animate-pulse">CC Manager</span>
-                                                            </div>
-                                                            
-                                                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide leading-relaxed">
-                                                                {(language === 'ku' || language === 'badini') 
-                                                                    ? 'فایلی ژێرنووسی تایبەت (.vtt یان .srt) ئاپلۆد بکە بۆ ئەم بابەتە' 
-                                                                    : 'Upload a custom subtitle file (.vtt or .srt) for this movie/show.'}
-                                                            </p>
-
-                                                            <div className="flex flex-col gap-2">
-                                                                <input 
-                                                                    type="file" 
-                                                                    accept=".vtt,.srt" 
-                                                                    id="admin-sub-upload-input"
-                                                                    multiple
-                                                                    className="hidden" 
-                                                                    onChange={handleAdminSubUpload}
-                                                                />
-                                                                <button
-                                                                    onClick={handleUploadClick}
-                                                                    disabled={isUploadingSub}
-                                                                    className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all shadow-[0_0_15px_rgba(220,38,38,0.2)] disabled:opacity-50"
-                                                                >
-                                                                    <Download size={12} className="rotate-180" />
-                                                                    {isUploadingSub 
-                                                                        ? ((language === 'ku' || language === 'badini') ? 'ئاپلۆد دەکرێت...' : 'UPLOADING...') 
-                                                                        : ((language === 'ku' || language === 'badini') ? 'هەڵبژاردنی ژێرنووس' : 'UPLOAD CC FILE')}
-                                                                </button>
-                                                                
-                                                                {uploadStatus && (
-                                                                    <span className={`text-[8px] font-black uppercase tracking-widest text-center mt-1 ${
-                                                                        uploadStatus.type === 'success' ? 'text-green-500' : 'text-red-500'
-                                                                    }`}>
-                                                                        {uploadStatus.message}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {(language === 'ku' || language === 'badini') ? 'قەبارەی نوسین' : 'Font Size'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-red-500">{subtitleSize}px</span>
-                                                </div>
-                                                <input 
-                                                    type="range" min="12" max="52" step="2"
-                                                    value={subtitleSize}
-                                                    onChange={(e) => setSubtitleSize(Number(e.target.value))}
-                                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-red-600"
-                                                />
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {(language === 'ku' || language === 'badini') ? 'ڕەنگی نوسین' : 'Typography Color'}
-                                                </label>
-                                                <div className="flex gap-3">
-                                                    {['#ffffff', '#facc15', '#22d3ee', '#4ade80', '#ef4444'].map(c => (
-                                                        <button 
-                                                            key={c}
-                                                            onClick={() => setSubtitleColor(c)}
-                                                            className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 shadow-lg ${subtitleColor === c ? 'border-red-600 ring-4 ring-red-600/20' : 'border-white/10'}`}
-                                                            style={{ backgroundColor: c }}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-4 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {(language === 'ku' || language === 'badini') ? 'ڕادەی ڕوونی پشتەوە' : 'Backdrop Opacity'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-green-500">{Math.round(subBgOpacity * 100)}%</span>
-                                                </div>
-                                                <input 
-                                                    type="range" min="0" max="1" step="0.1"
-                                                    value={subBgOpacity}
-                                                    onChange={(e) => setSubBgOpacity(Number(e.target.value))}
-                                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-green-600"
-                                                />
-                                            </div>
-
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {(language === 'ku' || language === 'badini') ? 'کاریگەری شووشە' : 'Glassmorphism'}
-                                                </label>
-                                                <button 
-                                                    onClick={() => setSubBlur(!subBlur)}
-                                                    className={`w-10 h-5 rounded-full transition-all relative ${subBlur ? 'bg-red-600' : 'bg-white/10'}`}
-                                                >
-                                                    <motion.div 
-                                                        animate={{ x: subBlur ? 22 : 4 }}
-                                                        className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm"
-                                                    />
-                                                </button>
-                                            </div>
-                                            <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {(language === 'ku' || language === 'badini') ? 'پێشاندانی پشتەوە' : 'Show Background'}
-                                                </label>
-                                                <button 
-                                                    onClick={() => setShowSubBackground(!showSubBackground)}
-                                                    className={`w-10 h-5 rounded-full transition-all relative ${showSubBackground ? 'bg-red-600' : 'bg-white/10'}`}
-                                                >
-                                                    <motion.div 
-                                                        animate={{ x: showSubBackground ? 22 : 4 }}
-                                                        className="absolute top-1 w-3 h-3 rounded-full bg-white shadow-sm"
-                                                    />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-4">
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                        {(language === 'ku' || language === 'badini') ? 'خێرایی ژێرنووس (چرکە)' : 'Subtitle Sync (Sec)'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-blue-500">{subtitleOffset > 0 ? '+' : ''}{subtitleOffset / 1000}s</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button onClick={() => setSubtitleOffset(prev => prev - 500)} className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white font-bold text-xs">-0.5s</button>
-                                                    <input 
-                                                        type="range" min="-5000" max="5000" step="500"
-                                                        value={subtitleOffset}
-                                                        onChange={(e) => setSubtitleOffset(Number(e.target.value))}
-                                                        className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-600"
-                                                    />
-                                                    <button onClick={() => setSubtitleOffset(prev => prev + 500)} className="p-2 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors text-white font-bold text-xs">+0.5s</button>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                    {(language === 'ku' || language === 'badini') ? 'گەڕان بۆ ژێرنووس' : 'Subtitle Discovery'}
-                                                </label>
-                                                <div className="relative group">
-                                                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-red-500 transition-colors" />
-                                                    <input 
-                                                        type="text"
-                                                        placeholder={(language === 'ku' || language === 'badini') ? 'گەڕان بۆ زمان...' : 'Find a language...'}
-                                                        value={subSearchQuery}
-                                                        onChange={(e) => setSubSearchQuery(e.target.value)}
-                                                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-[11px] focus:border-red-600/50 focus:bg-white/[0.08] outline-none transition-all placeholder:text-gray-600"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            {isTranslating ? (
-                                                <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-red-600/20">
-                                                    <div className="relative">
-                                                        <div className="w-12 h-12 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
-                                                        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-black text-red-500">
-                                                            {translationProgress}%
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-col items-center gap-1.5 text-center px-4">
-                                                        <span className="text-[10px] font-black text-white animate-pulse uppercase tracking-[0.2em]">
-                                                            {(language === 'ku' || language === 'badini') ? 'وەرگێڕانی ژێرنووس...' : 'TRANSLATING SUBTITLE...'}
-                                                        </span>
-                                                        <span className="text-[8px] font-bold text-gray-400 truncate max-w-[200px]">
-                                                            {translatingName}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ) : isSearchingSubs ? (
-                                                <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-white/5">
-                                                    <div className="relative">
-                                                        <div className="w-10 h-10 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
-                                                        <Activity size={16} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-red-600 animate-pulse" />
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-gray-400 animate-pulse uppercase tracking-[0.3em]">
-                                                        {(language === 'ku' || language === 'badini') ? 'لۆدکردنی زمانەکان...' : 'FETCHING CLOUD SUBS...'}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col gap-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar scroll-smooth">
-                                                    {availableSubs.length > 0 ? (
-                                                        availableSubs
-                                                            .filter(sub => 
-                                                                (sub?.attributes?.display_name || '').toLowerCase().includes(subSearchQuery.toLowerCase()) ||
-                                                                (sub?.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())
-                                                            )
-                                                            .sort((a, b) => {
-                                                                const aLang = (a?.attributes?.language || '').toLowerCase();
-                                                                const bLang = (b?.attributes?.language || '').toLowerCase();
-                                                                const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur';
-                                                                const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur';
-                                                                if (aIsKu && !bIsKu) return -1;
-                                                                if (!aIsKu && bIsKu) return 1;
-                                                                return 0;
-                                                            })
-                                                            .map(sub => {
-                                                                const sLang = (sub?.attributes?.language || '').toLowerCase();
-                                                                const isKurdishSub = sLang === 'ku' || sLang === 'ckb' || sLang === 'kur' || sLang === 'badini';
-                                                                return (
-                                                                    <div 
-                                                                        key={sub.id}
-                                                                        onClick={() => handleSelectSub(sub)}
-                                                                        role="button"
-                                                                        tabIndex={0}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                                                e.preventDefault();
-                                                                                handleSelectSub(sub);
-                                                                            }
-                                                                        }}
-                                                                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group cursor-pointer ${
-                                                                            sub.id === currentSubId 
-                                                                                ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 text-white shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/30' 
-                                                                                : isKurdishSub
-                                                                                    ? 'bg-gradient-to-r from-red-600/5 to-transparent border-red-500/20 text-zinc-200 hover:border-red-500/40 hover:from-red-600/10 hover:text-white'
-                                                                                    : 'bg-gradient-to-r from-white/[0.01] to-transparent border-white/5 text-zinc-400 hover:text-white hover:border-white/15 hover:from-white/[0.03]'
-                                                                        }`}
-                                                                    >
-                                                                        {/* Glowing Background Overlay for Selected Track */}
-                                                                        {sub.id === currentSubId && (
-                                                                            <div className="absolute inset-0 bg-red-600/5 blur-[20px] rounded-full pointer-events-none" />
-                                                                        )}
-
-                                                                        {/* Sleek Language Flag/Icon Container */}
-                                                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border text-base shadow-sm transition-all duration-300 ${
-                                                                            sub.id === currentSubId
-                                                                                ? 'bg-red-500/20 border-red-500/40'
-                                                                                : isKurdishSub
-                                                                                    ? 'bg-red-600/10 border-red-500/20'
-                                                                                    : 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20'
-                                                                        }`}>
-                                                                            <span className="scale-110 select-none">
-                                                                                {getLanguageFlag(sub?.attributes?.language || '')}
-                                                                            </span>
-                                                                        </div>
-                                                                    
-                                                                        <div className="flex flex-col flex-1 min-w-0 relative z-10 text-left">
-                                                                            <div className="flex items-center gap-1.5 mb-0.5">
-                                                                                <span className={`text-[8px] font-black uppercase tracking-widest transition-colors duration-300 ${
-                                                                                    sub.id === currentSubId 
-                                                                                        ? 'text-red-400' 
-                                                                                        : isKurdishSub 
-                                                                                            ? 'text-red-500' 
-                                                                                            : 'text-zinc-500 group-hover:text-zinc-400'
-                                                                                }`}>
-                                                                                    {sub?.attributes?.language || 'UNKNOWN'}
-                                                                                </span>
-                                                                                {isKurdishSub && String(sub.id).startsWith('custom-db-') && (
-                                                                                    <span className="text-[6px] bg-red-600 text-white px-1 py-0.5 rounded font-black tracking-widest uppercase flex items-center gap-0.5 shrink-0 shadow-sm shadow-red-600/25">
-                                                                                        <Sparkles size={6} /> Verified
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                            <span className={`text-[11px] font-bold truncate transition-colors duration-300 ${
-                                                                                sub.id === currentSubId ? 'text-white' : 'text-zinc-300 group-hover:text-white'
-                                                                            }`}>
-                                                                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Subtitle Track'}
-                                                                            </span>
-                                                                        </div>
-                                                                        
-                                                                        <div className="ml-auto flex items-center gap-2 relative z-20 shrink-0">
-                                                                            {!isKurdishSub && (
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        handleStartTranslation(sub);
-                                                                                    }}
-                                                                                    title="Translate to Kurdish (Sorani)"
-                                                                                    className="w-7 h-7 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-500/20 hover:border-red-500 hover:shadow-md hover:shadow-red-600/20 active:scale-90"
-                                                                                >
-                                                                                    <Languages size={11} />
-                                                                                </button>
-                                                                            )}
-                                                                            <ArrowRight size={12} className={`transition-all duration-300 ${
-                                                                                sub.id === currentSubId
-                                                                                    ? 'text-red-500 scale-100 opacity-100'
-                                                                                    : 'text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
-                                                                            }`} />
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })
-                                                    ) : (
-                                                    <div className="py-6 flex flex-col items-center gap-3 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
-                                                        <span className="text-[9px] font-bold text-gray-500 text-center px-4">
-                                                            {(language === 'ku' || language === 'badini') ? 'هیچ ژێرنووسێکی تر نەدۆزرایەوە' : 'NO OTHER SUBTITLES FOUND'}
-                                                        </span>
-                                                        <button 
-                                                            onClick={handleSearchAllSubs}
-                                                            className="px-4 py-2 bg-white/5 rounded-full text-[8px] font-black uppercase hover:bg-white/10 transition-all"
-                                                        >
-                                                            {(language === 'ku' || language === 'badini') ? 'دوبارە گەڕان' : 'RETRY SEARCH'}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                            </>
-                                    ) : subStudioTab === 'dub' ? (
+                                <SubtitleManagerPanel
+                                    isOpen={showSubSettings}
+                                    onClose={() => setShowSubSettings(false)}
+                                    activeTab={subStudioTab}
+                                    setActiveTab={setSubStudioTab}
+                                    isAdmin={isAdmin}
+                                    isUploadingSub={isUploadingSub}
+                                    uploadStatus={uploadStatus}
+                                    onUploadClick={handleUploadClick}
+                                    onFileChange={handleAdminSubUpload}
+                                    subtitleSize={subtitleSize}
+                                    setSubtitleSize={setSubtitleSize}
+                                    subtitleColor={subtitleColor}
+                                    setSubtitleColor={setSubtitleColor}
+                                    subBgOpacity={subBgOpacity}
+                                    setSubBgOpacity={setSubBgOpacity}
+                                    subBlur={subBlur}
+                                    setSubBlur={setSubBlur}
+                                    showSubBackground={showSubBackground}
+                                    setShowSubBackground={setShowSubBackground}
+                                    brightness={brightness}
+                                    setBrightness={handleBrightnessChange}
+                                    contrast={contrast}
+                                    setContrast={handleContrastChange}
+                                    saturation={saturation}
+                                    setSaturation={handleSaturationChange}
+                                    onResetFilters={handleResetFilters}
+                                    subtitleOffset={subtitleOffset}
+                                    setSubtitleOffset={setSubtitleOffset}
+                                    subSearchQuery={subSearchQuery}
+                                    setSubSearchQuery={setSubSearchQuery}
+                                    availableSubs={availableSubs}
+                                    currentSubId={currentSubId}
+                                    isSearchingSubs={isSearchingSubs}
+                                    onSelectSub={handleSelectSub}
+                                    onStartTranslation={handleStartTranslation}
+                                    onRetrySearch={handleSearchAllSubs}
+                                    getLanguageFlag={getLanguageFlag}
+                                    isTranslating={isTranslating}
+                                    translationProgress={translationProgress}
+                                    translatingName={translatingName}
+                                    language={language}
+                                    dubContent={
                                         <div className="flex flex-col gap-4">
                                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                                 {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
@@ -2438,6 +2296,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                     {kurdishDub ? (
                                                         <button 
+                                                            type="button"
                                                             onClick={() => {
                                                                 const getRashabaId = (url: string) => {
                                                                     if (!url) return "mKkhrFhjQr3CKwz"; 
@@ -2480,6 +2339,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                 {/* 2. Original English Feed */}
                                                 <button 
+                                                    type="button"
                                                     onClick={() => {
                                                         setOverrideSrc(null);
                                                         setActiveAudioTrack('en');
@@ -2511,13 +2371,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     const langLabelMap: Record<string, { label: string, desc: string, full: string }> = {
                                                         ar: { label: 'ARABIC', desc: 'عەرەبی - دۆبلاژ', full: 'Arabic' },
                                                         fa: { label: 'PERSIAN', desc: 'فارسی - دۆبلاژ', full: 'Persian' },
-                                                        tr: { label: 'TURKISH', desc: 'تورکی - دۆبلاژ', full: 'Turkish' },
+                                                        tr: { label: 'TURKISH', desc: 'TURKISH - دۆبلاژ', full: 'Turkish' },
                                                     };
                                                     const meta = langLabelMap[lang];
                                                     
                                                     return (
                                                         <button 
                                                             key={lang}
+                                                            type="button"
                                                             onClick={() => {
                                                                 let activeId = imdbId || '';
                                                                 if (!activeId) {
@@ -2597,67 +2458,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 })}
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex flex-col gap-5 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <Sun size={12} className="text-yellow-500 animate-pulse" />
-                                                        {(language === 'ku' || language === 'badini') ? 'ڕووناکی فیلم' : 'Video Brightness'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-yellow-500">{Math.round(brightness * 100)}%</span>
-                                                </div>
-                                                <input 
-                                                    type="range" min="0.5" max="2.5" step="0.05"
-                                                    value={brightness}
-                                                    onChange={(e) => handleBrightnessChange(Number(e.target.value))}
-                                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-yellow-500"
-                                                />
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <Sliders size={12} className="text-red-500" />
-                                                        {(language === 'ku' || language === 'badini') ? 'کۆنتراست (تۆخی)' : 'Video Contrast'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-red-500">{Math.round(contrast * 100)}%</span>
-                                                </div>
-                                                <input 
-                                                    type="range" min="0.5" max="2.0" step="0.05"
-                                                    value={contrast}
-                                                    onChange={(e) => handleContrastChange(Number(e.target.value))}
-                                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-red-600"
-                                                />
-                                            </div>
-
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center">
-                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <Sparkles size={12} className="text-blue-500" />
-                                                        {(language === 'ku' || language === 'badini') ? 'تێربوونی ڕەنگ' : 'Video Saturation'}
-                                                    </label>
-                                                    <span className="text-[10px] font-bold text-blue-500">{Math.round(saturation * 100)}%</span>
-                                                </div>
-                                                <input 
-                                                    type="range" min="0.5" max="2.0" step="0.05"
-                                                    value={saturation}
-                                                    onChange={(e) => handleSaturationChange(Number(e.target.value))}
-                                                    className="w-full h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-blue-500"
-                                                />
-                                            </div>
-
-                                            <button 
-                                                onClick={handleResetFilters}
-                                                className="w-full mt-2 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-black uppercase tracking-widest text-[9px] active:scale-95 transition-all"
-                                            >
-                                                {(language === 'ku' || language === 'badini') ? 'ڕێکخستنەوە بۆ بنەڕەتی' : 'RESET TO DEFAULT'}
-                                            </button>
-                                        </div>
-                                    )}
-                                        </div>
-                                    </motion.div>
-                                </div>
+                                    }
+                                />
                             )}
                         </AnimatePresence>
                     </div>
@@ -2737,7 +2539,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         duration: e.currentTarget.duration
                     })}
                 >
-                    {(localSubtitleUrl || subtitleUrl) && (
+                    {showSubtitles && (localSubtitleUrl || subtitleUrl) && (
                         <track 
                             key={localSubtitleUrl || subtitleUrl}
                             src={localSubtitleUrl || subtitleUrl} 
@@ -2752,7 +2554,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* Custom Subtitle Overlay */}
             <AnimatePresence mode="wait">
-                {subtitleCues.length > 0 && (
+                {showSubtitles && subtitleCues.length > 0 && (
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2872,8 +2674,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-[200] flex items-end justify-center pb-16 px-4"
-                        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+                        className="absolute inset-0 z-[200] flex items-center justify-center p-4"
+                        style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(16px)' }}
                         onClick={(e) => {
                             if (e.target === e.currentTarget) {
                                 setEditingCue(null);
@@ -2889,7 +2691,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 40, opacity: 0, scale: 0.97 }}
                             transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                            className="w-full max-w-xl bg-[#0e0e0e] border border-white/10 rounded-3xl p-5 shadow-2xl"
+                            className="w-full max-w-xl bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-3xl rounded-3xl p-5 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] relative shadow-red-500/5"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}

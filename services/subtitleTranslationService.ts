@@ -29,7 +29,9 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
       if (timeIndex !== -1) {
         const timestamp = lines[timeIndex].trim();
         const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
-        const textContent = lines.slice(timeIndex + 1).join('\n').trim();
+        const textLines = lines.slice(timeIndex + 1);
+        const filteredLines = textLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
+        const textContent = filteredLines.join('\n').trim();
         if (textContent) {
           cues.push({ index, timestamp, text: textContent });
         }
@@ -86,30 +88,55 @@ async function translateText(text: string): Promise<string> {
  * Batches 30 cues per GAS call (joined by \n), splits on \n to restore lines.
  * Falls back to original text on any error — player will never crash.
  */
+// Helper function to translate a chunk of cues recursively if line mismatch occurs (divide & conquer)
+async function translateChunkWithFallback(chunk: SubtitleCue[]): Promise<string[]> {
+  const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
+  const combinedText = chunkTexts.join('\n');
+
+  try {
+    const rawTranslation = await translateText(combinedText);
+    const translatedTexts = rawTranslation.split('\n');
+
+    if (translatedTexts.length === chunk.length) {
+      return translatedTexts;
+    }
+  } catch (err) {
+    console.warn("[GAS] Chunk translation exception, falling back:", err);
+  }
+
+  // If there's a mismatch or error and the chunk has more than 1 item, divide and conquer!
+  if (chunk.length > 1) {
+    const mid = Math.floor(chunk.length / 2);
+    const left = chunk.slice(0, mid);
+    const right = chunk.slice(mid);
+
+    console.warn(`[GAS] Line count mismatch in chunk (size ${chunk.length}). Retrying by splitting into halves: ${left.length} and ${right.length}`);
+
+    // Wait a brief moment to avoid overloading the API on retries
+    await new Promise(resolve => setTimeout(resolve, 30));
+
+    const [leftRes, rightRes] = await Promise.all([
+      translateChunkWithFallback(left),
+      translateChunkWithFallback(right)
+    ]);
+    return [...leftRes, ...rightRes];
+  }
+
+  // If a single cue translation fails, return its original text so we never drop subtitles
+  return chunkTexts;
+}
+
 export async function translateCuesToKurdish(
   cues: SubtitleCue[],
   onProgress?: (progress: number) => void
 ): Promise<SubtitleCue[]> {
-  const translatedCues = [...cues];
-  const chunkSize = 30;
+  const translatedCues = cues.map(c => ({ ...c }));
+  const chunkSize = 50;
 
   for (let i = 0; i < cues.length; i += chunkSize) {
     const chunk = cues.slice(i, i + chunkSize);
 
-    // Replace internal newlines with " / " so they don't break the \n batch separator
-    const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
-    const combinedText = chunkTexts.join('\n');
-
-    const rawTranslation = await translateText(combinedText);
-    let translatedTexts = rawTranslation.split('\n');
-
-    // If line count is off after translation, use original lines for this chunk
-    if (translatedTexts.length !== chunkTexts.length) {
-      console.warn(
-        `[GAS] Line count mismatch (expected ${chunkTexts.length}, got ${translatedTexts.length}). Using originals for chunk ${i}.`
-      );
-      translatedTexts = chunkTexts;
-    }
+    const translatedTexts = await translateChunkWithFallback(chunk);
 
     // Apply translations — restore " / " back to newlines inside each cue
     for (let j = 0; j < chunk.length; j++) {
@@ -122,7 +149,7 @@ export async function translateCuesToKurdish(
     }
 
     // Small breather between batches to avoid GAS rate-limiting
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   return translatedCues;
@@ -147,16 +174,16 @@ export function compileToVTT(cues: SubtitleCue[]): string {
   let vtt = 'WEBVTT\n\n';
 
   // Prepend custom intro/branding cues
-  vtt += `1\n00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
-  vtt += `2\n00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
+  vtt += `00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
+  vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
 
   // Filter out original cues starting in the first 7.5s to prevent overlaps
   const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
 
-  filteredCues.forEach((cue, index) => {
+  filteredCues.forEach((cue) => {
     // Ensure timestamp uses dot instead of comma for VTT
     const timestamp = cue.timestamp.replace(/,/g, '.');
-    vtt += `${index + 3}\n${timestamp}\n${cue.text}\n\n`;
+    vtt += `${timestamp}\n${cue.text}\n\n`;
   });
   return vtt;
 }
