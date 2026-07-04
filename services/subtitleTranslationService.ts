@@ -50,35 +50,28 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
 async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
   let lastError: Error | null = null;
   
-  // 1. Try local serverless endpoint (/api/translate) via POST (highly secure and no CORS or URL length limits)
+  // 1. Invoke the deployed Supabase Edge Function (highly secure, bypasses CORS & URL length limits natively)
   try {
-    const response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({ text, source, target })
+    const { data, error } = await supabase.functions.invoke('translate', {
+      body: { text, source, target }
     });
     
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.translation) {
-        return data.translation;
-      }
-      if (data && data.error) {
-        throw new Error(data.error);
-      }
+    if (error) throw error;
+    if (data && data.translation) {
+      return data.translation;
+    }
+    if (data && data.error) {
+      throw new Error(data.error);
     }
   } catch (err: any) {
-    console.warn(`[SubtitleTranslationService] Serverless /api/translate failed, running browser fallbacks:`, err.message);
+    console.warn(`[SubtitleTranslationService] Supabase Edge Function failed, running browser fallbacks:`, err.message);
     lastError = err;
   }
 
   // 2. Browser Fallback: Try MyMemory API (Native CORS, extremely stable for standard text blocks)
   try {
-    const mymemoryTarget = target === 'ckb' ? 'ku' : target;
-    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymemoryTarget}`;
+    const mymymoryTarget = target === 'ckb' ? 'ku' : target;
+    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymymoryTarget}`;
     const response = await fetch(myMemoryUrl);
     if (response.ok) {
       const data = await response.json();
