@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize, Cpu, Zap, Timer, RefreshCcw, Loader2, Infinity as InfinityIcon, Sun, Sliders } from 'lucide-react';
+import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize, Cpu, Zap, Timer, RefreshCcw, Loader2, Infinity as InfinityIcon, Sun, Sliders, Languages } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import AdGuardOnboarding from './AdGuardOnboarding';
 import { AnimatePresence, motion } from 'framer-motion';
 import { subtitleService, SubtitleResult } from '../services/subtitleService';
+import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb, fetchData } from '../services/tmdbService';
@@ -609,6 +610,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [scrapingError, setScrapingError] = useState<string | null>(null);
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
     const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting'>('sub');
+    const [isTranslating, setIsTranslating] = useState(false);
+    const [translationProgress, setTranslationProgress] = useState(0);
+    const [translatingName, setTranslatingName] = useState('');
     const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
     const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
     const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -1181,11 +1185,56 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 setLocalSubtitleUrl(URL.createObjectURL(blob));
                 setShowSubSettings(false);
             }
-        } catch (e) {
-            console.error("Subtitle selection error:", e);
-            alert((language === 'ku' || language === 'badini') ? 'ناتوانرێت ئەم ژێرنووسە لۆد بکرێت. تکایە دانەیەکی تر تاقی بکەرەوە.' : 'Failed to load this subtitle. Please try another track.');
         } finally {
             setIsSearchingSubs(false);
+        }
+    };
+
+    const handleStartTranslation = async (sub: SubtitleResult) => {
+        setIsTranslating(true);
+        setTranslatingName(sub.attributes?.display_name || 'Selected Track');
+        setTranslationProgress(0);
+        
+        try {
+            const targetId = tmdbId || imdbId;
+            if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
+            
+            const result = await translateAndSavePipeline(
+                sub,
+                targetId,
+                contentType || 'movie',
+                season || 0,
+                episode || 0,
+                (progress) => setTranslationProgress(progress)
+            );
+            
+            if (result.success && result.subtitleUrl) {
+                setLocalSubtitleUrl(result.subtitleUrl);
+                setShowSubSettings(false);
+                
+                // Add the new Kurdish track to the list
+                const newTrack: SubtitleResult = {
+                    id: `custom-db-${Date.now()}`,
+                    attributes: {
+                        language: 'ku',
+                        display_name: `Kurdish Translation [${sub.attributes.language.toUpperCase()}]`,
+                        url: result.subtitleUrl,
+                        file_id: 0
+                    }
+                };
+                setAvailableSubs(prev => [newTrack, ...prev]);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (err: any) {
+            console.error("Subtitle translation failed:", err);
+            alert((language === 'ku' || language === 'badini') 
+                ? `وەرگێڕان سەرکەوتوو نەبوو: ${err.message}` 
+                : `Translation failed: ${err.message}`);
+        } finally {
+            setIsTranslating(false);
+            setTranslationProgress(0);
+            setTranslatingName('');
         }
     };
 
@@ -2169,7 +2218,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 </div>
                                             </div>
 
-                                            {isSearchingSubs ? (
+                                            {isTranslating ? (
+                                                <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-red-600/20">
+                                                    <div className="relative">
+                                                        <div className="w-12 h-12 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
+                                                        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-black text-red-500">
+                                                            {translationProgress}%
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                                                        <span className="text-[10px] font-black text-white animate-pulse uppercase tracking-[0.2em]">
+                                                            {(language === 'ku' || language === 'badini') ? 'وەرگێڕانی ژێرنووس...' : 'TRANSLATING SUBTITLE...'}
+                                                        </span>
+                                                        <span className="text-[8px] font-bold text-gray-400 truncate max-w-[200px]">
+                                                            {translatingName}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ) : isSearchingSubs ? (
                                                 <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-white/5">
                                                     <div className="relative">
                                                         <div className="w-10 h-10 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
@@ -2241,12 +2307,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                             </span>
                                                                         </div>
                                                                         
-                                                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                                                                            isKurdishSub
-                                                                            ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
-                                                                            : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
-                                                                        }`}>
-                                                                            <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                                                        <div className="flex items-center gap-2 shrink-0 relative z-20">
+                                                                            {!isKurdishSub && (
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleStartTranslation(sub);
+                                                                                    }}
+                                                                                    title="Translate to Kurdish (Sorani)"
+                                                                                    className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                                                                                >
+                                                                                    <Languages size={12} />
+                                                                                </button>
+                                                                            )}
+                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                                                                                isKurdishSub
+                                                                                ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
+                                                                                : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
+                                                                            }`}>
+                                                                                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                                                            </div>
                                                                         </div>
                                                                     
                                                                         {isKurdishSub && (

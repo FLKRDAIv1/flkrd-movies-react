@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon, Sun, Sliders } from 'lucide-react';
+import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon, Sun, Sliders, Languages } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
+import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
@@ -282,6 +283,9 @@ export default function PremiumVidLinkPlayer({
   const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
   const [kurdishDub, setKurdishDub] = useState<any | null>(null);
   const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting'>('sub');
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState(0);
+  const [translatingName, setTranslatingName] = useState('');
   const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
   const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
   const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -707,6 +711,59 @@ export default function PremiumVidLinkPlayer({
       console.error("[VIP-PLAYER] Sub Selection Error:", e);
     } finally {
       setLoadingSubs(false);
+    }
+  };
+
+  const handleStartTranslation = async (sub: any) => {
+    setIsTranslating(true);
+    setTranslatingName(sub.attributes?.display_name || 'Selected Track');
+    setTranslationProgress(0);
+    
+    try {
+      const targetId = resolvedTmdbId || tmdbId || imdbId;
+      if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
+      
+      const result = await translateAndSavePipeline(
+        sub,
+        targetId,
+        type || 'movie',
+        season || 0,
+        episode || 0,
+        (progress) => setTranslationProgress(progress)
+      );
+      
+      if (result.success && result.subtitleUrl) {
+        const res = await fetch(result.subtitleUrl);
+        const text = await res.text();
+        setVttContent(text);
+        
+        const newTrackId = `custom-db-${Date.now()}`;
+        setCurrentSubId(newTrackId as any);
+        setShowSubtitles(true);
+        setShowSubSettings(false);
+        
+        const newTrack = {
+          id: newTrackId,
+          attributes: {
+            language: 'ku',
+            display_name: `Kurdish Translation [${sub.attributes.language.toUpperCase()}]`,
+            url: result.subtitleUrl,
+            file_id: 0
+          }
+        };
+        setAvailableSubs(prev => [newTrack, ...prev]);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      console.error("Subtitle translation failed:", err);
+      alert(language === 'ku' || language === 'badini'
+        ? `وەرگێڕان سەرکەوتوو نەبوو: ${err.message}` 
+        : `Translation failed: ${err.message}`);
+    } finally {
+      setIsTranslating(false);
+      setTranslationProgress(0);
+      setTranslatingName('');
     }
   };
 
@@ -1583,7 +1640,24 @@ export default function PremiumVidLinkPlayer({
 
               {/* Subtitle List */}
               <div className="flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
-                {loadingSubs ? (
+                {isTranslating ? (
+                  <div className="py-12 flex flex-col items-center gap-4 bg-white/[0.01] rounded-[24px] border border-dashed border-red-600/20">
+                    <div className="relative">
+                      <div className="w-12 h-12 border-4 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
+                      <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-black text-red-500">
+                        {translationProgress}%
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-center gap-1.5 text-center px-4">
+                      <span className="text-[10px] font-black text-white animate-pulse uppercase tracking-[0.2em]">
+                        {(language === 'ku' || language === 'badini') ? 'وەرگێڕانی ژێرنووس...' : 'TRANSLATING SUBTITLE...'}
+                      </span>
+                      <span className="text-[8px] font-bold text-gray-400 truncate max-w-[200px]">
+                        {translatingName}
+                      </span>
+                    </div>
+                  </div>
+                ) : loadingSubs ? (
                   <div className="py-12 flex flex-col items-center gap-4 opacity-50">
                     <Activity size={24} className="text-red-600 animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Loading Cloud Subs...</span>
@@ -1632,7 +1706,21 @@ export default function PremiumVidLinkPlayer({
                               </div>
                               <span className="text-xs font-bold truncate pr-4">{sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '')}</span>
                             </div>
-                            <ArrowRight size={14} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="ml-auto flex items-center gap-2 relative z-20">
+                              {!isKurdish && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartTranslation(sub);
+                                  }}
+                                  title="Translate to Kurdish (Sorani)"
+                                  className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                                >
+                                  <Languages size={12} />
+                                </button>
+                              )}
+                              <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
                           </button>
                         );
                       })

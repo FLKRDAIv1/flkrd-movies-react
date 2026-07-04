@@ -344,7 +344,7 @@ export const subtitleService = {
             if (link.startsWith('//')) {
                 link = `https:${link}`;
             } else if (link.startsWith('/')) {
-                if (link.startsWith('/subtitle/')) {
+                if (link.startsWith('/subtitle/') && !link.includes('subdl')) {
                     link = `https://opensubtitles-v3.strem.io${link}`;
                 } else {
                     link = `https://fkurd.pro${link}`;

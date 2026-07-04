@@ -1,0 +1,267 @@
+import { supabase } from '../utils/supabaseClient';
+import { subtitleService } from './subtitleService';
+
+const LINGVA_INSTANCES = [
+  "https://lingva.ml",
+  "https://translate.plausibility.cloud",
+  "https://lingva.garudalinux.org",
+  "https://lingva.lunar.icu",
+  "https://lingva.recepty.it"
+];
+
+export interface SubtitleCue {
+  index: string;
+  timestamp: string;
+  text: string;
+}
+
+/**
+ * Parses subtitle text into structured dialogue cues.
+ * Supports VTT and SRT.
+ */
+export function parseSubtitleToCues(text: string): SubtitleCue[] {
+  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  let cleanText = normalized;
+  if (normalized.startsWith('WEBVTT')) {
+    cleanText = normalized.replace(/^WEBVTT[^\n]*\n/, '');
+  }
+
+  const sections = cleanText.split(/\n\n+/);
+  const cues: SubtitleCue[] = [];
+
+  for (const section of sections) {
+    const lines = section.trim().split('\n');
+    if (lines.length >= 2) {
+      const timeIndex = lines.findIndex(l => l.includes('-->'));
+      if (timeIndex !== -1) {
+        const timestamp = lines[timeIndex].trim();
+        const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
+        const textContent = lines.slice(timeIndex + 1).join('\n').trim();
+        if (textContent) {
+          cues.push({ index, timestamp, text: textContent });
+        }
+      }
+    }
+  }
+  return cues;
+}
+
+async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
+  let lastError: Error | null = null;
+  
+  // 1. Try simple GET requests (no preflight since there's no custom header)
+  for (const instance of LINGVA_INSTANCES) {
+    try {
+      const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.translation) {
+          return data.translation;
+        }
+      }
+      throw new Error(`Instance ${instance} returned status ${response.status}`);
+    } catch (err: any) {
+      console.warn(`[SubtitleTranslationService] GET failed for ${instance}:`, err.message);
+      lastError = err;
+    }
+  }
+  
+  // 2. Fallback to CORS proxies
+  const fallbackUrl = `https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(fallbackUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(fallbackUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fallbackUrl)}`
+  ];
+  
+  for (const proxyUrl of proxies) {
+    try {
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.translation) {
+          return data.translation;
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[SubtitleTranslationService] Proxy fetch failed:`, err.message);
+      lastError = err;
+    }
+  }
+  
+  throw lastError || new Error("All translation routes failed");
+}
+
+/**
+ * Translates an array of subtitle cues to Kurdish Sorani.
+ */
+export async function translateCuesToKurdish(
+  cues: SubtitleCue[],
+  onProgress?: (progress: number) => void
+): Promise<SubtitleCue[]> {
+  const translatedCues = [...cues];
+  const chunkSize = 20; // 20 cues per batch
+  
+  for (let i = 0; i < cues.length; i += chunkSize) {
+    const chunk = cues.slice(i, i + chunkSize);
+    const chunkTexts = chunk.map(c => c.text);
+    const combinedText = chunkTexts.join('\n');
+    
+    let translatedTexts: string[] = [];
+    try {
+      const translation = await translateText(combinedText);
+      translatedTexts = translation.split('\n');
+      
+      if (translatedTexts.length !== chunkTexts.length) {
+        throw new Error("Line count mismatch, using fallback");
+      }
+    } catch (err: any) {
+      console.warn(`[SubtitleTranslationService] Chunk translation failed. Falling back to line-by-line:`, err.message);
+      
+      translatedTexts = [];
+      for (const text of chunkTexts) {
+        try {
+          const singleTranslation = await translateText(text);
+          translatedTexts.push(singleTranslation.trim());
+        } catch (e) {
+          translatedTexts.push(text); // Fallback to original
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+
+    // Apply translations
+    for (let j = 0; j < chunk.length; j++) {
+      translatedCues[i + j].text = translatedTexts[j] || chunk[j].text;
+    }
+
+    if (onProgress) {
+      onProgress(Math.round(((i + chunk.length) / cues.length) * 100));
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 200)); // Breather
+  }
+  
+  return translatedCues;
+}
+
+function timestampToSeconds(ts: string): number {
+  const clean = ts.split('-->')[0].trim().replace(',', '.');
+  const parts = clean.split(':');
+  if (parts.length === 3) {
+    const h = parseFloat(parts[0]);
+    const m = parseFloat(parts[1]);
+    const s = parseFloat(parts[2]);
+    return h * 3600 + m * 60 + s;
+  }
+  return 0;
+}
+
+/**
+ * Compiles cues back into WebVTT format.
+ */
+export function compileToVTT(cues: SubtitleCue[]): string {
+  let vtt = 'WEBVTT\n\n';
+
+  // Prepend custom intro/branding cues
+  vtt += `1\n00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
+  vtt += `2\n00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
+
+  // Filter out original cues starting in the first 7.5s to prevent overlaps
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
+
+  filteredCues.forEach((cue, index) => {
+    // Ensure timestamp uses dot instead of comma for VTT
+    const timestamp = cue.timestamp.replace(/,/g, '.');
+    vtt += `${index + 3}\n${timestamp}\n${cue.text}\n\n`;
+  });
+  return vtt;
+}
+
+/**
+ * Handles the full pipeline: download, translate, compile, upload to Supabase, and save DB reference.
+ */
+export async function translateAndSavePipeline(
+  sub: any,
+  tmdbId: string | number,
+  mediaType: string,
+  season: number = 0,
+  episode: number = 0,
+  onProgress?: (progress: number) => void
+): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
+  try {
+    // 1. Download subtitle text
+    const text = await subtitleService.downloadSubtitle(sub);
+    if (!text) throw new Error("Could not download subtitle track.");
+
+    // 2. Parse cues
+    const cues = parseSubtitleToCues(text);
+    if (cues.length === 0) throw new Error("No subtitle cues found.");
+
+    // 3. Translate cues
+    const translatedCues = await translateCuesToKurdish(cues, onProgress);
+
+    // 4. Compile to VTT
+    const vttContent = compileToVTT(translatedCues);
+    const blob = new Blob([vttContent], { type: 'text/vtt' });
+
+    // 5. Upload to Supabase Storage
+    const timeStamp = Date.now();
+    const filePath = mediaType === 'tv'
+      ? `custom/${tmdbId}_s${season}_e${episode}_ku_${timeStamp}.vtt`
+      : `custom/${tmdbId}_ku_${timeStamp}.vtt`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from('subtitles')
+      .upload(filePath, blob, {
+        contentType: 'text/vtt',
+        upsert: true
+      });
+
+    if (uploadErr) throw uploadErr;
+
+    // 6. Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('subtitles')
+      .getPublicUrl(filePath);
+
+    let resolvedPublicUrl = publicUrl;
+    if (resolvedPublicUrl.startsWith('//')) {
+      resolvedPublicUrl = `https:${resolvedPublicUrl}`;
+    }
+
+    // 7. Save reference in custom_subtitles database table
+    const { error: dbErr } = await supabase
+      .from('custom_subtitles')
+      .upsert({
+        tmdb_id: String(tmdbId),
+        media_type: mediaType || 'movie',
+        language: 'ku',
+        subtitle_url: resolvedPublicUrl,
+        file_name: `${sub.attributes?.display_name || 'Translated'}_ku.vtt`,
+        season,
+        episode
+      }, {
+        onConflict: 'tmdb_id,media_type,language,season,episode'
+      });
+
+    if (dbErr) throw dbErr;
+
+    return { success: true, subtitleUrl: resolvedPublicUrl };
+  } catch (err: any) {
+    console.error("[SubtitleTranslationService] Pipeline failed:", err);
+    return { success: false, error: err.message || "Unknown error occurred" };
+  }
+}
