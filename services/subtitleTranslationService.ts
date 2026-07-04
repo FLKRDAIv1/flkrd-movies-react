@@ -49,8 +49,56 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
 
 async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
   let lastError: Error | null = null;
-  
-  // 1. Try simple GET requests (no preflight since there's no custom header)
+  const mymemoryTarget = target === 'ckb' ? 'ku' : target;
+
+  // 1. Try MyMemory API first (Native CORS, extremely stable for standard text blocks)
+  try {
+    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymemoryTarget}`;
+    const response = await fetch(myMemoryUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.responseData && data.responseData.translatedText) {
+        return data.responseData.translatedText;
+      }
+    }
+  } catch (err: any) {
+    console.warn(`[SubtitleTranslationService] MyMemory API failed:`, err.message);
+    lastError = err;
+  }
+
+  // 2. Try Lingva POST via CORS proxies (bypasses URL length restrictions and GET 500 errors)
+  for (const instance of LINGVA_INSTANCES) {
+    const targetUrl = `${instance}/api/v1/${source}/${target}`;
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
+    ];
+
+    for (const proxyUrl of proxies) {
+      try {
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ text })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.translation) {
+            return data.translation;
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[SubtitleTranslationService] POST via proxy failed for ${instance} on ${proxyUrl}:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  // 3. Fallback: direct GET requests to Lingva instances
   for (const instance of LINGVA_INSTANCES) {
     try {
       const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
@@ -67,36 +115,8 @@ async function translateText(text: string, source: string = 'en', target: string
           return data.translation;
         }
       }
-      throw new Error(`Instance ${instance} returned status ${response.status}`);
     } catch (err: any) {
-      console.warn(`[SubtitleTranslationService] GET failed for ${instance}:`, err.message);
-      lastError = err;
-    }
-  }
-  
-  // 2. Fallback to CORS proxies
-  const fallbackUrl = `https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
-  const proxies = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(fallbackUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(fallbackUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(fallbackUrl)}`
-  ];
-  
-  for (const proxyUrl of proxies) {
-    try {
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.translation) {
-          return data.translation;
-        }
-      }
-    } catch (err: any) {
-      console.warn(`[SubtitleTranslationService] Proxy fetch failed:`, err.message);
+      console.warn(`[SubtitleTranslationService] GET fallback failed for ${instance}:`, err.message);
       lastError = err;
     }
   }

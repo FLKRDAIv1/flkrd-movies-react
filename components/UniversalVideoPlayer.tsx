@@ -2019,23 +2019,40 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                         <AnimatePresence>
                             {showSubSettings && (
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    className="bg-[#0a0a0a]/95 backdrop-blur-3xl border border-white/10 p-5 md:p-6 rounded-[24px] md:rounded-[32px] shadow-[0_32px_64px_rgba(0,0,0,0.8)] w-[90vw] sm:w-80 max-h-[85vh] overflow-y-auto flex flex-col gap-5 md:gap-6 custom-scrollbar"
-                                    style={{ fontFamily: "'Inter', sans-serif" }}
-                                >
-                                    <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                                        <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase">
-                                            <Subtitles size={14} className="text-red-600" />
-                                            {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
-                                        </h3>
-                                        <button onClick={() => setShowSubSettings(false)} className="text-gray-500 hover:text-white transition-colors">
-                                            <X size={18} />
-                                        </button>
-                                    </div>
+                                <div className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none">
+                                    {/* Glassmorphic Backdrop overlay */}
+                                    <motion.div 
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        onClick={() => setShowSubSettings(false)}
+                                        className="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
+                                    />
+                                    
+                                    {/* Main Drawer Panel */}
+                                    <motion.div 
+                                        initial={{ y: '100%', opacity: 0.5 }}
+                                        animate={{ y: 0, opacity: 1 }}
+                                        exit={{ y: '100%', opacity: 0.5 }}
+                                        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+                                        className="relative pointer-events-auto w-full md:w-[400px] h-[75vh] md:h-[80vh] bg-[#0c0c0e]/95 backdrop-blur-3xl border-t md:border border-white/10 rounded-t-[32px] md:rounded-[32px] shadow-[0_-15px_40px_rgba(0,0,0,0.5),0_32px_64px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden"
+                                        style={{ fontFamily: "'Outfit', 'Inter', sans-serif" }}
+                                    >
+                                        {/* Mobile Swipe Handle Indicator */}
+                                        <div className="w-12 h-1 bg-zinc-800 rounded-full mx-auto my-3 md:hidden shrink-0" />
+                                        
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between border-b border-white/5 px-6 pb-4 pt-2 md:pt-4 shrink-0">
+                                            <h3 className="text-sm font-black text-white tracking-tight flex items-center gap-2 uppercase">
+                                                <Subtitles size={16} className="text-red-500 animate-pulse" />
+                                                {(language === 'ku' || language === 'badini') ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
+                                            </h3>
+                                            <button onClick={() => setShowSubSettings(false)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all">
+                                                <X size={16} />
+                                            </button>
+                                        </div>
 
-                                    <div className="space-y-6">
+                                        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar scroll-smooth">
                                         {/* Sleek Segmented Control Tab Bar */}
                                         <div className="flex bg-[#141414]/90 p-1 rounded-2xl border border-white/5 relative z-10 shrink-0">
                                             <button 
@@ -2630,15 +2647,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             </button>
                                         </div>
                                     )}
+                                        </div>
+                                    </motion.div>
                                 </div>
-
-                                <button 
-                                    onClick={() => setShowSubSettings(false)}
-                                    className="mt-6 py-4 bg-red-600/10 border border-red-600/20 rounded-[20px] text-[11px] font-black uppercase text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-lg hover:shadow-red-600/20"
-                                >
-                                    {(language === 'ku' || language === 'badini') ? 'داخستن' : 'Dismiss Studio'}
-                                </button>
-                            </motion.div>
                             )}
                         </AnimatePresence>
                     </div>
