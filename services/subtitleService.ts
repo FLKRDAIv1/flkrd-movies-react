@@ -352,7 +352,8 @@ export const subtitleService = {
             }
 
             // Fetch the actual text content (or zip)
-            const response = await this.fetchWithFallback(link);
+            const isLocal = link.startsWith('/') || link.includes(window.location.hostname) || link.includes('fkurd.pro');
+            const response = isLocal ? await fetch(link) : await this.fetchWithFallback(link);
             if (!response.ok) throw new Error("Could not fetch subtitle content");
             
             const contentType = response.headers.get('content-type') || '';

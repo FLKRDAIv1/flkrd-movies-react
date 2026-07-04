@@ -116,7 +116,8 @@ export async function translateCuesToKurdish(
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     const chunk = cues.slice(i, i + chunkSize);
-    const chunkTexts = chunk.map(c => c.text);
+    // Replace internal newlines in each cue text with a slash to avoid breaking Lingva GET requests
+    const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
     
     // Join using double pipe " || " as separator instead of newlines to avoid Lingva 500 errors
     const combinedText = chunkTexts.join(' || ');
@@ -145,9 +146,10 @@ export async function translateCuesToKurdish(
       }
     }
 
-    // Apply translations
+    // Apply translations and restore internal newlines
     for (let j = 0; j < chunk.length; j++) {
-      translatedCues[i + j].text = translatedTexts[j] || chunk[j].text;
+      const translatedText = translatedTexts[j] || chunk[j].text;
+      translatedCues[i + j].text = translatedText.replace(/\s*\/\s*/g, '\n');
     }
 
     if (onProgress) {
