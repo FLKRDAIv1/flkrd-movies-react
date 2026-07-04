@@ -1,14 +1,6 @@
 import { supabase } from '../utils/supabaseClient';
 import { subtitleService } from './subtitleService';
 
-const LINGVA_INSTANCES = [
-  "https://lingva.ml",
-  "https://translate.plausibility.cloud",
-  "https://lingva.garudalinux.org",
-  "https://lingva.lunar.icu",
-  "https://lingva.recepty.it"
-];
-
 export interface SubtitleCue {
   index: string;
   timestamp: string;
@@ -21,7 +13,7 @@ export interface SubtitleCue {
  */
 export function parseSubtitleToCues(text: string): SubtitleCue[] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  
+
   let cleanText = normalized;
   if (normalized.startsWith('WEBVTT')) {
     cleanText = normalized.replace(/^WEBVTT[^\n]*\n/, '');
@@ -47,150 +39,92 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
   return cues;
 }
 
-async function translateText(text: string, source: string = 'en', target: string = 'ckb'): Promise<string> {
-  let lastError: Error | null = null;
-  
-  // 1. Invoke the deployed Supabase Edge Function (highly secure backend call, hides GAS URL, bypasses CORS completely)
-  try {
-    const { data, error } = await supabase.functions.invoke('translate', {
-      body: { text, source, target }
-    });
-    
-    if (error) throw error;
-    if (data && data.translation) {
-      return data.translation;
-    }
-  } catch (err: any) {
-    console.warn(`[SubtitleTranslationService] Supabase Edge Function failed, running Vercel fallback:`, err.message);
-    lastError = err;
-  }
+// ============================================================
+// Google Apps Script Web App — Official Google Translate Engine
+// Content-Type: text/plain bypasses CORS preflight OPTIONS block
+// GAS backend still parses the JSON body correctly
+// ============================================================
+const GAS_TRANSLATE_URL =
+  'https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec';
 
-  // 2. Call Vercel serverless function /api/translate as fallback (also executes on backend)
+/**
+ * Translates a block of text via Google Apps Script.
+ * Can handle multiline text (joined by \n) for batch translation.
+ * On any error, returns the original text so the player never crashes.
+ */
+async function translateText(text: string): Promise<string> {
   try {
-    const response = await fetch('/api/translate', {
+    const response = await fetch(GAS_TRANSLATE_URL, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'text/plain;charset=utf-8',
       },
-      body: JSON.stringify({ text, source, target })
+      body: JSON.stringify({ text, targetLang: 'ckb' }),
     });
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.translation) {
-        return data.translation;
-      }
+
+    if (!response.ok) {
+      console.warn(`[GAS] HTTP ${response.status} — returning original text`);
+      return text;
     }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      console.warn(`[GAS] API error: ${data.error} — returning original text`);
+      return text;
+    }
+
+    return data.translation ?? text;
   } catch (err: any) {
-    console.warn(`[SubtitleTranslationService] Vercel Serverless fallback failed, running browser fallbacks:`, err.message);
-    lastError = err;
+    console.warn(`[GAS] Fetch failed: ${err.message} — returning original text`);
+    return text;
   }
-
-  // 3. Browser Fallback: Try MyMemory API (Native CORS)
-  try {
-    const mymymoryTarget = target === 'ckb' ? 'ku' : target;
-    const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymymoryTarget}`;
-    const response = await fetch(myMemoryUrl);
-    if (response.ok) {
-      const data = await response.json();
-      if (data && data.responseData && data.responseData.translatedText) {
-        return data.responseData.translatedText;
-      }
-    }
-  } catch (err: any) {
-    console.warn(`[SubtitleTranslationService] MyMemory API fallback failed:`, err.message);
-    lastError = err;
-  }
-
-  // 4. Last resort: Try Lingva POST via CORS proxies
-  for (const instance of LINGVA_INSTANCES) {
-    const targetUrl = `${instance}/api/v1/${source}/${target}`;
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`
-    ];
-
-    for (const proxyUrl of proxies) {
-      try {
-        const response = await fetch(proxyUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ text })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.translation) {
-            return data.translation;
-          }
-        }
-      } catch (err: any) {
-        console.warn(`[SubtitleTranslationService] Last resort proxy POST failed for ${instance}:`, err.message);
-        lastError = err;
-      }
-    }
-  }
-  
-  throw lastError || new Error("All translation routes failed");
 }
 
 /**
  * Translates an array of subtitle cues to Kurdish Sorani.
+ * Batches 30 cues per GAS call (joined by \n), splits on \n to restore lines.
+ * Falls back to original text on any error — player will never crash.
  */
 export async function translateCuesToKurdish(
   cues: SubtitleCue[],
   onProgress?: (progress: number) => void
 ): Promise<SubtitleCue[]> {
   const translatedCues = [...cues];
-  const chunkSize = 20; // Safe and fast chunk size for line translation
-  
+  const chunkSize = 30;
+
   for (let i = 0; i < cues.length; i += chunkSize) {
     const chunk = cues.slice(i, i + chunkSize);
-    // Replace internal newlines in each cue text with a slash to avoid breaking translation separators
+
+    // Replace internal newlines with " / " so they don't break the \n batch separator
     const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
-    
-    // Join using newline "\n" as separator
     const combinedText = chunkTexts.join('\n');
-    
-    let translatedTexts: string[] = [];
-    try {
-      const translation = await translateText(combinedText);
-      // Split by newline
-      translatedTexts = translation.split('\n');
-      
-      if (translatedTexts.length !== chunkTexts.length) {
-        throw new Error(`Line count mismatch: expected ${chunkTexts.length}, got ${translatedTexts.length}.`);
-      }
-    } catch (err: any) {
-      console.warn(`[SubtitleTranslationService] Chunk translation failed. Falling back to line-by-line:`, err.message);
-      
-      translatedTexts = [];
-      for (const text of chunkTexts) {
-        try {
-          const singleTranslation = await translateText(text);
-          translatedTexts.push(singleTranslation.trim());
-        } catch (e) {
-          translatedTexts.push(text); // Fallback to original
-        }
-        await new Promise(resolve => setTimeout(resolve, 80));
-      }
+
+    const rawTranslation = await translateText(combinedText);
+    let translatedTexts = rawTranslation.split('\n');
+
+    // If line count is off after translation, use original lines for this chunk
+    if (translatedTexts.length !== chunkTexts.length) {
+      console.warn(
+        `[GAS] Line count mismatch (expected ${chunkTexts.length}, got ${translatedTexts.length}). Using originals for chunk ${i}.`
+      );
+      translatedTexts = chunkTexts;
     }
 
-    // Apply translations and restore internal newlines
+    // Apply translations — restore " / " back to newlines inside each cue
     for (let j = 0; j < chunk.length; j++) {
-      const translatedText = translatedTexts[j] || chunk[j].text;
-      translatedCues[i + j].text = translatedText.replace(/\s*\/\s*/g, '\n');
+      const translated = translatedTexts[j] ?? chunk[j].text;
+      translatedCues[i + j].text = translated.replace(/\s*\/\s*/g, '\n');
     }
 
     if (onProgress) {
       onProgress(Math.round(((i + chunk.length) / cues.length) * 100));
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 150)); // Breather
+
+    // Small breather between batches to avoid GAS rate-limiting
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
-  
+
   return translatedCues;
 }
 
