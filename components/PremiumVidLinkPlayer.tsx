@@ -1435,6 +1435,46 @@ export default function PremiumVidLinkPlayer({
         e.preventDefault();
         setShowSubSettings(prev => !prev);
       }
+
+      // Shift+ArrowLeft -> Seek backward 5s
+      else if (e.shiftKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const targetTime = Math.max(0, lastReceivedTimeRef.current - 5);
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'seek', value: targetTime }), '*');
+        }
+        lastReceivedTimeRef.current = targetTime;
+      }
+
+      // Shift+ArrowRight -> Seek forward 5s
+      else if (e.shiftKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        const targetTime = lastReceivedTimeRef.current + 5;
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ method: 'seek', value: targetTime }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'seek', value: targetTime }), '*');
+        }
+        lastReceivedTimeRef.current = targetTime;
+      }
+
+      // Home -> Go to beginning
+      else if (e.key === 'Home') {
+        e.preventDefault();
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+          win.postMessage(JSON.stringify({ method: 'seek', value: 0 }), '*');
+          win.postMessage(JSON.stringify({ context: 'player.js', method: 'setCurrentTime', value: 0 }), '*');
+        }
+        lastReceivedTimeRef.current = 0;
+      }
     };
 
     window.addEventListener('keydown', handlePlaybackKeyDown);

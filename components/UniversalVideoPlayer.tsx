@@ -1695,6 +1695,68 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 e.preventDefault();
                 setShowSubSettings(prev => !prev);
             }
+
+            // Shift+ArrowLeft -> Seek backward 5s
+            else if (e.shiftKey && e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        const newTime = Math.max(0, currentTime - 5);
+                        win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: newTime }), '*');
+                        win.postMessage(JSON.stringify({ method: 'seek', value: newTime }), '*');
+                    }
+                    setCurrentTime(prev => Math.max(0, prev - 5));
+                } else if (videoRef.current) {
+                    videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 5);
+                }
+            }
+
+            // Shift+ArrowRight -> Seek forward 5s
+            else if (e.shiftKey && e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        const newTime = currentTime + 5;
+                        win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: newTime }), '*');
+                        win.postMessage(JSON.stringify({ method: 'seek', value: newTime }), '*');
+                    }
+                    setCurrentTime(prev => prev + 5);
+                } else if (videoRef.current) {
+                    videoRef.current.currentTime = Math.min(videoRef.current.duration || 99999, videoRef.current.currentTime + 5);
+                }
+            }
+
+            // Home -> Go to beginning
+            else if (e.key === 'Home') {
+                e.preventDefault();
+                if (isIframe) {
+                    if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+                        win.postMessage(JSON.stringify({ method: 'seek', value: 0 }), '*');
+                    }
+                    setCurrentTime(0);
+                } else if (videoRef.current) {
+                    videoRef.current.currentTime = 0;
+                }
+            }
+
+            // End -> Go to near end
+            else if (e.key === 'End') {
+                e.preventDefault();
+                if (!isIframe && videoRef.current && videoRef.current.duration) {
+                    videoRef.current.currentTime = Math.max(0, videoRef.current.duration - 3);
+                }
+            }
+
+            // 1-9 -> Jump to 10%-90% of video duration (not for iframes)
+            else if (!isIframe && videoRef.current && videoRef.current.duration && /^[1-9]$/.test(e.key)) {
+                e.preventDefault();
+                const pct = parseInt(e.key) / 10;
+                videoRef.current.currentTime = videoRef.current.duration * pct;
+            }
         };
 
         window.addEventListener('keydown', handlePlaybackKeyDown);

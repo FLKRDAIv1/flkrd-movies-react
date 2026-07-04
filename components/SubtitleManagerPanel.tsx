@@ -31,7 +31,7 @@ import {
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
-export type SubStudioTab = 'sub' | 'dub' | 'lighting';
+export type SubStudioTab = 'sub' | 'dub' | 'lighting' | 'shortcuts';
 
 interface SubtitleTrack {
   id: string | number;
@@ -257,9 +257,10 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   }, []);
 
   const TABS: { id: SubStudioTab; icon: React.ReactNode; label: string }[] = [
-    { id: 'sub',      icon: <Subtitles size={12} />, label: isKu ? 'ژێرنووس'  : 'Subtitles' },
-    { id: 'dub',      icon: <Mic2     size={12} />, label: isKu ? 'دۆبلاژ'   : 'Dubbing'   },
-    { id: 'lighting', icon: <Sliders  size={12} />, label: isKu ? 'ڕووناکی'  : 'Display'   },
+    { id: 'sub',       icon: <Subtitles size={12} />, label: isKu ? 'ژێرنووس'  : 'Subtitles' },
+    { id: 'dub',       icon: <Mic2      size={12} />, label: isKu ? 'دۆبلاژ'   : 'Dubbing'   },
+    { id: 'lighting',  icon: <Sliders   size={12} />, label: isKu ? 'ڕووناکی'  : 'Display'   },
+    { id: 'shortcuts', icon: <Keyboard  size={12} />, label: isKu ? 'کلیلەکان' : 'Hotkeys'   },
   ];
 
   return (
@@ -986,52 +987,170 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       />
                     </div>
 
-                    {/* Keyboard Shortcuts Guide */}
-                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-3 mt-2 mb-6">
-                      <div className="flex items-center gap-2 pb-1 border-b border-white/[0.05]">
-                        <Keyboard size={14} className="text-red-500" />
-                        <Label>
-                          {isKu ? 'ڕێبەری کلیلەکان' : 'Keyboard Shortcuts'}
-                        </Label>
-                      </div>
-                      <div className="flex flex-col gap-2.5 mt-1 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar" onPointerDownCapture={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'دەستپێکردن / وەستان' : 'Play / Pause'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">Space / K</kbd>
+                  </motion.div>
+                )}
+
+                {/* ── TAB: SHORTCUTS ── */}
+                {activeTab === 'shortcuts' && (
+                  <motion.div
+                    key="shortcuts-tab"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex flex-col gap-5"
+                    style={{ fontFamily: "'Zain', 'Outfit', sans-serif" }}
+                  >
+                    {/* Hero Banner */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-950/30 via-black/60 to-red-950/20 border border-red-500/15 p-5">
+                      <div className="absolute inset-0 bg-gradient-to-br from-red-600/5 to-transparent pointer-events-none" />
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-9 h-9 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center shrink-0">
+                          <Keyboard size={16} className="text-red-400" />
                         </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'گەڕانەوە ١٠ چرکە' : 'Seek Backward 10s'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">← / J</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'چوونەپێش ١٠ چرکە' : 'Seek Forward 10s'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">→ / L</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'زیادکردنی دەنگ' : 'Volume Up'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">↑</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'کەمکردنەوەی دەنگ' : 'Volume Down'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">↓</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'پڕکردنی شاشە' : 'Toggle Fullscreen'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">F</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'بێدەنگکردن' : 'Toggle Mute'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">M</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'پێشاندانی ژێرنووس' : 'Toggle Subtitles'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">C</kbd>
-                        </div>
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-zinc-500">{isKu ? 'ڕێکخستنەکان' : 'Toggle Panel'}</span>
-                          <kbd className="px-2 py-0.5 bg-white/5 border border-white/10 rounded-md text-zinc-300 font-mono text-[9px]">S</kbd>
+                        <div>
+                          <h3 className="text-[13px] font-black text-white tracking-tight">
+                            {isKu ? 'ڕێنمایی کلیلەکان' : 'Keyboard Shortcuts'}
+                          </h3>
+                          <p className="text-[9px] text-zinc-500 font-medium">
+                            {isKu ? 'FLKRD Movies — کارئامەی پلەیەر' : 'FLKRD Movies — Player Controls'}
+                          </p>
                         </div>
                       </div>
+                      <p className="text-[9.5px] text-zinc-400 leading-relaxed">
+                        {isKu
+                          ? 'کلیلەکانی ژووری پێشاندان بەکاربهێنە بۆ کنترۆڵکردنی پلەیەر، ژێرنووس، و دەنگ بەبێ کرتەی موشکە.'
+                          : 'Use keyboard shortcuts to control playback, subtitles, and audio without touching the mouse.'}
+                      </p>
+                    </div>
+
+                    {/* Category: Playback */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">
+                          {isKu ? '▸ دەستپێکردن' : '▸ Playback'}
+                        </span>
+                        <div className="flex-1 h-px bg-white/[0.04]" />
+                      </div>
+                      {[
+                        { label: isKu ? 'دەستپێکردن / وەستان' : 'Play / Pause', keys: ['Space', 'K'] },
+                        { label: isKu ? 'گەڕانەوە ١٠ چرکە' : 'Seek Backward 10s', keys: ['←', 'J'] },
+                        { label: isKu ? 'چوونەپێش ١٠ چرکە' : 'Seek Forward 10s', keys: ['→', 'L'] },
+                        { label: isKu ? 'گەڕانەوە ٥ چرکە' : 'Seek Backward 5s', keys: ['Shift+←'] },
+                        { label: isKu ? 'چوونەپێش ٥ چرکە' : 'Seek Forward 5s', keys: ['Shift+→'] },
+                      ].map(({ label, keys }) => (
+                        <div key={label} className="flex justify-between items-center bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5">
+                          <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
+                          <div className="flex items-center gap-1">
+                            {keys.map((k, i) => (
+                              <span key={k} className="flex items-center gap-1">
+                                <kbd className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-200 font-mono text-[9px] shadow-inner">
+                                  {k}
+                                </kbd>
+                                {i < keys.length - 1 && <span className="text-zinc-600 text-[8px] font-black">/</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Category: Audio */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">
+                          {isKu ? '▸ دەنگ' : '▸ Audio'}
+                        </span>
+                        <div className="flex-1 h-px bg-white/[0.04]" />
+                      </div>
+                      {[
+                        { label: isKu ? 'زیادکردنی دەنگ ٥٪' : 'Volume Up 5%', keys: ['↑'] },
+                        { label: isKu ? 'کەمکردنەوەی دەنگ ٥٪' : 'Volume Down 5%', keys: ['↓'] },
+                        { label: isKu ? 'بێدەنگ / دەنگدانەوە' : 'Mute / Unmute', keys: ['M'] },
+                      ].map(({ label, keys }) => (
+                        <div key={label} className="flex justify-between items-center bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5">
+                          <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
+                          <div className="flex items-center gap-1">
+                            {keys.map((k, i) => (
+                              <span key={k} className="flex items-center gap-1">
+                                <kbd className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-200 font-mono text-[9px] shadow-inner">
+                                  {k}
+                                </kbd>
+                                {i < keys.length - 1 && <span className="text-zinc-600 text-[8px] font-black">/</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Category: Display */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">
+                          {isKu ? '▸ نیشاندان' : '▸ Display'}
+                        </span>
+                        <div className="flex-1 h-px bg-white/[0.04]" />
+                      </div>
+                      {[
+                        { label: isKu ? 'شاشەی تەواو / ئاساییە' : 'Toggle Fullscreen', keys: ['F'] },
+                        { label: isKu ? 'نیشاندان / شاردنەوەی ژێرنووس' : 'Toggle Subtitles', keys: ['C'] },
+                        { label: isKu ? 'کردنەوە / داخستنی پانێل' : 'Toggle Panel', keys: ['S'] },
+                        { label: isKu ? 'داخستنی ڕێکخستنەکان' : 'Close Settings / Exit Fullscreen', keys: ['Esc'] },
+                      ].map(({ label, keys }) => (
+                        <div key={label} className="flex justify-between items-center bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5">
+                          <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
+                          <div className="flex items-center gap-1">
+                            {keys.map((k, i) => (
+                              <span key={k} className="flex items-center gap-1">
+                                <kbd className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-200 font-mono text-[9px] shadow-inner">
+                                  {k}
+                                </kbd>
+                                {i < keys.length - 1 && <span className="text-zinc-600 text-[8px] font-black">/</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Category: Navigation */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">
+                          {isKu ? '▸ ناڤیگەیشن' : '▸ Navigation'}
+                        </span>
+                        <div className="flex-1 h-px bg-white/[0.04]" />
+                      </div>
+                      {[
+                        { label: isKu ? 'سەرەوە' : 'Go to Beginning', keys: ['Home'] },
+                        { label: isKu ? 'کۆتایی' : 'Go to End', keys: ['End'] },
+                        { label: isKu ? '١٠٪ی ماوەی فیلم' : 'Jump to 10%', keys: ['1'] },
+                        { label: isKu ? '٥٠٪ی ماوەی فیلم' : 'Jump to 50%', keys: ['5'] },
+                        { label: isKu ? '٩٠٪ی ماوەی فیلم' : 'Jump to 90%', keys: ['9'] },
+                      ].map(({ label, keys }) => (
+                        <div key={label} className="flex justify-between items-center bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5">
+                          <span className="text-[10px] text-zinc-300 font-medium">{label}</span>
+                          <div className="flex items-center gap-1">
+                            {keys.map((k, i) => (
+                              <span key={k} className="flex items-center gap-1">
+                                <kbd className="px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-200 font-mono text-[9px] shadow-inner">
+                                  {k}
+                                </kbd>
+                                {i < keys.length - 1 && <span className="text-zinc-600 text-[8px] font-black">/</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-center gap-2 py-2 opacity-40">
+                      <Keyboard size={10} className="text-zinc-500" />
+                      <span className="text-[8px] text-zinc-500 font-medium tracking-wide">
+                        {isKu ? 'کلیلەکان تەنها کاتێک کار دەکەن کە شووشەکەی تێکست چالاک نەبێت' : 'Shortcuts only work when no text field is focused'}
+                      </span>
                     </div>
                   </motion.div>
                 )}
