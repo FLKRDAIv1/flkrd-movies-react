@@ -1096,6 +1096,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                         { label: isKu ? 'شاشەی تەواو / ئاساییە' : 'Toggle Fullscreen', keys: ['F'] },
                         { label: isKu ? 'نیشاندان / شاردنەوەی ژێرنووس' : 'Toggle Subtitles', keys: ['C'] },
                         { label: isKu ? 'کردنەوە / داخستنی پانێل' : 'Toggle Panel', keys: ['S'] },
+                        { label: isKu ? 'کردنەوەی ڕێنمایی کلیلەکان' : 'Open Shortcuts Guide', keys: ['?'] },
                         { label: isKu ? 'داخستنی ڕێکخستنەکان' : 'Close Settings / Exit Fullscreen', keys: ['Esc'] },
                       ].map(({ label, keys }) => (
                         <div key={label} className="flex justify-between items-center bg-white/[0.02] border border-white/[0.04] rounded-xl px-3 py-2.5">

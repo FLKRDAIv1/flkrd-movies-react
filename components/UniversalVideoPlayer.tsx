@@ -623,7 +623,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [isScraping, setIsScraping] = useState(false);
     const [scrapingError, setScrapingError] = useState<string | null>(null);
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
-    const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting'>('sub');
+    const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting' | 'shortcuts'>('sub');
     const [isTranslating, setIsTranslating] = useState(false);
     const [translationProgress, setTranslationProgress] = useState(0);
     const [translatingName, setTranslatingName] = useState('');
@@ -1694,6 +1694,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             else if (key === 's') {
                 e.preventDefault();
                 setShowSubSettings(prev => !prev);
+            }
+
+            // ? (Shift+/) -> Open Hotkeys guide directly (Mac & Windows)
+            else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+                e.preventDefault();
+                setSubStudioTab('shortcuts');
+                setShowSubSettings(true);
             }
 
             // Shift+ArrowLeft -> Seek backward 5s

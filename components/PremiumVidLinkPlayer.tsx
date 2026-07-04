@@ -290,7 +290,7 @@ export default function PremiumVidLinkPlayer({
   // Doblaj & Multi-Language Audio States
   const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
   const [kurdishDub, setKurdishDub] = useState<any | null>(null);
-  const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting'>('sub');
+  const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting' | 'shortcuts'>('sub');
   const [isTranslating, setIsTranslating] = useState(false);
   const [translationProgress, setTranslationProgress] = useState(0);
   const [translatingName, setTranslatingName] = useState('');
@@ -1434,6 +1434,13 @@ export default function PremiumVidLinkPlayer({
       else if (key === 's') {
         e.preventDefault();
         setShowSubSettings(prev => !prev);
+      }
+
+      // ? (Shift+/) -> Open Hotkeys guide directly (Mac & Windows)
+      else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setSubStudioTab('shortcuts');
+        setShowSubSettings(true);
       }
 
       // Shift+ArrowLeft -> Seek backward 5s
