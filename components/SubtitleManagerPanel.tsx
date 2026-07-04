@@ -1148,9 +1148,9 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
 
                     {/* Footer */}
                     <div className="flex items-center justify-center gap-2 py-2 opacity-40">
-                      <Keyboard size={10} className="text-zinc-500" />
-                      <span className="text-[8px] text-zinc-500 font-medium tracking-wide">
-                        {isKu ? 'کلیلەکان تەنها کاتێک کار دەکەن کە شووشەکەی تێکست چالاک نەبێت' : 'Shortcuts only work when no text field is focused'}
+                      <Keyboard size={10} className="text-red-500" />
+                      <span className="text-[8px] text-zinc-400 font-black tracking-widest uppercase">
+                        FLKRD Player Controller
                       </span>
                     </div>
                   </motion.div>
