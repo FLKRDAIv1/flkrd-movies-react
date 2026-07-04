@@ -2300,10 +2300,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 const sLang = (sub?.attributes?.language || '').toLowerCase();
                                                                 const isKurdishSub = sLang === 'ku' || sLang === 'ckb' || sLang === 'kur' || sLang === 'badini';
                                                                 return (
-                                                                    <button 
+                                                                    <div 
                                                                         key={sub.id}
                                                                         onClick={() => handleSelectSub(sub)}
-                                                                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group ${
+                                                                        role="button"
+                                                                        tabIndex={0}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                                                e.preventDefault();
+                                                                                handleSelectSub(sub);
+                                                                            }
+                                                                        }}
+                                                                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group cursor-pointer ${
                                                                             sub.id === currentSubId 
                                                                                 ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 text-white shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/30' 
                                                                                 : isKurdishSub
@@ -2372,7 +2380,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                                     : 'text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
                                                                             }`} />
                                                                         </div>
-                                                                    </button>
+                                                                    </div>
                                                                 );
                                                             })
                                                     ) : (

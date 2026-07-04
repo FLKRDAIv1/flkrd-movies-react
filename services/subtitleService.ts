@@ -344,8 +344,12 @@ export const subtitleService = {
             if (link.startsWith('//')) {
                 link = `https:${link}`;
             } else if (link.startsWith('/')) {
-                if (link.startsWith('/subtitle/') && !link.includes('subdl')) {
-                    link = `https://opensubtitles-v3.strem.io${link}`;
+                if (link.startsWith('/subtitle/')) {
+                    if (link.includes('subdl') || link.includes('api_key=subdl')) {
+                        link = `https://dl.subdl.com${link}`;
+                    } else {
+                        link = `https://opensubtitles-v3.strem.io${link}`;
+                    }
                 } else {
                     link = `https://fkurd.pro${link}`;
                 }
@@ -359,7 +363,7 @@ export const subtitleService = {
             const contentType = response.headers.get('content-type') || '';
             
             // Handle ZIP extraction for SubDL
-            if (contentType.includes('zip') || link.endsWith('.zip')) {
+            if (contentType.includes('zip') || link.toLowerCase().includes('.zip')) {
                 const blob = await response.blob();
                 
                 const zip = new JSZip();
@@ -394,15 +398,42 @@ export const subtitleService = {
                 absoluteUrl = `https:${url}`;
             } else if (url.startsWith('/')) {
                 if (url.startsWith('/subtitle/')) {
-                    absoluteUrl = `https://opensubtitles-v3.strem.io${url}`;
+                    if (url.includes('subdl') || url.includes('api_key=subdl')) {
+                        absoluteUrl = `https://dl.subdl.com${url}`;
+                    } else {
+                        absoluteUrl = `https://opensubtitles-v3.strem.io${url}`;
+                    }
                 } else {
                     absoluteUrl = `https://fkurd.pro${url}`;
                 }
             }
             console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", absoluteUrl);
-            const response = await this.fetchWithFallback(absoluteUrl);
+            const isLocal = absoluteUrl.startsWith('/') || absoluteUrl.includes(window.location.hostname) || absoluteUrl.includes('fkurd.pro');
+            const response = isLocal ? await fetch(absoluteUrl) : await this.fetchWithFallback(absoluteUrl);
             if (response && response.ok) {
-                const text = await response.text();
+                const contentType = response.headers.get('content-type') || '';
+                let text = '';
+
+                // Handle ZIP extraction (e.g. from SubDL)
+                if (contentType.includes('zip') || absoluteUrl.toLowerCase().includes('.zip')) {
+                    const blob = await response.blob();
+                    const zip = new JSZip();
+                    const zipContent = await zip.loadAsync(blob);
+                    
+                    // Find first .srt or .vtt file
+                    const srtFile = Object.values(zipContent.files).find((f: any) => 
+                        !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
+                    ) as any;
+                    
+                    if (srtFile) {
+                        console.log("[SUBTITLE SERVICE] Extracted subtitle from ZIP in getSubtitleBlob:", srtFile.name);
+                        text = await srtFile.async('string');
+                    } else {
+                        throw new Error("No subtitle file found in ZIP archive");
+                    }
+                } else {
+                    text = await response.text();
+                }
                 
                 // Process VTT (SRT-to-VTT + Offset)
                 let processedText = text;
