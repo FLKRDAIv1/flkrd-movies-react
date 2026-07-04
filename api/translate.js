@@ -23,7 +23,33 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        // 1. Try Lingva POST requests (Direct from server, no CORS or URL limits)
+        let lastError = null;
+
+        // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
+        const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || "";
+        if (gasUrl) {
+            try {
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8'
+                    },
+                    body: JSON.stringify({ text, source, target })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && (data.translation || data.success)) {
+                        return res.status(200).json({ translation: data.translation });
+                    }
+                }
+            } catch (err) {
+                console.warn(`[SERVER TRANSLATE] Google Apps Script failed:`, err.message);
+                lastError = err;
+            }
+        }
+
+        // 2. Try Lingva POST requests (Direct from server, no CORS or URL limits)
         const LINGVA_INSTANCES = [
             "https://translate.plausibility.cloud",
             "https://lingva.ml",
@@ -31,8 +57,6 @@ export default async function handler(req, res) {
             "https://lingva.lunar.icu",
             "https://lingva.recepty.it"
         ];
-
-        let lastError = null;
 
         for (const instance of LINGVA_INSTANCES) {
             try {
@@ -57,7 +81,7 @@ export default async function handler(req, res) {
             }
         }
 
-        // 2. Fallback to MyMemory API (English to Kurdish)
+        // 3. Fallback to MyMemory API (English to Kurdish)
         try {
             const mymemoryTarget = target === 'ckb' ? 'ku' : target;
             const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymemoryTarget}`;
@@ -73,7 +97,7 @@ export default async function handler(req, res) {
             lastError = err;
         }
 
-        // 3. Fallback to Lingva GET requests
+        // 4. Fallback to Lingva GET requests
         for (const instance of LINGVA_INSTANCES) {
             try {
                 const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(text)}`;

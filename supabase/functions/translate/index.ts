@@ -31,7 +31,35 @@ serve(async (req) => {
 
     let lastError = null;
 
-    // 1. Try Lingva POST requests
+    // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
+    const gasUrl = Deno.env.get('GOOGLE_TRANSLATE_GAS_URL');
+    if (gasUrl) {
+      try {
+        const response = await fetch(gasUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify({ text, source, target }),
+          signal: AbortSignal.timeout(10000)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && (data.translation || data.success)) {
+            return new Response(
+              JSON.stringify({ translation: data.translation }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (err: any) {
+        console.warn("Google Apps Script failed in Edge Function:", err.message);
+        lastError = err;
+      }
+    }
+
+    // 2. Try Lingva POST requests
     for (const instance of LINGVA_INSTANCES) {
       try {
         const response = await fetch(`${instance}/api/v1/${source}/${target}`, {
