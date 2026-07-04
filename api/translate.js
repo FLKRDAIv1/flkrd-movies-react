@@ -1,5 +1,5 @@
 // api/translate.js
-// A Vercel Serverless Function to proxy subtitle translation requests to Lingva Translate and MyMemory Translate.
+// A Vercel Serverless Function to proxy subtitle translation requests to Google Apps Script, Lingva, and MyMemory.
 // This executes on the server backend (Node.js), bypassing browser CORS policies and GET URL character limits completely.
 
 export default async function handler(req, res) {
@@ -23,7 +23,67 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        let lastError = null;
+        const isArray = Array.isArray(text);
+        const textArray = isArray ? text : [text];
+
+        const LINGVA_INSTANCES = [
+            "https://translate.plausibility.cloud",
+            "https://lingva.ml",
+            "https://lingva.garudalinux.org",
+            "https://lingva.lunar.icu",
+            "https://lingva.recepty.it"
+        ];
+
+        // Helper: translate a single string with all fallback engines
+        const translateSingle = async (t) => {
+            if (!t || !t.trim()) return t || '';
+            
+            // 1. Try Lingva POST
+            for (const instance of LINGVA_INSTANCES) {
+                try {
+                    const response = await fetch(`${instance}/api/v1/${source}/${target}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ text: t })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.translation) return data.translation;
+                    }
+                } catch (err) {}
+            }
+
+            // 2. Try MyMemory
+            try {
+                const mymemoryTarget = target === 'ckb' ? 'ku' : target;
+                const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${source}|${mymemoryTarget}`;
+                const response = await fetch(myMemoryUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.responseData && data.responseData.translatedText) {
+                        return data.responseData.translatedText;
+                    }
+                }
+            } catch (err) {}
+
+            // 3. Try Lingva GET
+            for (const instance of LINGVA_INSTANCES) {
+                try {
+                    const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(t)}`;
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data.translation) return data.translation;
+                    }
+                } catch (err) {}
+            }
+
+            return t; // Fallback to original text if everything fails
+        };
 
         // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || "";
@@ -45,76 +105,20 @@ export default async function handler(req, res) {
                 }
             } catch (err) {
                 console.warn(`[SERVER TRANSLATE] Google Apps Script failed:`, err.message);
-                lastError = err;
             }
         }
 
-        // 2. Try Lingva POST requests (Direct from server, no CORS or URL limits)
-        const LINGVA_INSTANCES = [
-            "https://translate.plausibility.cloud",
-            "https://lingva.ml",
-            "https://lingva.garudalinux.org",
-            "https://lingva.lunar.icu",
-            "https://lingva.recepty.it"
-        ];
-
-        for (const instance of LINGVA_INSTANCES) {
-            try {
-                const response = await fetch(`${instance}/api/v1/${source}/${target}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ text })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.translation) {
-                        return res.status(200).json({ translation: data.translation });
-                    }
-                }
-            } catch (err) {
-                console.warn(`[SERVER TRANSLATE] Lingva POST failed for ${instance}:`, err.message);
-                lastError = err;
+        // 2. Fallback to Lingva / MyMemory / Lingva GET
+        if (isArray) {
+            const results = [];
+            for (const item of textArray) {
+                results.push(await translateSingle(item));
             }
+            return res.status(200).json({ translation: results });
+        } else {
+            const singleTranslation = await translateSingle(textArray[0]);
+            return res.status(200).json({ translation: singleTranslation });
         }
-
-        // 3. Fallback to MyMemory API (English to Kurdish)
-        try {
-            const mymemoryTarget = target === 'ckb' ? 'ku' : target;
-            const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymemoryTarget}`;
-            const response = await fetch(myMemoryUrl);
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.responseData && data.responseData.translatedText) {
-                    return res.status(200).json({ translation: data.responseData.translatedText });
-                }
-            }
-        } catch (err) {
-            console.warn(`[SERVER TRANSLATE] MyMemory API fallback failed:`, err.message);
-            lastError = err;
-        }
-
-        // 4. Fallback to Lingva GET requests
-        for (const instance of LINGVA_INSTANCES) {
-            try {
-                const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
-                const response = await fetch(url);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.translation) {
-                        return res.status(200).json({ translation: data.translation });
-                    }
-                }
-            } catch (err) {
-                console.warn(`[SERVER TRANSLATE] Lingva GET failed for ${instance}:`, err.message);
-                lastError = err;
-            }
-        }
-
-        return res.status(500).json({ error: lastError ? lastError.message : 'All translation routes exhausted' });
 
     } catch (globalError) {
         console.error("[SERVER TRANSLATE] Global handler error:", globalError.message);

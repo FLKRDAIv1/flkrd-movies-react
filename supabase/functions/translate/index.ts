@@ -29,7 +29,57 @@ serve(async (req) => {
       );
     }
 
-    let lastError = null;
+    const isArray = Array.isArray(text);
+    const textArray: string[] = isArray ? text : [text];
+
+    // Helper: translate a single string with all fallback engines
+    const translateSingle = async (t: string): Promise<string> => {
+      if (!t || !t.trim()) return t || '';
+      
+      // 1. Try Lingva POST
+      for (const instance of LINGVA_INSTANCES) {
+        try {
+          const res = await fetch(`${instance}/api/v1/${source}/${target}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ text: t }),
+            signal: AbortSignal.timeout(6000)
+          });
+          if (res.ok) {
+            const d = await res.json();
+            if (d && d.translation) return d.translation;
+          }
+        } catch (e) {}
+      }
+
+      // 2. Try MyMemory
+      try {
+        const mymemoryTarget = target === 'ckb' ? 'ku' : target;
+        const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${source}|${mymemoryTarget}`;
+        const res = await fetch(myMemoryUrl);
+        if (res.ok) {
+          const d = await res.json();
+          if (d && d.responseData && d.responseData.translatedText) {
+            return d.responseData.translatedText;
+          }
+        }
+      } catch (e) {}
+
+      // 3. Try Lingva GET
+      for (const instance of LINGVA_INSTANCES) {
+        try {
+          const res = await fetch(`${instance}/api/v1/${source}/${target}/${encodeURIComponent(t)}`, {
+            signal: AbortSignal.timeout(6000)
+          });
+          if (res.ok) {
+            const d = await res.json();
+            if (d && d.translation) return d.translation;
+          }
+        } catch (e) {}
+      }
+
+      return t; // Fallback to original text if everything fails
+    };
 
     // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
     const gasUrl = Deno.env.get('GOOGLE_TRANSLATE_GAS_URL');
@@ -41,7 +91,7 @@ serve(async (req) => {
             'Content-Type': 'text/plain;charset=utf-8'
           },
           body: JSON.stringify({ text, source, target }),
-          signal: AbortSignal.timeout(10000)
+          signal: AbortSignal.timeout(12000)
         });
 
         if (response.ok) {
@@ -55,81 +105,27 @@ serve(async (req) => {
         }
       } catch (err: any) {
         console.warn("Google Apps Script failed in Edge Function:", err.message);
-        lastError = err;
       }
     }
 
-    // 2. Try Lingva POST requests
-    for (const instance of LINGVA_INSTANCES) {
-      try {
-        const response = await fetch(`${instance}/api/v1/${source}/${target}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ text }),
-          signal: AbortSignal.timeout(8000)
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.translation) {
-            return new Response(
-              JSON.stringify({ translation: data.translation }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        }
-      } catch (err: any) {
-        console.warn(`Lingva POST failed for ${instance}:`, err.message);
-        lastError = err;
+    // 2. Fallback to Lingva / MyMemory / Lingva GET
+    // If it was an array, we can translate each element using translateSingle helper
+    if (isArray) {
+      const results: string[] = [];
+      for (const item of textArray) {
+        results.push(await translateSingle(item));
       }
+      return new Response(
+        JSON.stringify({ translation: results }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      const singleTranslation = await translateSingle(textArray[0]);
+      return new Response(
+        JSON.stringify({ translation: singleTranslation }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    // 2. Fallback to MyMemory
-    try {
-      const mymemoryTarget = target === 'ckb' ? 'ku' : target;
-      const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${source}|${mymemoryTarget}`;
-      const response = await fetch(myMemoryUrl);
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.responseData && data.responseData.translatedText) {
-          return new Response(
-            JSON.stringify({ translation: data.responseData.translatedText }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    } catch (err: any) {
-      console.warn(`MyMemory fallback failed:`, err.message);
-      lastError = err;
-    }
-
-    // 3. Last resort: GET
-    for (const instance of LINGVA_INSTANCES) {
-      try {
-        const url = `${instance}/api/v1/${source}/${target}/${encodeURIComponent(text)}`;
-        const response = await fetch(url);
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.translation) {
-            return new Response(
-              JSON.stringify({ translation: data.translation }),
-              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        }
-      } catch (err: any) {
-        console.warn(`Lingva GET failed for ${instance}:`, err.message);
-        lastError = err;
-      }
-    }
-
-    return new Response(
-      JSON.stringify({ error: lastError ? lastError.message : "All translation routes failed" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
 
   } catch (err: any) {
     return new Response(
