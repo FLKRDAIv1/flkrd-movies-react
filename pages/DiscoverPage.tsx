@@ -219,7 +219,7 @@ const DiscoverPage: React.FC = () => {
         >
             {/* Dynamic GPU-accelerated water sheen overlay */}
             <div 
-              className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
               style={{
                 background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                 opacity: (glassConfig.displacementScale / 120) * 0.9,
@@ -299,7 +299,7 @@ const DiscoverPage: React.FC = () => {
                                         <img src={country.flagUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15 group-hover:opacity-35 transition-opacity" />
                                         {/* Dynamic GPU-accelerated water sheen overlay */}
                                         <div 
-                                          className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                                          className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
                                           style={{
                                             background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                                             opacity: (glassConfig.displacementScale / 120) * 0.9,
@@ -336,7 +336,7 @@ const DiscoverPage: React.FC = () => {
                                 >
                                     {/* Dynamic GPU-accelerated water sheen overlay */}
                                     <div 
-                                      className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
+                                      className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
                                       style={{
                                         background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                                         opacity: (glassConfig.displacementScale / 120) * 0.9,

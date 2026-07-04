@@ -13,6 +13,10 @@ export interface GlassConfig {
   aberrationIntensity: number;
   elasticity: number;
   cornerRadius: number;
+  // Extended fields (optional, backward-compatible)
+  glowIntensity?: number;      // 0–1: outer red glow strength
+  shineBrightness?: number;    // 0–0.6: inner top-edge highlight brightness
+  enableJelly?: boolean;       // toggle jelly bounce animation
 }
 
 interface UIContextType {

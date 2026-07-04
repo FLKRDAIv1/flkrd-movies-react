@@ -2343,11 +2343,15 @@ const GlassCustomizer: React.FC = () => {
                     <input 
                         type="range" 
                         min="5" 
-                        max="60" 
+                        max="120" 
+                        step="1"
                         value={localConfig.blurAmount}
                         onChange={(e) => setLocalConfig({ ...localConfig, blurAmount: Number(e.target.value) })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                     />
+                    <div className="flex justify-between text-[9px] text-gray-600 mt-0.5">
+                        <span>5px</span><span>60px</span><span>120px</span>
+                    </div>
                 </div>
 
                 {/* 2. Saturation Slider */}
@@ -2477,6 +2481,56 @@ const GlassCustomizer: React.FC = () => {
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                     />
                 </div>
+
+                {/* 10. Glow Intensity */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕووناکی برووسکی دەوروبەر (Glow Intensity)</span>
+                        <span className="font-mono text-brand">{Math.round((localConfig.glowIntensity ?? 0.4) * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="100"
+                        step="1"
+                        value={Math.round((localConfig.glowIntensity ?? 0.4) * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, glowIntensity: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 11. Shine / Highlight Brightness */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>ڕووناکی تیشکی ژوورەوە (Shine Highlight)</span>
+                        <span className="font-mono text-brand">{Math.round((localConfig.shineBrightness ?? 0.12) * 100)}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="0" 
+                        max="60"
+                        step="1"
+                        value={Math.round((localConfig.shineBrightness ?? 0.12) * 100)}
+                        onChange={(e) => setLocalConfig({ ...localConfig, shineBrightness: Number(e.target.value) / 100 })}
+                        className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+
+                {/* 12. Toggle Jelly/Bounce Animation */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10">
+                    <span className="text-[11px] font-black uppercase text-gray-400">ئەنیمەیشنی جیری (Jelly Bounce)</span>
+                    <button
+                        onClick={() => setLocalConfig({ ...localConfig, enableJelly: !(localConfig.enableJelly ?? true) })}
+                        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
+                            (localConfig.enableJelly ?? true) ? 'bg-brand' : 'bg-white/10'
+                        }`}
+                    >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${
+                            (localConfig.enableJelly ?? true) ? 'translate-x-6' : 'translate-x-0'
+                        }`} />
+                    </button>
+                </div>
+
             </div>
 
             {/* Live Preview Container */}
@@ -2501,23 +2555,26 @@ const GlassCustomizer: React.FC = () => {
                             WebkitBackdropFilter: `blur(${localConfig.blurAmount}px) saturate(${localConfig.saturation}%)`,
                             borderRadius: `${localConfig.cornerRadius}px`,
                             boxShadow: `
-                              inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + localConfig.borderOpacity * 0.45}),
+                              inset 0 1px 0 0 rgba(255, 255, 255, ${(localConfig.shineBrightness ?? 0.12) + localConfig.borderOpacity * 0.35}),
                               inset ${localConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
                               inset -${localConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
                               inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                              0 20px 40px rgba(0,0,0,0.65)
+                              0 20px 40px rgba(0,0,0,0.65),
+                              0 0 ${Math.round((localConfig.glowIntensity ?? 0.4) * 60)}px rgba(var(--brand-red-rgb), ${(localConfig.glowIntensity ?? 0.4) * 0.4})
                             `
                         }}
                     >
-                        {/* Dynamic GPU-accelerated water sheen overlay */}
-                        <div 
-                          className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite]"
-                          style={{
-                            background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (localConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                            opacity: (localConfig.displacementScale / 120) * 0.9,
-                            animationDuration: `${30 * (0.35 / Math.max(0.1, localConfig.elasticity))}s`
-                          }}
-                        />
+                        {/* Smooth sheen overlay — NO jelly, linear pan only */}
+                        {localConfig.displacementScale > 0 && (
+                          <div 
+                            className="absolute inset-0 pointer-events-none mix-blend-overlay"
+                            style={{
+                              background: `linear-gradient(105deg, transparent 30%, rgba(255,255,255,${(localConfig.shineBrightness ?? 0.12) * 0.6}) 50%, transparent 70%)`,
+                              animation: `glass-sheen-pan ${20 * (1 / Math.max(0.1, localConfig.elasticity))}s linear infinite`,
+                              opacity: (localConfig.displacementScale / 120),
+                            }}
+                          />
+                        )}
                     </div>
                     {/* Sharp content above background overlay */}
                     <div className="relative z-10 p-6 flex items-center gap-3">
@@ -2525,6 +2582,9 @@ const GlassCustomizer: React.FC = () => {
                         <div className="text-right">
                             <span className="text-xs font-black text-white block leading-none">FLKRD Stream Core</span>
                             <span className="text-[8px] text-gray-400 font-bold uppercase mt-1 block">Live Preview Node</span>
+                        </div>
+                        <div className="ml-auto text-right">
+                            <span className="text-[9px] font-mono text-brand">{localConfig.blurAmount}px blur</span>
                         </div>
                     </div>
                 </div>

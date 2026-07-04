@@ -458,18 +458,43 @@ video::-webkit-media-controls-panel {
   }
 }
 
-/* ── iOS Native Liquid Glass Sheen Animation ── */
+
+/* ── iOS Native Liquid Glass Sheen Animation (smooth pan, no jelly rotate) ── */
 @keyframes ios-glass-shine {
   0% {
-    transform: translate(-15%, -15%) rotate(0deg);
+    transform: translateX(-200%) skewX(-15deg);
+    opacity: 0;
   }
-  50% {
-    transform: translate(15%, 15%) rotate(180deg);
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
   }
   100% {
-    transform: translate(-15%, -15%) rotate(360deg);
+    transform: translateX(200%) skewX(-15deg);
+    opacity: 0;
   }
 }
+
+/* ── Glass Sheen Pan: gentle diagonal light sweep ── */
+@keyframes glass-sheen-pan {
+  0% {
+    background-position: -200% center;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 300% center;
+    opacity: 0;
+  }
+}
+
 
 /* ── Premium Neon Border Spin Animation ── */
 @keyframes neon-border-spin {

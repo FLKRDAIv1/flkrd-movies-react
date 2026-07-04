@@ -317,7 +317,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
           >
             {/* Dynamic liquid shine overlay */}
             <div 
-              className="absolute inset-[-100%] pointer-events-none mix-blend-overlay animate-[ios-glass-shine_25s_linear_infinite] z-0"
+              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite] z-0"
               style={{
                 background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                 opacity: 0.8,
