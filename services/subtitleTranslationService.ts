@@ -112,20 +112,23 @@ export async function translateCuesToKurdish(
   onProgress?: (progress: number) => void
 ): Promise<SubtitleCue[]> {
   const translatedCues = [...cues];
-  const chunkSize = 20; // 20 cues per batch
+  const chunkSize = 15; // Safe chunk size for URL length limits
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     const chunk = cues.slice(i, i + chunkSize);
     const chunkTexts = chunk.map(c => c.text);
-    const combinedText = chunkTexts.join('\n');
+    
+    // Join using double pipe " || " as separator instead of newlines to avoid Lingva 500 errors
+    const combinedText = chunkTexts.join(' || ');
     
     let translatedTexts: string[] = [];
     try {
       const translation = await translateText(combinedText);
-      translatedTexts = translation.split('\n');
+      // Split by double pipe, allowing for varying whitespace around them
+      translatedTexts = translation.split(/\s*\|\|\s*/);
       
       if (translatedTexts.length !== chunkTexts.length) {
-        throw new Error("Line count mismatch, using fallback");
+        throw new Error(`Line count mismatch: expected ${chunkTexts.length}, got ${translatedTexts.length}. Using fallback.`);
       }
     } catch (err: any) {
       console.warn(`[SubtitleTranslationService] Chunk translation failed. Falling back to line-by-line:`, err.message);
@@ -138,7 +141,7 @@ export async function translateCuesToKurdish(
         } catch (e) {
           translatedTexts.push(text); // Fallback to original
         }
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 150));
       }
     }
 
@@ -151,7 +154,7 @@ export async function translateCuesToKurdish(
       onProgress(Math.round(((i + chunk.length) / cues.length) * 100));
     }
     
-    await new Promise(resolve => setTimeout(resolve, 200)); // Breather
+    await new Promise(resolve => setTimeout(resolve, 250)); // Breather
   }
   
   return translatedCues;
