@@ -1499,24 +1499,39 @@ export default function PremiumVidLinkPlayer({
                 </button>
               </div>
 
-              {/* Premium Segmented Control Tab Bar */}
-              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
+              {/* Sleek Segmented Control Tab Bar */}
+              <div className="flex bg-[#141414]/90 p-1 rounded-2xl border border-white/5 relative z-10 shrink-0">
                 <button 
                   onClick={() => setSubStudioTab('sub')}
-                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                    subStudioTab === 'sub' 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                 >
+                  <Subtitles size={12} />
                   {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                 </button>
                 <button 
                   onClick={() => setSubStudioTab('dub')}
-                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                    subStudioTab === 'dub' 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                 >
+                  <Mic2 size={12} />
                   {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj'}
                 </button>
                 <button 
                   onClick={() => setSubStudioTab('lighting')}
-                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'lighting' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                  className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                    subStudioTab === 'lighting' 
+                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                 >
+                  <Sliders size={12} />
                   {(language === 'ku' || language === 'badini') ? 'ڕووناکی' : 'Lighting'}
                 </button>
               </div>
@@ -1684,29 +1699,57 @@ export default function PremiumVidLinkPlayer({
                           <button 
                             key={sub.id}
                             onClick={() => handleSelectSub(sub)}
-                            className={`w-full text-left p-4 rounded-2xl transition-all border flex items-center gap-4 relative overflow-hidden group ${
+                            className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group ${
                               sub.id === currentSubId 
-                              ? 'bg-red-600 border-red-500 text-white' 
-                              : isKurdish
-                                ? 'bg-red-600/10 border-red-600/20 text-white hover:bg-red-600/20'
-                                : 'bg-white/5 border-white/5 hover:border-white/15 text-gray-400 hover:text-white'
+                                ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 text-white shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/30' 
+                                : isKurdish
+                                  ? 'bg-gradient-to-r from-red-600/5 to-transparent border-red-500/20 text-zinc-200 hover:border-red-500/40 hover:from-red-600/10 hover:text-white'
+                                  : 'bg-gradient-to-r from-white/[0.01] to-transparent border-white/5 text-zinc-400 hover:text-white hover:border-white/15 hover:from-white/[0.03]'
                             }`}
                           >
-                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-lg shrink-0">
-                              {getLanguageFlag(sub?.attributes?.language)}
+                            {/* Glowing Background Overlay for Selected Track */}
+                            {sub.id === currentSubId && (
+                              <div className="absolute inset-0 bg-red-600/5 blur-[20px] rounded-full pointer-events-none" />
+                            )}
+
+                            {/* Sleek Language Flag/Icon Container */}
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border text-base shadow-sm transition-all duration-300 ${
+                              sub.id === currentSubId
+                                ? 'bg-red-500/20 border-red-500/40'
+                                : isKurdish
+                                  ? 'bg-red-600/10 border-red-500/20'
+                                  : 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20'
+                            }`}>
+                              <span className="scale-110 select-none">
+                                {getLanguageFlag(sub?.attributes?.language)}
+                              </span>
                             </div>
-                            <div className="flex flex-col min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{sub?.attributes?.language}</span>
+
+                            <div className="flex flex-col min-w-0 flex-1 relative z-10 text-left">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className={`text-[8px] font-black uppercase tracking-widest transition-colors duration-300 ${
+                                  sub.id === currentSubId 
+                                    ? 'text-red-400' 
+                                    : isKurdish 
+                                      ? 'text-red-500' 
+                                      : 'text-zinc-500 group-hover:text-zinc-400'
+                                }`}>
+                                  {sub?.attributes?.language || 'UNKNOWN'}
+                                </span>
                                 {isKurdish && (
-                                  <span className="text-[7px] bg-red-600 text-white px-1.5 py-0.5 rounded-md font-black flex items-center gap-1 uppercase">
-                                    <Sparkles size={8} /> Verified
+                                  <span className="text-[6px] bg-red-600 text-white px-1 py-0.5 rounded font-black tracking-widest uppercase flex items-center gap-0.5 shrink-0 shadow-sm shadow-red-600/25">
+                                    <Sparkles size={6} /> Verified
                                   </span>
                                 )}
                               </div>
-                              <span className="text-xs font-bold truncate pr-4">{sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '')}</span>
+                              <span className={`text-[11px] font-bold truncate transition-colors duration-300 ${
+                                sub.id === currentSubId ? 'text-white' : 'text-zinc-300 group-hover:text-white'
+                              }`}>
+                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Subtitle Track'}
+                              </span>
                             </div>
-                            <div className="ml-auto flex items-center gap-2 relative z-20">
+
+                            <div className="ml-auto flex items-center gap-2 relative z-20 shrink-0">
                               {!isKurdish && (
                                 <button
                                   onClick={(e) => {
@@ -1714,12 +1757,16 @@ export default function PremiumVidLinkPlayer({
                                     handleStartTranslation(sub);
                                   }}
                                   title="Translate to Kurdish (Sorani)"
-                                  className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                                  className="w-7 h-7 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-500/20 hover:border-red-500 hover:shadow-md hover:shadow-red-600/20 active:scale-90"
                                 >
-                                  <Languages size={12} />
+                                  <Languages size={11} />
                                 </button>
                               )}
-                              <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                              <ArrowRight size={12} className={`transition-all duration-300 ${
+                                sub.id === currentSubId
+                                  ? 'text-red-500 scale-100 opacity-100'
+                                  : 'text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
+                              }`} />
                             </div>
                           </button>
                         );

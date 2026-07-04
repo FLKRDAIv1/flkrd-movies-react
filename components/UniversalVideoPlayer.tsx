@@ -613,6 +613,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [isTranslating, setIsTranslating] = useState(false);
     const [translationProgress, setTranslationProgress] = useState(0);
     const [translatingName, setTranslatingName] = useState('');
+    const [currentSubId, setCurrentSubId] = useState<string | null>(null);
     const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
     const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
     const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -1183,6 +1184,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 }
                 const blob = new Blob([processedText], { type: 'text/vtt' });
                 setLocalSubtitleUrl(URL.createObjectURL(blob));
+                setCurrentSubId(sub.id);
                 setShowSubSettings(false);
             }
         } finally {
@@ -2034,24 +2036,39 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </div>
 
                                     <div className="space-y-6">
-                                        {/* Premium Segmented Control Tab Bar */}
-                                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                                        {/* Sleek Segmented Control Tab Bar */}
+                                        <div className="flex bg-[#141414]/90 p-1 rounded-2xl border border-white/5 relative z-10 shrink-0">
                                             <button 
                                                 onClick={() => setSubStudioTab('sub')}
-                                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'sub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                                                    subStudioTab === 'sub' 
+                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                                                        : 'text-zinc-500 hover:text-zinc-300'
+                                                }`}
                                             >
+                                                <Subtitles size={12} />
                                                 {(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                                             </button>
                                             <button 
                                                 onClick={() => setSubStudioTab('dub')}
-                                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'dub' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                                                    subStudioTab === 'dub' 
+                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                                                        : 'text-zinc-500 hover:text-zinc-300'
+                                                }`}
                                             >
+                                                <Mic2 size={12} />
                                                 {(language === 'ku' || language === 'badini') ? 'دۆبلاژ' : 'Doblaj'}
                                             </button>
                                             <button 
                                                 onClick={() => setSubStudioTab('lighting')}
-                                                className={`flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${subStudioTab === 'lighting' ? 'bg-red-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                                className={`flex-1 py-2.5 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 relative flex items-center justify-center gap-1.5 ${
+                                                    subStudioTab === 'lighting' 
+                                                        ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-600/20' 
+                                                        : 'text-zinc-500 hover:text-zinc-300'
+                                                }`}
                                             >
+                                                <Sliders size={12} />
                                                 {(language === 'ku' || language === 'badini') ? 'ڕووناکی' : 'Lighting'}
                                             </button>
                                         </div>
@@ -2269,45 +2286,57 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                     <button 
                                                                         key={sub.id}
                                                                         onClick={() => handleSelectSub(sub)}
-                                                                        className={`w-full text-left p-3.5 rounded-[20px] transition-all duration-300 border flex items-center gap-4 group relative overflow-hidden ${
-                                                                            isKurdishSub 
-                                                                            ? 'bg-gradient-to-r from-red-600/10 to-transparent border-red-600/30 hover:border-red-500/60 shadow-[0_4px_20px_rgba(229,9,20,0.1)]' 
-                                                                            : 'bg-gradient-to-r from-white/[0.03] to-transparent border-white/5 hover:border-white/15 hover:bg-white/[0.06]'
+                                                                        className={`w-full text-left p-3.5 rounded-2xl transition-all duration-300 border flex items-center gap-3.5 relative overflow-hidden group ${
+                                                                            sub.id === currentSubId 
+                                                                                ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 text-white shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/30' 
+                                                                                : isKurdishSub
+                                                                                    ? 'bg-gradient-to-r from-red-600/5 to-transparent border-red-500/20 text-zinc-200 hover:border-red-500/40 hover:from-red-600/10 hover:text-white'
+                                                                                    : 'bg-gradient-to-r from-white/[0.01] to-transparent border-white/5 text-zinc-400 hover:text-white hover:border-white/15 hover:from-white/[0.03]'
                                                                         }`}
                                                                     >
-                                                                        {/* Prominent Flag Container */}
-                                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border shadow-inner ${
-                                                                            isKurdishSub
-                                                                            ? 'bg-red-600/20 border-red-500/30'
-                                                                            : 'bg-white/5 border-white/10 group-hover:bg-white/10'
-                                                                        } transition-colors`}>
-                                                                            <div className="scale-[1.2]">
+                                                                        {/* Glowing Background Overlay for Selected Track */}
+                                                                        {sub.id === currentSubId && (
+                                                                            <div className="absolute inset-0 bg-red-600/5 blur-[20px] rounded-full pointer-events-none" />
+                                                                        )}
+
+                                                                        {/* Sleek Language Flag/Icon Container */}
+                                                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border text-base shadow-sm transition-all duration-300 ${
+                                                                            sub.id === currentSubId
+                                                                                ? 'bg-red-500/20 border-red-500/40'
+                                                                                : isKurdishSub
+                                                                                    ? 'bg-red-600/10 border-red-500/20'
+                                                                                    : 'bg-white/5 border-white/10 group-hover:bg-white/10 group-hover:border-white/20'
+                                                                        }`}>
+                                                                            <span className="scale-110 select-none">
                                                                                 {getLanguageFlag(sub?.attributes?.language || '')}
-                                                                            </div>
+                                                                            </span>
                                                                         </div>
                                                                     
-                                                                        <div className="flex flex-col flex-1 min-w-0 relative z-10">
-                                                                            <div className="flex items-center gap-2 mb-0.5">
-                                                                                <span className={`font-[1000] text-[10px] uppercase tracking-[0.2em] ${
-                                                                                    isKurdishSub ? 'text-red-500' : 'text-gray-400 group-hover:text-gray-300'
-                                                                                } transition-colors`}>
+                                                                        <div className="flex flex-col flex-1 min-w-0 relative z-10 text-left">
+                                                                            <div className="flex items-center gap-1.5 mb-0.5">
+                                                                                <span className={`text-[8px] font-black uppercase tracking-widest transition-colors duration-300 ${
+                                                                                    sub.id === currentSubId 
+                                                                                        ? 'text-red-400' 
+                                                                                        : isKurdishSub 
+                                                                                            ? 'text-red-500' 
+                                                                                            : 'text-zinc-500 group-hover:text-zinc-400'
+                                                                                }`}>
                                                                                     {sub?.attributes?.language || 'UNKNOWN'}
                                                                                 </span>
                                                                                 {isKurdishSub && String(sub.id).startsWith('custom-db-') && (
-                                                                                    <span className="text-[7px] bg-blue-600 text-white px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(29,155,240,0.5)] uppercase tracking-tighter flex items-center gap-1 shrink-0">
-                                                                                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-white shrink-0">
-                                                                                          <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                                                                                        </svg>
-                                                                                        Verified
+                                                                                    <span className="text-[6px] bg-red-600 text-white px-1 py-0.5 rounded font-black tracking-widest uppercase flex items-center gap-0.5 shrink-0 shadow-sm shadow-red-600/25">
+                                                                                        <Sparkles size={6} /> Verified
                                                                                     </span>
                                                                                 )}
                                                                             </div>
-                                                                            <span className="text-gray-200 font-bold text-[11px] group-hover:text-white transition-colors truncate w-full">
-                                                                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Standard Track'}
+                                                                            <span className={`text-[11px] font-bold truncate transition-colors duration-300 ${
+                                                                                sub.id === currentSubId ? 'text-white' : 'text-zinc-300 group-hover:text-white'
+                                                                            }`}>
+                                                                                {sub?.attributes?.display_name?.replace(/\.srt|\.vtt/g, '') || 'Subtitle Track'}
                                                                             </span>
                                                                         </div>
                                                                         
-                                                                        <div className="flex items-center gap-2 shrink-0 relative z-20">
+                                                                        <div className="ml-auto flex items-center gap-2 relative z-20 shrink-0">
                                                                             {!isKurdishSub && (
                                                                                 <button
                                                                                     onClick={(e) => {
@@ -2315,23 +2344,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                                         handleStartTranslation(sub);
                                                                                     }}
                                                                                     title="Translate to Kurdish (Sorani)"
-                                                                                    className="w-8 h-8 rounded-full bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center"
+                                                                                    className="w-7 h-7 rounded-xl bg-red-600/10 text-red-500 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center border border-red-500/20 hover:border-red-500 hover:shadow-md hover:shadow-red-600/20 active:scale-90"
                                                                                 >
-                                                                                    <Languages size={12} />
+                                                                                    <Languages size={11} />
                                                                                 </button>
                                                                             )}
-                                                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                                                                                isKurdishSub
-                                                                                ? 'bg-red-600/20 text-red-500 group-hover:bg-red-600 group-hover:text-white'
-                                                                                : 'bg-white/5 text-gray-500 group-hover:bg-white/10 group-hover:text-white'
-                                                                            }`}>
-                                                                                <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                                                                            </div>
+                                                                            <ArrowRight size={12} className={`transition-all duration-300 ${
+                                                                                sub.id === currentSubId
+                                                                                    ? 'text-red-500 scale-100 opacity-100'
+                                                                                    : 'text-zinc-500 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
+                                                                            }`} />
                                                                         </div>
-                                                                    
-                                                                        {isKurdishSub && (
-                                                                            <div className="absolute top-1/2 -translate-y-1/2 right-0 w-24 h-24 bg-red-600/20 blur-[30px] rounded-full pointer-events-none" />
-                                                                        )}
                                                                     </button>
                                                                 );
                                                             })
