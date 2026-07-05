@@ -1519,7 +1519,7 @@ export default function PremiumVidLinkPlayer({
       }`}
     >
       {/* Top Controls */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
+      <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-50 flex items-center gap-3">
         {type === 'tv' && onEpisodeChange && (
           <button 
             onClick={() => {

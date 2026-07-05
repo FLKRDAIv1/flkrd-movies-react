@@ -639,3 +639,17 @@ a,
   white-space: nowrap;
   border-width: 0;
 }
+
+/* ════════════════════════════════════════════════
+   📱 iOS SAFE AREA & NOTCH SUPPORT
+   ════════════════════════════════════════════════ */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .global-header {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+  
+  /* Push main scroll content down to match the pushed header */
+  main:not(.overflow-hidden) {
+    padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+}
