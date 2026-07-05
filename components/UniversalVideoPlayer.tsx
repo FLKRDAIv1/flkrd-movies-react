@@ -2238,7 +2238,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
                             >
                                 <Tv size={14} />
-                                <span className="text-[10px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+                                <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
                             </button>
                         )}
 
@@ -2258,7 +2258,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                         >
                             <Subtitles size={14} />
-                            <span className="text-[10px] font-black uppercase">Studio</span>
+                            <span className="text-[10px] font-black uppercase hidden sm:inline">Studio</span>
                         </button>
 
                         {/* Relink Button */}
@@ -2277,7 +2277,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 title="Relink"
                             >
                                 <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
-                                <span className="text-[10px] font-black uppercase">Relink</span>
+                                <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
                             </button>
                         )}
 
@@ -2290,7 +2290,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
                         >
                             {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                            <span className="text-[10px] font-black uppercase">
+                            <span className="text-[10px] font-black uppercase hidden sm:inline">
                                 {isFullscreen 
                                     ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Minimize') 
                                     : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
