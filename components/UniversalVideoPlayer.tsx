@@ -215,6 +215,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 }) => {
     const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
     const navigate = useNavigate();
+    const isIOSDevice = typeof window !== 'undefined' && (
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+    );
     const [movieRecommendations, setMovieRecommendations] = useState<any[]>([]);
 
     useEffect(() => {
@@ -2335,7 +2339,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     className="w-full h-full object-contain z-10 pointer-events-none"
                     style={{ 
                         WebkitPlaysInline: 'inline',
-                        filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+                        filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1)) 
+                            ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})` 
+                            : undefined
                     } as any}
                     controls={false}
                     muted

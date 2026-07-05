@@ -92,6 +92,10 @@ export default function PremiumVidLinkPlayer({
   sources = []
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
+  const isIOSDevice = typeof window !== 'undefined' && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+  );
   const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
@@ -1613,7 +1617,9 @@ export default function PremiumVidLinkPlayer({
           src={overrideSrc || videoUrl}
           className="w-full h-full border-0"
           style={{ 
-            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+            filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1)) 
+              ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})` 
+              : undefined
           }}
           // NOTE: sandbox attribute intentionally omitted — VidLink Pro detects
           // sandboxed iframes and blocks playback with "Please Disable Sandbox".
