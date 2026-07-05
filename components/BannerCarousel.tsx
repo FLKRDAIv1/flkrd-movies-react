@@ -38,6 +38,11 @@ const HeroBanner: React.FC = () => {
           const endpoint = `/${type}/${item.id}/images?api_key=${API_KEY}`;
           const imageData = await fetchData(endpoint, 'en');
           const logo = imageData?.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
+          
+          // Prefetch details endpoint in the background
+          const detailsEndpoint = `/${type}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+          fetchData(detailsEndpoint, language).catch(() => {});
+
           return { ...item, logo };
         } catch (e) {
           return item;
@@ -124,8 +129,10 @@ const HeroBanner: React.FC = () => {
         >
           <img
             src={`${IMAGE_BASE_URL}${currentItem.backdrop_path}`}
+            width={1280}
+            height={720}
             className="w-full h-full object-cover opacity-60 ken-burns"
-            alt=""
+            alt={currentItem.title || currentItem.name || "Carousel Slide Backdrop"}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
@@ -207,6 +214,7 @@ const HeroBanner: React.FC = () => {
                     variant="default"
                     onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
                     className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-white shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] ring-1 ring-white/10"
+                    aria-label="View content details"
                 >
                     <Info size={20} className="md:w-9 md:h-9" />
                 </LiquidButton>
@@ -216,6 +224,7 @@ const HeroBanner: React.FC = () => {
                         variant="destructive"
                         onClick={(e) => handleBan(e, currentItem)}
                         className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] shadow-xl group"
+                        aria-label="Ban content"
                     >
                         <Trash2 size={20} className="md:w-9 md:h-9 group-hover:scale-110 transition-transform" />
                     </LiquidButton>
@@ -227,10 +236,10 @@ const HeroBanner: React.FC = () => {
       </div>
 
       <div className={`hidden lg:flex absolute bottom-12 ${(language === 'ku' || language === 'badini') ? 'left-32' : 'right-32'} z-40 items-center gap-6`}>
-        <button onClick={handlePrev} className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
+        <button onClick={handlePrev} aria-label="Previous slide" className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
           <ChevronLeft size={32} />
         </button>
-        <button onClick={handleNext} className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
+        <button onClick={handleNext} aria-label="Next slide" className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
           <ChevronRight size={32} />
         </button>
       </div>

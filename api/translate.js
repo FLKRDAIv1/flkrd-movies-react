@@ -34,10 +34,35 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
+        // Primary Google Translate Web API fetcher
+        const translateWithGoogleAPI = async (t, src, tgt) => {
+            try {
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(t)}`;
+                const response = await fetch(url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data[0]) {
+                        return data[0].map(x => x[0]).join('');
+                    }
+                }
+            } catch (err) {
+                console.warn("[SERVER TRANSLATE] Google Translate API failed:", err.message);
+            }
+            return null;
+        };
+
         // Helper: translate a single string with all fallback engines
         const translateSingle = async (t) => {
             if (!t || !t.trim()) return t || '';
             
+            // 0. Try Google Translate Free API first
+            const googleRes = await translateWithGoogleAPI(t, source, target);
+            if (googleRes) return googleRes;
+
             // 1. Try Lingva POST
             for (const instance of LINGVA_INSTANCES) {
                 try {
@@ -108,8 +133,19 @@ export default async function handler(req, res) {
             }
         }
 
-        // 2. Fallback to Lingva / MyMemory / Lingva GET
+        // 2. Fallback to Google Translate Web API & Lingva / MyMemory / Lingva GET
         if (isArray) {
+            // High-efficiency joined translate
+            const joinedText = textArray.join('\n');
+            const translatedJoined = await translateWithGoogleAPI(joinedText, source, target);
+            if (translatedJoined) {
+                const results = translatedJoined.split('\n');
+                if (results.length === textArray.length) {
+                    return res.status(200).json({ translation: results });
+                }
+            }
+
+            // Fallback: translate one by one
             const results = [];
             for (const item of textArray) {
                 results.push(await translateSingle(item));

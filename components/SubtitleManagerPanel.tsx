@@ -26,6 +26,7 @@ import {
   Grid,
   List,
   Keyboard,
+  Play,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -99,6 +100,9 @@ interface SubtitleManagerPanelProps {
   isTranslating?: boolean;
   translationProgress?: number;
   translatingName?: string;
+  translationStatus?: string;
+  showCelebration?: boolean;
+  onCloseCelebration?: () => void;
 
   // Dub tab (pass children or omit)
   dubContent?: React.ReactNode;
@@ -233,10 +237,14 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   isTranslating,
   translationProgress = 0,
   translatingName,
+  translationStatus = '',
+  showCelebration = false,
+  onCloseCelebration,
   dubContent,
   language = 'ku',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const isKu = language === 'ku' || language === 'badini';
   const dragControls = useDragControls();
   const [isMobile, setIsMobile] = React.useState(false);
@@ -249,12 +257,52 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
     return 'list';
   });
 
+  const [terminalLogs, setTerminalLogs] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (isTranslating) {
+      if (translationStatus) {
+        setTerminalLogs(prev => {
+          if (prev.includes(translationStatus)) return prev;
+          return [...prev, translationStatus];
+        });
+      }
+    } else {
+      setTerminalLogs([]);
+    }
+  }, [isTranslating, translationStatus]);
+
   React.useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        const target = e.target as HTMLElement;
+        const isToggleClick = target.closest('button') && (
+          target.closest('button')?.innerText.includes('Studio') ||
+          target.closest('button')?.innerHTML.includes('Subtitles') ||
+          target.closest('button')?.innerHTML.includes('Tv') ||
+          target.closest('button')?.innerText.includes('ئەڵقەکان')
+        );
+
+        if (!isToggleClick) {
+          onClose();
+        }
+      }
+    };
+
+    document.addEventListener('click', handleOutsideClick, true);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick, true);
+    };
+  }, [isOpen, onClose]);
 
   const TABS: { id: SubStudioTab; icon: React.ReactNode; label: string }[] = [
     { id: 'sub',       icon: <Subtitles size={12} />, label: isKu ? 'ژێرنووس'  : 'Subtitles' },
@@ -269,19 +317,11 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none"
+      className="absolute inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none"
     >
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-md pointer-events-auto"
-          />
-
           {/* Panel */}
           <motion.div
+            ref={panelRef}
             initial={{ y: '110%', opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: '110%', opacity: 0 }}
@@ -458,7 +498,13 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
 
                     {/* Search Bar */}
                     <div className="flex flex-col gap-2.5">
-                      <Label>{isKu ? 'گەڕان بۆ ژێرنووس' : 'Search Subtitles'}</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>{isKu ? 'گەڕان بۆ ژێرنووس' : 'Search Subtitles'}</Label>
+                        <div className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full select-none">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          <span className="text-[7px] font-black text-green-500 uppercase tracking-widest">OpenSub API Active</span>
+                        </div>
+                      </div>
                       <div className="relative group">
                         <Search
                           size={13}
@@ -482,32 +528,139 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                     <AnimatePresence>
                       {isTranslating && (
                         <motion.div
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.95 }}
-                          className="flex flex-col items-center gap-4 py-8
-                                     bg-white/[0.015] border border-dashed border-red-500/20 rounded-2xl"
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -15 }}
+                          className="flex flex-col gap-4 p-5 bg-black/60 border border-red-500/20 rounded-[24px] backdrop-blur-xl shadow-2xl relative overflow-hidden"
                         >
-                          <CircularProgress progress={translationProgress} />
-                          <div className="flex flex-col items-center gap-1 text-center px-4">
-                            <motion.span
-                              animate={{ opacity: [1, 0.4, 1] }}
-                              transition={{ repeat: Infinity, duration: 2.0 }}
-                              className="text-[13px] font-black text-white tracking-[0.06em] shadow-red-500/20"
-                              style={{
-                                fontFamily: isKu ? "'Zain', sans-serif" : "inherit",
-                                textShadow: '0 0 12px rgba(239, 68, 68, 0.4)'
-                              }}
-                            >
-                              {isKu ? 'وەرگێڕانی ژێرنووس...' : 'Translating Subtitle...'}
-                            </motion.span>
+                          {/* Glossy Header row */}
+                          <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                            <div className="flex items-center gap-3">
+                              {/* Glowing loader */}
+                              <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
+                                <span className="absolute inset-0 rounded-full border-2 border-red-500/10"></span>
+                                <span className="absolute inset-0 rounded-full border-2 border-t-red-500 animate-spin"></span>
+                                <span className="text-[9px] font-black text-red-500">{translationProgress}%</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[12px] font-black text-white uppercase tracking-wider" style={{ fontFamily: isKu ? "'Zain', sans-serif" : "inherit" }}>
+                                  {isKu ? 'وەرگێڕانی ژێرنووس...' : 'Subtitle Engine'}
+                                </span>
+                                <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-[0.06em]">
+                                  {translatingName || 'Selected Track'}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Window controls */}
+                            <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500/70 animate-pulse"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500/70 animate-pulse"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500/70 animate-pulse"></span>
+                            </div>
+                          </div>
+
+                          {/* Terminal Output */}
+                          <div className="w-full font-mono text-[9px] text-red-400 bg-black/40 border border-white/5 p-4 rounded-2xl max-h-[140px] overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-[inset_0_0_12px_rgba(239,68,68,0.05)]">
+                            {terminalLogs.map((log, index) => (
+                              <div key={index} className="flex gap-2 items-start leading-relaxed">
+                                <span className="text-red-500/40 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                                <span className="text-zinc-500 select-none">&gt;</span>
+                                <span className="text-zinc-300 break-all">{log}</span>
+                              </div>
+                            ))}
+                            {/* Loading cursor line */}
+                            <div className="flex gap-2 items-center leading-relaxed">
+                              <span className="text-red-500/40 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                              <span className="text-red-400 select-none">&gt;</span>
+                              <span className="text-red-400 animate-pulse font-bold">
+                                {isKu ? 'لە پڕۆسەدایە...' : 'Processing pipeline...'}
+                              </span>
+                              <span className="w-1.5 h-3 bg-red-400 animate-pulse shrink-0"></span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Celebration Screen */}
+                    <AnimatePresence>
+                      {showCelebration && (
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-yellow-500/10 via-red-500/5 to-purple-600/10 border border-yellow-500/20 rounded-2xl relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[320px]"
+                        >
+                          {/* Confetti Particle Burst Effect */}
+                          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            {[...Array(15)].map((_, i) => (
+                              <motion.div
+                                key={i}
+                                className="absolute w-1.5 h-1.5 rounded-full"
+                                style={{
+                                  background: ['#ef4444', '#eab308', '#a855f7', '#3b82f6', '#10b981'][i % 5],
+                                  left: `${15 + Math.random() * 70}%`,
+                                  top: `${20 + Math.random() * 60}%`,
+                                }}
+                                animate={{
+                                  y: [0, -100 - Math.random() * 80],
+                                  x: [0, (Math.random() - 0.5) * 120],
+                                  scale: [0, 1, 0],
+                                  rotate: [0, 360],
+                                }}
+                                transition={{
+                                  duration: 2 + Math.random() * 1.5,
+                                  repeat: Infinity,
+                                  ease: "easeOut",
+                                }}
+                              />
+                            ))}
+                          </div>
+
+                          <div className="relative z-10 flex flex-col items-center gap-3.5">
+                            <div className="w-16 h-16 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center shadow-[0_0_35px_rgba(234,179,8,0.25)]">
+                              <Sparkles size={32} className="text-yellow-500 animate-pulse" fill="currentColor" />
+                            </div>
+
+                            <h3 className="text-lg md:text-xl font-[1000] uppercase italic tracking-tighter shimmer-text">
+                              {isKu ? 'دامەزراندن سەرکەوتوو بوو!' : 'INSTALLATION COMPLETE!'}
+                            </h3>
+
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500">
+                              {isKu ? 'ژێرنووس لای سەرجەم بەکارهێنەران پاشەکەوت کرا' : 'SRT SAVED FOR ALL USERS'}
+                            </p>
+
+                            <p className="text-[10px] text-zinc-300 leading-relaxed max-w-xs">
+                              {isKu 
+                                ? 'سوپاس بۆ وەرگێڕانی ئەم ژێرنووسە! ئێستا بە تەواوی ئامادەیە و لە خزمەتگوزاری Supabase پاشەکەوت کرا بۆ ئەوەی هەر بەکارهێنەرێکی تر سوودی لێ ببێنێت.'
+                                : 'Thank you for translating this subtitle! It has been successfully saved to Supabase so that other users can enjoy it.'}
+                            </p>
+
+                            <div className="w-full h-px bg-white/5 my-1" />
+
+                            <p className="text-xs font-black italic text-white leading-relaxed">
+                              {isKu 
+                                ? 'چێژ لە بینینی فیلمەکە وەربگرە! 🎬🍿' 
+                                : 'Enjoy your movie! 🎬🍿'}
+                            </p>
+
+                            {onCloseCelebration && (
+                              <button
+                                onClick={onCloseCelebration}
+                                className="mt-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[9px] font-[1000] uppercase tracking-widest rounded-xl transition-all shadow-[0_6px_15px_rgba(220,38,38,0.25)] active:scale-95 flex items-center gap-1.5"
+                              >
+                                <Play size={8} fill="currentColor" className="translate-x-[0.5px]" />
+                                {isKu ? 'دەستپێکردنی فیلمەکە' : 'START WATCHING'}
+                              </button>
+                            )}
                           </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
 
                     {/* Subtitle List */}
-                    {!isTranslating && (
+                    {!isTranslating && !showCelebration && (
                       <>
                         {/* Subtitle List Layout Toggle */}
                         <div className="flex items-center justify-between mt-1 mb-2">

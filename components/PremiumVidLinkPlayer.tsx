@@ -38,6 +38,7 @@ interface PremiumVidLinkPlayerProps {
   activeSource?: string;
   setActiveSource?: (source: string) => void;
   sources?: any[];
+  key?: React.Key;
 }
 
 const containerVariants = {
@@ -91,7 +92,7 @@ export default function PremiumVidLinkPlayer({
   sources = []
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
-  const { isAdmin } = useUI();
+  const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
@@ -186,6 +187,7 @@ export default function PremiumVidLinkPlayer({
   const lastMessageTimeRef = React.useRef<number>(performance.now());
   const lastReceivedTimeRef = React.useRef<number>(0);
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
+  const [resolvedSubDisplayName, setResolvedSubDisplayName] = useState<string>('Kurdish (Verified)');
   const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
   const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
   const setIsFullscreen = isFullscreenProp !== undefined ? () => {} : setLocalIsFullscreen;
@@ -221,22 +223,8 @@ export default function PremiumVidLinkPlayer({
   }, [vttContent]);
 
   const setAvailableSubsWithVirtual = useCallback((newSubs: any[]) => {
-    if (!subtitleUrl) {
-      setAvailableSubs(newSubs);
-      return;
-    }
-    const virtualSub = {
-      id: 'prop-kurdish-auto' as any,
-      attributes: {
-        language: 'ku',
-        display_name: 'Kurdish CC (Auto Established)',
-        url: subtitleUrl,
-        file_id: 0
-      }
-    };
-    const filtered = newSubs.filter(s => s.id !== 'prop-kurdish-auto' as any && s.attributes.url !== subtitleUrl);
-    setAvailableSubs([virtualSub, ...filtered]);
-  }, [subtitleUrl]);
+    setAvailableSubs(newSubs);
+  }, []);
 
   // Appearance Settings
   const [subFontSize, setSubFontSize] = useState(24);
@@ -291,9 +279,6 @@ export default function PremiumVidLinkPlayer({
   const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
   const [kurdishDub, setKurdishDub] = useState<any | null>(null);
   const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting' | 'shortcuts'>('sub');
-  const [isTranslating, setIsTranslating] = useState(false);
-  const [translationProgress, setTranslationProgress] = useState(0);
-  const [translatingName, setTranslatingName] = useState('');
   const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
   const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
   const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -710,8 +695,21 @@ export default function PremiumVidLinkPlayer({
     if (hasSearchedCloud && !force) return;
     setLoadingSubs(true);
     try {
-      // Use IMDB ID if available, it's MUCH more reliable for OpenSubtitles
-      const results = await subtitleService.searchSubtitles(imdbId || tmdbId, type);
+      let resolvedImdbId = imdbId;
+      if (!resolvedImdbId && tmdbId) {
+        try {
+          const { fetchExternalIds } = await import('../services/tmdbService');
+          const extIds = await fetchExternalIds(tmdbId, type || 'movie');
+          if (extIds && extIds.imdb_id) {
+            resolvedImdbId = extIds.imdb_id;
+          }
+        } catch (err) {
+          console.warn("[VIP-PLAYER] Failed to auto-resolve IMDB ID in player:", err);
+        }
+      }
+      
+      // Use resolved IMDB ID if available, it's MUCH more reliable for OpenSubtitles
+      const results = await subtitleService.searchSubtitles(resolvedImdbId || tmdbId, type, season, episode);
       setAvailableSubsWithVirtual(results || []);
       setHasSearchedCloud(true);
     } catch (e) {
@@ -719,7 +717,7 @@ export default function PremiumVidLinkPlayer({
     } finally {
       setLoadingSubs(false);
     }
-  }, [tmdbId, imdbId, type, hasSearchedCloud, setAvailableSubsWithVirtual]);
+  }, [tmdbId, imdbId, type, season, episode, hasSearchedCloud, setAvailableSubsWithVirtual]);
 
   const handleSelectSub = async (sub: any) => {
     setLoadingSubs(true);
@@ -755,68 +753,54 @@ export default function PremiumVidLinkPlayer({
   };
 
   const handleStartTranslation = async (sub: any) => {
-    setIsTranslating(true);
-    setTranslatingName(sub.attributes?.display_name || 'Selected Track');
-    setTranslationProgress(0);
-    
-    // Save to cache for page refresh resumption
     const targetId = resolvedTmdbId || tmdbId || imdbId;
-    if (targetId) {
-      localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
-        sub,
-        targetId,
-        season: season || 0,
-        episode: episode || 0
-      }));
-    }
-    
-    try {
-      if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
-      
-      const result = await translateAndSavePipeline(
-        sub,
-        targetId,
-        type || 'movie',
-        season || 0,
-        episode || 0,
-        (progress) => setTranslationProgress(progress)
-      );
-      
-      if (result.success && result.subtitleUrl) {
-        const res = await fetch(result.subtitleUrl);
-        const text = await res.text();
-        setVttContent(text);
-        
-        const newTrackId = `custom-db-${Date.now()}`;
-        setCurrentSubId(newTrackId as any);
-        setShowSubtitles(true);
-        setShowSubSettings(false);
-        
-        const newTrack = {
-          id: newTrackId,
-          attributes: {
-            language: 'ku',
-            display_name: `Kurdish Translation [${sub.attributes.language.toUpperCase()}]`,
-            url: result.subtitleUrl,
-            file_id: 0
-          }
-        };
-        setAvailableSubs(prev => [newTrack, ...prev]);
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (err: any) {
-      console.error("Subtitle translation failed:", err);
-      alert(language === 'ku' || language === 'badini'
-        ? `وەرگێڕان سەرکەوتوو نەبوو: ${err.message}` 
-        : `Translation failed: ${err.message}`);
-    } finally {
-      setIsTranslating(false);
-      setTranslationProgress(0);
-      setTranslatingName('');
-      localStorage.removeItem('flkrd_translating_sub_cache');
-    }
+    if (!targetId) return;
+    startGlobalTranslation(sub, targetId, type || 'movie', season || 0, episode || 0);
   };
+
+  // Sync with global background subtitle translator
+  useEffect(() => {
+    const targetId = resolvedTmdbId || tmdbId || imdbId;
+    if (!targetId) return;
+
+    if (activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(targetId)) {
+      const subUrl = activeTranslation.subtitleUrl;
+      if (subUrl && resolvedSubUrl !== subUrl) {
+        setResolvedSubUrl(subUrl);
+
+        // Convert the newly uploaded .srt file to a local VTT blob for instant rendering
+        subtitleService.getSubtitleBlob(subUrl).then(blobUrl => {
+          if (blobUrl) {
+            fetch(blobUrl).then(res => res.text()).then(text => setVttContent(text));
+          } else {
+            fetch(subUrl).then(res => res.text()).then(text => setVttContent(text));
+          }
+        }).catch(err => {
+          fetch(subUrl).then(res => res.text()).then(text => setVttContent(text));
+        });
+
+        // Add the new Kurdish track to the list if not present
+        const trackId = `custom-db-${activeTranslation.tmdbId}`;
+        setAvailableSubs(prev => {
+          if (prev.some(s => s.id === trackId)) return prev;
+
+          const newTrack = {
+            id: trackId,
+            attributes: {
+              language: 'ku',
+              display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}]`,
+              url: subUrl,
+              file_id: 0
+            }
+          };
+          return [newTrack, ...prev];
+        });
+        
+        setCurrentSubId(trackId as any);
+        setShowSubtitles(true);
+      }
+    }
+  }, [activeTranslation, tmdbId, imdbId, resolvedTmdbId, resolvedSubUrl]);
 
   // Flag Helper
   const getLanguageFlag = (lang: string) => {
@@ -828,15 +812,23 @@ export default function PremiumVidLinkPlayer({
 
   // Resolve subtitleUrl prop or auto-discover subtitle from DB automatically on mount or change
   useEffect(() => {
-    if (subtitleUrl) {
-      setResolvedSubUrl(subtitleUrl);
-      return;
-    }
-
     let isMounted = true;
     const discoverSub = async () => {
-      const activeId = tmdbId || imdbId;
-      if (!activeId) return;
+      let activeId = resolvedTmdbId || tmdbId || imdbId;
+      if (!activeId) {
+        if (subtitleUrl && isMounted) {
+          setResolvedSubUrl(subtitleUrl);
+        }
+        return;
+      }
+
+      // Resolve IMDb ID to TMDb ID if needed
+      if (activeId.startsWith('tt')) {
+        const resolved = await fetchTmdbIdFromImdb(activeId, type);
+        if (resolved) {
+          activeId = String(resolved);
+        }
+      }
 
       try {
         const { data } = await supabase
@@ -854,15 +846,24 @@ export default function PremiumVidLinkPlayer({
           if (url.startsWith('//')) {
             url = `https:${url}`;
           }
+          console.log("[VIP-PLAYER] Automatically applying Kurdish subtitle from database:", url);
+          setResolvedSubDisplayName(data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)');
           setResolvedSubUrl(url);
+        } else if (subtitleUrl && isMounted) {
+          setResolvedSubDisplayName('Kurdish (Verified)');
+          setResolvedSubUrl(subtitleUrl);
         }
       } catch (err) {
         console.warn("[VIP-PLAYER] Auto-discovery query error:", err);
+        if (subtitleUrl && isMounted) {
+          setResolvedSubDisplayName('Kurdish (Verified)');
+          setResolvedSubUrl(subtitleUrl);
+        }
       }
     };
     discoverSub();
     return () => { isMounted = false; };
-  }, [subtitleUrl, tmdbId, imdbId, type, season, episode]);
+  }, [subtitleUrl, tmdbId, imdbId, resolvedTmdbId, type, season, episode]);
 
   // Parse VTT for overlay and sync availableSubs based on resolvedSubUrl
   useEffect(() => {
@@ -875,7 +876,7 @@ export default function PremiumVidLinkPlayer({
       id: 'prop-kurdish-auto' as any,
       attributes: {
         language: 'ku',
-        display_name: 'Kurdish CC (Auto Established)',
+        display_name: resolvedSubDisplayName,
         url: resolvedSubUrl,
         file_id: 0
       }
@@ -1114,7 +1115,9 @@ export default function PremiumVidLinkPlayer({
 
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
+    let active = true;
     const handleFullscreenChange = () => {
+      if (!active) return;
       const isFull = !!(
         document.fullscreenElement ||
         (document as any).webkitFullscreenElement ||
@@ -1160,7 +1163,7 @@ export default function PremiumVidLinkPlayer({
             (document as any).mozFullScreenElement ||
             (document as any).msFullscreenElement
           );
-          if (checkExit) {
+          if (checkExit && active) {
             console.log("[PLAYER] Exited native fullscreen. Closing player...");
             onClose();
           }
@@ -1168,12 +1171,17 @@ export default function PremiumVidLinkPlayer({
       }
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    const timer = setTimeout(() => {
+      if (!active) return;
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+    }, 1000);
 
     return () => {
+      active = false;
+      clearTimeout(timer);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
@@ -1305,7 +1313,10 @@ export default function PremiumVidLinkPlayer({
       if (isTauri()) {
         import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
           const win = getCurrentWindow();
-          win.isFullscreen().then(f => win.setFullscreen(!f));
+          win.isFullscreen().then(f => {
+            win.setFullscreen(!f);
+            setIsFullscreen(!f);
+          });
         });
         return;
       }
@@ -1512,10 +1523,10 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowSourceSwitcher(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
               showEpisodesPortal 
-                ? 'bg-red-600 border-red-500 text-white' 
-                : 'bg-white/10 border-white/20 text-white/50'
+                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
+                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
             }`}
           >
             <Tv size={14} />
@@ -1531,28 +1542,28 @@ export default function PremiumVidLinkPlayer({
             setShowEpisodesPortal(false);
             setShowSourceSwitcher(false);
           }}
-          className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
+          className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
             showSubSettings 
-              ? 'bg-red-600 border-red-500 text-white' 
-              : 'bg-white/10 border-white/20 text-white/50'
+              ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
+              : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
           }`}
         >
           <Subtitles size={14} />
           <span className="text-[10px] font-black uppercase">Studio</span>
         </button>
 
-        {/* Relink Button for Fullscreen */}
-        {isFullscreen && sources && sources.length > 0 && (
+        {/* Relink Button */}
+        {sources && sources.length > 0 && (
           <button 
             onClick={() => {
               setShowSourceSwitcher(!showSourceSwitcher);
               setShowSubSettings(false);
               setShowEpisodesPortal(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl ${
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
               showSourceSwitcher
-                ? 'bg-red-600 border-red-500 text-white animate-pulse'
-                : 'bg-white/10 border-white/20 text-white/50 hover:bg-white/20 hover:text-white'
+                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
+                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
             }`}
             title="Relink"
           >
@@ -1564,7 +1575,7 @@ export default function PremiumVidLinkPlayer({
         {/* Fullscreen Button */}
         <button 
           onClick={toggleFullscreen}
-          className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/50 hover:bg-white/20 hover:text-white"
+          className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
           title={isFullscreen 
             ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
             : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
@@ -1743,9 +1754,15 @@ export default function PremiumVidLinkPlayer({
               onStartTranslation={handleStartTranslation}
               onRetrySearch={handleSearchAllSubs}
               getLanguageFlag={getLanguageFlag}
-              isTranslating={isTranslating}
-              translationProgress={translationProgress}
-              translatingName={translatingName}
+              isTranslating={activeTranslation.isTranslating && String(activeTranslation.tmdbId) === String(resolvedTmdbId || tmdbId || imdbId)}
+              translationProgress={activeTranslation.progress}
+              translationStatus={activeTranslation.statusText}
+              translatingName={activeTranslation.translatingName}
+              showCelebration={activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(resolvedTmdbId || tmdbId || imdbId)}
+              onCloseCelebration={() => {
+                dismissCelebration();
+                setShowSubSettings(false);
+              }}
               language={language}
               dubContent={
                 <div className="flex flex-col gap-4">
@@ -2307,7 +2324,7 @@ export default function PremiumVidLinkPlayer({
 
       {/* Media Source Switcher Drawer for Fullscreen Mode */}
       <AnimatePresence>
-        {showSourceSwitcher && isFullscreen && sources && sources.length > 0 && (
+        {showSourceSwitcher && sources && sources.length > 0 && (
           <motion.div 
             initial={{ x: '100%', opacity: 0 }} 
             animate={{ x: 0, opacity: 1 }} 

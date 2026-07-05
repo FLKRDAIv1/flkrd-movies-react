@@ -192,6 +192,14 @@ const TVDetailPage: React.FC = () => {
     return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
   });
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  const handleRefreshSource = () => {
+    setIsSpinning(true);
+    setPlayerKey(prev => prev + 1);
+    setTimeout(() => setIsSpinning(false), 800);
+  };
   const [watchedEpisodes, setWatchedEpisodes] = useState<Set<string>>(new Set());
   const [initialProgress, setInitialProgress] = useState(0);
   const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
@@ -502,6 +510,16 @@ const TVDetailPage: React.FC = () => {
         if (data) {
           setContent(data);
           
+          // Fetch external IDs to resolve IMDB ID for subtitles
+          try {
+            const extIds = await fetchExternalIds(id, 'tv');
+            if (extIds && extIds.imdb_id) {
+              setImdbId(extIds.imdb_id);
+            }
+          } catch (err) {
+            console.warn("[TV-DETAIL] Failed to fetch external IDs:", err);
+          }
+          
           // Update browser window title dynamically for optimal search engine crawl and index representation
           const year = data.first_air_date ? ` (${data.first_air_date.split('-')[0]})` : '';
           const showName = data.name || data.original_name || 'Series';
@@ -636,7 +654,7 @@ const TVDetailPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[9999] backdrop-blur-3xl flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-5xl flex justify-between items-center mb-4">
               <h2 className="text-xl font-black uppercase italic tracking-tighter">{t('playTrailer')}</h2>
-              <button onClick={() => setIsTrailerModalOpen(false)} className="p-3 bg-white/10 hover:bg-red-600 rounded-2xl transition-all"><X size={24} /></button>
+              <button onClick={() => setIsTrailerModalOpen(false)} aria-label="Close trailer modal" className="p-3 bg-white/10 hover:bg-red-600 rounded-2xl transition-all"><X size={24} /></button>
             </div>
             <div className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
               <iframe
@@ -654,14 +672,31 @@ const TVDetailPage: React.FC = () => {
         {isPlayerModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
             <div className="w-full flex items-center justify-between p-3 md:p-4 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
-              <button onClick={() => setIsPlayerModalOpen(false)} className="text-white bg-white/10 rounded-xl p-2 hover:bg-red-600 transition-colors"><X size={20} /></button>
+              <button onClick={() => setIsPlayerModalOpen(false)} aria-label="Close video player" className="text-white bg-white/10 rounded-xl p-2.5 hover:bg-red-600 transition-colors">
+                <X size={20} />
+              </button>
               <div className="text-center px-4">
                 <p className="text-red-600 font-black uppercase text-[10px] tracking-[0.2em]">{content.name}</p>
                 <p className="text-xs text-white font-bold truncate">S{selectedSeason} • E{selectedEpisode}</p>
               </div>
-              <button onClick={() => setShowSourceSwitcher(!showSourceSwitcher)} className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-red-600/10 border border-red-500/20 text-red-500 text-[8px] md:text-[10px] font-black hover:bg-red-600 hover:text-white transition-all">
-                <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleRefreshSource}
+                  className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center group"
+                  title={(language === 'ku' || language === 'badini') ? 'نوێکردنەوەی سەرچاوە' : 'Refresh Source'}
+                  aria-label="Refresh source connection"
+                >
+                  <motion.div
+                    animate={{ rotate: isSpinning ? 360 : 0 }}
+                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                  >
+                    <RefreshCcw size={12} className="group-hover:scale-110 transition-transform" />
+                  </motion.div>
+                </button>
+                <button onClick={() => setShowSourceSwitcher(!showSourceSwitcher)} aria-label="Switch streaming source server" className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-red-600/10 border border-red-500/20 text-red-500 text-[8px] md:text-[10px] font-black hover:bg-red-600 hover:text-white transition-all">
+                  <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
+                </button>
+              </div>
             </div>
             <div className="flex-1 w-full relative bg-black overflow-hidden">
               <AnimatePresence>
@@ -694,6 +729,7 @@ const TVDetailPage: React.FC = () => {
               </AnimatePresence>
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
+                  key={`premium-tv-${playerKey}`}
                   tmdbId={id!}
                   type="tv"
                   season={selectedSeason}
@@ -720,6 +756,7 @@ const TVDetailPage: React.FC = () => {
                 />
               ) : (
                 <UniversalVideoPlayer
+                  key={`universal-tv-${playerKey}`}
                   src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
                   accentColor={accentColor}
                   language={language}
@@ -757,7 +794,6 @@ const TVDetailPage: React.FC = () => {
                     transition={{ type: 'spring', damping: 30, stiffness: 250 }}
                     className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-[#070707]/90 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
                   >
-                    {/* High Performance Hardware Accelerated Gradient Glow (Zero CPU Overhead) */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                       <div className="absolute -top-1/4 -right-1/4 w-80 h-80 rounded-full bg-gradient-to-br from-red-600/10 to-rose-600/5 blur-[90px] will-change-transform opacity-75" />
                       <div className="absolute -bottom-1/4 -left-1/4 w-80 h-80 rounded-full bg-gradient-to-tr from-purple-600/10 to-pink-600/5 blur-[100px] will-change-transform opacity-75" />
@@ -781,38 +817,17 @@ const TVDetailPage: React.FC = () => {
 
                     <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1">
                       {sources.map((s, idx) => {
-                        const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
-                                       s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
-                                       s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : 
-                                       s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
-
                         const isActive = activeSource === s.name;
-                        
-                        // Performance statistics & status
-                        let loadPct = 18;
-                        let speed = '1.8 Gbps';
-                        let latency = '18ms';
-                        let statusText = 'Optimal';
-                        let statusColor = 'text-green-400';
-                        let statusBg = 'bg-green-400/10 border-green-400/20';
+                        let loadPct = 18; let speed = '1.8 Gbps'; let latency = '18ms'; let statusText = 'Optimal'; let statusColor = 'text-green-400'; let statusBg = 'bg-green-400/10 border-green-400/20';
 
-                        if (s.name === 'FLKRD SERVER') {
-                          loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast';
-                        } else if (s.name === 'FLKRD SERVER 1') {
-                          loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable';
-                        } else if (s.name === 'FLKRD SERVER 2') {
-                          loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized';
-                        } else if (s.name === 'FLKRD SERVER 3') {
-                          loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal';
-                        } else if (s.name === 'FLKRD SERVER 4') {
-                          loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20';
-                        } else if (s.name === 'FLKRD SERVER 5') {
-                          loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct';
-                        } else if (s.name === 'FLKRD SERVER 6') {
-                          loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard';
-                        } else if (s.name === 'FLKRD SERVER 7') {
-                          loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20';
-                        }
+                        if (s.name === 'FLKRD SERVER') { loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast'; } 
+                        else if (s.name === 'FLKRD SERVER 1') { loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable'; } 
+                        else if (s.name === 'FLKRD SERVER 2') { loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized'; } 
+                        else if (s.name === 'FLKRD SERVER 3') { loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal'; } 
+                        else if (s.name === 'FLKRD SERVER 4') { loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20'; } 
+                        else if (s.name === 'FLKRD SERVER 5') { loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct'; } 
+                        else if (s.name === 'FLKRD SERVER 6') { loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard'; } 
+                        else if (s.name === 'FLKRD SERVER 7') { loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20'; }
 
                         return (
                           <motion.button 
@@ -823,110 +838,64 @@ const TVDetailPage: React.FC = () => {
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => { 
+                              if (isActive) return;
                               setActiveSource(s.name); 
                               setIsPlayerLoading(true); 
-                              setShowSourceSwitcher(false); 
+                              setTimeout(() => {
+                                setShowSourceSwitcher(false); 
+                              }, 800);
                             }} 
                             className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
                               isActive 
-                                ? 'bg-white/[0.07] border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                                ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
                                 : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
                             }`}
                           >
-                            {/* Glow decoration for active */}
                             {isActive && (
-                              <div className="absolute inset-0 bg-gradient-to-r from-red-600/10 to-transparent pointer-events-none" />
+                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
+                                <div 
+                                  className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
+                                  style={{
+                                    background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
+                                    animation: 'neon-border-spin 3s linear infinite',
+                                  }}
+                                />
+                                <div 
+                                  className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
+                                  style={{
+                                    background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
+                                    backdropFilter: 'blur(16px)',
+                                    WebkitBackdropFilter: 'blur(16px)',
+                                  }}
+                                />
+                              </div>
                             )}
 
-                            {/* Accent Line for Active State */}
                             {isActive && (
                               <motion.div 
-                                layoutId="active-accent-line-tv"
-                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444]"
+                                layoutId="active-accent-line-detail-tv"
+                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
                               />
                             )}
 
                             <div className="flex items-center justify-between w-full relative z-10">
                               <div className="flex items-center gap-3">
-                                {/* Server Badge/Logo Icon wrapper */}
                                 <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
-                                  {s.name === 'FLKRD SERVER 4' ? (
-                                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-[#1d9bf0] drop-shadow-[0_2px_6px_rgba(29,155,240,0.4)]">
-                                      <path d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.358.275C14.77 2.515 13.512 1.5 12 1.5s-2.77 1.015-3.372 2.285c-.417-.175-.878-.275-1.358-.275-2.108 0-3.818 1.78-3.818 3.99 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1.358-.275.602 1.27 1.86 2.285 3.372 2.285s2.77-1.015 3.372-2.285c.417.175.878.275 1.358.275 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.5 4L6 12.5l1.4-1.4 2.6 2.6 6.6-6.6 1.4 1.4-8 8z" />
-                                    </svg>
-                                  ) : iconPath ? (
-                                    <img src={iconPath} className="w-7 h-7 object-contain" style={{ mixBlendMode: 'screen' }} alt="" />
+                                  {isActive && isPlayerLoading ? (
+                                    <Loader2 size={16} className="text-red-500 animate-spin" />
                                   ) : (
-                                    <Cpu size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
-                                  )}
-
-                                  {isActive && (
-                                    <motion.div 
-                                      animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
-                                      transition={{ duration: 3, repeat: Infinity }}
-                                      className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
-                                    />
+                                    <Tv size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
                                   )}
                                 </div>
-
-                                <div className="flex flex-col items-start text-left">
-                                  <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>
-                                    {s.name}
-                                  </span>
-                                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
-                                    Node VK-{idx + 1}
-                                  </span>
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-black text-white group-hover:text-red-500 transition-colors uppercase italic">{s.name}</span>
+                                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{speed} • {latency}</span>
                                 </div>
                               </div>
-
-                              <div className="flex flex-col items-end gap-1">
-                                <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${statusBg} ${statusColor}`}>
-                                  {statusText}
-                                </div>
+                              <div className={`px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${statusColor} ${statusBg} relative z-10`}>
+                                {statusText}
                               </div>
                             </div>
-
-                            {/* Node Metrics Divider */}
-                            <div className="h-[1px] w-full bg-white/5" />
-
-                            <div className="flex flex-col gap-2 w-full mt-1">
-                              <div className="flex items-center justify-between w-full text-[9px] font-bold text-gray-400 relative z-10 text-left">
-                                <div className="flex items-center gap-1.5 flex-row">
-                                  <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
-                                  <span>{speed}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-1.5 flex-row">
-                                  <Timer size={10} className="text-gray-500" />
-                                  <span>{latency}</span>
-                                </div>
-
-                                <div className="flex items-center gap-1 flex-row">
-                                  <Cpu size={10} className="text-gray-500" />
-                                  <span className={loadPct > 60 ? 'text-yellow-500' : 'text-gray-400'}>{loadPct}% load</span>
-                                </div>
-                              </div>
-
-                              {/* Visual Load Progress Bar */}
-                              <div className="w-full bg-white/5 rounded-full h-[3px] overflow-hidden relative">
-                                <div 
-                                  className={`h-full rounded-full transition-all duration-500 ${
-                                    loadPct > 60 
-                                      ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]' 
-                                      : 'bg-gradient-to-r from-red-500 to-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
-                                  }`} 
-                                  style={{ width: `${loadPct}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* Kurdish cc badge */}
-                            {s.badge === 'ku' && (
-                              <div className="absolute top-2 right-2 flex items-center gap-1 bg-blue-600/10 px-2 py-0.5 rounded-lg border border-blue-500/20 shadow-md scale-75">
-                                <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" className="w-3 h-2 rounded-[1px] object-cover" alt="" />
-                                <span className="text-[7px] font-black text-blue-500 uppercase tracking-wider">KURDISH</span>
-                              </div>
-                            )}
                           </motion.button>
                         );
                       })}
@@ -974,11 +943,16 @@ const TVDetailPage: React.FC = () => {
 
           <div className="mb-8 w-full max-w-md md:max-w-xl">
             {logoPath ? (
-              <motion.img
-                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                src={`${IMAGE_BASE_URL_LOGO}${logoPath}`} alt={content.name}
-                className="max-w-full h-auto max-h-32 md:max-h-56 object-contain"
-              />
+              <>
+                <h1 className="sr-only">{content.name}</h1>
+                <motion.img
+                  initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+                  src={`${IMAGE_BASE_URL_LOGO}${logoPath}`} alt={content.name}
+                  width={500}
+                  height={200}
+                  className="max-w-full h-auto max-h-32 md:max-h-56 object-contain"
+                />
+              </>
             ) : (
               <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-9xl font-[1000] mb-6 uppercase italic tracking-tighter leading-[0.9] text-white drop-shadow-2xl">
                 {content.name}
@@ -1137,7 +1111,13 @@ const TVDetailPage: React.FC = () => {
                       <motion.div key={ep.id} whileHover={{ x: 8 }} onClick={() => handlePlayClick(selectedSeason, ep.episode_number)} className={`group relative bg-white/[0.02] border p-4 md:p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-6 cursor-pointer transition-all overflow-hidden ${isActive ? 'border-red-600 bg-red-600/[0.05]' : 'border-white/5'} ${isWatched && !isActive ? 'opacity-40 grayscale-[0.5]' : ''}`}>
 
                         <div className="relative w-full md:w-56 aspect-video rounded-2xl overflow-hidden flex-shrink-0 bg-black border border-white/5 shadow-xl" dir="ltr">
-                          <img src={ep.still_path ? `${IMAGE_BASE_URL}${ep.still_path}` : `${IMAGE_BASE_URL_POSTER}${content.poster_path}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="" />
+                          <img 
+                            src={ep.still_path ? `${IMAGE_BASE_URL}${ep.still_path}` : `${IMAGE_BASE_URL_POSTER}${content.poster_path}`} 
+                            alt={`Episode ${ep.episode_number}: ${ep.name}`} 
+                            width={300} 
+                            height={169} 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                          />
 
                           {isWatched && (
                             <div className="absolute top-2 right-2 bg-green-500 text-white p-1 rounded-full shadow-lg z-20"><Check size={12} strokeWidth={4} /></div>
@@ -1202,6 +1182,8 @@ const TVDetailPage: React.FC = () => {
                         <img 
                           src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} 
                           alt={person.name} 
+                          width={150} 
+                          height={225} 
                           className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
                         />
                       </div>

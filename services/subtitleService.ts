@@ -23,13 +23,13 @@ const getSubApiBase = (): string => {
   if (proto === 'tauri:' || (window as any).__TAURI_INTERNALS__) {
     return 'https://fkurd.pro';
   }
-  // Local dev — Vite proxy handles /api routes
+  // Local dev — relative path (served by local Vite with our middleware)
   if (
     window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1' ||
     window.location.hostname.startsWith('192.168.')
   ) {
-    return 'https://fkurd.pro'; // Always use Vercel to avoid CORS
+    return '';
   }
   // Production web — use relative paths
   return '';
@@ -81,46 +81,90 @@ export const subtitleService = {
                 if (response.ok) return response;
             }
         } catch (e) {
-            console.warn("[SUBTITLE SERVICE] Tauri fetch failed, falling back to proxies...", e);
+            console.warn("[SUBTITLE SERVICE] Tauri fetch failed...", e);
         }
 
-        // --- STEP 2: BROWSER PROXY ROTATOR ---
-        const proxies = [
-            { url: url, type: 'direct' },
-            { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'codetabs' },
-            { url: `https://thingproxy.freeboard.io/fetch/${url}`, type: 'thingproxy' },
-            { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, type: 'allorigins' },
-            { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'corsproxy' }
-        ];
+        const isExternalBlockedService = url.includes('opensubtitles');
 
-        for (const proxy of proxies) {
-            try {
-                // To avoid Preflight (OPTIONS) requests that proxies often block:
-                // We ONLY send headers if it's the 'direct' attempt.
-                // For proxies, we try to keep it simple.
-                const isDirect = proxy.type === 'direct';
-                const supportsHeaders = ['direct', 'corsproxy', 'codetabs'].includes(proxy.type);
-                
-                // If it's a POST request but the proxy doesn't support headers, skip it
-                if (options.method === 'POST' && !supportsHeaders) continue;
+        if (!isExternalBlockedService) {
+            // --- STEP 2: BROWSER PROXY ROTATOR ---
+            const proxies = [
+                { url: url, type: 'direct' },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'codetabs' },
+                { url: `https://thingproxy.freeboard.io/fetch/${url}`, type: 'thingproxy' },
+                { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, type: 'allorigins' },
+                { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'corsproxy' }
+            ];
 
-                const fetchOptions: any = {
-                    method: options.method || 'GET',
-                    body: options.body,
-                    headers: supportsHeaders ? (options.headers || {}) : { 'Accept': '*/*' }
-                };
+            for (const proxy of proxies) {
+                try {
+                    // To avoid Preflight (OPTIONS) requests that proxies often block:
+                    // We ONLY send headers if it's the 'direct' attempt.
+                    // For proxies, we try to keep it simple.
+                    const isDirect = proxy.type === 'direct';
+                    const supportsHeaders = ['direct', 'corsproxy', 'codetabs'].includes(proxy.type);
+                    
+                    // If it's a POST request but the proxy doesn't support headers, skip it
+                    if (options.method === 'POST' && !supportsHeaders) continue;
 
-                const response = await fetch(proxy.url, fetchOptions);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-                if (response.ok) {
-                    const contentType = response.headers.get('content-type');
-                    if (contentType?.includes('text/html') && !url.includes('.html')) continue;
-                    return response;
+                    const fetchOptions: any = {
+                        method: options.method || 'GET',
+                        body: options.body,
+                        headers: supportsHeaders ? (options.headers || {}) : { 'Accept': '*/*' },
+                        signal: controller.signal
+                    };
+
+                    const response = await fetch(proxy.url, fetchOptions);
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType?.includes('text/html') && !url.includes('.html')) continue;
+                        return response;
+                    }
+                } catch (e) {
+                    console.warn(`[SUBTITLE SERVICE] ${proxy.type} failed...`);
                 }
-            } catch (e) {
-                console.warn(`[SUBTITLE SERVICE] ${proxy.type} failed...`);
             }
         }
+
+        // Ultimate fallback (or direct path for blocked services): Proxy via our own secure Vercel backend
+        try {
+            console.log("[SUBTITLE SERVICE] Routing via secure Vercel proxy for:", url);
+            const apiUrl = `${getSubApiBase()}/api/subtitle`;
+            const proxyRes = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+            if (proxyRes.ok) {
+                const data = await proxyRes.json();
+                if (data && data.data) {
+                    const binaryString = atob(data.data);
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+                    const blob = new Blob([bytes], { type: data.contentType || 'application/octet-stream' });
+                    return new Response(blob, {
+                        status: 200,
+                        statusText: 'OK',
+                        headers: {
+                            'Content-Type': data.contentType || 'application/octet-stream'
+                        }
+                    });
+                } else if (data.error || data._error) {
+                    console.warn("[SUBTITLE SERVICE] Secure Vercel proxy returned error:", data.error || data._error);
+                }
+            }
+        } catch (err: any) {
+            console.warn("[SUBTITLE SERVICE] Secure Vercel proxy fallback failed:", err?.message);
+        }
+
         throw new Error("CRITICAL: All network routes failed. The subtitle server might be down.");
     },
 
@@ -134,68 +178,61 @@ export const subtitleService = {
                 const stremioPath = (type === 'tv' && season && episode) 
                     ? `${cleanImdbId}:${season}:${episode}` 
                     : cleanImdbId;
-                const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${type}/${stremioPath}.json`;
+                const stremioType = type === 'tv' ? 'series' : 'movie';
+                const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${stremioType}/${stremioPath}.json`;
                 console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
                 
                 const response = await this.fetchWithFallback(stremioUrl);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data.subtitles && data.subtitles.length > 0) {
-                        return data.subtitles
-                            .filter((s: any) => {
-                                if (allLanguages) return true;
-                                const lang = (s.lang || '').toLowerCase();
-                                return lang === 'ku' || lang === 'ckb' || lang === 'ara' || lang === 'eng' || lang === 'per' || lang === 'fa' || lang === 'ar' || lang === 'en';
-                            })
-                            .map((s: any) => ({
-                                id: s.id || `stremio-${Math.random()}`,
-                                attributes: {
-                                    language: s.lang,
-                                    display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
-                                    url: s.url,
-                                    file_id: s.file_id || 0
-                                }
-                            }));
-                    }
-                }
-            } catch (e) {
-                console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
-            }
-            return [];
-        };
-        promises.push(fetchStremio());
-
-        // 2. SubDL Discovery Strategy
-        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
-            const fetchSubDL = async (): Promise<SubtitleResult[]> => {
-                try {
-                    const resultsKu = await this.searchSubDL(imdbId, type, season, episode, 'ku');
-                    let resultsOther: SubtitleResult[] = [];
-                    if (allLanguages) {
-                        const otherLangs = ['en', 'fa', 'ar'];
-                        const otherRes = await Promise.all(otherLangs.map(l => this.searchSubDL(imdbId, type, season, episode, l)));
-                        resultsOther = otherRes.flat();
-                    }
-                    return [...resultsKu, ...resultsOther];
-                } catch (e) {
-                    console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
-                }
-                return [];
-            };
-            promises.push(fetchSubDL());
-        }
-
-        // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
-        const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
-            try {
-                let query = `?imdb_id=${encodeURIComponent(cleanImdbId)}`;
-                if (!allLanguages) {
-                    const langCodes = 'ku,ckb,fa,ar,en';
-                    query += `&languages=${encodeURIComponent(langCodes)}`;
-                }
-                if (type === 'tv' && season && episode) {
-                    query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
-                }
+                     if (data.subtitles && data.subtitles.length > 0) {
+                         return data.subtitles
+                             .filter((s: any) => {
+                                 const lang = (s.lang || '').toLowerCase();
+                                 return ['ku', 'ckb', 'ara', 'eng', 'per', 'fa', 'ar', 'en'].includes(lang);
+                             })
+                             .map((s: any) => ({
+                                 id: s.id || `stremio-${Math.random()}`,
+                                 attributes: {
+                                     language: s.lang,
+                                     display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
+                                     url: s.url,
+                                     file_id: s.file_id || 0
+                                 }
+                             }));
+                     }
+                 }
+             } catch (e) {
+                 console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
+             }
+             return [];
+         };
+         promises.push(fetchStremio());
+ 
+         // 2. SubDL Discovery Strategy
+         if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+             const fetchSubDL = async (): Promise<SubtitleResult[]> => {
+                 try {
+                     const queryLangs = allLanguages ? 'ku,en,fa,ar' : 'ku';
+                     const results = await this.searchSubDL(imdbId, type, season, episode, queryLangs);
+                     return results;
+                 } catch (e) {
+                     console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
+                 }
+                 return [];
+             };
+             promises.push(fetchSubDL());
+         }
+ 
+         // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
+         const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
+             try {
+                 let query = `?imdb_id=${encodeURIComponent(cleanImdbId)}`;
+                 const langCodes = 'ku,ckb,fa,ar,en';
+                 query += `&languages=${encodeURIComponent(langCodes)}`;
+                 if (type === 'tv' && season && episode) {
+                     query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
+                 }
 
                 const baseUrl = getSubApiBase();
                 const apiUrl = `${baseUrl}/api/subtitle${query}`;
@@ -204,7 +241,27 @@ export const subtitleService = {
 
                 if (response.ok) {
                     const data = await response.json();
-                    return (data.data || []) as SubtitleResult[];
+                    const rawList = data.data || [];
+                    return rawList.map((item: any) => {
+                        if (item.attributes && typeof item.attributes.file_id !== 'undefined' && item.attributes.display_name) {
+                            return item as SubtitleResult;
+                        }
+                        const files = item.attributes?.files || [];
+                        const fileId = files[0]?.file_id || 0;
+                        const release = item.attributes?.release || '';
+                        const lang = item.attributes?.language || '';
+                        const url = item.attributes?.url || '';
+
+                        return {
+                            id: item.id || `opensubtitles-${Math.random()}`,
+                            attributes: {
+                                language: lang,
+                                display_name: release || `${lang.toUpperCase()} Subtitle (OpenSubtitles)`,
+                                url: url,
+                                file_id: fileId
+                            }
+                        } as SubtitleResult;
+                    });
                 }
             } catch (error: any) {
                 console.warn("[SUBTITLE SERVICE] REST API Search failed gracefully:", error?.message);
@@ -270,11 +327,13 @@ export const subtitleService = {
         return sortedResults;
     },
 
-    async searchSubDL(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku') {
+    async searchSubDL(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, languages: string = 'ku') {
         try {
             const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
             const langMap: Record<string, string> = { 'ku': 'Kurdish', 'ckb': 'Kurdish', 'fa': 'Persian', 'ar': 'Arabic', 'en': 'English' };
-            const subdlLang = langMap[language] || 'Kurdish';
+            const subdlLang = languages.split(',')
+                .map(code => langMap[code.trim().toLowerCase()] || 'Kurdish')
+                .join(',');
             
             let query = `?engine=subdl&imdb_id=${encodeURIComponent(cleanImdbId)}&languages=${encodeURIComponent(subdlLang)}`;
             if (type === 'tv' && season && episode) {
@@ -290,15 +349,23 @@ export const subtitleService = {
 
             const data = await response.json();
             if (data.status && data.subtitles && data.subtitles.length > 0) {
-                return data.subtitles.map((s: any) => ({
-                    id: `subdl-${s.sd_id || Math.random()}`,
-                    attributes: {
-                        language: language,
-                        display_name: s.release_name || `${subdlLang} Subtitle (SubDL)`,
-                        url: s.url || `https://dl.subdl.com/subtitle/${s.sd_id}.zip`,
-                        file_id: 0
-                    }
-                }));
+                return data.subtitles.map((s: any) => {
+                    const rawLang = (s.language || '').toLowerCase();
+                    let resolvedLang = 'ku';
+                    if (rawLang.includes('english')) resolvedLang = 'en';
+                    else if (rawLang.includes('persian') || rawLang.includes('farsi')) resolvedLang = 'fa';
+                    else if (rawLang.includes('arabic')) resolvedLang = 'ar';
+                    
+                    return {
+                        id: `subdl-${s.sd_id || Math.random()}`,
+                        attributes: {
+                            language: resolvedLang,
+                            display_name: s.release_name || `${rawLang.charAt(0).toUpperCase() + rawLang.slice(1)} Subtitle (SubDL)`,
+                            url: s.url || `https://dl.subdl.com/subtitle/${s.sd_id}.zip`,
+                            file_id: 0
+                        }
+                    };
+                });
             }
             return [];
         } catch (e: any) {
@@ -334,12 +401,23 @@ export const subtitleService = {
     async downloadSubtitle(sub: SubtitleResult) {
         try {
             let link = sub.attributes.url;
-            // Only resolve file_id through backend proxy if a direct URL is not present
-            if ((!link || link.trim() === '') && sub.attributes.file_id !== 0) {
-                link = await this.getDownloadLink(sub.attributes.file_id);
+            
+            const isOpenSub = link && (
+                link.includes('opensubtitles')
+            );
+
+            // If it is an OpenSubtitles link, we MUST have a file_id to download it via the API
+            if (isOpenSub) {
+                if (sub.attributes.file_id && sub.attributes.file_id !== 0) {
+                    link = await this.getDownloadLink(sub.attributes.file_id);
+                } else {
+                    throw new Error("OpenSubtitles webpage scraping is blocked. Official API download requires a file_id.");
+                }
             }
             
-            if (!link) throw new Error("Could not obtain download link");
+            if (!link || link.trim() === '') {
+                throw new Error("Could not obtain download link");
+            }
 
             // Resolve relative paths to absolute URLs (e.g. from Stremio Proxy or local custom storage)
             if (link.startsWith('//')) {
@@ -409,7 +487,7 @@ export const subtitleService = {
                 }
             }
             console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", absoluteUrl);
-            const isLocal = absoluteUrl.startsWith('/') || absoluteUrl.includes(window.location.hostname) || absoluteUrl.includes('fkurd.pro');
+            const isLocal = absoluteUrl.startsWith('/') || absoluteUrl.includes(window.location.hostname) || absoluteUrl.includes('fkurd.pro') || absoluteUrl.includes('supabase.co');
             const response = isLocal ? await fetch(absoluteUrl) : await this.fetchWithFallback(absoluteUrl);
             if (response && response.ok) {
                 const contentType = response.headers.get('content-type') || '';

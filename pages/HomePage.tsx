@@ -59,9 +59,11 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
         className="relative h-[450px] md:h-[700px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand/40"
       >
         <img
-          src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL.replace('w1280', 'original')}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
+          src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
+          width={1280}
+          height={720}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
-          alt=""
+          alt={item.title || item.name || "Weekly Spotlight Movie Backdrop"}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
@@ -171,7 +173,7 @@ const HomePage: React.FC = () => {
         .from('dubbed_movies')
         .select('id, title, description, imageBase64, created_at, level')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(12);
 
       let timeoutId: any;
       const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {

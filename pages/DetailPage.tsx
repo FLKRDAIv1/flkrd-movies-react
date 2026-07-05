@@ -218,6 +218,14 @@ const DetailPage: React.FC = () => {
     return ranked.length > 0 ? ranked[0].name : 'FLKRD SERVER';
   });
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
+  const [playerKey, setPlayerKey] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  const handleRefreshSource = () => {
+    setIsSpinning(true);
+    setPlayerKey(prev => prev + 1);
+    setTimeout(() => setIsSpinning(false), 800);
+  };
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
   const [actorDetails, setActorDetails] = useState<any | null>(null);
   const [isActorLoading, setIsActorLoading] = useState(false);
@@ -480,6 +488,18 @@ const DetailPage: React.FC = () => {
 
           // [SUBTITLE SYNC] Search for Kurdish subtitles using Supabase/OpenSubtitles
           try {
+            // Always fetch IMDB ID first so that it is available to the players
+            let activeImdbId = null;
+            try {
+              const externalIds = await fetchExternalIds(id, 'movie');
+              if (externalIds && externalIds.imdb_id) {
+                activeImdbId = externalIds.imdb_id;
+                setImdbId(externalIds.imdb_id);
+              }
+            } catch (extErr) {
+              console.warn("[DETAIL] Failed to fetch external IDs:", extErr);
+            }
+
             // Check Supabase custom_subtitles first
             let supabaseSubUrl = null;
             try {
@@ -507,22 +527,19 @@ const DetailPage: React.FC = () => {
               setSubtitleUrl(supabaseSubUrl);
               const ranked = getRankedSources(true);
               setSources(ranked);
-            } else {
-              const externalIds = await fetchExternalIds(id, 'movie');
-              if (externalIds && externalIds.imdb_id) {
-                  setImdbId(externalIds.imdb_id);
-                  const results = await subtitleService.searchSubtitles(externalIds.imdb_id, 'movie', undefined, undefined, 'ku');
-                  if (results && results.length > 0) {
-                      // Filter for the best Kurdish track
-                      const bestTrack = results.find(r => 
-                          r.attributes.language === 'ku' || 
-                          r.attributes.language === 'ckb' || 
-                          r.attributes.display_name?.toLowerCase().includes('kurd')
-                      ) || results[0];
+            } else if (activeImdbId) {
+              const results = await subtitleService.searchSubtitles(activeImdbId, 'movie', undefined, undefined, 'ku');
+              if (results && results.length > 0) {
+                  // Filter for the best Kurdish track
+                  const bestTrack = results.find(r => 
+                      r.attributes.language === 'ku' || 
+                      r.attributes.language === 'ckb' || 
+                      r.attributes.display_name?.toLowerCase().includes('kurd')
+                  ) || results[0];
 
-                      const downloadLink = bestTrack.attributes.file_id !== 0 
-                          ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
-                          : bestTrack.attributes.url;
+                  const downloadLink = bestTrack.attributes.file_id !== 0 
+                      ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
+                      : bestTrack.attributes.url;
 
                       if (downloadLink) {
                           console.log("[SUBTITLE SYNC] Kurdish Track Established:", downloadLink);
@@ -546,7 +563,6 @@ const DetailPage: React.FC = () => {
                       });
                   }
               }
-            }
           } catch (e) {
               console.warn("[SUBTITLE SYNC] Error fetching automated tracks:", e);
           }
@@ -655,7 +671,7 @@ const DetailPage: React.FC = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[9999] backdrop-blur-3xl flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-5xl flex justify-between items-center mb-4 text-white">
               <h2 className="text-xl font-black uppercase italic tracking-tighter">{t('playTrailer')}</h2>
-              <button onClick={() => setIsTrailerModalOpen(false)} className="p-3 bg-white/10 hover:bg-red-600 rounded-2xl transition-all"><X size={24} /></button>
+              <button onClick={() => setIsTrailerModalOpen(false)} aria-label="Close trailer modal" className="p-3 bg-white/10 hover:bg-red-600 rounded-2xl transition-all"><X size={24} /></button>
             </div>
             <div className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-black">
               <iframe
@@ -673,7 +689,7 @@ const DetailPage: React.FC = () => {
         {isPlayerModalOpen && (
           <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
             <div className="w-full flex items-center justify-between p-4 md:p-6 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
-              <button onClick={handleClosePlayer} className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
+              <button onClick={handleClosePlayer} aria-label="Close video player" className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
                 <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
               </button>
               <div className="flex flex-col items-center text-center">
@@ -683,14 +699,30 @@ const DetailPage: React.FC = () => {
                 </div>
                 <h2 className="text-xs md:sm font-bold uppercase tracking-tight italic line-clamp-1 text-white">{content.title}</h2>
               </div>
-              <button onClick={() => setShowSourceSwitcher(!showSourceSwitcher)} className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-red-600/10 border border-red-500/20 text-red-500 text-[8px] md:text-[10px] font-black hover:bg-red-600 hover:text-white transition-all">
-                <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleRefreshSource}
+                  className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center group"
+                  title={(language === 'ku' || language === 'badini') ? 'نوێکردنەوەی سەرچاوە' : 'Refresh Source'}
+                  aria-label="Refresh source connection"
+                >
+                  <motion.div
+                    animate={{ rotate: isSpinning ? 360 : 0 }}
+                    transition={{ duration: 0.6, ease: "easeInOut" }}
+                  >
+                    <RefreshCcw size={12} className="group-hover:scale-110 transition-transform" />
+                  </motion.div>
+                </button>
+                <button onClick={() => setShowSourceSwitcher(!showSourceSwitcher)} aria-label="Switch streaming source server" className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-red-600/10 border border-red-500/20 text-red-500 text-[8px] md:text-[10px] font-black hover:bg-red-600 hover:text-white transition-all">
+                  <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 w-full relative bg-black overflow-hidden">
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
+                  key={`premium-${playerKey}`}
                   tmdbId={id!}
                   type="movie"
                   title={content.title}
@@ -701,8 +733,6 @@ const DetailPage: React.FC = () => {
                   onProgress={handlePlayerProgress}
                   startFullscreen={true}
                   onClose={handleClosePlayer}
-                  isFullscreen={isFullscreen}
-                  toggleFullscreen={toggleFullscreen}
                   onLoad={() => setIsPlayerLoading(false)}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
@@ -710,6 +740,7 @@ const DetailPage: React.FC = () => {
                 />
               ) : (
                 <UniversalVideoPlayer
+                  key={`universal-${playerKey}`}
                   src={getSourceUrl(activeSource, id!, 'movie', undefined, undefined, initialProgress, accentColor, subtitleUrl || undefined)}
                   accentColor={accentColor}
                   language={language}
@@ -722,8 +753,6 @@ const DetailPage: React.FC = () => {
                   tmdbId={id}
                   startFullscreen={true}
                   onClose={handleClosePlayer}
-                  isFullscreen={isFullscreen}
-                  toggleFullscreen={toggleFullscreen}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
                   sources={sources}
@@ -731,7 +760,7 @@ const DetailPage: React.FC = () => {
               )}
 
               <AnimatePresence>
-                {showSourceSwitcher && !isFullscreen && (
+                {showSourceSwitcher && (
                   <motion.div 
                     initial={{ x: '100%', opacity: 0 }} 
                     animate={{ x: 0, opacity: 1 }} 
@@ -961,7 +990,7 @@ const DetailPage: React.FC = () => {
 
         {trailerKey && (
           <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'left-6 md:left-20' : 'right-6 md:right-20'} z-20`}>
-            <button onClick={() => setIsMuted(!isMuted)} className="bg-black/40 backdrop-blur-xl border border-white/10 p-3 rounded-full text-white hover:bg-[var(--brand-red)] transition-all shadow-2xl">
+            <button onClick={() => setIsMuted(!isMuted)} aria-label={isMuted ? "Unmute backdrop video" : "Mute backdrop video"} className="bg-black/40 backdrop-blur-xl border border-white/10 p-3 rounded-full text-white hover:bg-[var(--brand-red)] transition-all shadow-2xl">
               {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
           </div>
@@ -986,13 +1015,18 @@ const DetailPage: React.FC = () => {
 
           <div className="mb-8 w-full max-w-md md:max-w-xl">
             {logoPath ? (
-              <motion.img
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
-                alt={content.title}
-                className="max-w-full h-auto max-h-32 md:max-h-56 object-contain"
-              />
+              <>
+                <h1 className="sr-only">{content.title}</h1>
+                <motion.img
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
+                  alt={content.title}
+                  width={500}
+                  height={200}
+                  className="max-w-full h-auto max-h-32 md:max-h-56 object-contain"
+                />
+              </>
             ) : (
               <motion.h1 initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-9xl font-[1000] uppercase tracking-tighter italic leading-[0.9] text-[var(--text-primary)] drop-shadow-2xl">
                 {content.title}
@@ -1124,7 +1158,7 @@ const DetailPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 md:gap-20">
           <div className="lg:col-span-2">
             <div className="mb-20">
-              <div className="flex items-center gap-4 mb-10"><div className="w-1.5 h-10 bg-[var(--brand-red)] rounded-full shadow-[0_0_20px_var(--brand-red)]"></div><h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--text-secondary)] italic">{(language === 'ku' || language === 'badini') ? 'کورتەی فیلم' : 'OVERVIEW'}</h3></div>
+              <div className="flex items-center gap-4 mb-10"><div className="w-1.5 h-10 bg-[var(--brand-red)] rounded-full shadow-[0_0_20px_var(--brand-red)]"></div><h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--text-secondary)] italic">{(language === 'ku' || language === 'badini') ? 'کورتەی فیلم' : 'OVERVIEW'}</h2></div>
               <p className="text-[var(--text-primary)] text-lg md:text-2xl leading-relaxed italic font-bold">{content.overview}</p>
             </div>
 
@@ -1135,7 +1169,13 @@ const DetailPage: React.FC = () => {
                   {cast.map(person => (
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
                       <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-[var(--border-color)] shadow-2xl relative">
-                        <img src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" />
+                        <img 
+                          src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} 
+                          alt={person.name} 
+                          width={150} 
+                          height={225} 
+                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                        />
                       </div>
                       <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-[var(--text-primary)]">{person.name}</p>
                     </div>

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
+import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 
 type Theme = 'light' | 'dark' | 'premium-gradient-1' | 'premium-gradient-2' | 'premium-particles-galaxy' | 'premium-particles-moon' | 'premium-particles-stardust';
 
@@ -17,6 +18,21 @@ export interface GlassConfig {
   glowIntensity?: number;      // 0–1: outer red glow strength
   shineBrightness?: number;    // 0–0.6: inner top-edge highlight brightness
   enableJelly?: boolean;       // toggle jelly bounce animation
+}
+
+export interface ActiveTranslationState {
+  isTranslating: boolean;
+  progress: number;
+  statusText: string;
+  translatingName: string;
+  sub: any;
+  tmdbId: string | number;
+  mediaType: string;
+  season: number;
+  episode: number;
+  showCelebration: boolean;
+  error?: string;
+  subtitleUrl?: string;
 }
 
 interface UIContextType {
@@ -39,6 +55,14 @@ interface UIContextType {
   setIsAdmin: (isAdmin: boolean) => void;
   glassConfig: GlassConfig;
   updateGlassConfig: (config: GlassConfig) => Promise<boolean>;
+  translatedMovieIds: Set<string>;
+  refreshTranslatedMovieIds: () => Promise<void>;
+  
+  // Background Subtitle Translation System
+  activeTranslation: ActiveTranslationState;
+  startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number) => Promise<void>;
+  cancelGlobalTranslation: () => void;
+  dismissCelebration: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -53,9 +77,23 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [scale, setScaleState] = useState(() =>
     Number(localStorage.getItem('flkrd_scale')) || 1
   );
-  const [isPerformanceMode, setIsPerformanceModeState] = useState(() =>
-    localStorage.getItem('flkrd_performance_turbo') === 'true'
-  );
+  const [isPerformanceMode, setIsPerformanceModeState] = useState(() => {
+    const saved = localStorage.getItem('flkrd_performance_turbo');
+    if (saved !== null) {
+      return saved === 'true';
+    }
+    // Auto-detect mobile or low-end hardware to default to smooth mode
+    if (typeof window !== 'undefined' && window.navigator) {
+      const userAgent = window.navigator.userAgent || '';
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+      
+      const isLowMemory = (window.navigator as any).deviceMemory && (window.navigator as any).deviceMemory < 4;
+      const isLowCpu = window.navigator.hardwareConcurrency && window.navigator.hardwareConcurrency < 6;
+      
+      return isMobile || isLowMemory || isLowCpu;
+    }
+    return false;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
     try {
@@ -275,6 +313,180 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const [translatedMovieIds, setTranslatedMovieIds] = useState<Set<string>>(new Set());
+
+  const refreshTranslatedMovieIds = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('custom_subtitles')
+        .select('tmdb_id')
+        .eq('language', 'ku');
+      
+      if (error) throw error;
+      
+      if (data) {
+        const ids = data.map((d: any) => String(d.tmdb_id));
+        setTranslatedMovieIds(new Set(ids));
+      }
+    } catch (e) {
+      console.error('[UI CONTEXT] Failed to load translated movie IDs:', e);
+    }
+  };
+
+  useEffect(() => {
+    refreshTranslatedMovieIds();
+  }, []);
+
+  const [activeTranslation, setActiveTranslation] = useState<ActiveTranslationState>(() => {
+    try {
+      const cached = localStorage.getItem('flkrd_translating_sub_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          isTranslating: false, // Start idle so user can click "Resume"
+          progress: parsed.progress || 0,
+          statusText: parsed.statusText || 'Idle',
+          translatingName: parsed.sub?.attributes?.display_name || 'Selected Track',
+          sub: parsed.sub,
+          tmdbId: parsed.targetId || parsed.tmdbId,
+          mediaType: parsed.mediaType || 'movie',
+          season: parsed.season || 0,
+          episode: parsed.episode || 0,
+          showCelebration: false
+        };
+      }
+    } catch (e) {}
+    return {
+      isTranslating: false,
+      progress: 0,
+      statusText: '',
+      translatingName: '',
+      sub: null,
+      tmdbId: '',
+      mediaType: 'movie',
+      season: 0,
+      episode: 0,
+      showCelebration: false
+    };
+  });
+
+  const startGlobalTranslation = async (
+    sub: any,
+    tmdbId: string | number,
+    mediaType: string,
+    season: number = 0,
+    episode: number = 0
+  ) => {
+    const subName = sub.attributes?.display_name || 'Selected Track';
+    setActiveTranslation({
+      isTranslating: true,
+      progress: 0,
+      statusText: 'Starting translation...',
+      translatingName: subName,
+      sub,
+      tmdbId,
+      mediaType,
+      season,
+      episode,
+      showCelebration: false
+    });
+
+    // Save initial state to localStorage cache
+    try {
+      localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
+        sub,
+        targetId: tmdbId,
+        mediaType,
+        season,
+        episode,
+        progress: 0,
+        statusText: 'Starting...'
+      }));
+    } catch (e) {}
+
+    try {
+      const result = await translateAndSavePipeline(
+        sub,
+        tmdbId,
+        mediaType,
+        season,
+        episode,
+        (progress, status) => {
+          setActiveTranslation(prev => {
+            const next = {
+              ...prev,
+              progress,
+              statusText: status
+            };
+            try {
+              localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
+                sub: prev.sub,
+                targetId: prev.tmdbId,
+                mediaType: prev.mediaType,
+                season: prev.season,
+                episode: prev.episode,
+                progress,
+                statusText: status
+              }));
+            } catch (e) {}
+            return next;
+          });
+        }
+      );
+
+      if (result.success && result.subtitleUrl) {
+        setActiveTranslation(prev => ({
+          ...prev,
+          isTranslating: false,
+          progress: 100,
+          statusText: 'Completed successfully!',
+          showCelebration: true,
+          subtitleUrl: result.subtitleUrl
+        }));
+        // Update global subtitle coverage Set
+        await refreshTranslatedMovieIds();
+      } else {
+        throw new Error(result.error || 'Translation pipeline failed');
+      }
+    } catch (err: any) {
+      console.error("[UI CONTEXT] Subtitle translation pipeline exception:", err);
+      setActiveTranslation(prev => ({
+        ...prev,
+        isTranslating: false,
+        statusText: `Failed: ${err.message || 'Unknown error'}`,
+        error: err.message || 'Unknown error'
+      }));
+    }
+  };
+
+  const cancelGlobalTranslation = () => {
+    setActiveTranslation({
+      isTranslating: false,
+      progress: 0,
+      statusText: '',
+      translatingName: '',
+      sub: null,
+      tmdbId: '',
+      mediaType: 'movie',
+      season: 0,
+      episode: 0,
+      showCelebration: false
+    });
+    try {
+      localStorage.removeItem('flkrd_translating_sub_cache');
+    } catch (e) {}
+  };
+
+  const dismissCelebration = () => {
+    setActiveTranslation(prev => ({
+      ...prev,
+      showCelebration: false
+    }));
+    try {
+      localStorage.removeItem('flkrd_translating_sub_cache');
+    } catch (e) {}
+  };
+
   const toggleTheme = () => setThemeState(prev => prev === 'light' ? 'dark' : 'light');
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
@@ -292,7 +504,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <UIContext.Provider value={{ 
-      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig,
+      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
+      activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig
     }}>
       {children}

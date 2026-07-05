@@ -41,67 +41,67 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
   return cues;
 }
 
-// ============================================================
-// Google Apps Script Web App — Official Google Translate Engine
-// Content-Type: text/plain bypasses CORS preflight OPTIONS block
-// GAS backend still parses the JSON body correctly
-// ============================================================
-const GAS_TRANSLATE_URL =
-  'https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec';
+const getApiBaseUrl = (): string => {
+  if (typeof window === 'undefined') return 'https://fkurd.pro';
+  const proto = window.location.protocol;
+  if (proto === 'tauri:' || (window as any).__TAURI_INTERNALS__) {
+    return 'https://fkurd.pro';
+  }
+  if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.')
+  ) {
+    return '';
+  }
+  return '';
+};
 
 /**
- * Translates a block of text via Google Apps Script.
- * Can handle multiline text (joined by \n) for batch translation.
- * On any error, returns the original text so the player never crashes.
+ * Translates an array of text strings via Vercel translation proxy.
+ * Passes the array directly so the backend can manage line counts and fallbacks.
+ * On any error, returns the original text array so the player never crashes.
  */
-async function translateText(text: string): Promise<string> {
+async function translateText(text: string[]): Promise<string[]> {
   try {
-    const response = await fetch(GAS_TRANSLATE_URL, {
+    const baseUrl = getApiBaseUrl();
+    const response = await fetch(`${baseUrl}/api/translate`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/plain;charset=utf-8',
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text, targetLang: 'ckb' }),
+      body: JSON.stringify({ text, source: 'en', target: 'ckb' }),
     });
 
     if (!response.ok) {
-      console.warn(`[GAS] HTTP ${response.status} — returning original text`);
+      console.warn(`[TRANSLATE] HTTP ${response.status} — returning original text`);
       return text;
     }
 
     const data = await response.json();
-
-    if (!data.success) {
-      console.warn(`[GAS] API error: ${data.error} — returning original text`);
-      return text;
-    }
-
     return data.translation ?? text;
   } catch (err: any) {
-    console.warn(`[GAS] Fetch failed: ${err.message} — returning original text`);
+    console.warn(`[TRANSLATE] Fetch failed: ${err.message} — returning original text`);
     return text;
   }
 }
 
 /**
  * Translates an array of subtitle cues to Kurdish Sorani.
- * Batches 30 cues per GAS call (joined by \n), splits on \n to restore lines.
+ * Batches cues and uses divide & conquer fallback to translate each item safely.
  * Falls back to original text on any error — player will never crash.
  */
 // Helper function to translate a chunk of cues recursively if line mismatch occurs (divide & conquer)
 async function translateChunkWithFallback(chunk: SubtitleCue[]): Promise<string[]> {
   const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
-  const combinedText = chunkTexts.join('\n');
 
   try {
-    const rawTranslation = await translateText(combinedText);
-    const translatedTexts = rawTranslation.split('\n');
-
-    if (translatedTexts.length === chunk.length) {
+    const translatedTexts = await translateText(chunkTexts);
+    if (Array.isArray(translatedTexts) && translatedTexts.length === chunk.length) {
       return translatedTexts;
     }
   } catch (err) {
-    console.warn("[GAS] Chunk translation exception, falling back:", err);
+    console.warn("[TRANSLATE] Chunk translation exception, falling back:", err);
   }
 
   // If there's a mismatch or error and the chunk has more than 1 item, divide and conquer!
@@ -110,7 +110,7 @@ async function translateChunkWithFallback(chunk: SubtitleCue[]): Promise<string[
     const left = chunk.slice(0, mid);
     const right = chunk.slice(mid);
 
-    console.warn(`[GAS] Line count mismatch in chunk (size ${chunk.length}). Retrying by splitting into halves: ${left.length} and ${right.length}`);
+    console.warn(`[TRANSLATE] Line count mismatch in chunk (size ${chunk.length}). Retrying by splitting into halves: ${left.length} and ${right.length}`);
 
     // Wait a brief moment to avoid overloading the API on retries
     await new Promise(resolve => setTimeout(resolve, 30));
@@ -128,7 +128,7 @@ async function translateChunkWithFallback(chunk: SubtitleCue[]): Promise<string[
 
 export async function translateCuesToKurdish(
   cues: SubtitleCue[],
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number, statusText: string) => void
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
   const chunkSize = 50;
@@ -145,10 +145,12 @@ export async function translateCuesToKurdish(
     }
 
     if (onProgress) {
-      onProgress(Math.round(((i + chunk.length) / cues.length) * 100));
+      const progressPct = Math.round(((i + chunk.length) / cues.length) * 100);
+      const statusText = `Translating dialogue lines (${Math.min(i + chunk.length, cues.length)} / ${cues.length})...`;
+      onProgress(progressPct, statusText);
     }
 
-    // Small breather between batches to avoid GAS rate-limiting
+    // Small breather between batches to avoid rate-limiting
     await new Promise(resolve => setTimeout(resolve, 50));
   }
 
@@ -189,46 +191,95 @@ export function compileToVTT(cues: SubtitleCue[]): string {
 }
 
 /**
- * Handles the full pipeline: download, translate, compile, upload to Supabase, and save DB reference.
+ * Compiles cues back into SRT format.
  */
+export function compileToSRT(cues: SubtitleCue[]): string {
+  let srt = '';
+  let index = 1;
+
+  // Prepend custom intro/branding cues (using standard SubRip format)
+  srt += `${index++}\n00:00:01,000 --> 00:00:04,000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
+  srt += `${index++}\n00:00:04,500 --> 00:00:07,500\nPowered by FLKRD STUDIO\n\n`;
+
+  // Filter out original cues starting in the first 7.5s to prevent overlaps
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
+
+  filteredCues.forEach((cue) => {
+    // Ensure timestamp uses comma instead of dot for SRT
+    let timestamp = cue.timestamp.replace(/\./g, ',');
+    
+    // Normalize timestamp to SRT format (e.g. 00:00:00,000)
+    const parts = timestamp.split('-->');
+    if (parts.length === 2) {
+      let start = parts[0].trim();
+      let end = parts[1].trim();
+      
+      // Ensure HH:MM:SS format
+      if (start.split(':').length === 2) start = '00:' + start;
+      if (end.split(':').length === 2) end = '00:' + end;
+      
+      timestamp = `${start} --> ${end}`;
+    }
+
+    srt += `${index++}\n${timestamp}\n${cue.text}\n\n`;
+  });
+  return srt;
+}
+
 export async function translateAndSavePipeline(
   sub: any,
   tmdbId: string | number,
   mediaType: string,
   season: number = 0,
   episode: number = 0,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number, statusText: string) => void
 ): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
   try {
+    if (onProgress) onProgress(2, "Downloading subtitle track from OpenSubtitles...");
+    
     // 1. Download subtitle text
     const text = await subtitleService.downloadSubtitle(sub);
     if (!text) throw new Error("Could not download subtitle track.");
 
+    if (onProgress) onProgress(5, "Parsing dialogue cues...");
+    
     // 2. Parse cues
     const cues = parseSubtitleToCues(text);
     if (cues.length === 0) throw new Error("No subtitle cues found.");
 
+    if (onProgress) onProgress(7, "Starting Google translation to Kurdish Sorani...");
+
     // 3. Translate cues
-    const translatedCues = await translateCuesToKurdish(cues, onProgress);
+    const translatedCues = await translateCuesToKurdish(cues, (p, status) => {
+      // Map 0-100% of translation to 7% - 85% of total progress
+      const mapped = Math.round(7 + p * 0.78);
+      if (onProgress) onProgress(mapped, status);
+    });
 
-    // 4. Compile to VTT
-    const vttContent = compileToVTT(translatedCues);
-    const blob = new Blob([vttContent], { type: 'text/vtt' });
+    if (onProgress) onProgress(86, "Compiling translated dialogue to SRT format...");
 
-    // 5. Upload to Supabase Storage
+    // 4. Compile to SRT (as requested by user)
+    const srtContent = compileToSRT(translatedCues);
+    const blob = new Blob([srtContent], { type: 'text/plain' });
+
+    if (onProgress) onProgress(90, "Uploading SRT subtitle to Supabase storage...");
+
+    // 5. Upload to Supabase Storage as .srt
     const timeStamp = Date.now();
     const filePath = mediaType === 'tv'
-      ? `custom/${tmdbId}_s${season}_e${episode}_ku_${timeStamp}.vtt`
-      : `custom/${tmdbId}_ku_${timeStamp}.vtt`;
+      ? `custom/${tmdbId}_s${season}_e${episode}_ku_${timeStamp}.srt`
+      : `custom/${tmdbId}_ku_${timeStamp}.srt`;
 
     const { error: uploadErr } = await supabase.storage
       .from('subtitles')
       .upload(filePath, blob, {
-        contentType: 'text/vtt',
+        contentType: 'text/plain',
         upsert: true
       });
 
     if (uploadErr) throw uploadErr;
+
+    if (onProgress) onProgress(94, "Retrieving secure public Vtt URL...");
 
     // 6. Get Public URL
     const { data: { publicUrl } } = supabase.storage
@@ -240,6 +291,8 @@ export async function translateAndSavePipeline(
       resolvedPublicUrl = `https:${resolvedPublicUrl}`;
     }
 
+    if (onProgress) onProgress(97, "Registering subtitle in Supabase Postgres registry (for all users)...");
+
     // 7. Save reference in custom_subtitles database table
     const { error: dbErr } = await supabase
       .from('custom_subtitles')
@@ -248,7 +301,7 @@ export async function translateAndSavePipeline(
         media_type: mediaType || 'movie',
         language: 'ku',
         subtitle_url: resolvedPublicUrl,
-        file_name: `${sub.attributes?.display_name || 'Translated'}_ku.vtt`,
+        file_name: `${sub.attributes?.display_name || 'Translated'}_ku.srt`,
         season,
         episode
       }, {
@@ -256,6 +309,8 @@ export async function translateAndSavePipeline(
       });
 
     if (dbErr) throw dbErr;
+
+    if (onProgress) onProgress(100, "Subtitle fully registered and active!");
 
     return { success: true, subtitleUrl: resolvedPublicUrl };
   } catch (err: any) {

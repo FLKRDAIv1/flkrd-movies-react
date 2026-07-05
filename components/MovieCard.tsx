@@ -10,7 +10,8 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import KurdishCCBadge from './KurdishCCBadge';
 import { LiquidButton } from './ui/liquid-glass-button';
-import { IMAGE_BASE_URL_POSTER } from '../constants';
+import { fetchData } from '../services/tmdbService';
+import { API_KEY, IMAGE_BASE_URL_POSTER } from '../constants';
 
 interface MovieCardProps {
   item: any; // Can be Content, WatchProgress, or MyListItem
@@ -126,6 +127,12 @@ export const MovieCard = React.memo(
     } else {
       import('../pages/DetailPage');
       import('../pages/TVDetailPage');
+      
+      if (item.id) {
+        const isTv = mediaType === 'tv';
+        const endpoint = `/${isTv ? 'tv' : 'movie'}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+        fetchData(endpoint, language).catch(() => {});
+      }
     }
   };
 
@@ -187,6 +194,8 @@ export const MovieCard = React.memo(
           <img
             src={(imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:'))) ? imageSrc : (imageSrc ? `${IMAGE_BASE_URL_POSTER}${imageSrc}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp')}
             alt={title}
+            width={342}
+            height={513}
             className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
             loading="lazy"
           />

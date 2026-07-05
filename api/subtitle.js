@@ -160,7 +160,7 @@ export default async function handler(req, res) {
                         if (order_by) url += `order_by=${order_by}&`;
                         if (order_direction) url += `order_direction=${order_direction}&`;
                         if (tmdb_id) url += `tmdb_id=${tmdb_id}&`;
-                        if (type) url += `type=${type}&`;
+                        if (type) url += `type=${type === 'tv' ? 'episode' : type}&`;
                         if (imdb_id) {
                             const cleanImdb = imdb_id.startsWith('tt') ? imdb_id : `tt${imdb_id}`;
                             url += `imdb_id=${cleanImdb}&`;
@@ -201,7 +201,26 @@ export default async function handler(req, res) {
                 if (typeof body === 'string') {
                     try { body = JSON.parse(body); } catch(e) {}
                 }
-                const { file_id } = body || {};
+                const { file_id, url } = body || {};
+
+                if (url) {
+                    try {
+                        const response = await fetch(url, {
+                            headers: {
+                                'User-Agent': USER_AGENT
+                            }
+                        });
+                        if (response.ok) {
+                            const buffer = await response.arrayBuffer();
+                            const base64 = Buffer.from(buffer).toString('base64');
+                            const contentType = response.headers.get('content-type') || 'application/octet-stream';
+                            return res.status(200).json({ data: base64, contentType });
+                        }
+                        return res.status(200).json({ error: `URL fetch failed with status ${response.status}`, data: null });
+                    } catch (urlErr) {
+                        return res.status(200).json({ error: urlErr.message, data: null });
+                    }
+                }
 
                 if (!file_id) {
                     return res.status(200).json({ link: null, error: 'file_id is required' });

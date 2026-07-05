@@ -1,0 +1,12 @@
+# FLKRD MOVIES
+
+Interactive Kurdish translation and subtitle streaming platform for movies and TV series.
+
+## Main Navigation Paths
+- [/](/): Explore popular, trending, and top rated movies & TV series.
+- [/discover](/discover): Filter by genre, language, country, and release year.
+- [/search](/search): Real-time lookup for titles, actors, or directors.
+- [/dubbed](/dubbed): Kurdish dubbed movies and video audio feeds.
+- [/continue-watching](/continue-watching): Resume progress on unfinished content.
+- [/mylist](/mylist): View personal watchlist.
+- [/kurdish-cc](/kurdish-cc): Check list of custom-translated subtitle registry.

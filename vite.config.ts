@@ -2,6 +2,7 @@ import path from 'path';
 import dns from 'dns';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import viteCompression from 'vite-plugin-compression';
 
 dns.setDefaultResultOrder('ipv4first');
 
@@ -12,16 +13,6 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
         proxy: {
-          '/api/subtitle': {
-            target: 'https://api.opensubtitles.com',
-            rewrite: (path) => path.replace(/^\/api\/subtitle/, '/api/v1/subtitles'),
-            changeOrigin: true,
-            headers: {
-              'Api-Key': env.VITE_OPENSUBTITLES_API_KEY ? env.VITE_OPENSUBTITLES_API_KEY.split(',')[1] || env.VITE_OPENSUBTITLES_API_KEY.split(',')[0] : '',
-              'User-Agent': 'flkrd_movies_v1',
-              'Accept': 'application/json'
-            }
-          },
           '/api/tmdb': {
             target: 'https://api.themoviedb.org/3',
             rewrite: (path) => path.replace(/^\/api\/tmdb/, ''),
@@ -53,7 +44,103 @@ export default defineConfig(({ mode }) => {
           ].join('; '),
         },
       },
-      plugins: [react()],
+      plugins: [
+        react(),
+        viteCompression({
+          algorithm: 'gzip',
+          ext: '.gz',
+          threshold: 10240,
+          deleteOriginFile: false
+        }),
+        viteCompression({
+          algorithm: 'brotliCompress',
+          ext: '.br',
+          threshold: 10240,
+          deleteOriginFile: false
+        }),
+        {
+          name: 'local-api-middleware',
+          configureServer(server) {
+            server.middlewares.use(async (req, res, next) => {
+              if (req.url?.startsWith('/api/translate') || req.url?.startsWith('/api/subtitle')) {
+                // Populate process.env with Vite env variables
+                Object.keys(env).forEach(key => {
+                  if (!process.env[key]) {
+                    process.env[key] = env[key];
+                  }
+                });
+
+                const urlObj = new URL(req.url, 'http://localhost');
+                const query = Object.fromEntries(urlObj.searchParams.entries());
+                
+                let body = {};
+                if (req.method === 'POST') {
+                  const bodyText = await new Promise<string>((resolve) => {
+                    let data = '';
+                    req.on('data', chunk => data += chunk);
+                    req.on('end', () => resolve(data));
+                  });
+                  if (bodyText) {
+                    try { body = JSON.parse(bodyText); } catch (e) {}
+                  }
+                }
+                
+                const mockReq = {
+                  method: req.method,
+                  query,
+                  body,
+                  headers: req.headers
+                };
+                
+                const mockRes = {
+                  statusCode: 200,
+                  headers: {},
+                  setHeader(name: string, value: any) {
+                    this.headers[name] = value;
+                    res.setHeader(name, value);
+                    return this;
+                  },
+                  status(code: number) {
+                    this.statusCode = code;
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data: any) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                    return this;
+                  },
+                  end(data: any) {
+                    res.end(data);
+                    return this;
+                  }
+                };
+
+                try {
+                  if (urlObj.pathname === '/api/translate') {
+                    const modulePath = path.resolve(__dirname, 'api/translate.js');
+                    const { default: handler } = await import(modulePath + '?t=' + Date.now());
+                    await handler(mockReq, mockRes);
+                    return;
+                  }
+                  if (urlObj.pathname === '/api/subtitle') {
+                    const modulePath = path.resolve(__dirname, 'api/subtitle.js');
+                    const { default: handler } = await import(modulePath + '?t=' + Date.now());
+                    await handler(mockReq, mockRes);
+                    return;
+                  }
+                } catch (err: any) {
+                  console.error('[LOCAL API MIDDLEWARE ERROR]', err);
+                  res.statusCode = 500;
+                  res.end(JSON.stringify({ error: err.message }));
+                  return;
+                }
+              }
+              next();
+            });
+          }
+        }
+      ],
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || '')
@@ -66,10 +153,28 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-              'vendor-utils': ['framer-motion', 'lucide-react'],
-              'vendor-styles': ['./index.css']
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+                  return 'vendor-react';
+                }
+                if (id.includes('framer-motion')) {
+                  return 'vendor-motion';
+                }
+                if (id.includes('@supabase') || id.includes('supabase-js')) {
+                  return 'vendor-supabase';
+                }
+                if (id.includes('@novu') || id.includes('novu')) {
+                  return 'vendor-novu';
+                }
+                if (id.includes('@tauri-apps') || id.includes('tauri')) {
+                  return 'vendor-tauri';
+                }
+                return 'vendor-utils';
+              }
+              if (id.includes('index.css')) {
+                return 'vendor-styles';
+              }
             }
           }
         },

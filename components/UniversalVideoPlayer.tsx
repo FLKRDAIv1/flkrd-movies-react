@@ -213,7 +213,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     setActiveSource,
     sources = []
 }) => {
-    const { isAdmin, glassConfig } = useUI();
+    const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
     const navigate = useNavigate();
     const [movieRecommendations, setMovieRecommendations] = useState<any[]>([]);
 
@@ -363,22 +363,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     const setAvailableSubsWithVirtual = useCallback((newSubs: SubtitleResult[]) => {
         const safeSubs = Array.isArray(newSubs) ? newSubs : [];
-        if (!subtitleUrl) {
-            setAvailableSubs(safeSubs);
-            return;
-        }
-        const virtualSub: SubtitleResult = {
-            id: 'prop-kurdish-auto' as any,
-            attributes: {
-                language: 'ku',
-                display_name: 'Kurdish CC (Auto Established)',
-                url: subtitleUrl,
-                file_id: 0
-            }
-        };
-        const filtered = safeSubs.filter(s => s && s.id !== 'prop-kurdish-auto' as any && s.attributes && s.attributes.url !== subtitleUrl);
-        setAvailableSubs([virtualSub, ...filtered]);
-    }, [subtitleUrl]);
+        setAvailableSubs(safeSubs);
+    }, []);
 
     const restoreFullscreenIfNeeded = () => {
         if (wasFullscreenRef.current) {
@@ -624,9 +610,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [scrapingError, setScrapingError] = useState<string | null>(null);
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
     const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting' | 'shortcuts'>('sub');
-    const [isTranslating, setIsTranslating] = useState(false);
-    const [translationProgress, setTranslationProgress] = useState(0);
-    const [translatingName, setTranslatingName] = useState('');
     const [currentSubId, setCurrentSubId] = useState<string | null>(null);
     const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
     const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
@@ -875,8 +858,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     useEffect(() => {
         const discoverKurdishCC = async () => {
             if (!contentType) return;
-            const idToQuery = tmdbId || imdbId;
+            let idToQuery = tmdbId || imdbId;
             if (!idToQuery) return;
+
+            // Resolve IMDb ID to TMDb ID if needed
+            if (idToQuery.toString().startsWith('tt')) {
+                const resolved = await fetchTmdbIdFromImdb(idToQuery.toString(), contentType);
+                if (resolved) {
+                    idToQuery = String(resolved);
+                }
+            }
+
             try {
                 // 1. Fetch available subs from OpenSubtitles if imdbId is present
                 let safeResults: SubtitleResult[] = [];
@@ -908,15 +900,27 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             subUrl = `https:${subUrl}`;
                         }
                         customSub = {
-                            id: `custom-db-${data.id}`,
-                            attributes: {
-                                language: data.language || 'ku',
-                                display_name: 'Kurdish',
-                                url: subUrl,
-                                file_id: 0
-                            }
-                        };
-                    }
+                             id: `custom-db-${data.id}`,
+                             attributes: {
+                                 language: data.language || 'ku',
+                                 display_name: data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
+                                 url: subUrl,
+                                 file_id: 0
+                             }
+                         };
+                     }
+
+                 if (!customSub && subtitleUrl) {
+                     customSub = {
+                         id: `custom-db-prop`,
+                         attributes: {
+                             language: 'ku',
+                             display_name: 'Kurdish (Verified)',
+                             url: subtitleUrl,
+                             file_id: 0
+                         }
+                     };
+                 }
 
                 let finalSubs = safeResults;
                 if (customSub) {
@@ -1139,7 +1143,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
       if (isTauri()) {
         import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
           const win = getCurrentWindow();
-          win.isFullscreen().then(f => win.setFullscreen(!f));
+          win.isFullscreen().then(f => {
+            win.setFullscreen(!f);
+            setIsFullscreen(!f);
+          });
         });
         return;
       }
@@ -1242,63 +1249,41 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     }, [tmdbId, imdbId, season, episode]);
 
     const handleStartTranslation = async (sub: SubtitleResult) => {
-        setIsTranslating(true);
-        setTranslatingName(sub.attributes?.display_name || 'Selected Track');
-        setTranslationProgress(0);
-        
-        // Save to cache for page refresh resumption
         const targetId = tmdbId || imdbId;
-        if (targetId) {
-            localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
-                sub,
-                targetId,
-                season: season || 0,
-                episode: episode || 0
-            }));
-        }
-        
-        try {
-            if (!targetId) throw new Error("Missing content identifier (TMDB/IMDB ID)");
-            
-            const result = await translateAndSavePipeline(
-                sub,
-                targetId,
-                contentType || 'movie',
-                season || 0,
-                episode || 0,
-                (progress) => setTranslationProgress(progress)
-            );
-            
-            if (result.success && result.subtitleUrl) {
-                setLocalSubtitleUrl(result.subtitleUrl);
-                setShowSubSettings(false);
-                
-                // Add the new Kurdish track to the list
-                const newTrack: SubtitleResult = {
-                    id: `custom-db-${Date.now()}`,
-                    attributes: {
-                        language: 'ku',
-                        display_name: `Kurdish Translation [${sub.attributes.language.toUpperCase()}]`,
-                        url: result.subtitleUrl,
-                        file_id: 0
-                    }
-                };
-                setAvailableSubs(prev => [newTrack, ...prev]);
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (err: any) {
-            console.error("Subtitle translation failed:", err);
-            alert((language === 'ku' || language === 'badini') 
-                ? `وەرگێڕان سەرکەوتوو نەبوو: ${err.message}` 
-                : `Translation failed: ${err.message}`);
-        } finally {
-            setIsTranslating(false);
-            setTranslationProgress(0);
-            setTranslatingName('');
-            localStorage.removeItem('flkrd_translating_sub_cache');
-        }
+        if (!targetId) return;
+        startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0);
     };
+
+    // Sync with global background subtitle translator
+    useEffect(() => {
+        const targetId = tmdbId || imdbId;
+        if (!targetId) return;
+
+        if (activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(targetId)) {
+            const subUrl = activeTranslation.subtitleUrl;
+            if (subUrl && localSubtitleUrl !== subUrl) {
+                setLocalSubtitleUrl(subUrl);
+                
+                // Add the new Kurdish track to the list if not present
+                const trackId = `custom-db-${activeTranslation.tmdbId}`;
+                setAvailableSubs(prev => {
+                    if (prev.some(s => s.id === trackId)) return prev;
+                    
+                    const newTrack: SubtitleResult = {
+                        id: trackId,
+                        attributes: {
+                            language: 'ku',
+                            display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}]`,
+                            url: subUrl,
+                            file_id: 0
+                        }
+                    };
+                    return [newTrack, ...prev];
+                });
+                setCurrentSubId(trackId);
+            }
+        }
+    }, [activeTranslation, tmdbId, imdbId, localSubtitleUrl]);
 
     // --- Admin: Save subtitle line edit to Supabase (visible to all users via Realtime) ---
     const handleSaveSubtitleEdit = async () => {
@@ -1508,7 +1493,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
+        let active = true;
         const handleFullscreenChange = () => {
+            if (!active) return;
             const isFull = !!(
                 document.fullscreenElement ||
                 (document as any).webkitFullscreenElement ||
@@ -1558,7 +1545,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         (document as any).mozFullScreenElement ||
                         (document as any).msFullscreenElement
                     );
-                    if (checkExit && !isSelectingFileRef.current) {
+                    if (checkExit && !isSelectingFileRef.current && active) {
                         console.log("[PLAYER] Exited native fullscreen. Closing player...");
                         onClose();
                     }
@@ -1566,12 +1553,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         };
 
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        const timer = setTimeout(() => {
+            if (!active) return;
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        }, 1000);
 
         return () => {
+            active = false;
+            clearTimeout(timer);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
             document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
@@ -2226,312 +2218,84 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     </div>
 
                     {/* Top-Right: Settings Menu */}
-                    <div className="absolute top-4 right-4 z-40 flex flex-row items-center gap-2">
-                        {((contentType === 'tv' && onEpisodeChange) || (contentType === 'movie' && movieRecommendations.length > 0)) && (
+                    <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
+                        {contentType === 'tv' && onEpisodeChange && (
                             <button 
                                 onClick={() => {
                                     setShowEpisodesPortal(!showEpisodesPortal);
                                     setShowSubSettings(false);
+                                    setShowSourceSwitcher(false);
                                 }}
-                                className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
-                                title={(language === 'ku' || language === 'badini') 
-                                    ? (contentType === 'tv' ? 'ئەڵقەکان' : 'فیلمەکان') 
-                                    : (contentType === 'tv' ? 'Episodes' : 'More Movies')}
+                                className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+                                    showEpisodesPortal 
+                                        ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
+                                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                                }`}
+                                title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
                             >
-                                <Tv size={18} className={showEpisodesPortal ? 'text-red-500 scale-110' : ''} />
+                                <Tv size={14} />
+                                <span className="text-[10px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
                             </button>
                         )}
+
+                        {/* Subtitle Toggle */}
                         <button 
                             onClick={() => {
-                                if (availableSubs.length === 0) return;
                                 setShowSubSettings(!showSubSettings);
                                 if (!showSubSettings) handleSearchAllSubs();
                                 setShowEpisodesPortal(false);
+                                setShowSourceSwitcher(false);
                             }}
-                            disabled={availableSubs.length === 0}
-                            className={`p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl ${
-                                availableSubs.length === 0 
-                                ? 'opacity-40 cursor-not-allowed text-gray-500' 
-                                : 'hover:bg-white/20 hover:scale-105 active:scale-95'
+                            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+                                showSubSettings 
+                                    ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
+                                    : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
                             }`}
-                            title={availableSubs.length === 0 ? ((language === 'ku' || language === 'badini') ? 'ژێرنووس بەردەست نییە' : 'No Subtitles Available') : ((language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles')}
+                            title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                         >
-                            <Subtitles size={18} className={showSubSettings ? 'rotate-90 text-red-500' : ''} />
+                            <Subtitles size={14} />
+                            <span className="text-[10px] font-black uppercase">Studio</span>
                         </button>
 
-                        {isFullscreen && sources && sources.length > 0 && (
+                        {/* Relink Button */}
+                        {sources && sources.length > 0 && (
                             <button 
                                 onClick={() => {
                                     setShowSourceSwitcher(!showSourceSwitcher);
                                     setShowSubSettings(false);
                                     setShowEpisodesPortal(false);
                                 }}
-                                className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
+                                className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+                                    showSourceSwitcher
+                                        ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
+                                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                                }`}
                                 title="Relink"
                             >
-                                <RefreshCcw size={18} className={showSourceSwitcher ? 'text-red-500 scale-110' : ''} />
+                                <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
+                                <span className="text-[10px] font-black uppercase">Relink</span>
                             </button>
                         )}
 
+                        {/* Fullscreen Button */}
                         <button 
                             onClick={toggleFullscreen}
-                            className="p-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full text-white transition-all shadow-2xl hover:bg-white/20 hover:scale-105 active:scale-95"
+                            className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
                             title={isFullscreen 
                                 ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
                                 : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
                         >
-                            {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                            <span className="text-[10px] font-black uppercase">
+                                {isFullscreen 
+                                    ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Minimize') 
+                                    : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
+                                }
+                            </span>
                         </button>
-
-                        <AnimatePresence>
-                            {showSubSettings && (
-                                <SubtitleManagerPanel
-                                    isOpen={showSubSettings}
-                                    onClose={() => setShowSubSettings(false)}
-                                    activeTab={subStudioTab}
-                                    setActiveTab={setSubStudioTab}
-                                    isAdmin={isAdmin}
-                                    isUploadingSub={isUploadingSub}
-                                    uploadStatus={uploadStatus}
-                                    onUploadClick={handleUploadClick}
-                                    onFileChange={handleAdminSubUpload}
-                                    subtitleSize={subtitleSize}
-                                    setSubtitleSize={setSubtitleSize}
-                                    subtitleColor={subtitleColor}
-                                    setSubtitleColor={setSubtitleColor}
-                                    subBgOpacity={subBgOpacity}
-                                    setSubBgOpacity={setSubBgOpacity}
-                                    subBlur={subBlur}
-                                    setSubBlur={setSubBlur}
-                                    showSubBackground={showSubBackground}
-                                    setShowSubBackground={setShowSubBackground}
-                                    brightness={brightness}
-                                    setBrightness={handleBrightnessChange}
-                                    contrast={contrast}
-                                    setContrast={handleContrastChange}
-                                    saturation={saturation}
-                                    setSaturation={handleSaturationChange}
-                                    onResetFilters={handleResetFilters}
-                                    subtitleOffset={subtitleOffset}
-                                    setSubtitleOffset={setSubtitleOffset}
-                                    subSearchQuery={subSearchQuery}
-                                    setSubSearchQuery={setSubSearchQuery}
-                                    availableSubs={availableSubs}
-                                    currentSubId={currentSubId}
-                                    isSearchingSubs={isSearchingSubs}
-                                    onSelectSub={handleSelectSub}
-                                    onStartTranslation={handleStartTranslation}
-                                    onRetrySearch={handleSearchAllSubs}
-                                    getLanguageFlag={getLanguageFlag}
-                                    isTranslating={isTranslating}
-                                    translationProgress={translationProgress}
-                                    translatingName={translatingName}
-                                    language={language}
-                                    dubContent={
-                                        <div className="flex flex-col gap-4">
-                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                                {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
-                                            </label>
-                                            
-                                            <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
-                                                {/* 1. Kurdish Dubbed Feed */}
-                                                <div className={`p-4 rounded-[20px] border flex flex-col gap-3 transition-all relative overflow-hidden ${
-                                                    kurdishDub 
-                                                        ? 'bg-gradient-to-r from-yellow-500/10 to-red-500/5 border-yellow-500/30 shadow-[0_4px_24px_rgba(234,179,8,0.15)]'
-                                                        : 'bg-white/[0.02] border-white/5 opacity-60'
-                                                }`}>
-                                                    <div className="flex items-center gap-3 relative z-10">
-                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                                            kurdishDub ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/5 border-white/10'
-                                                        }`}>
-                                                            {getLanguageFlag('ku')}
-                                                        </div>
-                                                        <div className="flex flex-col flex-1 min-w-0 text-left">
-                                                            <div className="flex items-center gap-2 mb-0.5">
-                                                                <span className={`font-[1000] text-[9px] uppercase tracking-[0.2em] ${kurdishDub ? 'text-yellow-500' : 'text-gray-400'}`}>
-                                                                    {(language === 'ku' || language === 'badini') ? 'کوردی' : 'KURDISH'}
-                                                                </span>
-                                                                {kurdishDub && (
-                                                                    <span className="text-[7px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(234,179,8,0.4)] uppercase tracking-tighter flex items-center gap-0.5">
-                                                                        <Sparkles size={8} /> Premium Dub
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-white font-bold text-[11px] truncate">
-                                                                {(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {kurdishDub ? (
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const getRashabaId = (url: string) => {
-                                                                    if (!url) return "mKkhrFhjQr3CKwz"; 
-                                                                    const matches = url.match(/\/([a-zA-Z0-9]{12,20})\//);
-                                                                    if (matches) return matches[1];
-                                                                    const parts = url.split('/');
-                                                                    return parts[parts.length - 2] || "mKkhrFhjQr3CKwz";
-                                                                };
-                                                                let newSrc = kurdishDub.videoUrl || '';
-                                                                if (newSrc.includes('rashaba.com')) {
-                                                                    const rid = getRashabaId(newSrc);
-                                                                    newSrc = `https://rashaba.com/embed/${rid}`;
-                                                                }
-                                                                // Append dynamic dubbed title suffix
-                                                                const baseTitle = translatedTitles.ku || translatedTitles.ckb || title || '';
-                                                                const suffixTitle = baseTitle + ' Kurdish';
-                                                                const connector = newSrc.includes('?') ? '&' : '?';
-                                                                newSrc = `${newSrc}${connector}title=${encodeURIComponent(suffixTitle)}`;
-                                                                
-                                                                setOverrideSrc(newSrc);
-                                                                setActiveAudioTrack('ku');
-                                                            }}
-                                                            className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
-                                                                activeAudioTrack === 'ku'
-                                                                    ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
-                                                                    : 'bg-white/10 hover:bg-white/20 text-white'
-                                                            }`}
-                                                        >
-                                                            <Mic2 size={12} />
-                                                            {activeAudioTrack === 'ku' 
-                                                                ? ((language === 'ku' || language === 'badini') ? 'چالاکە' : 'ACTIVE AUDIO FEED')
-                                                                : ((language === 'ku' || language === 'badini') ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
-                                                        </button>
-                                                    ) : (
-                                                        <div className="w-full py-2 border border-dashed border-white/10 rounded-xl text-center text-[9px] font-bold text-gray-500">
-                                                            {(language === 'ku' || language === 'badini') ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* 2. Original English Feed */}
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setOverrideSrc(null);
-                                                        setActiveAudioTrack('en');
-                                                    }}
-                                                    className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
-                                                        activeAudioTrack === 'en'
-                                                            ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
-                                                            : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
-                                                    }`}
-                                                >
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                                        activeAudioTrack === 'en' ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
-                                                    }`}>
-                                                        {getLanguageFlag('en')}
-                                                    </div>
-                                                    <div className="flex flex-col text-left flex-1 min-w-0">
-                                                        <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
-                                                            {(language === 'ku' || language === 'badini') ? 'ئینگلیزی' : 'ENGLISH'}
-                                                        </span>
-                                                        <span className="text-white font-bold text-[11px] truncate">
-                                                            {(language === 'ku' || language === 'badini') ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
-                                                        </span>
-                                                    </div>
-                                                    {activeAudioTrack === 'en' && <Tv size={14} className="text-red-500 shrink-0" />}
-                                                </button>
-
-                                                {/* Other Multi-Language Dubbed Options */}
-                                                {['ar', 'fa', 'tr'].map(lang => {
-                                                    const langLabelMap: Record<string, { label: string, desc: string, full: string }> = {
-                                                        ar: { label: 'ARABIC', desc: 'عەرەبی - دۆبلاژ', full: 'Arabic' },
-                                                        fa: { label: 'PERSIAN', desc: 'فارسی - دۆبلاژ', full: 'Persian' },
-                                                        tr: { label: 'TURKISH', desc: 'TURKISH - دۆبلاژ', full: 'Turkish' },
-                                                    };
-                                                    const meta = langLabelMap[lang];
-                                                    
-                                                    return (
-                                                        <button 
-                                                            key={lang}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                let activeId = imdbId || '';
-                                                                if (!activeId) {
-                                                                    const match = src.match(/\/(movie|tv)\/([^/?#]+)/);
-                                                                    if (match) activeId = match[2];
-                                                                }
-                                                                
-                                                                // Custom Dubbed Title Suffixes
-                                                                let baseTitle = title || '';
-                                                                if (lang === 'fa' && translatedTitles.fa) baseTitle = translatedTitles.fa;
-                                                                else if (lang === 'ar' && translatedTitles.ar) baseTitle = translatedTitles.ar;
-                                                                else if (lang === 'tr' && translatedTitles.tr) baseTitle = translatedTitles.tr;
-
-                                                                let dubbedTitle = baseTitle;
-                                                                if (lang === 'fa') dubbedTitle += ' Persian';
-                                                                else if (lang === 'ar') dubbedTitle += ' AR';
-                                                                else if (lang === 'tr') dubbedTitle += ' Turkish';
-
-                                                                let targetSrc = src;
-                                                                try {
-                                                                    const cleanSrc = targetSrc.includes('<iframe')
-                                                                        ? (targetSrc.match(/src=["'](.*?)["']/) || [])[1]
-                                                                        : targetSrc;
-                                                                    
-                                                                    const urlObj = new URL(cleanSrc);
-                                                                    urlObj.searchParams.set('title', dubbedTitle);
-                                                                    urlObj.searchParams.set('dub', '1');
-                                                                    
-                                                                    if (cleanSrc.includes('multiembed.mov') && activeId) {
-                                                                        const isImdb = activeId.startsWith('tt');
-                                                                        if (!isImdb) urlObj.searchParams.set('tmdb', '1');
-                                                                        if (contentType === 'tv') {
-                                                                            urlObj.searchParams.set('s', String(season || 1));
-                                                                            urlObj.searchParams.set('e', String(episode || 1));
-                                                                        }
-                                                                    }
-                                                                    
-                                                                    targetSrc = urlObj.toString();
-                                                                } catch (e) {
-                                                                    const connector = targetSrc.includes('?') ? '&' : '?';
-                                                                    if (targetSrc.includes('title=')) {
-                                                                        targetSrc = targetSrc.replace(/title=[^&]*/, `title=${encodeURIComponent(dubbedTitle)}`);
-                                                                    } else {
-                                                                        targetSrc = `${targetSrc}${connector}title=${encodeURIComponent(dubbedTitle)}`;
-                                                                    }
-                                                                    if (!targetSrc.includes('dub=')) {
-                                                                        targetSrc = `${targetSrc}&dub=1`;
-                                                                    }
-                                                                }
-                                                                
-                                                                setOverrideSrc(targetSrc);
-                                                                setActiveAudioTrack(lang);
-                                                                setShowDubInfoModal(meta.full);
-                                                            }}
-                                                            className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
-                                                                activeAudioTrack === lang
-                                                                    ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
-                                                                    : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
-                                                            }`}
-                                                        >
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                                                activeAudioTrack === lang ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
-                                                            }`}>
-                                                                {getLanguageFlag(lang)}
-                                                            </div>
-                                                            <div className="flex flex-col text-left flex-1 min-w-0">
-                                                                <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
-                                                                    {meta.label}
-                                                                </span>
-                                                                <span className="text-white font-bold text-[11px] truncate">
-                                                                    {meta.desc}
-                                                                </span>
-                                                            </div>
-                                                            <Globe size={14} className="text-gray-500 shrink-0" />
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    }
-                                />
-                            )}
-                        </AnimatePresence>
                     </div>
+
+
 
                     {/* Elegant Floating Kurdish CC Banner removed as requested by the user */}
                 </>
@@ -3226,7 +2990,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             </AnimatePresence>
             {/* Media Source Switcher Drawer for Fullscreen Mode */}
             <AnimatePresence>
-                {showSourceSwitcher && isFullscreen && sources && sources.length > 0 && (() => {
+                {showSourceSwitcher && sources && sources.length > 0 && (() => {
                     const defaultGlassConfig = {
                         blurAmount: 20,
                         saturation: 130,
@@ -3480,6 +3244,262 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         </motion.div>
                     );
                 })()}
+            </AnimatePresence>
+
+            {/* SUBTITLE STUDIO PANEL */}
+            <AnimatePresence>
+                {showSubSettings && (
+                    <SubtitleManagerPanel
+                        isOpen={showSubSettings}
+                        onClose={() => setShowSubSettings(false)}
+                        activeTab={subStudioTab}
+                        setActiveTab={setSubStudioTab}
+                        isAdmin={isAdmin}
+                        isUploadingSub={isUploadingSub}
+                        uploadStatus={uploadStatus}
+                        onUploadClick={handleUploadClick}
+                        onFileChange={handleAdminSubUpload}
+                        subtitleSize={subtitleSize}
+                        setSubtitleSize={setSubtitleSize}
+                        subtitleColor={subtitleColor}
+                        setSubtitleColor={setSubtitleColor}
+                        subBgOpacity={subBgOpacity}
+                        setSubBgOpacity={setSubBgOpacity}
+                        subBlur={subBlur}
+                        setSubBlur={setSubBlur}
+                        showSubBackground={showSubBackground}
+                        setShowSubBackground={setShowSubBackground}
+                        brightness={brightness}
+                        setBrightness={handleBrightnessChange}
+                        contrast={contrast}
+                        setContrast={handleContrastChange}
+                        saturation={saturation}
+                        setSaturation={handleSaturationChange}
+                        onResetFilters={handleResetFilters}
+                        subtitleOffset={subtitleOffset}
+                        setSubtitleOffset={setSubtitleOffset}
+                        subSearchQuery={subSearchQuery}
+                        setSubSearchQuery={setSubSearchQuery}
+                        availableSubs={availableSubs}
+                        currentSubId={currentSubId}
+                        isSearchingSubs={isSearchingSubs}
+                        onSelectSub={handleSelectSub}
+                        onStartTranslation={handleStartTranslation}
+                        onRetrySearch={handleSearchAllSubs}
+                        getLanguageFlag={getLanguageFlag}
+                        isTranslating={activeTranslation.isTranslating && String(activeTranslation.tmdbId) === String(tmdbId || imdbId)}
+                        translationProgress={activeTranslation.progress}
+                        translationStatus={activeTranslation.statusText}
+                        translatingName={activeTranslation.translatingName}
+                        showCelebration={activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(tmdbId || imdbId)}
+                        onCloseCelebration={() => {
+                            dismissCelebration();
+                            setShowSubSettings(false);
+                        }}
+                        language={language}
+                        dubContent={
+                            <div className="flex flex-col gap-4">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                    {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
+                                </label>
+                                
+                                <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
+                                    {/* 1. Kurdish Dubbed Feed */}
+                                    <div className={`p-4 rounded-[20px] border flex flex-col gap-3 transition-all relative overflow-hidden ${
+                                        kurdishDub 
+                                            ? 'bg-gradient-to-r from-yellow-500/10 to-red-500/5 border-yellow-500/30 shadow-[0_4px_24px_rgba(234,179,8,0.15)]'
+                                            : 'bg-white/[0.02] border-white/5 opacity-60'
+                                    }`}>
+                                        <div className="flex items-center gap-3 relative z-10">
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                                                kurdishDub ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/5 border-white/10'
+                                            }`}>
+                                                {getLanguageFlag('ku')}
+                                            </div>
+                                            <div className="flex flex-col flex-1 min-w-0 text-left">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className={`font-[1000] text-[9px] uppercase tracking-[0.2em] ${kurdishDub ? 'text-yellow-500' : 'text-gray-400'}`}>
+                                                        {(language === 'ku' || language === 'badini') ? 'کوردی' : 'KURDISH'}
+                                                    </span>
+                                                    {kurdishDub && (
+                                                        <span className="text-[7px] bg-yellow-500 text-black px-1.5 py-0.5 rounded-md font-black shadow-[0_0_10px_rgba(234,179,8,0.4)] uppercase tracking-tighter flex items-center gap-0.5">
+                                                            <Sparkles size={8} /> Premium Dub
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-white font-bold text-[11px] truncate">
+                                                    {(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوی کوردی' : 'Kurdish Dubbed Feed'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {kurdishDub ? (
+                                            <button 
+                                                type="button"
+                                                onClick={() => {
+                                                    const getRashabaId = (url: string) => {
+                                                        if (!url) return "mKkhrFhjQr3CKwz"; 
+                                                        const matches = url.match(/\/([a-zA-Z0-9]{12,20})\//);
+                                                        if (matches) return matches[1];
+                                                        const parts = url.split('/');
+                                                        return parts[parts.length - 2] || "mKkhrFhjQr3CKwz";
+                                                    };
+                                                    let newSrc = kurdishDub.videoUrl || '';
+                                                    if (newSrc.includes('rashaba.com')) {
+                                                        const rid = getRashabaId(newSrc);
+                                                        newSrc = `https://rashaba.com/embed/${rid}`;
+                                                    }
+                                                    // Append dynamic dubbed title suffix
+                                                    const baseTitle = translatedTitles.ku || translatedTitles.ckb || title || '';
+                                                    const suffixTitle = baseTitle + ' Kurdish';
+                                                    const connector = newSrc.includes('?') ? '&' : '?';
+                                                    newSrc = `${newSrc}${connector}title=${encodeURIComponent(suffixTitle)}`;
+                                                    
+                                                    setOverrideSrc(newSrc);
+                                                    setActiveAudioTrack('ku');
+                                                }}
+                                                className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                                                    activeAudioTrack === 'ku'
+                                                        ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
+                                                        : 'bg-white/10 hover:bg-white/20 text-white'
+                                                }`}
+                                            >
+                                                <Mic2 size={12} />
+                                                {activeAudioTrack === 'ku' 
+                                                    ? ((language === 'ku' || language === 'badini') ? 'چالاکە' : 'ACTIVE AUDIO FEED')
+                                                    : ((language === 'ku' || language === 'badini') ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
+                                            </button>
+                                        ) : (
+                                            <div className="w-full py-2 border border-dashed border-white/10 rounded-xl text-center text-[9px] font-bold text-gray-500">
+                                                {(language === 'ku' || language === 'badini') ? 'دۆبلاژی کوردی بەردەست نییە' : 'KURDISH DUB NOT AVAILABLE YET'}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 2. Original English Feed */}
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setOverrideSrc(null);
+                                            setActiveAudioTrack('en');
+                                        }}
+                                        className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
+                                            activeAudioTrack === 'en'
+                                                ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
+                                                : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                                        }`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                                            activeAudioTrack === 'en' ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                                        }`}>
+                                            {getLanguageFlag('en')}
+                                        </div>
+                                        <div className="flex flex-col text-left flex-1 min-w-0">
+                                            <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
+                                                {(language === 'ku' || language === 'badini') ? 'ئینگلیزی' : 'ENGLISH'}
+                                            </span>
+                                            <span className="text-white font-bold text-[11px] truncate">
+                                                {(language === 'ku' || language === 'badini') ? 'دەنگی بنەڕەتی' : 'Original Theatrical Audio'}
+                                            </span>
+                                        </div>
+                                        {activeAudioTrack === 'en' && <Tv size={14} className="text-red-500 shrink-0" />}
+                                    </button>
+
+                                    {/* Other Multi-Language Dubbed Options */}
+                                    {['ar', 'fa', 'tr'].map(lang => {
+                                        const langLabelMap: Record<string, { label: string, desc: string, full: string }> = {
+                                            ar: { label: 'ARABIC', desc: 'عەرەبی - دۆبلاژ', full: 'Arabic' },
+                                            fa: { label: 'PERSIAN', desc: 'فارسی - دۆبلاژ', full: 'Persian' },
+                                            tr: { label: 'TURKISH', desc: 'TURKISH - دۆبلاژ', full: 'Turkish' },
+                                        };
+                                        const meta = langLabelMap[lang];
+                                        
+                                        return (
+                                            <button 
+                                                key={lang}
+                                                type="button"
+                                                onClick={() => {
+                                                    let activeId = imdbId || '';
+                                                    if (!activeId) {
+                                                        const match = src.match(/\/(movie|tv)\/([^/?#]+)/);
+                                                        if (match) activeId = match[2];
+                                                    }
+                                                    
+                                                    // Custom Dubbed Title Suffixes
+                                                    let baseTitle = title || '';
+                                                    if (lang === 'fa' && translatedTitles.fa) baseTitle = translatedTitles.fa;
+                                                    else if (lang === 'ar' && translatedTitles.ar) baseTitle = translatedTitles.ar;
+                                                    else if (lang === 'tr' && translatedTitles.tr) baseTitle = translatedTitles.tr;
+
+                                                    let dubbedTitle = baseTitle;
+                                                    if (lang === 'fa') dubbedTitle += ' Persian';
+                                                    else if (lang === 'ar') dubbedTitle += ' AR';
+                                                    else if (lang === 'tr') dubbedTitle += ' Turkish';
+
+                                                    let targetSrc = src;
+                                                    try {
+                                                        const cleanSrc = targetSrc.includes('<iframe')
+                                                            ? (targetSrc.match(/src=["'](.*?)["']/) || [])[1]
+                                                            : targetSrc;
+                                                        
+                                                        const urlObj = new URL(cleanSrc);
+                                                        urlObj.searchParams.set('title', dubbedTitle);
+                                                        urlObj.searchParams.set('dub', '1');
+                                                        
+                                                        if (cleanSrc.includes('multiembed.mov') && activeId) {
+                                                            const isImdb = activeId.startsWith('tt');
+                                                            if (!isImdb) urlObj.searchParams.set('tmdb', '1');
+                                                            if (contentType === 'tv') {
+                                                                urlObj.searchParams.set('s', String(season || 1));
+                                                                urlObj.searchParams.set('e', String(episode || 1));
+                                                            }
+                                                        }
+                                                        
+                                                        targetSrc = urlObj.toString();
+                                                    } catch (e) {
+                                                        const connector = targetSrc.includes('?') ? '&' : '?';
+                                                        if (targetSrc.includes('title=')) {
+                                                            targetSrc = targetSrc.replace(/title=[^&]*/, `title=${encodeURIComponent(dubbedTitle)}`);
+                                                        } else {
+                                                            targetSrc = `${targetSrc}${connector}title=${encodeURIComponent(dubbedTitle)}`;
+                                                        }
+                                                        if (!targetSrc.includes('dub=')) {
+                                                            targetSrc = `${targetSrc}&dub=1`;
+                                                        }
+                                                    }
+                                                    
+                                                    setOverrideSrc(targetSrc);
+                                                    setActiveAudioTrack(lang);
+                                                    setShowDubInfoModal(meta.full);
+                                                }}
+                                                className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
+                                                    activeAudioTrack === lang
+                                                        ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
+                                                        : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
+                                                }`}
+                                            >
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                                                    activeAudioTrack === lang ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                                                }`}>
+                                                    {getLanguageFlag(lang)}
+                                                </div>
+                                                <div className="flex flex-col text-left flex-1 min-w-0">
+                                                    <span className="font-[1000] text-[9px] uppercase tracking-[0.2em] text-red-500">
+                                                        {meta.label}
+                                                    </span>
+                                                    <span className="text-white font-bold text-[11px] truncate">
+                                                        {meta.desc}
+                                                    </span>
+                                                </div>
+                                                <Globe size={14} className="text-gray-500 shrink-0" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        }
+                    />
+                )}
             </AnimatePresence>
         </div>
     );

@@ -3,10 +3,10 @@ import { HashRouter, BrowserRouter, Routes, Route, useLocation } from 'react-rou
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
 
-const HomePage = lazy(() => import('./pages/HomePage'));
-const DetailPage = lazy(() => import('./pages/DetailPage'));
-const TVDetailPage = lazy(() => import('./pages/TVDetailPage'));
-const DubbedDetailPage = lazy(() => import('./pages/DubbedDetailPage'));
+import HomePage from './pages/HomePage';
+import DetailPage from './pages/DetailPage';
+import TVDetailPage from './pages/TVDetailPage';
+import DubbedDetailPage from './pages/DubbedDetailPage';
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const TVShowsPage = lazy(() => import('./pages/TVShowsPage'));
 const StudioPage = lazy(() => import('./pages/StudioPage'));

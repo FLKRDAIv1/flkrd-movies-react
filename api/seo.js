@@ -86,8 +86,8 @@ export default async function handler(req, res) {
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.release_date ? ` (${data.release_date.split('-')[0]})` : '';
-                    title = `Watch ${data.title || data.original_title}${year} | FLKRD`;
-                    description = data.overview ? data.overview.slice(0, 160) : description;
+                    title = `سەیرکردنی فیلمی ${data.title || data.original_title}${year} بە ژێرنووسی کوردی | fkurd.pro`;
+                    description = `سەیرکردنی فیلمی ${data.title || data.original_title}${year} بە ژێرنووسی کوردی و کوالێتی بەرز. کورتەی فیلم: ${data.overview ? data.overview.slice(0, 90) : ''}...`;
                     if (data.backdrop_path) {
                         image = `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`;
                     } else if (data.poster_path) {
@@ -109,14 +109,14 @@ export default async function handler(req, res) {
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.first_air_date ? ` (${data.first_air_date.split('-')[0]})` : '';
-                    title = `Watch ${data.name || data.original_name}${year} | FLKRD`;
-                    description = data.overview ? data.overview.slice(0, 160) : description;
+                    title = `سەیرکردنی زنجیرەی ${data.name || data.original_name}${year} بە ژێرنووسی کوردی | fkurd.pro`;
+                    description = `سەیرکردنی زنجیرەی ${data.name || data.original_name}${year} بە ژێرنووسی کوردی و کوالێتی بەرز. کورتەی زنجیرە: ${data.overview ? data.overview.slice(0, 90) : ''}...`;
                     if (data.backdrop_path) {
                         image = `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`;
                     } else if (data.poster_path) {
                         image = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
                     }
-
+ 
                     structuredData = {
                         "@context": "https://schema.org",
                         "@type": "TVSeries",
