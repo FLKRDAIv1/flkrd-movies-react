@@ -1136,6 +1136,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     };
 
+
       const toggleFullscreen = () => {
     if (toggleFullscreenProp) {
       toggleFullscreenProp();
@@ -1155,6 +1156,49 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return;
       }
 
+      const isFull = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+
+      // iOS Safari PWA: use video.webkitEnterFullscreen() for HLS player
+      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      
+      if (isIOSSafari && isHls && videoRef.current) {
+        if (isFull) {
+          try {
+            const exit = (document as any).webkitExitFullscreen || document.exitFullscreen;
+            if (exit) exit.call(document);
+          } catch (e) {}
+          setIsFullscreen(false);
+        } else {
+          const vid = videoRef.current as any;
+          if (vid.webkitEnterFullscreen) {
+            vid.webkitEnterFullscreen();
+            setIsFullscreen(true);
+            vid.addEventListener('webkitendfullscreen', () => {
+              setIsFullscreen(false);
+            }, { once: true });
+          } else if (vid.webkitRequestFullscreen) {
+            vid.webkitRequestFullscreen();
+            setIsFullscreen(true);
+          } else {
+            setIsSimulatedFullscreen(true);
+            setIsFullscreen(true);
+          }
+        }
+        return;
+      }
+
+      // iOS Safari PWA with iframe: simulated fullscreen (browser blocks document.requestFullscreen)
+      if (isIOSSafari && isIframe) {
+        setIsSimulatedFullscreen(prev => !prev);
+        setIsFullscreen(prev => !prev);
+        return;
+      }
+
       const hasNativeFullscreen = !!(
         containerRef.current.requestFullscreen ||
         (containerRef.current as any).webkitRequestFullscreen ||
@@ -1167,13 +1211,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         setIsFullscreen(prev => !prev);
         return;
       }
-
-      const isFull = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
-      );
 
       if (!isFull) {
         const req = containerRef.current.requestFullscreen ||
@@ -1195,6 +1232,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
       }
     });
   };
+
 
     useEffect(() => {
         if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {

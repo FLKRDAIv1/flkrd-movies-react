@@ -688,7 +688,7 @@ const DetailPage: React.FC = () => {
       <AnimatePresence>
         {isPlayerModalOpen && (
           <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
-            <div className="w-full flex items-center justify-between p-4 md:p-6 bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]">
+            <div className="w-full flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]" style={{ padding: 'max(16px, env(safe-area-inset-top, 16px)) max(16px, env(safe-area-inset-right, 16px)) 16px max(16px, env(safe-area-inset-left, 16px))' }}>
               <button onClick={handleClosePlayer} aria-label="Close video player" className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
                 <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
               </button>
