@@ -671,7 +671,24 @@ const TVDetailPage: React.FC = () => {
       <AnimatePresence>
         {isPlayerModalOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
-            <div className="w-full flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]" style={{ padding: 'max(12px, env(safe-area-inset-top, 12px)) max(16px, env(safe-area-inset-right, 16px)) 12px max(16px, env(safe-area-inset-left, 16px))' }}>
+            <div
+              className="w-full flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]"
+              style={{
+                /* iOS 11.0 constant() fallback */
+                paddingTop: 'constant(safe-area-inset-top, 12px)',
+                paddingRight: 'constant(safe-area-inset-right, 16px)',
+                paddingBottom: '12px',
+                paddingLeft: 'constant(safe-area-inset-left, 16px)',
+              } as any}
+              ref={(el) => {
+                if (el) {
+                  // iOS 11.2+ env() override — applied after render
+                  el.style.paddingTop = 'env(safe-area-inset-top, 12px)';
+                  el.style.paddingRight = 'env(safe-area-inset-right, 16px)';
+                  el.style.paddingLeft = 'env(safe-area-inset-left, 16px)';
+                }
+              }}
+            >
               <button onClick={() => setIsPlayerModalOpen(false)} aria-label="Close video player" className="text-white bg-white/10 rounded-xl p-2.5 hover:bg-red-600 transition-colors">
                 <X size={20} />
               </button>

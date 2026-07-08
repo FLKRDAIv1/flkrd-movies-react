@@ -2249,7 +2249,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {!loading && (
                 <>
                     {/* Top-Left: Brand Watermark */}
-                    <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500">
+                    <div
+                      className="absolute md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
+                      style={{ top: 'calc(1rem + constant(safe-area-inset-top, 0px))', left: 'calc(1rem + constant(safe-area-inset-left, 0px))' } as any}
+                      ref={(el) => { if (el) { el.style.top = 'calc(1rem + env(safe-area-inset-top, 0px))'; el.style.left = 'calc(1rem + env(safe-area-inset-left, 0px))'; } }}
+                    >
                         <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
                             {/* Glossy reflection */}
                             <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
@@ -2260,7 +2264,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     </div>
 
                     {/* Top-Right: Settings Menu */}
-                    <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-50 flex items-center gap-3">
+                    <div
+                      className="absolute md:top-6 md:right-6 z-50 flex items-center gap-3"
+                      style={{ top: 'calc(1rem + constant(safe-area-inset-top, 0px))', right: 'calc(1rem + constant(safe-area-inset-right, 0px))' } as any}
+                      ref={(el) => { if (el) { el.style.top = 'calc(1rem + env(safe-area-inset-top, 0px))'; el.style.right = 'calc(1rem + env(safe-area-inset-right, 0px))'; } }}
+                    >
                         {contentType === 'tv' && onEpisodeChange && (
                             <button 
                                 onClick={() => {

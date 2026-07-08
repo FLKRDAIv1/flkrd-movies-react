@@ -92,8 +92,10 @@ html {
   /* GPU-accelerate the root scroll container */
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
-  /* Global scaling engine injection */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* iOS 11.0 (older): constant() fallback — deprecated but needed for iPhone XR on iOS 11 */
+  padding: constant(safe-area-inset-top) constant(safe-area-inset-right) constant(safe-area-inset-bottom) constant(safe-area-inset-left);
+  /* iOS 11.2+ (modern): env() — overrides constant() on newer systems */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 
 body {
@@ -334,15 +336,22 @@ video {
   playsinline: true !important;
 }
 
-/* ── Global Safari Backdrop Filter Support ── */
+/* ── Global Safari Backdrop Filter Support (iPhone XR / older iOS) ── */
+/* Tailwind v3 uses --tw-backdrop-blur via @apply, so we mirror it with -webkit- prefix */
 [class*="backdrop-blur"] {
-  -webkit-backdrop-filter: var(--tw-backdrop-blur) !important;
+  -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-saturate, ) var(--tw-backdrop-brightness, ) !important;
 }
 
 .backdrop-blur-20 {
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
 }
+
+/* Common blur classes: explicit -webkit- mirror for iPhone XR Safari */
+.backdrop-blur-xl { -webkit-backdrop-filter: blur(24px) !important; }
+.backdrop-blur-2xl { -webkit-backdrop-filter: blur(40px) !important; }
+.backdrop-blur-md { -webkit-backdrop-filter: blur(12px) !important; }
+.backdrop-blur-sm { -webkit-backdrop-filter: blur(4px) !important; }
 
 /* ── Professional Scrolling for Safari ── */
 .scrollbar-hide, [class*="overflow-y-auto"] {
@@ -607,19 +616,29 @@ html {
 }
 
 /* ── Hardware Accelerated SNAPPY Animations (Zero-Lag UI) ── */
+/* NOTE: will-change is intentionally NOT set globally on iOS — it causes memory pressure
+   on A11/A12 chips (iPhone XR). Instead we use translate3d for GPU compositing only. */
 button, 
 a, 
 [role="button"],
 .group\/card,
 .movie-card {
-  transform: translate3d(0, 0, 0); /* Forces GPU compositing */
+  transform: translate3d(0, 0, 0); /* Forces GPU compositing without will-change memory cost */
+  -webkit-transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
-  perspective: 1000px;
-  will-change: transform, opacity;
+  -webkit-backface-visibility: hidden;
   transition: transform 120ms cubic-bezier(0.16, 1, 0.3, 1), 
               opacity 120ms cubic-bezier(0.16, 1, 0.3, 1),
               background-color 120ms cubic-bezier(0.16, 1, 0.3, 1),
               border-color 120ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Only apply will-change on non-low-end devices (pointer: fine = mouse = desktop) */
+@media (pointer: fine) {
+  button, a, [role="button"], .group\/card, .movie-card {
+    will-change: transform, opacity;
+    perspective: 1000px;
+  }
 }
 
 /* Prevents slow laggy iOS/Safari hover highlight delays */
@@ -642,7 +661,20 @@ a,
 
 /* ════════════════════════════════════════════════
    📱 iOS SAFE AREA & NOTCH SUPPORT
+   Covers: iPhone XR (A12, iOS 12), older iPhones (iOS 11+)
    ════════════════════════════════════════════════ */
+
+/* iOS 11.0 constant() fallback — for very old iOS 11.0 before env() was introduced */
+@supports (padding-top: constant(safe-area-inset-top)) {
+  .global-header {
+    padding-top: constant(safe-area-inset-top) !important;
+  }
+  main:not(.overflow-hidden) {
+    padding-top: constant(safe-area-inset-top) !important;
+  }
+}
+
+/* iOS 11.2+ env() — standard modern safe area */
 @supports (padding-top: env(safe-area-inset-top)) {
   .global-header {
     padding-top: env(safe-area-inset-top, 0px) !important;
@@ -651,5 +683,15 @@ a,
   /* Push main scroll content down to match the pushed header */
   main:not(.overflow-hidden) {
     padding-top: env(safe-area-inset-top, 0px) !important;
+  }
+
+  /* Player modal overlay: ensure bottom home-indicator gap on iPhone XR */
+  .player-modal-overlay {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Bottom navigation: stay above home indicator */
+  .global-mobilenav {
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
   }
 }
