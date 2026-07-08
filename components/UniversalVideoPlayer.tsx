@@ -59,12 +59,12 @@ declare global {
 const getLanguageFlag = (langCode: string) => {
     const code = langCode?.toLowerCase();
     const defaultFlag = <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_the_United_Nations.svg" alt="UN" className="w-4 h-3 object-cover rounded-[2px] shadow-sm" />;
-    
+
     if (!code) return defaultFlag;
     if (code === 'ku' || code === 'ckb') {
         return <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" alt="Kurdistan" className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
     }
-    
+
     const flagMap: Record<string, string> = {
         'en': 'us', 'eng': 'us', 'en-us': 'us', 'en-gb': 'gb',
         'ar': 'sa', 'ara': 'sa',
@@ -138,7 +138,7 @@ const getLanguageFlag = (langCode: string) => {
         'tl': 'ph', 'tgl': 'ph',
         'mn': 'mn', 'mon': 'mn'
     };
-    
+
     const countryCode = flagMap[code];
     if (countryCode) {
         return <img src={`https://flagcdn.com/${countryCode}.svg`} alt={code} className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
@@ -159,27 +159,27 @@ const containerVariants = {
 
 const cardVariants = {
     hidden: { opacity: 0, x: 35, filter: 'blur(6px)', scale: 0.95 },
-    show: { 
-        opacity: 1, 
-        x: 0, 
+    show: {
+        opacity: 1,
+        x: 0,
         filter: 'blur(0px)',
         scale: 1,
-        transition: { 
-            type: 'spring', 
-            stiffness: 90, 
+        transition: {
+            type: 'spring',
+            stiffness: 90,
             damping: 18,
             mass: 0.8
-        } 
+        }
     }
 };
 
 
 function cleanAndFormatVtt(text: string): string {
     let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    
+
     // Remove lines that consist solely of digits (cue index lines) or contain timestamps / arrow lines
     cleaned = cleaned.split('\n').filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->')).join('\n');
-    
+
     if (!cleaned.trim().startsWith('WEBVTT')) {
         cleaned = 'WEBVTT\n\n' + cleaned.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
     }
@@ -216,8 +216,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
     const navigate = useNavigate();
     const isIOSDevice = typeof window !== 'undefined' && (
-      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
     );
     const [movieRecommendations, setMovieRecommendations] = useState<any[]>([]);
 
@@ -250,7 +250,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
     const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
     const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
-    const setIsFullscreen = isFullscreenProp !== undefined ? () => {} : setLocalIsFullscreen;
+    const setIsFullscreen = isFullscreenProp !== undefined ? () => { } : setLocalIsFullscreen;
     const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
@@ -270,7 +270,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [isPlaying, setIsPlaying] = useState(false);
     const lastMessageTimeRef = useRef<number>(performance.now());
     const lastReceivedTimeRef = useRef<number>(0);
-    const [subtitleCues, setSubtitleCues] = useState<{start: number, end: number, text: string}[]>([]);
+    const [subtitleCues, setSubtitleCues] = useState<{ start: number, end: number, text: string }[]>([]);
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
     const [subBlur, setSubBlur] = useState(true);
@@ -321,7 +321,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         saveTimeoutRef.current[key] = setTimeout(() => {
             try {
                 localStorage.setItem(key, value);
-            } catch (e) {}
+            } catch (e) { }
         }, 250); // 250ms debounce window
     };
 
@@ -355,7 +355,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             localStorage.setItem('flkrd_player_brightness', '1');
             localStorage.setItem('flkrd_player_contrast', '1');
             localStorage.setItem('flkrd_player_saturation', '1');
-        } catch (e) {}
+        } catch (e) { }
     };
 
     // --- Subtitle Line Edit State ---
@@ -373,7 +373,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const restoreFullscreenIfNeeded = () => {
         if (wasFullscreenRef.current) {
             wasFullscreenRef.current = false;
-            
+
             import('../utils/tauriUtils').then(({ isTauri }) => {
                 if (isTauri()) {
                     import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
@@ -387,10 +387,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 if (!document.fullscreenElement && containerRef.current) {
                     console.log("[PLAYER] Restoring browser fullscreen...");
-                    const reqFS = containerRef.current.requestFullscreen || 
-                                  (containerRef.current as any).webkitRequestFullscreen ||
-                                  (containerRef.current as any).mozRequestFullScreen ||
-                                  (containerRef.current as any).msRequestFullscreen;
+                    const reqFS = containerRef.current.requestFullscreen ||
+                        (containerRef.current as any).webkitRequestFullscreen ||
+                        (containerRef.current as any).mozRequestFullScreen ||
+                        (containerRef.current as any).msRequestFullscreen;
                     if (reqFS) {
                         reqFS.call(containerRef.current).catch(err => {
                             console.warn("[PLAYER] Failed to restore fullscreen:", err);
@@ -404,7 +404,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     const handleUploadClick = () => {
         isSelectingFileRef.current = true;
-        
+
         import('../utils/tauriUtils').then(({ isTauri }) => {
             if (isTauri()) {
                 import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
@@ -436,7 +436,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     const handleAdminSubUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
-        
+
         restoreFullscreenIfNeeded();
 
         if (!files || files.length === 0) return;
@@ -471,7 +471,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             try {
                 // Read content
                 let fileContent = await file.text();
-                
+
                 // If it's SRT, convert to VTT format
                 if (extension === 'srt') {
                     fileContent = 'WEBVTT\n\n' + fileContent
@@ -506,7 +506,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const filePath = contentType === 'tv'
                     ? `custom/${targetId}_s${fileSeason}_e${fileEpisode}_${timeStamp}.vtt`
                     : `custom/${targetId}_${timeStamp}.vtt`;
-                
+
                 const { data: uploadData, error: uploadErr } = await supabase.storage
                     .from('subtitles')
                     .upload(filePath, blob, {
@@ -544,9 +544,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (dbErr) throw dbErr;
 
                 successCount++;
-                
+
                 // If it matches currently active season/episode (or is a movie), update local player state
-                const isActiveEpisode = contentType !== 'tv' || 
+                const isActiveEpisode = contentType !== 'tv' ||
                     (fileSeason === (season || 0) && fileEpisode === (episode || 0));
 
                 if (isActiveEpisode) {
@@ -624,7 +624,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const fetchAllTranslations = async () => {
             try {
                 let tmdbIdNum: number | null = null;
-                
+
                 // 1. Try to extract TMDB ID from source URL
                 const match = src.match(/\/(movie|tv)\/([^/?#]+)/);
                 if (match) {
@@ -633,7 +633,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         tmdbIdNum = Number(idStr);
                     }
                 }
-                
+
                 // 2. If it's a multiembed URL or has video_id query parameter
                 if (!tmdbIdNum) {
                     try {
@@ -642,7 +642,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         if (videoIdParam && !isNaN(Number(videoIdParam))) {
                             tmdbIdNum = Number(videoIdParam);
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
 
                 // 3. Fallback to IMDb ID if we don't have TMDB ID yet
@@ -699,7 +699,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
             return [virtualSub, ...prev];
         });
-        
+
         setKurdishSub(virtualSub);
 
         // Auto download, convert to Blob and apply as active subtitle
@@ -717,7 +717,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
 
         autoDownloadAndApply();
-        
+
         // Load saved styles
         const savedSize = localStorage.getItem('sub_size');
         const savedColor = localStorage.getItem('sub_color');
@@ -897,34 +897,34 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
                 const { data } = await query.maybeSingle();
-                        
-                    if (data && data.subtitle_url) {
-                        let subUrl = data.subtitle_url;
-                        if (subUrl.startsWith('//')) {
-                            subUrl = `https:${subUrl}`;
-                        }
-                        customSub = {
-                             id: `custom-db-${data.id}`,
-                             attributes: {
-                                 language: data.language || 'ku',
-                                 display_name: data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
-                                 url: subUrl,
-                                 file_id: 0
-                             }
-                         };
-                     }
 
-                 if (!customSub && subtitleUrl) {
-                     customSub = {
-                         id: `custom-db-prop`,
-                         attributes: {
-                             language: 'ku',
-                             display_name: 'Kurdish (Verified)',
-                             url: subtitleUrl,
-                             file_id: 0
-                         }
-                     };
-                 }
+                if (data && data.subtitle_url) {
+                    let subUrl = data.subtitle_url;
+                    if (subUrl.startsWith('//')) {
+                        subUrl = `https:${subUrl}`;
+                    }
+                    customSub = {
+                        id: `custom-db-${data.id}`,
+                        attributes: {
+                            language: data.language || 'ku',
+                            display_name: data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
+                            url: subUrl,
+                            file_id: 0
+                        }
+                    };
+                }
+
+                if (!customSub && subtitleUrl) {
+                    customSub = {
+                        id: `custom-db-prop`,
+                        attributes: {
+                            language: 'ku',
+                            display_name: 'Kurdish (Verified)',
+                            url: subtitleUrl,
+                            file_id: 0
+                        }
+                    };
+                }
 
                 let finalSubs = safeResults;
                 if (customSub) {
@@ -935,7 +935,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && lang !== 'badini';
                     });
                     finalSubs = [customSub, ...nonKurdishSubs];
-                    
+
                     // Auto-select and auto-apply the custom subtitle by default
                     if (!subtitleUrl && !localSubtitleUrl) {
                         console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded subtitle:", customSub.attributes.url);
@@ -961,14 +961,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     });
                     if (foundKu) {
                         setKurdishSub(foundKu);
-                        
+
                         // [AUTO APPLY] Automatically download and apply the background-discovered Kurdish subtitle if not already loaded!
                         if (!subtitleUrl && !localSubtitleUrl) {
                             console.log("[UNIVERSAL-PLAYER] Automatically downloading background-discovered Kurdish CC...");
                             try {
                                 const text = await subtitleService.downloadSubtitle(foundKu);
                                 if (text) {
-                                const processedText = cleanAndFormatVtt(text);
+                                    const processedText = cleanAndFormatVtt(text);
                                     const blob = new Blob([processedText], { type: 'text/vtt' });
                                     setLocalSubtitleUrl(URL.createObjectURL(blob));
                                     setKuCCNotificationVisible(false); // Applied automatically, so no need for prompt banner
@@ -1028,7 +1028,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             try {
                 const cleanId = imdbId.toString();
                 const isImdb = cleanId.startsWith('tt');
-                
+
                 // Try IndexedDB first
                 const allMovies = await db.getMovies();
                 if (allMovies && allMovies.length > 0) {
@@ -1037,7 +1037,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         return str.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
                     };
                     const targetTitleClean = title ? cleanString(title) : '';
-                    
+
                     const match = allMovies.find((m: any) => {
                         if (isImdb && m.imdb_id === cleanId) return true;
                         if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
@@ -1045,13 +1045,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         if (targetTitleClean) {
                             const dbTitleClean = cleanString(m.title);
                             const dbKurdishClean = cleanString(m.kurdishTitle);
-                            
+
                             if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
                             if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
                         }
                         return false;
                     });
-                    
+
                     if (match) {
                         console.log("[UNIVERSAL-PLAYER] Kurdish Dubbed Version established via IndexedDB:", match);
                         setKurdishDub(match);
@@ -1069,7 +1069,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         query = query.eq('tmdb_id', numId);
                     }
                 }
-                
+
                 const { data, error } = await query;
                 if (data && data.length > 0) {
                     console.log("[UNIVERSAL-PLAYER] Kurdish Dubbed Version established via ID query:", data[0]);
@@ -1086,7 +1086,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     };
 
                     const targetTitleClean = title ? cleanString(title) : '';
-                    
+
                     const match = allSupabaseMovies.find((m: any) => {
                         if (isImdb && m.imdb_id === cleanId) return true;
                         if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
@@ -1094,7 +1094,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         if (targetTitleClean) {
                             const dbTitleClean = cleanString(m.title);
                             const dbKurdishClean = cleanString(m.kurdishTitle);
-                            
+
                             if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
                             if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
                         }
@@ -1137,101 +1137,101 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
 
-      const toggleFullscreen = () => {
-    if (toggleFullscreenProp) {
-      toggleFullscreenProp();
-      return;
-    }
-    if (!containerRef.current) return;
-    
-    import('../utils/tauriUtils').then(({ isTauri }) => {
-      if (isTauri()) {
-        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
-          const win = getCurrentWindow();
-          win.isFullscreen().then(f => {
-            win.setFullscreen(!f);
-            setIsFullscreen(!f);
-          });
-        });
-        return;
-      }
-
-      const isFull = !!(
-        document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
-      );
-
-      // iOS Safari PWA: use video.webkitEnterFullscreen() for HLS player
-      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-      
-      if (isIOSSafari && isHls && videoRef.current) {
-        if (isFull) {
-          try {
-            const exit = (document as any).webkitExitFullscreen || document.exitFullscreen;
-            if (exit) exit.call(document);
-          } catch (e) {}
-          setIsFullscreen(false);
-        } else {
-          const vid = videoRef.current as any;
-          if (vid.webkitEnterFullscreen) {
-            vid.webkitEnterFullscreen();
-            setIsFullscreen(true);
-            vid.addEventListener('webkitendfullscreen', () => {
-              setIsFullscreen(false);
-            }, { once: true });
-          } else if (vid.webkitRequestFullscreen) {
-            vid.webkitRequestFullscreen();
-            setIsFullscreen(true);
-          } else {
-            setIsSimulatedFullscreen(true);
-            setIsFullscreen(true);
-          }
+    const toggleFullscreen = () => {
+        if (toggleFullscreenProp) {
+            toggleFullscreenProp();
+            return;
         }
-        return;
-      }
+        if (!containerRef.current) return;
 
-      // iOS Safari PWA with iframe: simulated fullscreen (browser blocks document.requestFullscreen)
-      if (isIOSSafari && isIframe) {
-        setIsSimulatedFullscreen(prev => !prev);
-        setIsFullscreen(prev => !prev);
-        return;
-      }
+        import('../utils/tauriUtils').then(({ isTauri }) => {
+            if (isTauri()) {
+                import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+                    const win = getCurrentWindow();
+                    win.isFullscreen().then(f => {
+                        win.setFullscreen(!f);
+                        setIsFullscreen(!f);
+                    });
+                });
+                return;
+            }
 
-      const hasNativeFullscreen = !!(
-        containerRef.current.requestFullscreen ||
-        (containerRef.current as any).webkitRequestFullscreen ||
-        (containerRef.current as any).mozRequestFullScreen ||
-        (containerRef.current as any).msRequestFullscreen
-      );
+            const isFull = !!(
+                document.fullscreenElement ||
+                (document as any).webkitFullscreenElement ||
+                (document as any).mozFullScreenElement ||
+                (document as any).msFullscreenElement
+            );
 
-      if (!hasNativeFullscreen) {
-        setIsSimulatedFullscreen(prev => !prev);
-        setIsFullscreen(prev => !prev);
-        return;
-      }
+            // iOS Safari PWA: use video.webkitEnterFullscreen() for HLS player
+            const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
-      if (!isFull) {
-        const req = containerRef.current.requestFullscreen ||
+            if (isIOSSafari && isHls && videoRef.current) {
+                if (isFull) {
+                    try {
+                        const exit = (document as any).webkitExitFullscreen || document.exitFullscreen;
+                        if (exit) exit.call(document);
+                    } catch (e) { }
+                    setIsFullscreen(false);
+                } else {
+                    const vid = videoRef.current as any;
+                    if (vid.webkitEnterFullscreen) {
+                        vid.webkitEnterFullscreen();
+                        setIsFullscreen(true);
+                        vid.addEventListener('webkitendfullscreen', () => {
+                            setIsFullscreen(false);
+                        }, { once: true });
+                    } else if (vid.webkitRequestFullscreen) {
+                        vid.webkitRequestFullscreen();
+                        setIsFullscreen(true);
+                    } else {
+                        setIsSimulatedFullscreen(true);
+                        setIsFullscreen(true);
+                    }
+                }
+                return;
+            }
+
+            // iOS Safari PWA with iframe: simulated fullscreen (browser blocks document.requestFullscreen)
+            if (isIOSSafari && isIframe) {
+                setIsSimulatedFullscreen(prev => !prev);
+                setIsFullscreen(prev => !prev);
+                return;
+            }
+
+            const hasNativeFullscreen = !!(
+                containerRef.current.requestFullscreen ||
+                (containerRef.current as any).webkitRequestFullscreen ||
+                (containerRef.current as any).mozRequestFullScreen ||
+                (containerRef.current as any).msRequestFullscreen
+            );
+
+            if (!hasNativeFullscreen) {
+                setIsSimulatedFullscreen(prev => !prev);
+                setIsFullscreen(prev => !prev);
+                return;
+            }
+
+            if (!isFull) {
+                const req = containerRef.current.requestFullscreen ||
                     (containerRef.current as any).webkitRequestFullscreen ||
                     (containerRef.current as any).mozRequestFullScreen ||
                     (containerRef.current as any).msRequestFullscreen;
-        
-        req.call(containerRef.current).catch((err: any) => {
-          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-          setIsSimulatedFullscreen(true);
-          setIsFullscreen(true);
+
+                req.call(containerRef.current).catch((err: any) => {
+                    console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+                    setIsSimulatedFullscreen(true);
+                    setIsFullscreen(true);
+                });
+            } else {
+                const exit = document.exitFullscreen ||
+                    (document as any).webkitExitFullscreen ||
+                    (document as any).mozCancelFullScreen ||
+                    (document as any).msExitFullscreen;
+                exit.call(document);
+            }
         });
-      } else {
-        const exit = document.exitFullscreen ||
-                     (document as any).webkitExitFullscreen ||
-                     (document as any).mozCancelFullScreen ||
-                     (document as any).msExitFullscreen;
-        exit.call(document);
-      }
-    });
-  };
+    };
 
 
     useEffect(() => {
@@ -1244,7 +1244,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         setIsSearchingSubs(true);
         try {
             const text = await subtitleService.downloadSubtitle(sub);
-            
+
             if (text) {
                 // Just create blob for native track fallback (HLS) and set localSubtitleUrl.
                 // The new unified useEffect will automatically fetch/parse/shift cues from this URL.
@@ -1267,7 +1267,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         try {
             const cache = JSON.parse(cacheStr);
             const targetId = tmdbId || imdbId;
-            
+
             if (
                 cache &&
                 String(cache.targetId) === String(targetId) &&
@@ -1276,13 +1276,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             ) {
                 // Clear immediately to prevent infinite loop on failure
                 localStorage.removeItem('flkrd_translating_sub_cache');
-                
+
                 // Wait a small delay for state and network to stabilize
                 const timer = setTimeout(() => {
                     console.log("[UNIVERSAL-PLAYER] Resuming translation for:", cache.sub.attributes?.display_name);
                     handleStartTranslation(cache.sub);
                 }, 1500);
-                
+
                 return () => clearTimeout(timer);
             }
         } catch (e) {
@@ -1305,12 +1305,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const subUrl = activeTranslation.subtitleUrl;
             if (subUrl && localSubtitleUrl !== subUrl) {
                 setLocalSubtitleUrl(subUrl);
-                
+
                 // Add the new Kurdish track to the list if not present
                 const trackId = `custom-db-${activeTranslation.tmdbId}`;
                 setAvailableSubs(prev => {
                     if (prev.some(s => s.id === trackId)) return prev;
-                    
+
                     const newTrack: SubtitleResult = {
                         id: trackId,
                         attributes: {
@@ -1360,7 +1360,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             setEditingCue(null);
             // Resume video playback after saving
             if (videoRef.current && videoRef.current.paused) {
-                videoRef.current.play().catch(() => {});
+                videoRef.current.play().catch(() => { });
             }
         }
     };
@@ -1392,7 +1392,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             setEditingCue(null);
             // Resume video playback after restoring
             if (videoRef.current && videoRef.current.paused) {
-                videoRef.current.play().catch(() => {});
+                videoRef.current.play().catch(() => { });
             }
         }
     };
@@ -1428,7 +1428,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         try {
             // Security check: only allow trusted origins if possible, but for universal player we allow all
             const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-            
+
             if (!payload) return;
 
             // Log time updates for debugging if needed
@@ -1440,15 +1440,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             // Parse playback state / event type
             const msgEvent = (payload.event || payload.type || payload.method || '').toLowerCase();
-            
+
             if (msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play') {
                 paused = false;
                 eventName = 'play';
-            } 
+            }
             else if (msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause') {
                 paused = true;
                 eventName = 'pause';
-            } 
+            }
             else if (msgEvent === 'seek' || msgEvent === 'seeking' || msgEvent === 'seeked' || msgEvent === 'vjs-seek') {
                 eventName = 'seek';
             }
@@ -1462,7 +1462,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             // Comprehensive postMessage event parser for all embed sources
             if (payload.type === 'timeupdate' || payload.type === 'vjs-timeupdate') {
                 newTime = payload.data?.currentTime || payload.currentTime || payload.seconds;
-            } 
+            }
             else if (payload.event === 'timeupdate' || payload.event === 'media_time' || payload.event === 'time' || payload.event === 'progress') {
                 newTime = payload.text || payload.data?.currentTime || payload.data?.seconds || payload.data?.time || payload.data || payload.time || payload.value || payload.seconds;
             }
@@ -1547,7 +1547,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             setIsFullscreen(isFull);
 
             // Intercept iframe fullscreen and redirect to container
-            const activeFullscreenElement = 
+            const activeFullscreenElement =
                 document.fullscreenElement ||
                 (document as any).webkitFullscreenElement ||
                 (document as any).mozFullScreenElement ||
@@ -1555,16 +1555,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             if (activeFullscreenElement === iframeRef.current && containerRef.current) {
                 console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
-                
+
                 const exit = document.exitFullscreen ||
-                             (document as any).webkitExitFullscreen ||
-                             (document as any).mozCancelFullScreen ||
-                             (document as any).msExitFullscreen;
-                             
+                    (document as any).webkitExitFullscreen ||
+                    (document as any).mozCancelFullScreen ||
+                    (document as any).msExitFullscreen;
+
                 const req = containerRef.current.requestFullscreen ||
-                            (containerRef.current as any).webkitRequestFullscreen ||
-                            (containerRef.current as any).mozRequestFullScreen ||
-                            (containerRef.current as any).msRequestFullscreen;
+                    (containerRef.current as any).webkitRequestFullscreen ||
+                    (containerRef.current as any).mozRequestFullScreen ||
+                    (containerRef.current as any).msRequestFullscreen;
 
                 exit.call(document).then(() => {
                     req.call(containerRef.current).catch(err => {
@@ -1621,7 +1621,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
 
             const key = e.key.toLowerCase();
-            
+
             // Escape -> Exit simulated fullscreen or close settings
             if (e.key === 'Escape') {
                 e.preventDefault();
@@ -1647,7 +1647,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     setIsPlaying(prev => !prev);
                 } else if (videoRef.current) {
                     if (videoRef.current.paused) {
-                        videoRef.current.play().catch(() => {});
+                        videoRef.current.play().catch(() => { });
                         setIsPlaying(true);
                     } else {
                         videoRef.current.pause();
@@ -1655,7 +1655,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }
                 }
             }
-            
+
             // ArrowLeft / J -> Seek backward 10s
             else if (e.key === 'ArrowLeft' || key === 'j') {
                 e.preventDefault();
@@ -1671,7 +1671,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
                 }
             }
-            
+
             // ArrowRight / L -> Seek forward 10s
             else if (e.key === 'ArrowRight' || key === 'l') {
                 e.preventDefault();
@@ -1960,7 +1960,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 try {
                     const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
                     console.log("[TAURI SCRAPER] Initiating Tauri HTTP bypass fetch for:", activeSrc);
-                    
+
                     const response = await tauriFetch(activeSrc, {
                         method: 'GET',
                         headers: {
@@ -1982,14 +1982,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         directUrl = data.streamUrl || data.url || data.stream || (data.sources && data.sources[0]?.url);
                     } else {
                         const text = await response.text();
-                        
+
                         // Parse config JSON if embedded in html script
                         const jsonMatch = text.match(/const\s+config\s*=\s*({.*?});/s) || text.match(/window\.config\s*=\s*({.*?});/s);
                         if (jsonMatch) {
                             try {
                                 const config = JSON.parse(jsonMatch[1]);
                                 directUrl = config.streamUrl || config.url || config.stream;
-                            } catch (e) {}
+                            } catch (e) { }
                         }
 
                         if (!directUrl) {
@@ -2020,7 +2020,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             try {
                                 const origin = new URL(activeSrc).origin;
                                 cleanUrl = origin + (cleanUrl.startsWith('/') ? '' : '/') + cleanUrl;
-                            } catch (e) {}
+                            } catch (e) { }
                         }
                         setOverrideSrc(cleanUrl);
                     } else if (isMounted) {
@@ -2162,7 +2162,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const frozenSrcRef = useRef<string | null>(null);
     const lastContentKeyRef = useRef<string>('');
     const activeSrcForIframe = overrideSrc || src;
-    
+
     const currentContentKey = React.useMemo(() => {
         try {
             const url = new URL(activeSrcForIframe);
@@ -2218,13 +2218,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     }, [iframeSrc]);
 
     return (
-        <div 
-            ref={containerRef} 
-            className={`bg-black flex items-center justify-center overflow-hidden transition-all duration-300 ${
-                isSimulatedFullscreen 
-                    ? 'fixed inset-0 w-screen h-screen z-[9999]' 
+        <div
+            ref={containerRef}
+            className={`bg-black flex items-center justify-center overflow-hidden transition-all duration-300 ${isSimulatedFullscreen
+                    ? 'fixed inset-0 w-screen h-screen z-[9999]'
                     : 'w-full h-full relative'
-            }`}
+                }`}
         >
 
             {/* AdGuardOnboarding disabled on play as requested by the user */}
@@ -2246,107 +2245,79 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     text-shadow: 0 4px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.5) !important;
                 }
             `}</style>
+
+            {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
+            {/* Brand Watermark (top-left) */}
+            <div className="absolute top-4 left-4 md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500">
+                <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
+                    <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
+                </div>
+            </div>
+
+            {/* Top-Right: Settings / Relink / Fullscreen — always visible */}
+            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-center gap-2 md:gap-3">
+                {contentType === 'tv' && onEpisodeChange && (
+                    <button
+                        onClick={() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }}
+                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
+                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
+                                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                            }`}
+                        title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
+                    >
+                        <Tv size={14} />
+                        <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+                    </button>
+                )}
+
+                {/* CC / Subtitle Studio */}
+                <button
+                    onClick={() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }}
+                    className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
+                            ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
+                            : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                        }`}
+                    title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
+                >
+                    <Subtitles size={14} />
+                    <span className="text-[10px] font-black uppercase hidden sm:inline">CC</span>
+                </button>
+
+                {/* Relink / Source Switcher — always show, even during loading */}
+                {sources && sources.length > 0 && (
+                    <button
+                        onClick={() => { setShowSourceSwitcher(!showSourceSwitcher); setShowSubSettings(false); setShowEpisodesPortal(false); }}
+                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
+                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
+                                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                            }`}
+                        title="Relink"
+                    >
+                        <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
+                        <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
+                    </button>
+                )}
+
+                {/* Fullscreen */}
+                <button
+                    onClick={toggleFullscreen}
+                    className="transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white active:scale-95"
+                    title={isFullscreen
+                        ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen')
+                        : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
+                >
+                    {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                    <span className="text-[10px] font-black uppercase hidden sm:inline">
+                        {isFullscreen
+                            ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit')
+                            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Full')}
+                    </span>
+                </button>
+            </div>
+
             {!loading && (
                 <>
-                    {/* Top-Left: Brand Watermark */}
-                    <div
-                      className="absolute md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
-                      style={{ top: 'calc(1rem + constant(safe-area-inset-top, 0px))', left: 'calc(1rem + constant(safe-area-inset-left, 0px))' } as any}
-                      ref={(el) => { if (el) { el.style.top = 'calc(1rem + env(safe-area-inset-top, 0px))'; el.style.left = 'calc(1rem + env(safe-area-inset-left, 0px))'; } }}
-                    >
-                        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                            {/* Glossy reflection */}
-                            <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
-                            <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">
-                                F
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Top-Right: Settings Menu */}
-                    <div
-                      className="absolute md:top-6 md:right-6 z-50 flex items-center gap-3"
-                      style={{ top: 'calc(1rem + constant(safe-area-inset-top, 0px))', right: 'calc(1rem + constant(safe-area-inset-right, 0px))' } as any}
-                      ref={(el) => { if (el) { el.style.top = 'calc(1rem + env(safe-area-inset-top, 0px))'; el.style.right = 'calc(1rem + env(safe-area-inset-right, 0px))'; } }}
-                    >
-                        {contentType === 'tv' && onEpisodeChange && (
-                            <button 
-                                onClick={() => {
-                                    setShowEpisodesPortal(!showEpisodesPortal);
-                                    setShowSubSettings(false);
-                                    setShowSourceSwitcher(false);
-                                }}
-                                className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
-                                    showEpisodesPortal 
-                                        ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
-                                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                                }`}
-                                title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
-                            >
-                                <Tv size={14} />
-                                <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
-                            </button>
-                        )}
-
-                        {/* Subtitle Toggle */}
-                        <button 
-                            onClick={() => {
-                                setShowSubSettings(!showSubSettings);
-                                if (!showSubSettings) handleSearchAllSubs();
-                                setShowEpisodesPortal(false);
-                                setShowSourceSwitcher(false);
-                            }}
-                            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
-                                showSubSettings 
-                                    ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
-                                    : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                            }`}
-                            title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
-                        >
-                            <Subtitles size={14} />
-                            <span className="text-[10px] font-black uppercase hidden sm:inline">Studio</span>
-                        </button>
-
-                        {/* Relink Button */}
-                        {sources && sources.length > 0 && (
-                            <button 
-                                onClick={() => {
-                                    setShowSourceSwitcher(!showSourceSwitcher);
-                                    setShowSubSettings(false);
-                                    setShowEpisodesPortal(false);
-                                }}
-                                className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
-                                    showSourceSwitcher
-                                        ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
-                                        : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                                }`}
-                                title="Relink"
-                            >
-                                <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
-                                <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
-                            </button>
-                        )}
-
-                        {/* Fullscreen Button */}
-                        <button 
-                            onClick={toggleFullscreen}
-                            className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
-                            title={isFullscreen 
-                                ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
-                                : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
-                        >
-                            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                            <span className="text-[10px] font-black uppercase hidden sm:inline">
-                                {isFullscreen 
-                                    ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Minimize') 
-                                    : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
-                                }
-                            </span>
-                        </button>
-                    </div>
-
-
-
                     {/* Elegant Floating Kurdish CC Banner removed as requested by the user */}
                 </>
             )}
@@ -2383,10 +2354,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     id="vidking-player"
                     ref={videoRef}
                     className="w-full h-full object-contain z-10 pointer-events-none"
-                    style={{ 
+                    style={{
                         WebkitPlaysInline: 'inline',
-                        filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1)) 
-                            ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})` 
+                        filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1))
+                            ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                             : undefined
                     } as any}
                     controls={false}
@@ -2398,40 +2369,40 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     onTimeUpdate={(e) => {
                         const time = e.currentTarget.currentTime;
                         setCurrentTime(time);
-                        onProgressRef.current?.({ 
-                            currentTime: time, 
+                        onProgressRef.current?.({
+                            currentTime: time,
                             paused: e.currentTarget.paused,
                             duration: e.currentTarget.duration
                         });
                     }}
                     onPlaying={() => setLoading(false)}
-                    onPlay={(e) => onProgressRef.current?.({ 
-                        currentTime: e.currentTarget.currentTime, 
-                        paused: false, 
+                    onPlay={(e) => onProgressRef.current?.({
+                        currentTime: e.currentTarget.currentTime,
+                        paused: false,
                         event: 'play',
                         duration: e.currentTarget.duration
                     })}
-                    onPause={(e) => onProgressRef.current?.({ 
-                        currentTime: e.currentTarget.currentTime, 
-                        paused: true, 
+                    onPause={(e) => onProgressRef.current?.({
+                        currentTime: e.currentTarget.currentTime,
+                        paused: true,
                         event: 'pause',
                         duration: e.currentTarget.duration
                     })}
-                    onSeeking={(e) => onProgressRef.current?.({ 
-                        currentTime: e.currentTarget.currentTime, 
-                        paused: e.currentTarget.paused, 
+                    onSeeking={(e) => onProgressRef.current?.({
+                        currentTime: e.currentTarget.currentTime,
+                        paused: e.currentTarget.paused,
                         event: 'seek',
                         duration: e.currentTarget.duration
                     })}
                 >
                     {showSubtitles && (localSubtitleUrl || subtitleUrl) && (
-                        <track 
+                        <track
                             key={localSubtitleUrl || subtitleUrl}
-                            src={localSubtitleUrl || subtitleUrl} 
-                            kind="subtitles" 
-                            srcLang="ku" 
-                            label="Kurdish" 
-                            default 
+                            src={localSubtitleUrl || subtitleUrl}
+                            kind="subtitles"
+                            srcLang="ku"
+                            label="Kurdish"
+                            default
                         />
                     )}
                 </video>
@@ -2508,9 +2479,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 current: displayText,
                                             });
                                         }}
-                                        className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-200 max-w-[95vw] sm:max-w-[85vw] ${
-                                            showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''
-                                        } ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-white/30 active:scale-[0.99]' : ''} ${isEdited ? 'ring-1 ring-yellow-400/40' : ''}`}
+                                        className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-200 max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''
+                                            } ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-white/30 active:scale-[0.99]' : ''} ${isEdited ? 'ring-1 ring-yellow-400/40' : ''}`}
                                         style={{
                                             direction: isRtl ? 'rtl' : 'ltr',
                                             unicodeBidi: isRtl ? 'plaintext' : 'normal',
@@ -2566,7 +2536,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 setEditingCue(null);
                                 // Resume video when dismissing by backdrop click
                                 if (videoRef.current && videoRef.current.paused) {
-                                    videoRef.current.play().catch(() => {});
+                                    videoRef.current.play().catch(() => { });
                                 }
                             }
                         }}
@@ -2593,7 +2563,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 <button
                                     onClick={() => {
                                         setEditingCue(null);
-                                        if (videoRef.current) videoRef.current.play().catch(() => {});
+                                        if (videoRef.current) videoRef.current.play().catch(() => { });
                                     }}
                                     className="text-white/40 hover:text-white transition-colors text-lg leading-none"
                                 >✕</button>
@@ -2634,7 +2604,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Escape') {
                                                     setEditingCue(null);
-                                                    if (videoRef.current && videoRef.current.paused) videoRef.current.play().catch(() => {});
+                                                    if (videoRef.current && videoRef.current.paused) videoRef.current.play().catch(() => { });
                                                 }
                                                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleSaveSubtitleEdit();
                                             }}
@@ -2672,7 +2642,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         setEditingCue(null);
                                         // Resume video on cancel
                                         if (videoRef.current && videoRef.current.paused) {
-                                            videoRef.current.play().catch(() => {});
+                                            videoRef.current.play().catch(() => { });
                                         }
                                     }}
                                     className="px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-white/5 text-white/50 hover:bg-white/10 active:scale-95 transition-all border border-white/10"
@@ -2692,7 +2662,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     key={stableKey}
                     src={iframeSrc}
                     className="w-full h-full border-none z-10"
-                    style={{ 
+                    style={{
                         display: 'block',
                         filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                     }}
@@ -2714,13 +2684,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Elegant Glassmorphic Multi-Audio Helper Modal */}
             <AnimatePresence>
                 {showDubInfoModal && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="absolute inset-0 bg-black/85 backdrop-blur-2xl z-[300] flex items-center justify-center p-4 md:p-6"
                     >
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -2739,13 +2709,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     {(language === 'ku' || language === 'badini') ? 'دەنگی دۆبلاژ ئامادەیە!' : 'Dubbed Audio Active!'}
                                 </h4>
                                 <p className="text-gray-400 text-xs leading-relaxed text-left">
-                                    {(language === 'ku' || language === 'badini') 
+                                    {(language === 'ku' || language === 'badini')
                                         ? `دۆبلاژی [${showDubInfoModal}] چالاک کرا! لەناو لیستی سێرڤەرەکان یان دوگمەی دەنگ (Audio) لە خوارەوەی ڕاستی ڤیدیۆکە، دەتوانیت زمانەکە یان سێرڤەری دۆبلاژ هەڵبژێریت.`
                                         : `The [${showDubInfoModal}] dubbed version is now active! Inside the player, you can select the Dubbed version from the server list or toggle the language track using the Audio settings button.`}
                                 </p>
                             </div>
 
-                            <button 
+                            <button
                                 onClick={() => setShowDubInfoModal(null)}
                                 className="py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg shadow-red-600/20"
                             >
@@ -2759,13 +2729,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Media Portal Drawer (Top-Down Sliding Cinema Overlay) */}
             <AnimatePresence>
                 {showEpisodesPortal && (
-                    <motion.div 
+                    <motion.div
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
                         transition={{ type: 'spring', damping: 24, stiffness: 100 }}
                         className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
-                        style={{ 
+                        style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
                             background: 'radial-gradient(circle at 50% -20%, rgba(220, 38, 38, 0.28), transparent 72%), linear-gradient(to bottom, rgba(8, 8, 12, 0.45) 0%, rgba(3, 3, 5, 0.6) 100%)',
                             backdropFilter: 'blur(35px) saturate(210%)',
@@ -2779,7 +2749,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 <div className="bg-red-600/10 border border-red-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
                                     <Tv size={12} className="text-red-500 animate-pulse" />
                                     <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
-                                        {contentType === 'tv' 
+                                        {contentType === 'tv'
                                             ? ((language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL')
                                             : ((language === 'ku' || language === 'badini') ? 'فیلمە هاوشێوەکان' : 'SIMILAR FILMS')}
                                     </span>
@@ -2788,8 +2758,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     {title}
                                 </span>
                             </div>
-                            <button 
-                                onClick={() => setShowEpisodesPortal(false)} 
+                            <button
+                                onClick={() => setShowEpisodesPortal(false)}
                                 className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white"
                             >
                                 <X size={18} />
@@ -2812,14 +2782,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     onClick={() => {
                                                         if (onSeasonChange) onSeasonChange(s.season_number);
                                                     }}
-                                                    className={`relative px-5 py-2 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
-                                                        isCurrentSeason 
-                                                            ? 'border-red-500/30 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white' 
+                                                    className={`relative px-5 py-2 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${isCurrentSeason
+                                                            ? 'border-red-500/30 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white'
                                                             : 'border-white/5 bg-white/[0.03] text-white/70 hover:border-white/20 hover:bg-white/[0.08]'
-                                                    } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}
+                                                        } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}
                                                 >
                                                     <span className="relative z-10 font-black">
-                                                        {(language === 'ku' || language === 'badini') 
+                                                        {(language === 'ku' || language === 'badini')
                                                             ? `سیزنی ${s.season_number}`
                                                             : `Season ${s.season_number}`}
                                                     </span>
@@ -2832,16 +2801,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 {/* Episodes Horizontal Swiper Container */}
                                 <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
                                     <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
-                                        {(language === 'ku' || language === 'badini') 
+                                        {(language === 'ku' || language === 'badini')
                                             ? `ئەڵقەکانی سیزنی ${season}`
                                             : `SEASON ${season} EPISODES`}
                                     </span>
-                                    
+
                                     <div className="relative flex-1 overflow-hidden mt-1">
                                         <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
                                         <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
 
-                                        <motion.div 
+                                        <motion.div
                                             variants={containerVariants}
                                             initial="hidden"
                                             animate="show"
@@ -2860,7 +2829,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     const isWatched = watchedEpisodes.has(epKey);
                                                     const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
                                                     const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
-                                                    
+
                                                     return (
                                                         <motion.div
                                                             key={ep.id}
@@ -2871,21 +2840,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
                                                                 setShowEpisodesPortal(false);
                                                             }}
-                                                            className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${
-                                                                isActive
+                                                            className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${isActive
                                                                     ? 'bg-gradient-to-br from-red-600/[0.08] to-rose-500/[0.02] border-red-500/50 shadow-[0_8px_32px_rgba(220,38,38,0.25)]'
                                                                     : 'bg-white/[0.02] border-white/[0.04] hover:border-white/12 hover:bg-white/[0.06] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {/* Sheen sweep animation */}
                                                             <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
 
                                                             <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
                                                                 {ep.still_path ? (
-                                                                    <img 
-                                                                        src={`${IMAGE_BASE_URL}${ep.still_path}`} 
-                                                                        alt="" 
-                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                                                    <img
+                                                                        src={`${IMAGE_BASE_URL}${ep.still_path}`}
+                                                                        alt=""
+                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                                         loading="lazy"
                                                                     />
                                                                 ) : (
@@ -2922,8 +2890,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                             <div className="flex flex-col px-1">
                                                                 <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
-                                                                    {(language === 'ku' || language === 'badini') 
-                                                                        ? `ئەڵقەی ${ep.episode_number}` 
+                                                                    {(language === 'ku' || language === 'badini')
+                                                                        ? `ئەڵقەی ${ep.episode_number}`
                                                                         : `Episode ${ep.episode_number}`}
                                                                 </span>
                                                                 <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
@@ -2947,12 +2915,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
                                     {(language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'RECOMMENDED MOVIES'}
                                 </span>
-                                
+
                                 <div className="relative flex-1 overflow-hidden mt-1">
                                     <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
                                     <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
 
-                                    <motion.div 
+                                    <motion.div
                                         variants={containerVariants}
                                         initial="hidden"
                                         animate="show"
@@ -2968,7 +2936,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         ) : (
                                             movieRecommendations.map((movie) => {
                                                 const isActive = String(movie.id) === String(tmdbId);
-                                                
+
                                                 return (
                                                     <motion.div
                                                         key={movie.id}
@@ -2979,21 +2947,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             navigate(`/details/movie/${movie.id}`);
                                                             setShowEpisodesPortal(false);
                                                         }}
-                                                        className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${
-                                                            isActive
+                                                        className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${isActive
                                                                 ? 'bg-gradient-to-br from-red-600/[0.08] to-rose-500/[0.02] border-red-500/50 shadow-[0_8px_32px_rgba(220,38,38,0.25)]'
                                                                 : 'bg-white/[0.02] border-white/[0.04] hover:border-white/12 hover:bg-white/[0.06] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
-                                                        }`}
+                                                            }`}
                                                     >
                                                         {/* Sheen sweep animation */}
                                                         <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
 
                                                         <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
                                                             {movie.backdrop_path ? (
-                                                                <img 
-                                                                    src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`} 
-                                                                    alt="" 
-                                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                                                <img
+                                                                    src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`}
+                                                                    alt=""
+                                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                                     loading="lazy"
                                                                 />
                                                             ) : (
@@ -3055,12 +3022,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         cornerRadius: 28,
                     };
                     const activeGlass = glassConfig || defaultGlassConfig;
-                    
+
                     return (
-                        <motion.div 
-                            initial={{ x: '100%', opacity: 0 }} 
-                            animate={{ x: 0, opacity: 1 }} 
-                            exit={{ x: '100%', opacity: 0 }} 
+                        <motion.div
+                            initial={{ x: '100%', opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: '100%', opacity: 0 }}
                             transition={{ type: 'spring', damping: 30, stiffness: 250 }}
                             className="absolute top-0 right-0 bottom-0 w-80 md:w-96 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
                             style={{
@@ -3080,13 +3047,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }}
                         >
                             {/* Dynamic GPU-accelerated water sheen overlay */}
-                            <div 
-                              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-                              style={{
-                                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (activeGlass.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                                opacity: (activeGlass.displacementScale / 120) * 0.9,
-                                animationDuration: `${30 * (0.35 / Math.max(0.1, activeGlass.elasticity))}s`
-                              }}
+                            <div
+                                className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
+                                style={{
+                                    background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (activeGlass.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+                                    opacity: (activeGlass.displacementScale / 120) * 0.9,
+                                    animationDuration: `${30 * (0.35 / Math.max(0.1, activeGlass.elasticity))}s`
+                                }}
                             />
 
                             {/* Glass Highlight Overlay */}
@@ -3102,7 +3069,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکانی پەخش' : 'Streaming Nodes'}
                                     </h3>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setShowSourceSwitcher(false)}
                                     className="p-2.5 bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-white rounded-full transition-all group"
                                 >
@@ -3110,21 +3077,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 </button>
                             </div>
 
-                            <motion.div 
+                            <motion.div
                                 variants={containerVariants}
                                 initial="hidden"
                                 animate="show"
-                                className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1" 
+                                className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1"
                                 dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                             >
                                 {sources.map((s, idx) => {
-                                    const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' : 
-                                                   s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' : 
-                                                   s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' : 
-                                                   s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
+                                    const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' :
+                                        s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' :
+                                            s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' :
+                                                s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
 
                                     const isActive = activeSource === s.name;
-                                    
+
                                     let loadPct = 18;
                                     let speed = '1.8 Gbps';
                                     let latency = '18ms';
@@ -3151,37 +3118,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     }
 
                                     return (
-                                        <motion.button 
+                                        <motion.button
                                             variants={cardVariants}
                                             whileHover={{ scale: 1.02, y: -2 }}
                                             whileTap={{ scale: 0.98 }}
                                             key={s.name}
-                                            onClick={() => { 
+                                            onClick={() => {
                                                 if (isActive) return;
                                                 if (setActiveSource) {
-                                                    setActiveSource(s.name); 
+                                                    setActiveSource(s.name);
                                                     setLoading(true);
                                                 }
                                                 setTimeout(() => {
-                                                    setShowSourceSwitcher(false); 
+                                                    setShowSourceSwitcher(false);
                                                 }, 800);
-                                            }} 
-                                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
-                                                isActive 
-                                                    ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
+                                            }}
+                                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${isActive
+                                                    ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10'
                                                     : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
-                                            }`}
+                                                }`}
                                         >
                                             {isActive && (
                                                 <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
-                                                    <div 
+                                                    <div
                                                         className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
                                                         style={{
                                                             background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
                                                             animation: 'neon-border-spin 3s linear infinite',
                                                         }}
                                                     />
-                                                    <div 
+                                                    <div
                                                         className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
                                                         style={{
                                                             background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
@@ -3193,7 +3159,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             )}
 
                                             {isActive && (
-                                                <motion.div 
+                                                <motion.div
                                                     layoutId="active-accent-line-univ-fs"
                                                     className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
                                                 />
@@ -3215,7 +3181,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         )}
 
                                                         {isActive && !loading && (
-                                                            <motion.div 
+                                                            <motion.div
                                                                 animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.5, 0.3] }}
                                                                 transition={{ duration: 3, repeat: Infinity }}
                                                                 className="absolute inset-0 bg-red-600/10 blur-xl rounded-full"
@@ -3234,16 +3200,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 </div>
 
                                                 <div className="flex flex-col items-end gap-1">
-                                                    <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                                                        isActive 
-                                                            ? loading 
-                                                                ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' 
+                                                    <div className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${isActive
+                                                            ? loading
+                                                                ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500'
                                                                 : 'bg-green-500/10 border-green-500/20 text-green-500'
                                                             : statusBg
-                                                    } ${isActive ? '' : statusColor}`}>
-                                                        {isActive 
-                                                            ? loading 
-                                                                ? ((language === 'ku' || language === 'badini') ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') 
+                                                        } ${isActive ? '' : statusColor}`}>
+                                                        {isActive
+                                                            ? loading
+                                                                ? ((language === 'ku' || language === 'badini') ? 'پەیوەندی دەبەسترێت...' : 'Connecting...')
                                                                 : ((language === 'ku' || language === 'badini') ? 'پەیوەستە' : 'Connected')
                                                             : statusText}
                                                     </div>
@@ -3258,7 +3223,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         <Zap size={10} className={isActive ? 'text-red-500' : 'text-gray-500'} />
                                                         <span>{speed}</span>
                                                     </div>
-                                                    
+
                                                     <div className="flex items-center gap-1.5 flex-row">
                                                         <Timer size={10} className="text-gray-500" />
                                                         <span>{latency}</span>
@@ -3272,12 +3237,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                                                 {/* Visual Load Progress Bar */}
                                                 <div className="w-full bg-white/5 rounded-full h-[3px] overflow-hidden relative">
-                                                    <div 
-                                                        className={`h-full rounded-full transition-all duration-500 ${
-                                                            loadPct > 60 
-                                                                ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]' 
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-500 ${loadPct > 60
+                                                                ? 'bg-gradient-to-r from-yellow-500 to-amber-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
                                                                 : 'bg-gradient-to-r from-red-500 to-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'
-                                                        }`} 
+                                                            }`}
                                                         style={{ width: `${loadPct}%` }}
                                                     />
                                                 </div>
@@ -3354,18 +3318,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                     {(language === 'ku' || language === 'badini') ? 'لیستی دۆبلاژەکان' : 'Dubbing & Audio Feeds'}
                                 </label>
-                                
+
                                 <div className="flex flex-col gap-3 max-h-[48vh] overflow-y-auto pr-2 custom-scrollbar">
                                     {/* 1. Kurdish Dubbed Feed */}
-                                    <div className={`p-4 rounded-[20px] border flex flex-col gap-3 transition-all relative overflow-hidden ${
-                                        kurdishDub 
+                                    <div className={`p-4 rounded-[20px] border flex flex-col gap-3 transition-all relative overflow-hidden ${kurdishDub
                                             ? 'bg-gradient-to-r from-yellow-500/10 to-red-500/5 border-yellow-500/30 shadow-[0_4px_24px_rgba(234,179,8,0.15)]'
                                             : 'bg-white/[0.02] border-white/5 opacity-60'
-                                    }`}>
+                                        }`}>
                                         <div className="flex items-center gap-3 relative z-10">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                                kurdishDub ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/5 border-white/10'
-                                            }`}>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${kurdishDub ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/5 border-white/10'
+                                                }`}>
                                                 {getLanguageFlag('ku')}
                                             </div>
                                             <div className="flex flex-col flex-1 min-w-0 text-left">
@@ -3386,11 +3348,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         </div>
 
                                         {kurdishDub ? (
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => {
                                                     const getRashabaId = (url: string) => {
-                                                        if (!url) return "mKkhrFhjQr3CKwz"; 
+                                                        if (!url) return "mKkhrFhjQr3CKwz";
                                                         const matches = url.match(/\/([a-zA-Z0-9]{12,20})\//);
                                                         if (matches) return matches[1];
                                                         const parts = url.split('/');
@@ -3406,18 +3368,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     const suffixTitle = baseTitle + ' Kurdish';
                                                     const connector = newSrc.includes('?') ? '&' : '?';
                                                     newSrc = `${newSrc}${connector}title=${encodeURIComponent(suffixTitle)}`;
-                                                    
+
                                                     setOverrideSrc(newSrc);
                                                     setActiveAudioTrack('ku');
                                                 }}
-                                                className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
-                                                    activeAudioTrack === 'ku'
+                                                className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${activeAudioTrack === 'ku'
                                                         ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'
                                                         : 'bg-white/10 hover:bg-white/20 text-white'
-                                                }`}
+                                                    }`}
                                             >
                                                 <Mic2 size={12} />
-                                                {activeAudioTrack === 'ku' 
+                                                {activeAudioTrack === 'ku'
                                                     ? ((language === 'ku' || language === 'badini') ? 'چالاکە' : 'ACTIVE AUDIO FEED')
                                                     : ((language === 'ku' || language === 'badini') ? 'گۆڕین بۆ دەنگی کوردی' : 'SWITCH TO KURDISH AUDIO')}
                                             </button>
@@ -3429,21 +3390,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </div>
 
                                     {/* 2. Original English Feed */}
-                                    <button 
+                                    <button
                                         type="button"
                                         onClick={() => {
                                             setOverrideSrc(null);
                                             setActiveAudioTrack('en');
                                         }}
-                                        className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
-                                            activeAudioTrack === 'en'
+                                        className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${activeAudioTrack === 'en'
                                                 ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
                                                 : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
-                                        }`}
+                                            }`}
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                            activeAudioTrack === 'en' ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${activeAudioTrack === 'en' ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                                            }`}>
                                             {getLanguageFlag('en')}
                                         </div>
                                         <div className="flex flex-col text-left flex-1 min-w-0">
@@ -3465,9 +3424,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             tr: { label: 'TURKISH', desc: 'TURKISH - دۆبلاژ', full: 'Turkish' },
                                         };
                                         const meta = langLabelMap[lang];
-                                        
+
                                         return (
-                                            <button 
+                                            <button
                                                 key={lang}
                                                 type="button"
                                                 onClick={() => {
@@ -3476,7 +3435,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         const match = src.match(/\/(movie|tv)\/([^/?#]+)/);
                                                         if (match) activeId = match[2];
                                                     }
-                                                    
+
                                                     // Custom Dubbed Title Suffixes
                                                     let baseTitle = title || '';
                                                     if (lang === 'fa' && translatedTitles.fa) baseTitle = translatedTitles.fa;
@@ -3493,11 +3452,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         const cleanSrc = targetSrc.includes('<iframe')
                                                             ? (targetSrc.match(/src=["'](.*?)["']/) || [])[1]
                                                             : targetSrc;
-                                                        
+
                                                         const urlObj = new URL(cleanSrc);
                                                         urlObj.searchParams.set('title', dubbedTitle);
                                                         urlObj.searchParams.set('dub', '1');
-                                                        
+
                                                         if (cleanSrc.includes('multiembed.mov') && activeId) {
                                                             const isImdb = activeId.startsWith('tt');
                                                             if (!isImdb) urlObj.searchParams.set('tmdb', '1');
@@ -3506,7 +3465,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 urlObj.searchParams.set('e', String(episode || 1));
                                                             }
                                                         }
-                                                        
+
                                                         targetSrc = urlObj.toString();
                                                     } catch (e) {
                                                         const connector = targetSrc.includes('?') ? '&' : '?';
@@ -3519,20 +3478,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             targetSrc = `${targetSrc}&dub=1`;
                                                         }
                                                     }
-                                                    
+
                                                     setOverrideSrc(targetSrc);
                                                     setActiveAudioTrack(lang);
                                                     setShowDubInfoModal(meta.full);
                                                 }}
-                                                className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${
-                                                    activeAudioTrack === lang
+                                                className={`w-full p-4 rounded-[20px] border flex items-center gap-3 transition-all ${activeAudioTrack === lang
                                                         ? 'bg-red-600/10 border-red-500/30 text-white shadow-[0_4px_20px_rgba(229,9,20,0.1)]'
                                                         : 'bg-white/[0.02] border-white/5 hover:border-white/10 text-gray-400 hover:text-white'
-                                                }`}
+                                                    }`}
                                             >
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
-                                                    activeAudioTrack === lang ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
-                                                }`}>
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${activeAudioTrack === lang ? 'bg-red-600/20 border-red-500/30' : 'bg-white/5 border-white/10'
+                                                    }`}>
                                                     {getLanguageFlag(lang)}
                                                 </div>
                                                 <div className="flex flex-col text-left flex-1 min-w-0">
@@ -3560,7 +3517,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 // Filename Episode Parser Helper
 function parseSeasonEpisodeFromFilename(filename: string, defaultSeason?: number): { season: number, episode: number } | null {
     const cleanName = filename.toLowerCase();
-    
+
     // Pattern 1: s01e02 or s1e2 or s01.e02 or s1_e2
     const sExMatch = cleanName.match(/s(\d+)\s*[_.-]?\s*e(\d+)/);
     if (sExMatch) {
@@ -3590,7 +3547,7 @@ function parseSeasonEpisodeFromFilename(filename: string, defaultSeason?: number
     if (sEpisodeMatch) {
         return { season: parseInt(sEpisodeMatch[1], 10), episode: parseInt(sEpisodeMatch[2], 10) };
     }
-    
+
     // Pattern 6: 1x02 or 01x02
     const xMatch = cleanName.match(/(\d+)\s*x\s*(\d+)/);
     if (xMatch) {

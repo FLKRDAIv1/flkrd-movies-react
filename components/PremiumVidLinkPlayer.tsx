@@ -1518,8 +1518,8 @@ export default function PremiumVidLinkPlayer({
           : 'w-full h-full'
       }`}
     >
-      {/* Top Controls */}
-      <div className="absolute top-[calc(1rem+env(safe-area-inset-top,0px))] right-[calc(1rem+env(safe-area-inset-right,0px))] z-50 flex items-center gap-3">
+      {/* Top Controls — always visible and interactive */}
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto">
         {type === 'tv' && onEpisodeChange && (
           <button 
             onClick={() => {
@@ -1527,14 +1527,14 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowSourceSwitcher(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
               showEpisodesPortal 
-                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
-                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
+                : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'
             }`}
           >
-            <Tv size={14} />
-            <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+            <Tv size={16} />
+            <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
           </button>
         )}
 
@@ -1546,14 +1546,14 @@ export default function PremiumVidLinkPlayer({
             setShowEpisodesPortal(false);
             setShowSourceSwitcher(false);
           }}
-          className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+          className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
             showSubSettings 
-              ? 'bg-red-600 border-red-500 text-white shadow-red-600/20' 
-              : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+              ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
+              : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'
           }`}
         >
-          <Subtitles size={14} />
-          <span className="text-[10px] font-black uppercase hidden sm:inline">Studio</span>
+          <Subtitles size={16} />
+          <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'CC'}</span>
         </button>
 
         {/* Relink Button */}
@@ -1564,36 +1564,33 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowEpisodesPortal(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 ${
+            className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
               showSourceSwitcher
-                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
-                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
+                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
+                : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'
             }`}
             title="Relink"
           >
-            <RefreshCcw size={14} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
-            <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
+            <RefreshCcw size={16} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
+            <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Relink'}</span>
           </button>
         )}
 
         {/* Fullscreen Button */}
         <button 
           onClick={toggleFullscreen}
-          className="transition-all duration-300 backdrop-blur-md border px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white hover:scale-105 active:scale-95"
+          className="transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl bg-black/70 border-white/20 text-white/90 hover:bg-white/20 active:scale-95"
           title={isFullscreen 
             ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
-            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
-          }
+            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
         >
-          {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-          <span className="text-[10px] font-black uppercase hidden sm:inline">
+          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+          <span className="text-[11px] font-black uppercase">
             {isFullscreen 
-              ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Minimize') 
-              : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')
-            }
+              ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit') 
+              : ((language === 'ku' || language === 'badini') ? 'شاشە' : 'Full')}
           </span>
         </button>
-
         {/* Ad-Blocker Badge */}
         <div className={`transition-all duration-500 ${isShieldActive ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-10 scale-50'}`}>
           <div className="bg-green-600/20 backdrop-blur-md border border-green-500/30 text-green-500 text-[10px] font-black px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl">
