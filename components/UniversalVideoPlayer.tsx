@@ -1163,37 +1163,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 (document as any).msFullscreenElement
             );
 
-            // iOS Safari PWA: use video.webkitEnterFullscreen() for HLS player
+            // iOS Safari / PWA: Force simulated fullscreen to keep custom web controls (CC, Episodes, Relink) visible
             const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
-            if (isIOSSafari && isHls && videoRef.current) {
-                if (isFull) {
-                    try {
-                        const exit = (document as any).webkitExitFullscreen || document.exitFullscreen;
-                        if (exit) exit.call(document);
-                    } catch (e) { }
-                    setIsFullscreen(false);
-                } else {
-                    const vid = videoRef.current as any;
-                    if (vid.webkitEnterFullscreen) {
-                        vid.webkitEnterFullscreen();
-                        setIsFullscreen(true);
-                        vid.addEventListener('webkitendfullscreen', () => {
-                            setIsFullscreen(false);
-                        }, { once: true });
-                    } else if (vid.webkitRequestFullscreen) {
-                        vid.webkitRequestFullscreen();
-                        setIsFullscreen(true);
-                    } else {
-                        setIsSimulatedFullscreen(true);
-                        setIsFullscreen(true);
-                    }
-                }
-                return;
-            }
-
-            // iOS Safari PWA with iframe: simulated fullscreen (browser blocks document.requestFullscreen)
-            if (isIOSSafari && isIframe) {
+            if (isIOSSafari) {
                 setIsSimulatedFullscreen(prev => !prev);
                 setIsFullscreen(prev => !prev);
                 return;
@@ -2248,7 +2221,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
             {/* Brand Watermark (top-left) */}
-            <div className="absolute top-4 left-4 md:top-6 md:left-6 z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500">
+            <div 
+                className="absolute z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
+                style={{
+                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                    left: 'calc(0.75rem + env(safe-area-inset-left, 0px))'
+                }}
+            >
                 <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
                     <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
                     <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
@@ -2256,7 +2235,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             </div>
 
             {/* Top-Right: Settings / Relink / Fullscreen — always visible */}
-            <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-center gap-2 md:gap-3">
+            <div 
+                className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+                style={{
+                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                    right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
+                }}
+            >
                 {contentType === 'tv' && onEpisodeChange && (
                     <button
                         onClick={() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }}
@@ -2364,6 +2349,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     muted
                     autoPlay
                     playsInline
+                    playsinline={true}
+                    // @ts-ignore
+                    webkit-playsinline="true"
                     preload="auto"
                     crossOrigin="anonymous"
                     onTimeUpdate={(e) => {
@@ -2734,13 +2722,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
                         transition={{ type: 'spring', damping: 24, stiffness: 100 }}
-                        className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+                        className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
                         style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
                             background: 'radial-gradient(circle at 50% -20%, rgba(220, 38, 38, 0.28), transparent 72%), linear-gradient(to bottom, rgba(8, 8, 12, 0.45) 0%, rgba(3, 3, 5, 0.6) 100%)',
                             backdropFilter: 'blur(35px) saturate(210%)',
                             WebkitBackdropFilter: 'blur(35px) saturate(210%)',
-                            boxShadow: '0 20px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                            boxShadow: '0 20px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                            paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
+                            paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))',
+                            paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+                            paddingBottom: '1.25rem'
                         }}
                     >
                         {/* Header Row */}
@@ -3029,7 +3021,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: '100%', opacity: 0 }}
                             transition={{ type: 'spring', damping: 30, stiffness: 250 }}
-                            className="absolute top-0 right-0 bottom-0 w-80 md:w-96 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+                            className="absolute top-0 right-0 bottom-0 w-80 md:w-96 z-[300] overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
                             style={{
                                 background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${activeGlass.redOpacity}), transparent 85%), rgba(10, 10, 10, ${activeGlass.darkOpacity})`,
                                 backdropFilter: `blur(${activeGlass.blurAmount}px) saturate(${activeGlass.saturation}%)`,
@@ -3037,6 +3029,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 borderColor: `rgba(var(--brand-red-rgb), ${activeGlass.borderOpacity})`,
                                 borderLeftWidth: '1px',
                                 borderStyle: 'solid',
+                                paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+                                paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+                                paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+                                paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))',
                                 boxShadow: `
                                   inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + activeGlass.borderOpacity * 0.45}),
                                   inset ${activeGlass.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),

@@ -1519,7 +1519,13 @@ export default function PremiumVidLinkPlayer({
       }`}
     >
       {/* Top Controls — always visible and interactive */}
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto">
+      <div 
+        className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+        style={{
+          top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+          right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
+        }}
+      >
         {type === 'tv' && onEpisodeChange && (
           <button 
             onClick={() => {
@@ -1976,8 +1982,14 @@ export default function PremiumVidLinkPlayer({
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '-100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 24, stiffness: 100 }}
-              className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] px-6 py-5 md:py-6 flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
-              style={{ fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif" }}
+              className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+              style={{ 
+                fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
+                paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
+                paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))',
+                paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+                paddingBottom: '1.25rem'
+              }}
             >
               {/* Header Row */}
               <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
@@ -2333,7 +2345,13 @@ export default function PremiumVidLinkPlayer({
             animate={{ x: 0, opacity: 1 }} 
             exit={{ x: '100%', opacity: 0 }} 
             transition={{ type: 'spring', damping: 30, stiffness: 250 }}
-            className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-[#070707]/90 backdrop-blur-3xl border-l border-white/10 z-[300] p-6 overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+            className="absolute top-0 right-0 bottom-0 w-80 md:w-96 bg-[#070707]/90 backdrop-blur-3xl border-l border-white/10 z-[300] overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+            style={{
+              paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))',
+              paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+              paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+              paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))'
+            }}
           >
             {/* High Performance Hardware Accelerated Gradient Glow (Zero CPU Overhead) */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">

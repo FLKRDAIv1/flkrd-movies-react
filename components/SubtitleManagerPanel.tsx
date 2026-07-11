@@ -347,6 +347,9 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
               WebkitBackdropFilter: isMobile ? `blur(16px) saturate(140%)` : `blur(28px) saturate(160%)`,
               transform: 'translate3d(0,0,0)',
               borderColor: 'rgba(255, 255, 255, 0.08)',
+              paddingLeft: 'env(safe-area-inset-left, 0px)',
+              paddingRight: 'env(safe-area-inset-right, 0px)',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
               boxShadow: `
                 inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
                 inset 1.5px 0 0.5px rgba(255, 0, 80, 0.08),
