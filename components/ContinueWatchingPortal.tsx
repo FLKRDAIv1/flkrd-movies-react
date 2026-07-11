@@ -46,8 +46,11 @@ const ContinueWatchingPortal: React.FC = () => {
     loadProgressHistory();
     
     const syncHandler = () => loadProgressHistory();
+    const toggleHandler = () => setIsExpanded(prev => !prev);
+
     window.addEventListener('storage', syncHandler);
     window.addEventListener('watchProgressUpdated', syncHandler);
+    window.addEventListener('flkrd_toggle_continue_watching', toggleHandler);
     window.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') loadProgressHistory();
     });
@@ -56,6 +59,7 @@ const ContinueWatchingPortal: React.FC = () => {
     return () => {
       window.removeEventListener('storage', syncHandler);
       window.removeEventListener('watchProgressUpdated', syncHandler);
+      window.removeEventListener('flkrd_toggle_continue_watching', toggleHandler);
       window.removeEventListener('visibilitychange', syncHandler);
       clearInterval(interval);
     };
@@ -189,7 +193,7 @@ const ContinueWatchingPortal: React.FC = () => {
           whileHover={{ scale: 1.05 }} 
           whileTap={{ scale: 0.95 }} 
           onClick={() => setIsExpanded(!isExpanded)} 
-          className="relative w-16 h-16 md:w-20 md:h-20 rounded-full group cursor-pointer shadow-2xl"
+          className="relative w-16 h-16 md:w-20 md:h-20 rounded-full group cursor-pointer shadow-2xl hidden md:block"
         >
           <div className="absolute inset-0 rounded-full bg-red-600/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           
