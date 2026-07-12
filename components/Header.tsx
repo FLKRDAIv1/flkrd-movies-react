@@ -610,6 +610,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
             {/* Glassmorphic Side Panel */}
             <motion.div
+              dir="ltr"
               initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               animate={{ x: 0 }}
               exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
@@ -656,7 +657,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   }}
                 />
               </div>
-              <div className="relative z-10 flex flex-col h-full w-full">
+              <div className="relative z-10 flex flex-col h-full w-full" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
               
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-5 border-b border-white/5">
