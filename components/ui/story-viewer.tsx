@@ -20,6 +20,7 @@ export interface StoryViewerProps {
   onStoryView?: (storyId: string) => void;
   onAllStoriesViewed?: () => void;
   className?: string;
+  size?: "sm" | "md";
 }
 
 const DEFAULT_IMAGE_DURATION = 5000;
@@ -63,6 +64,7 @@ interface StoryThumbnailProps {
   viewedIndices: Set<number>;
   onClick: () => void;
   className?: string;
+  size?: "sm" | "md";
 }
 
 function StoryThumbnail({
@@ -72,6 +74,7 @@ function StoryThumbnail({
   viewedIndices,
   onClick,
   className,
+  size = "md",
 }: StoryThumbnailProps) {
   const segmentCount = stories.length;
   const gapDegrees = segmentCount > 1 ? 12 : 0;
@@ -80,19 +83,23 @@ function StoryThumbnail({
 
   const lastStory = stories[stories.length - 1];
 
+  const sizeClass = size === "sm" ? "w-14 h-14" : "w-[72px] h-[72px]";
+  const insetClass = size === "sm" ? "absolute inset-[3px] rounded-full bg-black p-[1.5px]" : "absolute inset-[4px] rounded-full bg-black p-[2px]";
+  const labelClass = size === "sm" ? "text-[8px] font-black uppercase tracking-widest text-white/80 truncate max-w-[60px]" : "text-[10px] font-black uppercase tracking-widest text-white/80 truncate max-w-[80px]";
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex flex-col items-center gap-2 group cursor-pointer",
+        "relative flex flex-col items-center gap-1.5 group cursor-pointer",
         "bg-transparent border-none outline-none",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-lg",
         className
       )}
       aria-label={`View ${username}'s stories`}
     >
-      <div className="relative w-[72px] h-[72px]">
+      <div className={cn("relative", sizeClass)}>
         <svg
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 100 100"
@@ -129,7 +136,7 @@ function StoryThumbnail({
           })}
         </svg>
 
-        <div className="absolute inset-[4px] rounded-full bg-black p-[2px]">
+        <div className={insetClass}>
           <div className="w-full h-full rounded-full overflow-hidden bg-white/5 relative">
             {lastStory.type === "video" ? (
               <video
@@ -151,7 +158,7 @@ function StoryThumbnail({
         </div>
       </div>
 
-      <span className="text-[10px] font-black uppercase tracking-widest text-white/80 truncate max-w-[80px]">
+      <span className={labelClass}>
         {username}
       </span>
     </button>
@@ -703,6 +710,7 @@ const StoryViewer = React.forwardRef<HTMLDivElement, StoryViewerProps>(
       onStoryView,
       onAllStoriesViewed,
       className,
+      size = "md",
     },
     ref
   ) => {
@@ -755,6 +763,7 @@ const StoryViewer = React.forwardRef<HTMLDivElement, StoryViewerProps>(
               avatar={avatar}
               viewedIndices={viewedIndices}
               onClick={handleOpen}
+              size={size as "sm" | "md"}
             />
           </div>
         </div>

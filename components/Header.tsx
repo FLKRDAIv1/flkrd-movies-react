@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { WatchProgress } from '../types';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import AnimatedThemeToggler from './ui/animated-theme-toggler';
+import StoryReels from './StoryReels';
 
 const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -27,6 +28,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
+  const isHomePage = pathname === '/';
 
   useEffect(() => {
     const loadHistory = () => {
@@ -591,9 +593,24 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 <Cog className="w-5 h-5 lg:w-5.5 lg:h-5.5" />
               </button>
             )}
-          </div>
-
         </div>
+
+      </div>
+
+        {/* Stories Sub-Row (Only on HomePage, at the top of the page) */}
+        <AnimatePresence>
+          {isHomePage && !scrolled && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="border-t border-white/5 bg-black/20"
+            >
+              <StoryReels size="sm" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* Mobile Slide-Over Menu Drawer */}

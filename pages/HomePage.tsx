@@ -14,7 +14,6 @@ import { bannedService } from '../services/bannedService';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { API_KEY, API_BASE_URL } from '../constants';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
-import StoryReels from '../components/StoryReels';
 import { useUI } from '../contexts/UIContext';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
@@ -305,9 +304,6 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="pb-40 relative">
-      <div className="absolute top-24 md:top-32 left-0 right-0 z-50">
-        <StoryReels />
-      </div>
       <HeroBanner />
 
       <div className="relative z-20 mt-6 md:-mt-12">
