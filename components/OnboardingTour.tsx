@@ -301,6 +301,8 @@ const OnboardingTour: React.FC = () => {
 
   // Helper to dynamically position the card in responsive layouts
   const getCardStyle = () => {
+    const isMobile = window.innerWidth < 768;
+
     if (displayRect.width === 0 || !currentStep || currentStep.selector === 'body' || isNavigating) {
       return {
         position: 'fixed' as const,
@@ -310,6 +312,27 @@ const OnboardingTour: React.FC = () => {
         zIndex: 999999,
         width: 'calc(100% - 32px)',
         maxWidth: '380px',
+      };
+    }
+
+    if (isMobile) {
+      // On mobile, center horizontally and determine top/bottom based on spotlight center
+      const spotlightCenterY = displayRect.top + displayRect.height / 2;
+      const isSpotlightInBottomHalf = spotlightCenterY > window.innerHeight / 2;
+
+      return {
+        position: 'fixed' as const,
+        left: '16px',
+        right: '16px',
+        width: 'calc(100% - 32px)',
+        zIndex: 999999,
+        // Place in top half if spotlight is in bottom half, else place at bottom
+        top: isSpotlightInBottomHalf 
+          ? 'calc(1.5rem + env(safe-area-inset-top, 0px))' 
+          : 'auto',
+        bottom: isSpotlightInBottomHalf 
+          ? 'auto' 
+          : 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
       };
     }
 
