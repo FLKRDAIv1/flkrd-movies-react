@@ -7,7 +7,7 @@ import {
     Link as LinkIcon, Sparkles,
     Activity, Info, Star, ChevronRight, Share, Copy,
     Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, ShieldAlert,
-    ArrowUp, ArrowDown, Server, Plus
+    ArrowUp, ArrowDown, Server, Plus, Tv, Subtitles, Maximize, RefreshCcw
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -267,7 +267,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
-    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers' | 'glass'>('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers' | 'glass' | 'mobilenav' | 'oneboard' | 'player'>('upload');
     const [serversList, setServersList] = useState<{ id: number; server_name: string; priority: number }[]>([]);
     const [isLoadingServers, setIsLoadingServers] = useState(false);
     const [isSavingServers, setIsSavingServers] = useState(false);
@@ -1670,6 +1670,9 @@ const DubbedMoviesPage: React.FC = () => {
                                         <button onClick={() => setActiveAdminTab('oneboard')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'oneboard' ? 'bg-teal-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <Sparkles size={16} className="text-teal-400 animate-pulse" /> گەشتی وێبسایت
                                         </button>
+                                        <button onClick={() => setActiveAdminTab('player')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'player' ? 'bg-yellow-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <Sparkles size={16} className="text-yellow-400 animate-pulse" /> شوێنی دوگمەکان
+                                        </button>
                                         <button onClick={() => setActiveAdminTab('banned')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
@@ -2048,6 +2051,10 @@ const DubbedMoviesPage: React.FC = () => {
 
                                         {activeAdminTab === 'oneboard' && (
                                             <OnboardingCustomizer />
+                                        )}
+
+                                        {activeAdminTab === 'player' && (
+                                            <PlayerControlsCustomizer />
                                         )}
                                     </div>
                                 </motion.div>
@@ -3020,6 +3027,165 @@ const MobileNavCustomizer: React.FC = () => {
             >
                 {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
                 تۆمارکردن و بڵاوکردنەوەی ناو بار مۆبایل (Save & Apply Mobile Nav)
+            </button>
+        </div>
+    );
+};
+
+const PlayerControlsCustomizer: React.FC = () => {
+    const { playerConfig, updatePlayerConfig } = useUI();
+    const { addNotification } = useNotification();
+    const [localConfig, setLocalConfig] = useState<any>(playerConfig);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setLocalConfig(playerConfig);
+    }, [playerConfig]);
+
+    if (!localConfig) return null;
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const success = await updatePlayerConfig(localConfig);
+            if (success) {
+                addNotification({
+                    type: 'success',
+                    title: 'سەرکەوتوو بوو',
+                    message: 'شوێن و دیزاینی دوگمەکانی پلەیەر بە سەرکەوتوویی بۆ هەمووان نوێکرایەوە!'
+                });
+            } else {
+                throw new Error("Failed to save");
+            }
+        } catch (e) {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک هەیە',
+                message: 'تۆمارکردنی شوێنی دوگمەکان سەرنەکەوت.'
+            });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="space-y-6 text-right" style={{ direction: 'rtl' }}>
+            <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <Sparkles className="text-yellow-500" size={16} />
+                    ڕێکخستنی شوێنی دوگمەکانی پلەیەر (Player Controls Position)
+                </h3>
+                <p className="text-[10px] text-gray-400">
+                    لێرەوە دەتوانیت شوێنی دوگمە نێوخۆییەکانی پلەیەر (وەک CC، Episodes، Relink، Fullscreen) بگۆڕیت بۆ سەرەوە یان خوارەوەی شاشەی فیلمەکە.
+                </p>
+            </div>
+
+            {/* Simulated Live Preview Box */}
+            <div className="space-y-2">
+                <span className="text-[11px] font-black uppercase text-gray-400 block text-right">دیمەنی تاقیکاری پلەیەر (Live Player Preview)</span>
+                <div className="relative w-full h-44 bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center">
+                    {/* Simulated video track */}
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(229,9,20,0.08)_0%,transparent_70%)]" />
+                    
+                    {/* Play Button in Center */}
+                    <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 relative z-10 shadow-lg">
+                        <Play size={20} fill="currentColor" className="ml-1" />
+                    </div>
+
+                    {/* Simulated Close button Top-Left */}
+                    <div className="absolute top-3 left-3 w-7 h-7 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center text-gray-400">
+                        <X size={12} />
+                    </div>
+
+                    {/* Simulated Watermark logo */}
+                    <div className="absolute top-3 left-12 w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40 text-xs font-black">
+                        F
+                    </div>
+
+                    {/* Action buttons (The ones we are moving) */}
+                    <div 
+                        className="absolute flex items-center gap-1.5 transition-all duration-300"
+                        style={{
+                            top: localConfig.controlsAlign === 0 ? `${localConfig.controlsOffset * 0.75}px` : 'auto',
+                            bottom: localConfig.controlsAlign === 1 ? `${localConfig.controlsOffset * 0.75}px` : 'auto',
+                            left: 'auto',
+                            right: '0.75rem',
+                        }}
+                    >
+                        <div className="bg-red-600 border border-red-500 text-white rounded-lg px-2 py-1 text-[8px] font-black uppercase flex items-center gap-1 shadow-md">
+                            <Tv size={10} />
+                            <span>EPISODES</span>
+                        </div>
+                        <div className="bg-white/10 border border-white/20 text-white/90 rounded-lg px-2 py-1 text-[8px] font-black uppercase flex items-center gap-1">
+                            <Subtitles size={10} />
+                            <span>CC</span>
+                        </div>
+                        <div className="bg-white/10 border border-white/20 text-white/90 rounded-lg px-2 py-1 text-[8px] font-black uppercase flex items-center gap-1">
+                            <RefreshCcw size={10} />
+                            <span>RELINK</span>
+                        </div>
+                        <div className="bg-white/10 border border-white/20 text-white/90 rounded-lg px-2 py-1 text-[8px] font-black uppercase flex items-center gap-1">
+                            <Maximize size={10} />
+                            <span>FULL</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Customizer controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                {/* Position Type */}
+                <div className="space-y-1.5 text-right">
+                    <span className="text-[11px] font-black uppercase text-gray-400 block mb-1">ئاراستەی نیشاندان (Alignment)</span>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setLocalConfig({ ...localConfig, controlsAlign: 0 })}
+                            className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
+                                localConfig.controlsAlign === 0
+                                    ? 'bg-rose-600 text-white border border-rose-500 shadow-lg shadow-rose-600/20'
+                                    : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                            سەرەوە (Top Controls)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setLocalConfig({ ...localConfig, controlsAlign: 1 })}
+                            className={`flex-1 py-3 rounded-xl text-xs font-black transition-all ${
+                                localConfig.controlsAlign === 1
+                                    ? 'bg-rose-600 text-white border border-rose-500 shadow-lg shadow-rose-600/20'
+                                    : 'bg-white/5 text-gray-400 border border-white/10 hover:text-white hover:bg-white/10'
+                            }`}
+                        >
+                            خوارەوە (Bottom Controls)
+                        </button>
+                    </div>
+                </div>
+
+                {/* Vertical Offset */}
+                <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                        <span>دووری لە لێوارەکەوە (Offset)</span>
+                        <span className="font-mono text-rose-500">{localConfig.controlsOffset}px</span>
+                    </div>
+                    <input
+                        type="range" min="8" max="120" step="1"
+                        value={localConfig.controlsOffset}
+                        onChange={(e) => setLocalConfig({ ...localConfig, controlsOffset: Number(e.target.value) })}
+                        className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                    />
+                </div>
+            </div>
+
+            {/* Save Button */}
+            <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full py-4 rounded-[1.5rem] bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-[1000] uppercase tracking-[0.3em] flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+                {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
+                سەیڤکردن و کاراکردن بۆ هەمووان (Save & Apply Player Layout)
             </button>
         </div>
     );

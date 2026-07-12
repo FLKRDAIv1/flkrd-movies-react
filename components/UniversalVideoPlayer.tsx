@@ -213,7 +213,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     setActiveSource,
     sources = []
 }) => {
-    const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
+    const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
     const navigate = useNavigate();
     const isIOSDevice = typeof window !== 'undefined' && (
         /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -2633,11 +2633,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 </div>
             </div>
 
-            {/* Top-Right: CC / Relink / Fullscreen — ABSOLUTE so they sit inside the player boundary and don't clash with page header */}
+            {/* Action buttons (CC, Relink, Fullscreen, Episodes) with dynamic position styling managed by the admin customizer */}
             <div 
                 className="absolute z-[100] flex items-center gap-2 md:gap-3 pointer-events-auto"
                 style={{
-                    top: '1rem',
+                    top: playerConfig.controlsAlign === 0 ? `${playerConfig.controlsOffset}px` : 'auto',
+                    bottom: playerConfig.controlsAlign === 1 ? `${playerConfig.controlsOffset}px` : 'auto',
                     right: '1rem',
                     transform: 'translate3d(0, 0, 0)',
                     WebkitTransform: 'translate3d(0, 0, 0)'

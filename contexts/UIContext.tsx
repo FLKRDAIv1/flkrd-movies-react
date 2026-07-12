@@ -47,6 +47,11 @@ export interface MobileNavConfig {
   borderRadius: number;
 }
 
+export interface PlayerConfig {
+  controlsAlign: number; // 0 = Top, 1 = Bottom
+  controlsOffset: number; // offset in pixels
+}
+
 export interface ActiveTranslationState {
   isTranslating: boolean;
   progress: number;
@@ -92,6 +97,9 @@ interface UIContextType {
   startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number) => Promise<void>;
   cancelGlobalTranslation: () => void;
   dismissCelebration: () => void;
+
+  playerConfig: PlayerConfig;
+  updatePlayerConfig: (config: PlayerConfig) => Promise<boolean>;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -189,6 +197,32 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     } catch (e) {}
   }, [mobileNavConfig]);
 
+  const defaultPlayerConfig: PlayerConfig = {
+    controlsAlign: 0,
+    controlsOffset: 16,
+  };
+
+  const [playerConfig, setPlayerConfig] = useState<PlayerConfig>(() => {
+    try {
+      const saved = localStorage.getItem('flkrd_player_config');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          parsed.controlsAlign = parsed.controlsAlign ?? 0;
+          parsed.controlsOffset = parsed.controlsOffset ?? 16;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return defaultPlayerConfig;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('flkrd_player_config', JSON.stringify(playerConfig));
+    } catch (e) {}
+  }, [playerConfig]);
+
   useEffect(() => {
     try {
       localStorage.setItem('flkrd_glass_config', JSON.stringify(glassConfig));
@@ -228,9 +262,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           localStorage.setItem('playerSourceScores', JSON.stringify(scores));
           window.dispatchEvent(new Event('player-source-scores-updated'));
 
-          // Sync glass customizer configurations
+           // Sync glass customizer configurations
           const newConfig: Partial<GlassConfig> = {};
           const newMobileNav: Partial<MobileNavConfig> = {};
+          const newPlayerConfig: Partial<PlayerConfig> = {};
           data.forEach(row => {
             if (row.server_name === 'glass_blur_amount') newConfig.blurAmount = row.priority;
             if (row.server_name === 'glass_saturation') newConfig.saturation = row.priority;
@@ -267,6 +302,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (row.server_name === 'mobilenav_items_gap') newMobileNav.itemsGap = row.priority;
             if (row.server_name === 'mobilenav_bottom_offset') newMobileNav.bottomOffset = row.priority;
             if (row.server_name === 'mobilenav_border_radius') newMobileNav.borderRadius = row.priority;
+
+            // Player controls config keys
+            if (row.server_name === 'player_controls_align') newPlayerConfig.controlsAlign = row.priority;
+            if (row.server_name === 'player_controls_offset') newPlayerConfig.controlsOffset = row.priority;
           });
           
           if (Object.keys(newConfig).length > 0) {
@@ -274,6 +313,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           }
           if (Object.keys(newMobileNav).length > 0) {
             setMobileNavConfig(prev => ({ ...prev, ...newMobileNav }));
+          }
+          if (Object.keys(newPlayerConfig).length > 0) {
+            setPlayerConfig(prev => ({ ...prev, ...newPlayerConfig }));
           }
         }
       } catch (err) {
@@ -491,6 +533,56 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const updatePlayerConfig = async (config: PlayerConfig): Promise<boolean> => {
+    try {
+      const { data: currentRows, error: fetchError } = await supabase
+        .from('server_config')
+        .select('id, server_name');
+      
+      if (fetchError) throw fetchError;
+
+      const rowMap = new Map<string, number>();
+      let maxId = 0;
+      if (currentRows) {
+        currentRows.forEach(row => {
+          rowMap.set(row.server_name, row.id);
+          if (row.id > maxId) {
+            maxId = row.id;
+          }
+        });
+      }
+
+      const keys = [
+        { key: 'player_controls_align', val: config.controlsAlign ?? 0 },
+        { key: 'player_controls_offset', val: config.controlsOffset ?? 16 },
+      ];
+
+      let nextId = maxId + 1;
+      const upserts = keys.map(item => {
+        const dbId = rowMap.get(item.key);
+        if (dbId) {
+          return { id: dbId, server_name: item.key, priority: item.val };
+        } else {
+          const assignedId = nextId;
+          nextId++;
+          return { id: assignedId, server_name: item.key, priority: item.val };
+        }
+      });
+
+      const { error: upsertError } = await supabase
+        .from('server_config')
+        .upsert(upserts);
+
+      if (upsertError) throw upsertError;
+
+      setPlayerConfig(config);
+      return true;
+    } catch (err) {
+      console.error('[UI CONTEXT] Failed to update player config:', err);
+      return false;
+    }
+  };
+
   const [translatedMovieIds, setTranslatedMovieIds] = useState<Set<string>>(new Set());
 
   const refreshTranslatedMovieIds = async () => {
@@ -685,7 +777,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
       activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
-      mobileNavConfig, updateMobileNavConfig
+      mobileNavConfig, updateMobileNavConfig,
+      playerConfig, updatePlayerConfig
     }}>
       {children}
     </UIContext.Provider>
