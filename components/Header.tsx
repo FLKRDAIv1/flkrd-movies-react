@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
-import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw } from 'lucide-react';
+import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import NotificationInbox from './NotificationInbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -239,6 +239,22 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 <span className="italic">{t('continueWatching')}</span>
               </button>
             )}
+
+            {/* Tour Guide Trigger Button */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('flkrd_start_onboarding_tour'))}
+              className="hidden lg:flex items-center gap-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all border border-white/5 active:scale-95 cursor-pointer focus:outline-none"
+              style={{
+                background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.15})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.15})`,
+              }}
+              aria-label="Start Tour Guide"
+            >
+              <HelpCircle className="w-4 h-4 text-rose-500 animate-pulse" />
+              <span>ڕێبەری گەشت</span>
+            </button>
 
             {/* History Dropdown Control */}
             <div className="relative" ref={historyRef}>

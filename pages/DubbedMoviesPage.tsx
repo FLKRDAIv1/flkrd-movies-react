@@ -7,7 +7,7 @@ import {
     Link as LinkIcon, Sparkles,
     Activity, Info, Star, ChevronRight, Share, Copy,
     Trash2, ListVideo, PlusCircle, Edit2, RefreshCw, TrendingUp, Search, ShieldAlert,
-    ArrowUp, ArrowDown, Server
+    ArrowUp, ArrowDown, Server, Plus
 } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
@@ -1667,6 +1667,9 @@ const DubbedMoviesPage: React.FC = () => {
                                         <button onClick={() => setActiveAdminTab('mobilenav')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'mobilenav' ? 'bg-rose-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <Sparkles size={16} className="text-rose-400 animate-pulse" /> مۆبایل بار
                                         </button>
+                                        <button onClick={() => setActiveAdminTab('oneboard')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'oneboard' ? 'bg-teal-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <Sparkles size={16} className="text-teal-400 animate-pulse" /> گەشتی وێبسایت
+                                        </button>
                                         <button onClick={() => setActiveAdminTab('banned')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
@@ -2040,6 +2043,10 @@ const DubbedMoviesPage: React.FC = () => {
 
                                         {activeAdminTab === 'mobilenav' && (
                                             <MobileNavCustomizer />
+                                        )}
+
+                                        {activeAdminTab === 'oneboard' && (
+                                            <OnboardingCustomizer />
                                         )}
                                     </div>
                                 </motion.div>
@@ -3016,6 +3023,339 @@ const MobileNavCustomizer: React.FC = () => {
                 {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
                 تۆمارکردن و بڵاوکردنەوەی ناو بار مۆبایل (Save & Apply Mobile Nav)
             </button>
+        </div>
+    );
+};
+
+const OnboardingCustomizer: React.FC = () => {
+    const [steps, setSteps] = useState<any[]>([]);
+    const [isSaving, setIsSaving] = useState<number | null>(null); // tracks step ID being saved
+    const [isCreating, setIsCreating] = useState(false);
+    const { addNotification } = useNotification();
+
+    // New Step form states
+    const [newStepKey, setNewStepKey] = useState('');
+    const [newTitle, setNewTitle] = useState('');
+    const [newDesc, setNewDesc] = useState('');
+    const [newMedia, setNewMedia] = useState('');
+    const [newSelector, setNewSelector] = useState('');
+    const [newPriority, setNewPriority] = useState(10);
+
+    const fetchSteps = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('onboarding_steps')
+                .select('*')
+                .order('priority', { ascending: true });
+            if (error) throw error;
+            if (data) setSteps(data);
+        } catch (e) {
+            console.error("Failed to load onboarding steps:", e);
+        }
+    };
+
+    useEffect(() => {
+        fetchSteps();
+    }, []);
+
+    const handleUpdateStep = async (stepId: number, updatedFields: any) => {
+        setIsSaving(stepId);
+        try {
+            const { error } = await supabase
+                .from('onboarding_steps')
+                .update(updatedFields)
+                .eq('id', stepId);
+
+            if (error) throw error;
+            addNotification({
+                type: 'success',
+                title: 'تۆمار کرا',
+                message: 'هەنگاوی ڕێبەرەکە بە سەرکەوتوویی نوێکرایەوە!'
+            });
+            fetchSteps();
+        } catch (e) {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک ڕوویدا',
+                message: 'پەیوەندی لەگەڵ سێرڤەر سەرنەکەوت.'
+            });
+        } finally {
+            setIsSaving(null);
+        }
+    };
+
+    const handleDeleteStep = async (stepId: number) => {
+        if (!confirm('ئایا دڵنیایت لە سڕینەوەی ئەم هەنگاوە؟')) return;
+        try {
+            const { error } = await supabase
+                .from('onboarding_steps')
+                .delete()
+                .eq('id', stepId);
+
+            if (error) throw error;
+            addNotification({
+                type: 'success',
+                title: 'سڕایەوە',
+                message: 'هەنگاوەکە بە سەرکەوتوویی سڕایەوە.'
+            });
+            fetchSteps();
+        } catch (e) {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک ڕوویدا',
+                message: 'سەرنەکەوت لە سڕینەوە.'
+            });
+        }
+    };
+
+    const handleCreateStep = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newStepKey || !newTitle || !newDesc) {
+            alert('تکایە خانە سەرەکییەکان پڕ بکەرەوە!');
+            return;
+        }
+
+        setIsCreating(true);
+        try {
+            const { error } = await supabase
+                .from('onboarding_steps')
+                .insert([{
+                    step_key: newStepKey,
+                    title_ku: newTitle,
+                    description_ku: newDesc,
+                    media_url: newMedia || null,
+                    selector: newSelector || null,
+                    priority: Number(newPriority)
+                }]);
+
+            if (error) throw error;
+            addNotification({
+                type: 'success',
+                title: 'زیاد کرا',
+                message: 'هەنگاوی نوێ بە سەرکەوتوویی بۆ گەشتەکە زیاد کرا!'
+            });
+            
+            // Reset form
+            setNewStepKey('');
+            setNewTitle('');
+            setNewDesc('');
+            setNewMedia('');
+            setNewSelector('');
+            setNewPriority(10);
+            
+            fetchSteps();
+        } catch (e: any) {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک ڕوویدا',
+                message: e.message || 'پەیوەندی سەرنەکەوت.'
+            });
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    const triggerTestTour = () => {
+        window.dispatchEvent(new CustomEvent('flkrd_start_onboarding_tour'));
+        addNotification({
+            type: 'info',
+            title: 'تاقیکردنەوەی گەشت',
+            message: 'ڕێبەری گەشتەکە ئێستا چالاک بوو بۆ پێداچوونەوەی ناوخۆیی!'
+        });
+    };
+
+    return (
+        <div className="space-y-6 pb-6 text-right animate-fadeIn" dir="rtl">
+            
+            {/* Intro */}
+            <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between gap-4">
+                <div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider mb-2">ڕێبەری گەشت و فێرکاری وێبسایت (OneBoard Tour Customizer)</h3>
+                    <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                        لەم بەشەدا دەتوانیت سەرجەم هەنگاوەکانی گەشتی فێرکاری وێبسایت بۆ بەکارهێنەرانی سەرەتا بەڕێوەببەیت. دەتوانیت ناونیشان، لێکدانەوە، وێنەی جوڵاو (GIF)، و بەشی لێڵکردن (CSS Selector) بۆ هەر هەنگاوێک دیاری بکەیت.
+                    </p>
+                </div>
+                <button
+                    onClick={triggerTestTour}
+                    className="flex-shrink-0 px-5 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-[1000] uppercase tracking-wider flex items-center gap-2 active:scale-95 transition-all shadow-md"
+                >
+                    <Sparkles size={14} className="animate-pulse" /> تاقیکردنەوەی گەشت
+                </button>
+            </div>
+
+            {/* Steps list */}
+            <div className="space-y-4">
+                <h4 className="text-xs font-black text-teal-400 uppercase tracking-widest px-1">هەنگاوە تۆمارکراوەکان ({steps.length})</h4>
+                
+                {steps.map((step) => (
+                    <div 
+                        key={step.id} 
+                        className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4 hover:border-teal-500/30 transition-colors"
+                    >
+                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span className="text-[10px] font-mono text-gray-500 uppercase">Key: {step.step_key}</span>
+                            <button
+                                onClick={() => handleDeleteStep(step.id)}
+                                className="text-red-500 hover:text-red-400 text-[10px] font-black uppercase tracking-widest"
+                            >
+                                سڕینەوە
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Title */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400">ناونیشانی هەنگاو (Title - KU)</label>
+                                <input 
+                                    type="text" 
+                                    defaultValue={step.title_ku}
+                                    onBlur={(e) => handleUpdateStep(step.id, { title_ku: e.target.value })}
+                                    className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                />
+                            </div>
+
+                            {/* Selector */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400">بەشی نیشانەکراو (CSS Selector)</label>
+                                <input 
+                                    type="text" 
+                                    defaultValue={step.selector}
+                                    onBlur={(e) => handleUpdateStep(step.id, { selector: e.target.value })}
+                                    className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                    placeholder="e.g. .global-search-trigger"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400">لێکدانەوە و ڕوونکردنەوە (Description - KU)</label>
+                            <textarea 
+                                defaultValue={step.description_ku}
+                                onBlur={(e) => handleUpdateStep(step.id, { description_ku: e.target.value })}
+                                rows={2}
+                                className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors resize-none"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            {/* Media URL */}
+                            <div className="col-span-2 space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400">لینک یان بەستەری GIF/ڤیدیۆ (Demonstration GIF URL)</label>
+                                <input 
+                                    type="text" 
+                                    defaultValue={step.media_url}
+                                    onBlur={(e) => handleUpdateStep(step.id, { media_url: e.target.value })}
+                                    className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                    placeholder="https://media.giphy.com/..."
+                                />
+                            </div>
+
+                            {/* Priority */}
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-gray-400">ڕیزبەندی (Priority Order)</label>
+                                <input 
+                                    type="number" 
+                                    defaultValue={step.priority}
+                                    onBlur={(e) => handleUpdateStep(step.id, { priority: Number(e.target.value) })}
+                                    className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Save status */}
+                        {isSaving === step.id && (
+                            <div className="text-[9px] text-teal-400 font-bold animate-pulse">پاشەکەوت دەکرێت لە Supabase...</div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {/* Create New Step Form */}
+            <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
+                <h4 className="text-xs font-black text-teal-400 uppercase tracking-widest border-b border-white/5 pb-2">زیادکردنی هەنگاوی نوێ (Add New Step)</h4>
+                
+                <form onSubmit={handleCreateStep} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400">کلیلی ناسەرەوە (Step Key - Unique)</label>
+                            <input 
+                                type="text" 
+                                value={newStepKey}
+                                onChange={(e) => setNewStepKey(e.target.value)}
+                                className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                placeholder="e.g. my_list_guide"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400">بەشی نیشانەکراو (CSS Selector)</label>
+                            <input 
+                                type="text" 
+                                value={newSelector}
+                                onChange={(e) => setNewSelector(e.target.value)}
+                                className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                placeholder="e.g. .my-list-button"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400">ناونیشان (Title - KU)</label>
+                            <input 
+                                type="text" 
+                                value={newTitle}
+                                onChange={(e) => setNewTitle(e.target.value)}
+                                className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                                placeholder="بەخێربێیت بۆ لیستی من"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-gray-400">ڕیزبەندی (Order)</label>
+                            <input 
+                                type="number" 
+                                value={newPriority}
+                                onChange={(e) => setNewPriority(Number(e.target.value))}
+                                className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400">لێکدانەوە (Description - KU)</label>
+                        <textarea 
+                            value={newDesc}
+                            onChange={(e) => setNewDesc(e.target.value)}
+                            rows={2}
+                            className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors resize-none"
+                            placeholder="لەم لاپەڕەیەدا دەتوانیت سەرجەم فیلمە پاشەکەوتکراوەکانت ببینی..."
+                        />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[10px] font-black text-gray-400">بەستەری GIF/وێنەی جوڵاو (Demonstration media URL)</label>
+                        <input 
+                            type="text" 
+                            value={newMedia}
+                            onChange={(e) => setNewMedia(e.target.value)}
+                            className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
+                            placeholder="https://media.giphy.com/..."
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isCreating}
+                        className="w-full py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-[1000] uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    >
+                        {isCreating ? <RefreshCw className="animate-spin" size={14} /> : <Plus size={14} />}
+                        زیادکردنی هەنگاوەکە (Add Step)
+                    </button>
+                </form>
+            </div>
+
         </div>
     );
 };

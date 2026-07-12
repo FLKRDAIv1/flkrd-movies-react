@@ -32,6 +32,7 @@ import { useUI } from './contexts/UIContext';
 import { useNotification } from './contexts/NotificationContext';
 import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
+import OnboardingTour from './components/OnboardingTour';
 import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import Portal from './components/Portal';
@@ -647,6 +648,7 @@ const AppContent: React.FC<{
                 {!isWatchPage && <MobileNav />}
             </div>
             <ContinueWatchingPortal />
+            <OnboardingTour />
             <WelcomeNotificationPrompt />
             <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
