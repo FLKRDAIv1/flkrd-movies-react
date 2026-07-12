@@ -336,7 +336,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                 onClose();
               }
             }}
-            className="relative pointer-events-auto w-full md:w-[420px] h-[80vh] md:h-[85vh]
+            className="subtitle-manager-panel relative pointer-events-auto w-full md:w-[420px] h-[80vh] md:h-[85vh]
                        border-t md:border border-white/[0.08]
                        rounded-t-[32px] md:rounded-[32px]
                        flex flex-col overflow-hidden"

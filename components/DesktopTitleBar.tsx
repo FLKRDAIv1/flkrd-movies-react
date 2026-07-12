@@ -58,7 +58,7 @@ const DesktopTitleBar: React.FC = () => {
     return (
         <div
             data-tauri-drag-region
-            className="fixed top-0 left-0 right-0 h-10 z-[9999] select-none flex items-center justify-between px-3"
+            className="global-desktop-title-bar fixed top-0 left-0 right-0 h-10 z-[9999] select-none flex items-center justify-between px-3"
             style={{
                 background: 'rgba(0,0,0,0.35)',
                 backdropFilter: 'blur(20px)',
