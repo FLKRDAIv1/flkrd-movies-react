@@ -20,6 +20,27 @@ export interface GlassConfig {
   enableJelly?: boolean;       // toggle jelly bounce animation
 }
 
+export interface MobileNavConfig {
+  bgType: number;           // 0 = liquid glass, 1 = pure glass, 2 = solid black, 3 = deep burgundy
+  blurAmount: number;       // e.g. 24
+  darkOpacity: number;      // 0-100, e.g. 92
+  redOpacity: number;       // 0-100, e.g. 30
+  borderOpacity: number;    // 0-100, e.g. 20
+  pillType: number;         // 0 = solid red gradient, 1 = red border only, 2 = neon white
+  height: number;           // e.g. 48
+  iconSize: number;         // e.g. 16
+  capsuleWidth: number;     // e.g. 94
+  showSparkles: number;     // 0 or 1
+  showHome: number;
+  showTrending: number;
+  showTv: number;
+  showDubbed: number;
+  showStudios: number;
+  showDiscover: number;
+  showList: number;
+  showSearch: number;
+}
+
 export interface ActiveTranslationState {
   isTranslating: boolean;
   progress: number;
@@ -55,6 +76,8 @@ interface UIContextType {
   setIsAdmin: (isAdmin: boolean) => void;
   glassConfig: GlassConfig;
   updateGlassConfig: (config: GlassConfig) => Promise<boolean>;
+  mobileNavConfig: MobileNavConfig;
+  updateMobileNavConfig: (config: MobileNavConfig) => Promise<boolean>;
   translatedMovieIds: Set<string>;
   refreshTranslatedMovieIds: () => Promise<void>;
   
@@ -113,6 +136,41 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   });
 
+  const defaultMobileNavConfig: MobileNavConfig = {
+    bgType: 0,
+    blurAmount: 24,
+    darkOpacity: 92,
+    redOpacity: 30,
+    borderOpacity: 20,
+    pillType: 0,
+    height: 48,
+    iconSize: 16,
+    capsuleWidth: 94,
+    showSparkles: 1,
+    showHome: 1,
+    showTrending: 1,
+    showTv: 1,
+    showDubbed: 1,
+    showStudios: 1,
+    showDiscover: 1,
+    showList: 1,
+    showSearch: 1,
+  };
+
+  const [mobileNavConfig, setMobileNavConfig] = useState<MobileNavConfig>(() => {
+    try {
+      const saved = localStorage.getItem('flkrd_mobilenav_config');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return defaultMobileNavConfig;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('flkrd_mobilenav_config', JSON.stringify(mobileNavConfig));
+    } catch (e) {}
+  }, [mobileNavConfig]);
+
   useEffect(() => {
     try {
       localStorage.setItem('flkrd_glass_config', JSON.stringify(glassConfig));
@@ -154,6 +212,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
           // Sync glass customizer configurations
           const newConfig: Partial<GlassConfig> = {};
+          const newMobileNav: Partial<MobileNavConfig> = {};
           data.forEach(row => {
             if (row.server_name === 'glass_blur_amount') newConfig.blurAmount = row.priority;
             if (row.server_name === 'glass_saturation') newConfig.saturation = row.priority;
@@ -164,10 +223,33 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (row.server_name === 'glass_aberration_intensity') newConfig.aberrationIntensity = row.priority;
             if (row.server_name === 'glass_elasticity') newConfig.elasticity = row.priority / 100;
             if (row.server_name === 'glass_corner_radius') newConfig.cornerRadius = row.priority;
+
+            // Mobile Nav Customizer config keys
+            if (row.server_name === 'mobilenav_bg_type') newMobileNav.bgType = row.priority;
+            if (row.server_name === 'mobilenav_blur_amount') newMobileNav.blurAmount = row.priority;
+            if (row.server_name === 'mobilenav_dark_opacity') newMobileNav.darkOpacity = row.priority;
+            if (row.server_name === 'mobilenav_red_opacity') newMobileNav.redOpacity = row.priority;
+            if (row.server_name === 'mobilenav_border_opacity') newMobileNav.borderOpacity = row.priority;
+            if (row.server_name === 'mobilenav_pill_type') newMobileNav.pillType = row.priority;
+            if (row.server_name === 'mobilenav_height') newMobileNav.height = row.priority;
+            if (row.server_name === 'mobilenav_icon_size') newMobileNav.iconSize = row.priority;
+            if (row.server_name === 'mobilenav_capsule_width') newMobileNav.capsuleWidth = row.priority;
+            if (row.server_name === 'mobilenav_show_sparkles') newMobileNav.showSparkles = row.priority;
+            if (row.server_name === 'mobilenav_show_home') newMobileNav.showHome = row.priority;
+            if (row.server_name === 'mobilenav_show_trending') newMobileNav.showTrending = row.priority;
+            if (row.server_name === 'mobilenav_show_tv') newMobileNav.showTv = row.priority;
+            if (row.server_name === 'mobilenav_show_dubbed') newMobileNav.showDubbed = row.priority;
+            if (row.server_name === 'mobilenav_show_studios') newMobileNav.showStudios = row.priority;
+            if (row.server_name === 'mobilenav_show_discover') newMobileNav.showDiscover = row.priority;
+            if (row.server_name === 'mobilenav_show_list') newMobileNav.showList = row.priority;
+            if (row.server_name === 'mobilenav_show_search') newMobileNav.showSearch = row.priority;
           });
           
           if (Object.keys(newConfig).length > 0) {
             setGlassConfig(prev => ({ ...prev, ...newConfig }));
+          }
+          if (Object.keys(newMobileNav).length > 0) {
+            setMobileNavConfig(prev => ({ ...prev, ...newMobileNav }));
           }
         }
       } catch (err) {
@@ -309,6 +391,72 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       return true;
     } catch (e) {
       console.error('[UI CONTEXT] Failed to update glass config:', e);
+      return false;
+    }
+  };
+
+  const updateMobileNavConfig = async (config: MobileNavConfig): Promise<boolean> => {
+    try {
+      const { data: currentRows, error: fetchError } = await supabase
+        .from('server_config')
+        .select('id, server_name');
+      
+      if (fetchError) throw fetchError;
+
+      const rowMap = new Map<string, number>();
+      let maxId = 0;
+      if (currentRows) {
+        currentRows.forEach(row => {
+          rowMap.set(row.server_name, row.id);
+          if (row.id > maxId) {
+            maxId = row.id;
+          }
+        });
+      }
+
+      const keys = [
+        { key: 'mobilenav_bg_type', val: config.bgType },
+        { key: 'mobilenav_blur_amount', val: config.blurAmount },
+        { key: 'mobilenav_dark_opacity', val: config.darkOpacity },
+        { key: 'mobilenav_red_opacity', val: config.redOpacity },
+        { key: 'mobilenav_border_opacity', val: config.borderOpacity },
+        { key: 'mobilenav_pill_type', val: config.pillType },
+        { key: 'mobilenav_height', val: config.height },
+        { key: 'mobilenav_icon_size', val: config.iconSize },
+        { key: 'mobilenav_capsule_width', val: config.capsuleWidth },
+        { key: 'mobilenav_show_sparkles', val: config.showSparkles },
+        { key: 'mobilenav_show_home', val: config.showHome },
+        { key: 'mobilenav_show_trending', val: config.showTrending },
+        { key: 'mobilenav_show_tv', val: config.showTv },
+        { key: 'mobilenav_show_dubbed', val: config.showDubbed },
+        { key: 'mobilenav_show_studios', val: config.showStudios },
+        { key: 'mobilenav_show_discover', val: config.showDiscover },
+        { key: 'mobilenav_show_list', val: config.showList },
+        { key: 'mobilenav_show_search', val: config.showSearch },
+      ];
+
+      let nextId = maxId + 1;
+      const upserts = keys.map(item => {
+        const dbId = rowMap.get(item.key);
+        if (dbId) {
+          return { id: dbId, server_name: item.key, priority: item.val };
+        } else {
+          const assignedId = nextId;
+          nextId++;
+          return { id: assignedId, server_name: item.key, priority: item.val };
+        }
+      });
+
+      const { error: upsertError } = await supabase
+        .from('server_config')
+        .upsert(upserts);
+
+      if (upsertError) throw upsertError;
+
+      setMobileNavConfig(config);
+      return true;
+    } catch (e) {
+      console.error('[UI CONTEXT] Failed to update mobile nav config:', e);
       return false;
     }
   };
@@ -506,7 +654,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     <UIContext.Provider value={{ 
       theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
       activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
-      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig
+      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
+      mobileNavConfig, updateMobileNavConfig
     }}>
       {children}
     </UIContext.Provider>

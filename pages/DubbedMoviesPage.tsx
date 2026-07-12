@@ -1664,6 +1664,9 @@ const DubbedMoviesPage: React.FC = () => {
                                         <button onClick={() => setActiveAdminTab('glass')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'glass' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <Sparkles size={16} /> دیزاینی شووشە
                                         </button>
+                                        <button onClick={() => setActiveAdminTab('mobilenav')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'mobilenav' ? 'bg-rose-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <Sparkles size={16} className="text-rose-400 animate-pulse" /> مۆبایل بار
+                                        </button>
                                         <button onClick={() => setActiveAdminTab('banned')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'banned' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ShieldAlert size={16} /> Banned
                                         </button>
@@ -2033,6 +2036,10 @@ const DubbedMoviesPage: React.FC = () => {
 
                                         {activeAdminTab === 'glass' && (
                                             <GlassCustomizer />
+                                        )}
+
+                                        {activeAdminTab === 'mobilenav' && (
+                                            <MobileNavCustomizer />
                                         )}
                                     </div>
                                 </motion.div>
@@ -2598,6 +2605,302 @@ const GlassCustomizer: React.FC = () => {
             >
                 {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
                 تۆمارکردن و بڵاوکردنەوە بۆ هەمووان (Save & Apply)
+            </button>
+        </div>
+    );
+};
+
+const MobileNavCustomizer: React.FC = () => {
+    const { mobileNavConfig, updateMobileNavConfig } = useUI();
+    const { addNotification } = useNotification();
+    const [localConfig, setLocalConfig] = useState<any>(mobileNavConfig);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setLocalConfig(mobileNavConfig);
+    }, [mobileNavConfig]);
+
+    if (!localConfig) return null;
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        const success = await updateMobileNavConfig(localConfig);
+        setIsSaving(false);
+        if (success) {
+            addNotification({
+                type: 'success',
+                title: 'تۆمار کرا',
+                message: 'ڕێکخستنی ناڤیگەیشن مۆبایل بە سەرکەوتوویی بڵاوکرایەوە بۆ هەموو بەکارهێنەران!'
+            });
+        } else {
+            addNotification({
+                type: 'error',
+                title: 'کێشەیەک ڕوویدا',
+                message: 'پەیوەندی سەرنەکەوت لەگەڵ سێرڤەر.'
+            });
+        }
+    };
+
+    return (
+        <div className="space-y-6 pb-6 text-right animate-fadeIn" dir="rtl">
+            <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider mb-2">ڕێکخستنی ناڤیگەیشن بار بۆ مۆبایل (Mobile Navigation Customizer)</h3>
+                <p className="text-[10px] text-gray-400 font-bold leading-relaxed">
+                    لەم بەشەدا دەتوانیت دیزاین، پان و بەرینی، و جۆری دوگمەکان لەگەڵ شێوازی پاشبنەمای ناڤیگەیشن باری مۆبایل بگۆڕیت. هەر گۆڕانکارییەک بکەیت ڕاستەوخۆ بۆ هەموو بەکارهێنەران چالاک دەبێت.
+                </p>
+            </div>
+
+            <div className="space-y-5">
+                {/* 1. Layout Dimensions */}
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
+                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">سایز و ڕەهەندەکان (Dimensions)</h4>
+                    
+                    {/* Capsule Width */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>پانی بارەکە (Capsule Width)</span>
+                            <span className="font-mono text-rose-500">{localConfig.capsuleWidth}%</span>
+                        </div>
+                        <input 
+                            type="range" min="70" max="100" step="1"
+                            value={localConfig.capsuleWidth}
+                            onChange={(e) => setLocalConfig({ ...localConfig, capsuleWidth: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Height */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>بەرزی بارەکە (Bar Height)</span>
+                            <span className="font-mono text-rose-500">{localConfig.height}px</span>
+                        </div>
+                        <input 
+                            type="range" min="40" max="65" step="1"
+                            value={localConfig.height}
+                            onChange={(e) => setLocalConfig({ ...localConfig, height: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Icon Size */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>سایزی ئایکۆنەکان (Icon Size)</span>
+                            <span className="font-mono text-rose-500">{localConfig.iconSize}px</span>
+                        </div>
+                        <input 
+                            type="range" min="12" max="22" step="1"
+                            value={localConfig.iconSize}
+                            onChange={(e) => setLocalConfig({ ...localConfig, iconSize: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+                </div>
+
+                {/* 2. Glassmorphism Aesthetics */}
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
+                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">شێوازی شووشە و پاشبنەما (Aesthetics)</h4>
+                    
+                    {/* Background Type */}
+                    <div className="space-y-1.5 text-right">
+                        <span className="text-[11px] font-black uppercase text-gray-400 block mb-1">جۆری پاشبنەما (Background Type)</span>
+                        <select 
+                            value={localConfig.bgType}
+                            onChange={(e) => setLocalConfig({ ...localConfig, bgType: Number(e.target.value) })}
+                            className="w-full bg-[#151515] border border-white/10 text-white rounded-xl py-3 px-4 text-xs font-black focus:outline-none focus:border-rose-500 transition-colors"
+                        >
+                            <option value={0}>شووشەی فلوید (Liquid Glass - Red Gradient overlay)</option>
+                            <option value={1}>شووشەی پاک (Pure Glassmorphism - No gradient overlay)</option>
+                            <option value={2}>تاریکی ڕەها (Solid Matte Black)</option>
+                            <option value={3}>سووری تاریکی بۆرگندی (Burgundy Wine Glass)</option>
+                        </select>
+                    </div>
+
+                    {/* Active Pill Type */}
+                    <div className="space-y-1.5 text-right">
+                        <span className="text-[11px] font-black uppercase text-gray-400 block mb-1">شێوازی دیاریکردنی دوگمەی چالاک (Active Tab Style)</span>
+                        <select 
+                            value={localConfig.pillType}
+                            onChange={(e) => setLocalConfig({ ...localConfig, pillType: Number(e.target.value) })}
+                            className="w-full bg-[#151515] border border-white/10 text-white rounded-xl py-3 px-4 text-xs font-black focus:outline-none focus:border-rose-500 transition-colors"
+                        >
+                            <option value={0}>گلووی پڕی سووری نایاب (Premium Solid Red-Rose Gradient)</option>
+                            <option value={1}>چوارچێوەی سووری ڕوون (Red Border Outline)</option>
+                            <option value={2}>شوشەی سادەی سپی (Minimalist Ice White Glow)</option>
+                        </select>
+                    </div>
+
+                    {/* Blur Amount */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>لێڵی پاشبنەما (Blur)</span>
+                            <span className="font-mono text-rose-500">{localConfig.blurAmount}px</span>
+                        </div>
+                        <input 
+                            type="range" min="0" max="45" step="1"
+                            value={localConfig.blurAmount}
+                            onChange={(e) => setLocalConfig({ ...localConfig, blurAmount: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Red Opacity */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>ڕادەی ڕووناکی سوور (Red Tint Opacity)</span>
+                            <span className="font-mono text-rose-500">{localConfig.redOpacity}%</span>
+                        </div>
+                        <input 
+                            type="range" min="0" max="100" step="1"
+                            value={localConfig.redOpacity}
+                            onChange={(e) => setLocalConfig({ ...localConfig, redOpacity: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Dark Opacity */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>ڕادەی تاریکی پاشبنەما (Dark Opacity)</span>
+                            <span className="font-mono text-rose-500">{localConfig.darkOpacity}%</span>
+                        </div>
+                        <input 
+                            type="range" min="10" max="100" step="1"
+                            value={localConfig.darkOpacity}
+                            onChange={(e) => setLocalConfig({ ...localConfig, darkOpacity: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Border Opacity */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>ڕادەی چوارچێوەی بەشەکان (Border Opacity)</span>
+                            <span className="font-mono text-rose-500">{localConfig.borderOpacity}%</span>
+                        </div>
+                        <input 
+                            type="range" min="0" max="100" step="1"
+                            value={localConfig.borderOpacity}
+                            onChange={(e) => setLocalConfig({ ...localConfig, borderOpacity: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+                </div>
+
+                {/* 3. Items Visibilities & Buttons order */}
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-3.5">
+                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">دوگمە و بەشەکان (Nav Tabs & Visibility)</h4>
+                    
+                    {/* Show Sparkles */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی پۆڕتاڵی بەردەوامبوون (Sparkles Portal Button)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showSparkles: localConfig.showSparkles === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showSparkles === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showSparkles === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Home */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی سەرەکی (Home Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showHome: localConfig.showHome === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showHome === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showHome === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Trending */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی ترێندینگ/شۆرتس (Trending Shorts Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showTrending: localConfig.showTrending === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showTrending === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showTrending === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show TV */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی زنجیرەکان/کەلەندەر (TV Shows Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showTv: localConfig.showTv === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showTv === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showTv === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Dubbed */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی فیلمە دۆبلاژکراوەکان (Dubbed Movies Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showDubbed: localConfig.showDubbed === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showDubbed === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showDubbed === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Studios */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی ستۆدیۆکان (Studios Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showStudios: localConfig.showStudios === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showStudios === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showStudios === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Discover */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی دۆزینەوە (Discover Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showDiscover: localConfig.showDiscover === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showDiscover === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showDiscover === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show List */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی لیستی من (My List Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showList: localConfig.showList === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showList === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showList === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+
+                    {/* Show Search */}
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
+                        <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی گەڕان (Search Tab)</span>
+                        <button
+                            onClick={() => setLocalConfig({ ...localConfig, showSearch: localConfig.showSearch === 1 ? 0 : 1 })}
+                            className={`relative w-12 h-6 rounded-full transition-all duration-300 ${localConfig.showSearch === 1 ? 'bg-rose-600' : 'bg-white/10'}`}
+                        >
+                            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${localConfig.showSearch === 1 ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Save Action */}
+            <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="w-full mt-4 py-4 rounded-[1.5rem] bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-[1000] uppercase tracking-[0.3em] flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+                {isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Zap size={14} />}
+                تۆمارکردن و بڵاوکردنەوەی ناو بار مۆبایل (Save & Apply Mobile Nav)
             </button>
         </div>
     );
