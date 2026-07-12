@@ -2622,6 +2622,21 @@ const MobileNavCustomizer: React.FC = () => {
 
     if (!localConfig) return null;
 
+    // Hex to RGB parser
+    const hexToRgb = (hex: string) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    };
+
+    // RGB to Hex helper
+    const rgbToHex = (r: number, g: number, b: number) => {
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         const success = await updateMobileNavConfig(localConfig);
@@ -2641,6 +2656,24 @@ const MobileNavCustomizer: React.FC = () => {
         }
     };
 
+    const currentColorHex = rgbToHex(
+        localConfig.colorR ?? 220, 
+        localConfig.colorG ?? 38, 
+        localConfig.colorB ?? 38
+    );
+
+    const handleColorChange = (hex: string) => {
+        const rgb = hexToRgb(hex);
+        if (rgb) {
+            setLocalConfig({
+                ...localConfig,
+                colorR: rgb.r,
+                colorG: rgb.g,
+                colorB: rgb.b
+            });
+        }
+    };
+
     return (
         <div className="space-y-6 pb-6 text-right animate-fadeIn" dir="rtl">
             <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
@@ -2651,14 +2684,35 @@ const MobileNavCustomizer: React.FC = () => {
             </div>
 
             <div className="space-y-5">
-                {/* 1. Layout Dimensions */}
+                {/* 1. Theme Color Customizer */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
-                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">سایز و ڕەهەندەکان (Dimensions)</h4>
+                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">ڕەنگی تەوەرە و درەوشانەوە (Theme Color Settings)</h4>
+                    
+                    {/* Theme color picker */}
+                    <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-right">
+                            <span className="text-[11px] font-black uppercase text-gray-400 block mb-0.5">ڕەنگی بنەڕەتی بار (Accent Color)</span>
+                            <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Hex Code: {currentColorHex} • RGB: ({localConfig.colorR}, {localConfig.colorG}, {localConfig.colorB})</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <input 
+                                type="color" 
+                                value={currentColorHex}
+                                onChange={(e) => handleColorChange(e.target.value)}
+                                className="w-12 h-12 rounded-xl bg-transparent border-0 cursor-pointer overflow-hidden p-0"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* 2. Layout Dimensions & Padding */}
+                <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
+                    <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">سایز، ڕەهەندەکان و شێواز (Dimensions & Sizing)</h4>
                     
                     {/* Capsule Width */}
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
-                            <span>پانی بارەکە (Capsule Width)</span>
+                            <span>پانی بارەکە (Capsule Width / Span)</span>
                             <span className="font-mono text-rose-500">{localConfig.capsuleWidth}%</span>
                         </div>
                         <input 
@@ -2672,7 +2726,7 @@ const MobileNavCustomizer: React.FC = () => {
                     {/* Height */}
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
-                            <span>بەرزی بارەکە (Bar Height)</span>
+                            <span>بەرزی بارەکە (Bar Height / Thickness)</span>
                             <span className="font-mono text-rose-500">{localConfig.height}px</span>
                         </div>
                         <input 
@@ -2686,7 +2740,7 @@ const MobileNavCustomizer: React.FC = () => {
                     {/* Icon Size */}
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
-                            <span>سایزی ئایکۆنەکان (Icon Size)</span>
+                            <span>سایزی ئایکۆنەکان (Icon Size / Scaling)</span>
                             <span className="font-mono text-rose-500">{localConfig.iconSize}px</span>
                         </div>
                         <input 
@@ -2696,9 +2750,69 @@ const MobileNavCustomizer: React.FC = () => {
                             className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
                         />
                     </div>
+
+                    {/* Items Gap */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>مەودای نێوان دوگمەکان (Spacing / Gap)</span>
+                            <span className="font-mono text-rose-500">{localConfig.itemsGap}px</span>
+                        </div>
+                        <input 
+                            type="range" min="0" max="16" step="1"
+                            value={localConfig.itemsGap}
+                            onChange={(e) => setLocalConfig({ ...localConfig, itemsGap: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Bottom Offset */}
+                    <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>مەودا لە خوارەوەی شاشە (Bottom Margin Offset)</span>
+                            <span className="font-mono text-rose-500">{localConfig.bottomOffset}px</span>
+                        </div>
+                        <input 
+                            type="range" min="5" max="50" step="1"
+                            value={localConfig.bottomOffset}
+                            onChange={(e) => setLocalConfig({ ...localConfig, bottomOffset: Number(e.target.value) })}
+                            className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        />
+                    </div>
+
+                    {/* Border Radius */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
+                            <span>ڕادەی بازنەیی گۆشەکان (Border Radius / Roundness)</span>
+                            <span className="font-mono text-rose-500">
+                                {localConfig.borderRadius === 9999 ? 'Fully Rounded (Pill)' : `${localConfig.borderRadius}px`}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <input 
+                                type="range" min="0" max="32" step="1"
+                                disabled={localConfig.borderRadius === 9999}
+                                value={localConfig.borderRadius === 9999 ? 32 : localConfig.borderRadius}
+                                onChange={(e) => setLocalConfig({ ...localConfig, borderRadius: Number(e.target.value) })}
+                                className="flex-1 accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer disabled:opacity-40"
+                            />
+                            <button
+                                onClick={() => setLocalConfig({ 
+                                    ...localConfig, 
+                                    borderRadius: localConfig.borderRadius === 9999 ? 24 : 9999 
+                                })}
+                                className={`px-4 py-2 text-[10px] font-[1000] uppercase tracking-widest rounded-xl border transition-all ${
+                                    localConfig.borderRadius === 9999 
+                                        ? 'bg-rose-600 text-white border-rose-500 shadow-md' 
+                                        : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
+                                }`}
+                            >
+                                Capsule Pill
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                {/* 2. Glassmorphism Aesthetics */}
+                {/* 3. Glassmorphism Aesthetics */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">شێوازی شووشە و پاشبنەما (Aesthetics)</h4>
                     
@@ -2788,7 +2902,7 @@ const MobileNavCustomizer: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 3. Items Visibilities & Buttons order */}
+                {/* 4. Items Visibilities & Buttons order */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-3.5">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">دوگمە و بەشەکان (Nav Tabs & Visibility)</h4>
                     

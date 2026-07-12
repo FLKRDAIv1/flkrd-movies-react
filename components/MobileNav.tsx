@@ -65,6 +65,11 @@ const MobileNav: React.FC = () => {
 
   if (!mobileNavConfig) return null;
 
+  // Custom colors helper
+  const r = mobileNavConfig.colorR ?? 220;
+  const g = mobileNavConfig.colorG ?? 38;
+  const b = mobileNavConfig.colorB ?? 38;
+
   // Dynamically map items based on server_config visibilities
   const items = [
     ...(mobileNavConfig.showHome === 1 ? [{ id: 0, icon: <Home size={mobileNavConfig.iconSize} />, labelKey: "home" as const, to: "/" }] : []),
@@ -88,65 +93,73 @@ const MobileNav: React.FC = () => {
         return {
           background: '#070708',
         };
-      case 3: // Burgundy Wine Glass
+      case 3: // Burgundy Wine Glass / Custom Colored Tinted Glass
         return {
-          background: `linear-gradient(135deg, rgba(30, 4, 4, 0.94) 0%, rgba(10, 2, 2, 0.96) 100%)`,
+          background: `linear-gradient(135deg, rgba(${Math.max(10, r - 100)}, ${Math.max(5, g - 100)}, ${Math.max(5, b - 100)}, 0.94) 0%, rgba(10, 3, 3, 0.96) 100%)`,
         };
-      case 0: // Liquid Glass (Red Gradient)
+      case 0: // Liquid Glass (Gradient)
       default:
         return {
-          background: `linear-gradient(135deg, rgba(20, 4, 4, 0.9) 0%, rgba(8, 3, 3, 0.95) 100%)`,
+          background: `linear-gradient(135deg, rgba(${Math.max(10, r - 150)}, ${Math.max(5, g - 150)}, ${Math.max(5, b - 150)}, 0.92) 0%, rgba(8, 3, 3, 0.96) 100%)`,
         };
     }
   };
 
   // ── ACTIVE PILL STYLE GENERATORS ──
   const getActivePillStyle = () => {
+    const radius = mobileNavConfig.borderRadius === 9999 ? 9999 : mobileNavConfig.borderRadius - 4;
     switch (mobileNavConfig.pillType) {
-      case 1: // Red Border Outline
+      case 1: // Custom Color Border Outline
         return {
-          background: 'rgba(220, 38, 38, 0.08)',
-          borderColor: 'rgba(239, 68, 68, 0.45)',
+          background: `rgba(${r}, ${g}, ${b}, 0.08)`,
+          borderColor: `rgba(${r}, ${g}, ${b}, 0.45)`,
           borderWidth: '1px',
-          boxShadow: '0 0 10px rgba(220, 38, 38, 0.15)'
+          boxShadow: `0 0 10px rgba(${r}, ${g}, ${b}, 0.15)`,
+          borderRadius: `${radius}px`
         };
       case 2: // Ice White Glass
         return {
           background: 'rgba(255, 255, 255, 0.08)',
           borderColor: 'rgba(255, 255, 255, 0.15)',
           borderWidth: '1px',
-          boxShadow: '0 0 12px rgba(255, 255, 255, 0.1)'
+          boxShadow: '0 0 12px rgba(255, 255, 255, 0.1)',
+          borderRadius: `${radius}px`
         };
-      case 0: // Solid Red-Rose Gradient
+      case 0: // Solid Custom Color Gradient
       default:
         return {
-          background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
-          borderColor: 'rgba(220, 38, 38, 0.3)',
+          background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)`,
+          borderColor: `rgba(${r}, ${g}, ${b}, 0.3)`,
           borderWidth: '1px',
-          boxShadow: '0 3px 10px rgba(220, 38, 38, 0.4)'
+          boxShadow: `0 3px 10px rgba(${r}, ${g}, ${b}, 0.4)`,
+          borderRadius: `${radius}px`
         };
     }
   };
 
   return (
     <div 
-      className="global-mobilenav fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] left-0 right-0 mx-auto z-[9999] md:hidden pointer-events-auto overflow-visible flex items-center justify-between gap-2.5"
-      style={{ width: `${mobileNavConfig.capsuleWidth}%` }}
+      className="global-mobilenav fixed left-0 right-0 mx-auto z-[9999] md:hidden pointer-events-auto overflow-visible flex items-center justify-between gap-2.5"
+      style={{ 
+        width: `${mobileNavConfig.capsuleWidth}%`,
+        bottom: `calc(${mobileNavConfig.bottomOffset}px + env(safe-area-inset-bottom, 0px))`
+      }}
     >
       
       {/* 1. Main Scrollable Capsule */}
       <div 
-        className="flex-1 rounded-full border transition-all duration-300 relative overflow-hidden flex items-center"
+        className="flex-1 border transition-all duration-300 relative overflow-hidden flex items-center"
         style={{
           height: `${mobileNavConfig.height}px`,
+          borderRadius: `${mobileNavConfig.borderRadius}px`,
           ...getBgStyle(),
           backdropFilter: mobileNavConfig.bgType === 2 ? 'none' : `blur(${mobileNavConfig.blurAmount}px) saturate(140%)`,
           WebkitBackdropFilter: mobileNavConfig.bgType === 2 ? 'none' : `blur(${mobileNavConfig.blurAmount}px) saturate(140%)`,
           borderStyle: 'solid',
-          borderColor: `rgba(220, 38, 38, ${mobileNavConfig.borderOpacity / 100})`,
+          borderColor: `rgba(${r}, ${g}, ${b}, ${mobileNavConfig.borderOpacity / 100})`,
           boxShadow: `
             inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-            inset 0 0 15px rgba(220, 38, 38, ${mobileNavConfig.bgType === 2 ? '0' : '0.1'}),
+            inset 0 0 15px rgba(${r}, ${g}, ${b}, ${mobileNavConfig.bgType === 2 ? '0' : '0.1'}),
             0 15px 30px rgba(0,0,0,0.8)
           `
         }}
@@ -155,12 +168,12 @@ const MobileNav: React.FC = () => {
         <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/20 to-transparent pointer-events-none z-20" />
         <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/20 to-transparent pointer-events-none z-20" />
 
-        {/* Dynamic Liquid Red Shine Overlay for bgType = 0 */}
+        {/* Dynamic Liquid Shine Overlay for bgType = 0 */}
         {mobileNavConfig.bgType === 0 && (
           <div 
             className="absolute inset-0 pointer-events-none mix-blend-color-dodge opacity-50 z-0"
             style={{
-              background: `radial-gradient(circle at 50% 0%, rgba(220, 38, 38, ${mobileNavConfig.redOpacity / 100}) 0%, transparent 60%)`,
+              background: `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, ${mobileNavConfig.redOpacity / 100}) 0%, transparent 60%)`,
             }}
           />
         )}
@@ -168,14 +181,16 @@ const MobileNav: React.FC = () => {
         {/* Scrollable Container */}
         <div 
           ref={scrollContainerRef}
-          className="w-full h-full flex items-center gap-1 overflow-x-auto scrollbar-none scroll-smooth px-3 py-1 select-none"
+          className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth px-3 py-1 select-none"
           style={{
+            gap: `${mobileNavConfig.itemsGap}px`,
             maskImage: 'linear-gradient(to right, transparent, white 8px, white calc(100% - 8px), transparent)',
             WebkitMaskImage: 'linear-gradient(to right, transparent, white 8px, white calc(100% - 8px), transparent)'
           }}
         >
           {items.map((item) => {
             const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+            const pillRadius = mobileNavConfig.borderRadius === 9999 ? 9999 : mobileNavConfig.borderRadius - 4;
 
             return (
               <NavLink
@@ -191,17 +206,14 @@ const MobileNav: React.FC = () => {
                   style={{
                     width: `${mobileNavConfig.height - 12}px`,
                     height: `${mobileNavConfig.height - 12}px`,
+                    borderRadius: `${pillRadius}px`
                   }}
-                  className={`rounded-full flex items-center justify-center transition-colors duration-200 relative ${
-                    isActive 
-                      ? 'text-white font-black' 
-                      : 'text-red-200/50 hover:text-white hover:bg-white/5'
-                  }`}
+                  className="flex items-center justify-center transition-colors duration-200 relative text-red-200/50 hover:text-white hover:bg-white/5"
                 >
                   {isActive && (
                     <motion.div
                       layoutId="mobile-nav-active-pill"
-                      className="absolute inset-0 rounded-full z-0"
+                      className="absolute inset-0 z-0"
                       style={getActivePillStyle()}
                       transition={{ 
                         type: "spring", 
@@ -232,20 +244,30 @@ const MobileNav: React.FC = () => {
           <motion.div
             whileHover={{ scale: 1.08, y: -1 }}
             whileTap={{ scale: 0.92 }}
-            className="rounded-full flex items-center justify-center border transition-all duration-300 relative shadow-[0_8px_25px_rgba(220,38,38,0.4)] cursor-pointer group"
+            className="rounded-full flex items-center justify-center border transition-all duration-300 relative cursor-pointer group"
             style={{
               width: `${mobileNavConfig.height}px`,
               height: `${mobileNavConfig.height}px`,
-              background: 'radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 60%), linear-gradient(135deg, rgba(220, 38, 38, 0.8) 0%, rgba(136, 19, 55, 0.95) 100%)',
-              borderColor: 'rgba(239, 68, 68, 0.45)',
-              boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.35), 0 0 15px rgba(220, 38, 38, 0.3)'
+              background: `radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 60%), linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${Math.max(10, r - 50)}, ${Math.max(5, g - 50)}, ${Math.max(5, b - 50)}, 0.95) 100%)`,
+              borderColor: `rgba(${r}, ${g}, ${b}, 0.45)`,
+              boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.35), 0 0 15px rgba(${r}, ${g}, ${b}, 0.35)`,
+              borderRadius: `${mobileNavConfig.borderRadius}px`
             }}
           >
             {/* Pulsing Glow Ring */}
-            <div className="absolute inset-0 rounded-full border border-red-500 animate-ping opacity-15 pointer-events-none" />
+            <div 
+              className="absolute inset-0 rounded-full border animate-ping opacity-15 pointer-events-none" 
+              style={{ 
+                borderColor: `rgb(${r}, ${g}, ${b})`,
+                borderRadius: `${mobileNavConfig.borderRadius}px`
+              }}
+            />
             
             {/* Liquid Glass Shine Reflection Overlay */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-0" />
+            <div 
+              className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-0" 
+              style={{ borderRadius: `${mobileNavConfig.borderRadius}px` }}
+            />
             
             <Sparkles size={mobileNavConfig.iconSize + 2} className="text-white relative z-10 transition-transform duration-500 group-hover:rotate-12 animate-pulse" />
             
@@ -256,7 +278,8 @@ const MobileNav: React.FC = () => {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0, opacity: 0 }}
-                  className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-black rounded-full w-5 h-5 flex items-center justify-center z-20 border border-red-600 shadow-md"
+                  className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-black rounded-full w-5 h-5 flex items-center justify-center z-20 border shadow-md"
+                  style={{ borderColor: `rgb(${r}, ${g}, ${b})` }}
                 >
                   {continueWatchingCount}
                 </motion.div>

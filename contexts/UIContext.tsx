@@ -39,6 +39,12 @@ export interface MobileNavConfig {
   showDiscover: number;
   showList: number;
   showSearch: number;
+  colorR: number;
+  colorG: number;
+  colorB: number;
+  itemsGap: number;
+  bottomOffset: number;
+  borderRadius: number;
 }
 
 export interface ActiveTranslationState {
@@ -155,6 +161,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     showDiscover: 1,
     showList: 1,
     showSearch: 1,
+    colorR: 220,
+    colorG: 38,
+    colorB: 38,
+    itemsGap: 4,
+    bottomOffset: 20,
+    borderRadius: 9999,
   };
 
   const [mobileNavConfig, setMobileNavConfig] = useState<MobileNavConfig>(() => {
@@ -243,6 +255,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (row.server_name === 'mobilenav_show_discover') newMobileNav.showDiscover = row.priority;
             if (row.server_name === 'mobilenav_show_list') newMobileNav.showList = row.priority;
             if (row.server_name === 'mobilenav_show_search') newMobileNav.showSearch = row.priority;
+            if (row.server_name === 'mobilenav_color_r') newMobileNav.colorR = row.priority;
+            if (row.server_name === 'mobilenav_color_g') newMobileNav.colorG = row.priority;
+            if (row.server_name === 'mobilenav_color_b') newMobileNav.colorB = row.priority;
+            if (row.server_name === 'mobilenav_items_gap') newMobileNav.itemsGap = row.priority;
+            if (row.server_name === 'mobilenav_bottom_offset') newMobileNav.bottomOffset = row.priority;
+            if (row.server_name === 'mobilenav_border_radius') newMobileNav.borderRadius = row.priority;
           });
           
           if (Object.keys(newConfig).length > 0) {
@@ -433,6 +451,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         { key: 'mobilenav_show_discover', val: config.showDiscover },
         { key: 'mobilenav_show_list', val: config.showList },
         { key: 'mobilenav_show_search', val: config.showSearch },
+        { key: 'mobilenav_color_r', val: config.colorR },
+        { key: 'mobilenav_color_g', val: config.colorG },
+        { key: 'mobilenav_color_b', val: config.colorB },
+        { key: 'mobilenav_items_gap', val: config.itemsGap },
+        { key: 'mobilenav_bottom_offset', val: config.bottomOffset },
+        { key: 'mobilenav_border_radius', val: config.borderRadius },
       ];
 
       let nextId = maxId + 1;
