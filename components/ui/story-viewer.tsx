@@ -233,7 +233,7 @@ function StoryContent({
   React.useEffect(() => {
     const iframe = iframeRef.current;
     if (iframe && iframe.contentWindow) {
-      const command = isMuted ? 'mute' : 'unmute';
+      const command = isMuted ? 'mute' : 'unMute';
       iframe.contentWindow.postMessage(
         JSON.stringify({
           event: 'command',
