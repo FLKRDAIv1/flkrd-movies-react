@@ -207,6 +207,18 @@ const OnboardingTour: React.FC = () => {
     return () => clearTimeout(timer);
   }, [isActive, currentIdx, steps, isNavigating]);
 
+  // Auto-close settings modal when moving away from the settings step
+  useEffect(() => {
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length) return;
+    const step = steps[currentIdx];
+    if (step.selector !== '.header-settings-trigger') {
+      const closeBtn = document.querySelector('.settings-modal-close-btn') as HTMLElement;
+      if (closeBtn) {
+        closeBtn.click();
+      }
+    }
+  }, [currentIdx, steps, isActive]);
+
   // Monitor DOM changes to re-calculate rect if viewport changes
   useEffect(() => {
     if (!isActive || isNavigating) return;
@@ -241,6 +253,12 @@ const OnboardingTour: React.FC = () => {
     setIsActive(false);
     setCurrentIdx(-1);
     localStorage.setItem('flkrd_onboarding_completed', 'true');
+    
+    // Ensure settings modal is closed if open
+    const closeBtn = document.querySelector('.settings-modal-close-btn') as HTMLElement;
+    if (closeBtn) {
+      closeBtn.click();
+    }
   };
 
   const handleNext = () => {

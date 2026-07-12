@@ -641,7 +641,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 <FPSCounter active={true} />
                 <button 
                   onClick={onClose}
-                  className="w-10 h-10 rounded-full bg-main-text/5 hover:bg-main-text/10 border border-main-text/10 flex items-center justify-center text-gray-400 hover:text-main-text transition-all active:scale-90"
+                  className="settings-modal-close-btn w-10 h-10 rounded-full bg-main-text/5 hover:bg-main-text/10 border border-main-text/10 flex items-center justify-center text-gray-400 hover:text-main-text transition-all active:scale-90"
                 >
                   <X size={18} />
                 </button>
