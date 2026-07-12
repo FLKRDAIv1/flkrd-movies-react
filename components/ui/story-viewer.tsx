@@ -258,9 +258,10 @@ function StoryContent({
             isInitialLoading ? "opacity-0" : "opacity-100"
         )}>
             <iframe
+              key={story.id}
               ref={iframeRef}
               src={`https://www.youtube.com/embed/${story.src}?autoplay=1&mute=1&controls=0&playsinline=1&modestbranding=1&rel=0&showinfo=0&enablejsapi=1`}
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none transform scale-[1.35] md:scale-100"
+              className="absolute inset-0 w-full h-full pointer-events-none transform scale-[1.35] md:scale-100"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               onLoad={onImageLoad}
             />
@@ -268,6 +269,7 @@ function StoryContent({
         </div>
       ) : story.type === "video" ? (
         <video
+          key={story.id}
           ref={videoRef}
           src={story.src}
           className={cn(
@@ -291,6 +293,7 @@ function StoryContent({
         />
       ) : (
         <img
+          key={story.id}
           src={story.src}
           alt=""
           className={cn(
@@ -424,7 +427,15 @@ function StoryViewerModal({
     startTimeRef.current = Date.now();
     setIsVideoReady(false);
     setIsVideoBuffering(false);
-  }, [currentIndex]);
+
+    // Fallback: For YouTube stories, auto-set isVideoReady after 1.2s to prevent blank screens if onLoad doesn't fire
+    if (currentStory.type === "youtube") {
+      const timer = setTimeout(() => {
+        setIsVideoReady(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [currentIndex, currentStory.type]);
 
   const handleVideoReady = React.useCallback((videoDuration: number) => {
     setDuration(videoDuration);
