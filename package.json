@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node --dns-result-order=ipv4first node_modules/vite/bin/vite.js",
     "build": "vite build && node scripts/generate-sitemap.js",
-    "preview": "vite preview",
+    "preview": "node --dns-result-order=ipv4first node_modules/vite/bin/vite.js preview",
     "tauri": "tauri",
     "tauri:build": "tauri build"
   },
