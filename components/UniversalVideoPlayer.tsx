@@ -243,8 +243,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const isSelectingFileRef = useRef(false);
     const wasFullscreenRef = useRef(false);
-    const [isHls, setIsHls] = useState(false);
-    const [isIframe, setIsIframe] = useState(false);
+    const [isHls, setIsHls] = useState(() => {
+        const activeSrc = src || '';
+        return (
+            activeSrc.toLowerCase().endsWith('.m3u8') ||
+            activeSrc.toLowerCase().endsWith('.mp4') ||
+            activeSrc.toLowerCase().endsWith('.webm') ||
+            activeSrc.includes('video.m3u8') ||
+            activeSrc.includes('_av1.m3u8') ||
+            activeSrc.includes('_h264.m3u8')
+        );
+    });
+    const [isIframe, setIsIframe] = useState(() => {
+        const activeSrc = src || '';
+        if (!activeSrc) return false;
+        const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
+        const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
+        if (isCinePro && isTauri) return false; // Let Tauri scraper handle it
+        const isDirect = (
+            activeSrc.toLowerCase().endsWith('.m3u8') ||
+            activeSrc.toLowerCase().endsWith('.mp4') ||
+            activeSrc.toLowerCase().endsWith('.webm') ||
+            activeSrc.includes('video.m3u8') ||
+            activeSrc.includes('_av1.m3u8') ||
+            activeSrc.includes('_h264.m3u8')
+        );
+        return !isDirect;
+    });
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
@@ -1384,7 +1409,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         setShowAdGuardOnboarding(true);
     };
 
-    const lastSrc = useRef<string>('');
+    const lastSrc = useRef<string>(src || ''); // Initialize with current src to avoid redundant first-run effect
     const safetyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Quantum Ad Shield — blocks pop-ups and overlays injected by embed providers
