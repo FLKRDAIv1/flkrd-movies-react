@@ -326,16 +326,17 @@ const OnboardingTour: React.FC = () => {
         {isActive && (
           <div className="absolute inset-0 pointer-events-auto z-[999997]" dir="rtl">
             
-            {/* Dark mask spotlight layer */}
+            {/* Dark mask spotlight layer with glowing border */}
             {highlightRect ? (
               <motion.div
-                className="fixed bg-black/75 z-[999998] pointer-events-none"
+                className="fixed z-[999998] pointer-events-none"
                 style={{
                   left: highlightRect.left - 8,
                   top: highlightRect.top - 8,
                   width: highlightRect.width + 16,
                   height: highlightRect.height + 16,
-                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)',
+                  border: `2px solid rgb(${r}, ${g}, ${b})`,
+                  boxShadow: `0 0 25px rgba(${r}, ${g}, ${b}, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75)`,
                   borderRadius: '16px',
                 }}
                 animate={{
