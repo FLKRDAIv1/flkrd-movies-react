@@ -145,6 +145,30 @@ const OnboardingTour: React.FC = () => {
     return () => clearInterval(interval);
   }, [isActive, currentIdx, navigate, location.pathname, steps]);
 
+  // Programmatically trigger interactive modal/drawer openings
+  useEffect(() => {
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length) return;
+    const step = steps[currentIdx];
+
+    const timer = setTimeout(() => {
+      if (step.selector === '.header-settings-trigger') {
+        const el = document.querySelector('.header-settings-trigger') as HTMLElement;
+        if (el) el.click();
+      } else if (step.selector === '.player-relink-trigger') {
+        const el = document.querySelector('.player-relink-trigger') as HTMLElement;
+        if (el) el.click();
+      } else if (step.selector === '.player-cc-trigger') {
+        const el = document.querySelector('.player-cc-trigger') as HTMLElement;
+        if (el) el.click();
+      } else if (step.selector === '.player-episodes-trigger') {
+        const el = document.querySelector('.player-episodes-trigger') as HTMLElement;
+        if (el) el.click();
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [isActive, currentIdx, steps]);
+
   // Monitor DOM changes to re-calculate rect if viewport changes
   useEffect(() => {
     if (!isActive) return;

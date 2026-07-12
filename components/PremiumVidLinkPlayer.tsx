@@ -1533,7 +1533,7 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowSourceSwitcher(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
               showEpisodesPortal 
                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
                 : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'
@@ -1552,7 +1552,7 @@ export default function PremiumVidLinkPlayer({
             setShowEpisodesPortal(false);
             setShowSourceSwitcher(false);
           }}
-          className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+          className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
             showSubSettings 
               ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
               : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'
@@ -1570,7 +1570,7 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowEpisodesPortal(false);
             }}
-            className={`transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
               showSourceSwitcher
                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
                 : 'bg-black/70 border-white/20 text-white/90 hover:bg-white/20'

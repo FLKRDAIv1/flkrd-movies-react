@@ -2245,7 +2245,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 {contentType === 'tv' && onEpisodeChange && (
                     <button
                         onClick={() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }}
-                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
+                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
                                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
                                 : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
                             }`}
@@ -2259,7 +2259,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 {/* CC / Subtitle Studio */}
                 <button
                     onClick={() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }}
-                    className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
+                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
                             ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
                             : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
                         }`}
@@ -2273,7 +2273,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 {sources && sources.length > 0 && (
                     <button
                         onClick={() => { setShowSourceSwitcher(!showSourceSwitcher); setShowSubSettings(false); setShowEpisodesPortal(false); }}
-                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
+                        className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
                                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
                                 : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
                             }`}
