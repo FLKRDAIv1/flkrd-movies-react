@@ -2219,119 +2219,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 }
             `}</style>
 
-            {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
-            {/* Brand Watermark (top-left) */}
-            <div 
-                className="absolute z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
-                style={{
-                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
-                    left: 'calc(0.75rem + env(safe-area-inset-left, 0px))'
-                }}
-            >
-                <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
-                    <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
-                </div>
-            </div>
 
-            {/* Top-Right: Settings / Relink / Fullscreen — always visible */}
-            <div 
-                className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
-                style={{
-                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
-                    right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
-                }}
-            >
-                {contentType === 'tv' && onEpisodeChange && (
-                    <button
-                        onClick={() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }}
-                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
-                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
-                                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                            }`}
-                        title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
-                    >
-                        <Tv size={14} />
-                        <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
-                    </button>
-                )}
-
-                {/* CC / Subtitle Studio */}
-                <button
-                    onClick={() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }}
-                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
-                            ? 'bg-red-600 border-red-500 text-white shadow-red-600/20'
-                            : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                        }`}
-                    title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
-                >
-                    <Subtitles size={14} />
-                    <span className="text-[10px] font-black uppercase hidden sm:inline">CC</span>
-                </button>
-
-                {/* Relink / Source Switcher — always show, even during loading */}
-                {sources && sources.length > 0 && (
-                    <button
-                        onClick={() => { setShowSourceSwitcher(!showSourceSwitcher); setShowSubSettings(false); setShowEpisodesPortal(false); }}
-                        className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
-                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/20 animate-pulse'
-                                : 'bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white'
-                            }`}
-                        title="Relink"
-                    >
-                        <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
-                        <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
-                    </button>
-                )}
-
-                {/* Fullscreen */}
-                <button
-                    onClick={toggleFullscreen}
-                    className="transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl bg-white/10 border-white/20 text-white/70 hover:bg-white/20 hover:text-white active:scale-95"
-                    title={isFullscreen
-                        ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen')
-                        : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
-                >
-                    {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                    <span className="text-[10px] font-black uppercase hidden sm:inline">
-                        {isFullscreen
-                            ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit')
-                            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Full')}
-                    </span>
-                </button>
-            </div>
-
-            {!loading && (
-                <>
-                    {/* Elegant Floating Kurdish CC Banner removed as requested by the user */}
-                </>
-            )}
-
-            {/* Loading Overlay */}
-            {loading && (
-                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050505]">
-                    <div className="relative p-8 flex flex-col items-center">
-                        <Spinner />
-                        <div className="mt-8 flex flex-col items-center gap-2">
-                            <span
-                                className="text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic"
-                                style={{ color: accentColor || '#e50914' }}
-                            >
-                                {(language === 'ku' || language === 'badini') ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
-                            </span>
-                            <div className="flex flex-col items-center gap-3">
-                                {/* AdGuard guide button disabled on play as requested by the user */}
-                                <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
-                                    <Shield size={10} className="text-red-500" />
-                                    <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">
-                                        QUANTUM SHIELD ACTIVE
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* HLS / Direct Video */}
             {isHls && (
@@ -2667,6 +2555,114 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     onLoad={handleIframeLoad}
                     title="FLKRD Universal Player"
                 />
+            )}
+
+            {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
+            {/* Brand Watermark (top-left) */}
+            <div 
+                className="absolute z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
+                style={{
+                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                    left: 'calc(0.75rem + env(safe-area-inset-left, 0px))'
+                }}
+            >
+                <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
+                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
+                    <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
+                </div>
+            </div>
+
+            {/* Top-Right: Settings / Relink / Fullscreen — always visible, rendered after video element to sit on top of the iframe */}
+            <div 
+                className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+                style={{
+                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                    right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
+                }}
+            >
+                {contentType === 'tv' && onEpisodeChange && (
+                    <button
+                        onClick={() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }}
+                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
+                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
+                                : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                            }`}
+                        title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
+                    >
+                        <Tv size={14} />
+                        <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+                    </button>
+                )}
+
+                {/* CC / Subtitle Studio */}
+                <button
+                    onClick={() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }}
+                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
+                            ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
+                            : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                        }`}
+                    title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
+                >
+                    <Subtitles size={14} />
+                    <span className="text-[10px] font-black uppercase hidden sm:inline">CC</span>
+                </button>
+
+                {/* Relink / Source Switcher — always show, even during loading */}
+                {sources && sources.length > 0 && (
+                    <button
+                        onClick={() => { setShowSourceSwitcher(!showSourceSwitcher); setShowSubSettings(false); setShowEpisodesPortal(false); }}
+                        className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
+                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
+                                : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                            }`}
+                        title="Relink"
+                    >
+                        <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
+                        <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
+                    </button>
+                )}
+
+                {/* Fullscreen */}
+                <button
+                    onClick={toggleFullscreen}
+                    className="transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white active:scale-95"
+                    title={isFullscreen
+                        ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen')
+                        : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
+                >
+                    {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+                    <span className="text-[10px] font-black uppercase hidden sm:inline">
+                        {isFullscreen
+                            ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit')
+                            : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Full')}
+                    </span>
+                </button>
+            </div>
+
+            {/* Loading Overlay */}
+            {loading && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050505]">
+                    <div className="relative p-8 flex flex-col items-center">
+                        <Spinner />
+                        <div className="mt-8 flex flex-col items-center gap-2">
+                            <span
+                                className="text-[9px] font-black tracking-[0.5em] animate-pulse uppercase italic"
+                                style={{ color: accentColor || '#e50914' }}
+                            >
+                                {(language === 'ku' || language === 'badini') ? 'ئامادەکردنی پەیوەندی پارێزراو...' : 'INITIALIZING SECURE NODE'}
+                            </span>
+                            <div className="flex flex-col items-center gap-3">
+                                {/* AdGuard guide button disabled on play as requested by the user */}
+                                <div className="flex items-center gap-2 px-3 py-1 bg-red-600/10 border border-red-600/20 rounded-full">
+                                    <Shield size={10} className="text-red-500" />
+                                    <span className="text-[7px] font-bold text-red-500 uppercase tracking-tighter">
+                                        QUANTUM SHIELD ACTIVE
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Elegant Glassmorphic Multi-Audio Helper Modal */}
