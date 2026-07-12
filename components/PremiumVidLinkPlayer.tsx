@@ -2461,8 +2461,8 @@ export default function PremiumVidLinkPlayer({
         style={{
           top: '1rem',
           right: '1rem',
-          transform: 'translate3d(0, 0, 999px)',
-          WebkitTransform: 'translate3d(0, 0, 999px)'
+          transform: 'translate3d(0, 0, 0)',
+          WebkitTransform: 'translate3d(0, 0, 0)'
         }}
       >
         {type === 'tv' && onEpisodeChange && (

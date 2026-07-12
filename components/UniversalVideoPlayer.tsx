@@ -2622,8 +2622,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 style={{
                     top: '1rem',
                     left: '1rem',
-                    transform: 'translate3d(0, 0, 999px)',
-                    WebkitTransform: 'translate3d(0, 0, 999px)'
+                    transform: 'translate3d(0, 0, 0)',
+                    WebkitTransform: 'translate3d(0, 0, 0)'
                 }}
             >
                 <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
@@ -2638,8 +2638,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 style={{
                     top: '1rem',
                     right: '1rem',
-                    transform: 'translate3d(0, 0, 999px)',
-                    WebkitTransform: 'translate3d(0, 0, 999px)'
+                    transform: 'translate3d(0, 0, 0)',
+                    WebkitTransform: 'translate3d(0, 0, 0)'
                 }}
             >
                 {contentType === 'tv' && onEpisodeChange && (
