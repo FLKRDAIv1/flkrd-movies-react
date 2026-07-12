@@ -1503,11 +1503,7 @@ export default function PremiumVidLinkPlayer({
     return () => window.removeEventListener('keydown', handlePlaybackKeyDown);
   }, [isPlaying, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
 
-  useEffect(() => {
-    if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
-      toggleFullscreen();
-    }
-  }, [startFullscreen]);
+  // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
 
   return (
     <div 

@@ -1232,16 +1232,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
 
-    useEffect(() => {
-        if (!startFullscreen) return;
-        // Browsers block requestFullscreen without a user gesture.
-        // Use simulated fullscreen (CSS fixed overlay) which works everywhere
-        // without any permissions or gesture requirement.
-        // The user can still enter native fullscreen via the Fullscreen button.
-        setIsSimulatedFullscreen(true);
-        setIsFullscreen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startFullscreen]);
+    // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
 
     const handleSelectSub = async (sub: SubtitleResult) => {
         setIsSearchingSubs(true);
