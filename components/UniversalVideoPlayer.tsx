@@ -1233,9 +1233,49 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
 
     useEffect(() => {
-        if (startFullscreen && !document.fullscreenElement && !isSimulatedFullscreen) {
-            toggleFullscreen();
+        if (!startFullscreen) return;
+
+        // iOS Safari: native fullscreen API not available inside iframe, use simulated
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+
+        if (isIOS) {
+            // Immediate simulated fullscreen — no API needed
+            setIsSimulatedFullscreen(true);
+            setIsFullscreen(true);
+            return;
         }
+
+        // Desktop / Android: attempt native Fullscreen API
+        // Small delay to let the DOM render and browser consider it a user-gesture frame
+        const timer = setTimeout(() => {
+            if (!containerRef.current) return;
+            if (document.fullscreenElement) return; // already fullscreen
+
+            const req = (
+                containerRef.current.requestFullscreen ||
+                (containerRef.current as any).webkitRequestFullscreen ||
+                (containerRef.current as any).mozRequestFullScreen ||
+                (containerRef.current as any).msRequestFullscreen
+            );
+
+            if (req) {
+                req.call(containerRef.current, { navigationUI: 'hide' }).then(() => {
+                    setIsFullscreen(true);
+                }).catch(() => {
+                    // Autoplay policy blocked it — fall back to simulated fullscreen
+                    setIsSimulatedFullscreen(true);
+                    setIsFullscreen(true);
+                });
+            } else {
+                // No API support — simulated fullscreen
+                setIsSimulatedFullscreen(true);
+                setIsFullscreen(true);
+            }
+        }, 80);
+
+        return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [startFullscreen]);
 
     const handleSelectSub = async (sub: SubtitleResult) => {
@@ -2218,8 +2258,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div
             ref={containerRef}
-            className={`bg-black flex items-center justify-center overflow-hidden transition-all duration-300 ${isSimulatedFullscreen
-                    ? 'fixed inset-0 w-screen h-screen z-[9999]'
+            className={`bg-black flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
+                    ? 'fixed inset-0 w-screen h-screen z-[9999] overflow-hidden'
                     : 'w-full h-full relative'
                 }`}
         >
@@ -2562,9 +2602,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     ref={iframeRef}
                     key={stableKey}
                     src={iframeSrc}
-                    className="w-full h-full border-none z-10"
+                    className="absolute inset-0 w-full h-full border-none"
                     style={{
                         display: 'block',
+                        zIndex: 10,
                         filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                     }}
                     // NO sandbox — providers detect sandbox and refuse to load
@@ -2597,9 +2638,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 </div>
             </div>
 
-            {/* Top-Right: Settings / Relink / Fullscreen — always visible, rendered after video element to sit on top of the iframe */}
+            {/* Top-Right: CC / Relink / Fullscreen — FIXED so they escape all parent overflow/transform stacking contexts */}
             <div 
-                className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+                className="fixed z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
                 style={{
                     top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
                     right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
