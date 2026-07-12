@@ -189,6 +189,15 @@ const OnboardingTour: React.FC = () => {
     const step = steps[currentIdx];
 
     const timer = setTimeout(() => {
+      // If we are showing a player guide step, but the player modal is not open yet, open it!
+      if (step.selector && step.selector.startsWith('.player-')) {
+        const playerOpen = document.querySelector('.player-relink-trigger') || document.querySelector('.player-cc-trigger') || document.querySelector('.player-episodes-trigger');
+        if (!playerOpen) {
+          const playBtn = document.querySelector('.detail-play-btn') as HTMLElement;
+          if (playBtn) playBtn.click();
+        }
+      }
+
       if (step.selector === '.header-settings-trigger') {
         const el = document.querySelector('.header-settings-trigger') as HTMLElement;
         if (el) el.click();
@@ -202,7 +211,7 @@ const OnboardingTour: React.FC = () => {
         const el = document.querySelector('.player-episodes-trigger') as HTMLElement;
         if (el) el.click();
       }
-    }, 600);
+    }, 850);
 
     return () => clearTimeout(timer);
   }, [isActive, currentIdx, steps, isNavigating]);
@@ -258,6 +267,12 @@ const OnboardingTour: React.FC = () => {
     const closeBtn = document.querySelector('.settings-modal-close-btn') as HTMLElement;
     if (closeBtn) {
       closeBtn.click();
+    }
+
+    // Ensure player modal is closed if open
+    const closePlayerBtn = document.querySelector('[aria-label="Close video player"]') as HTMLElement;
+    if (closePlayerBtn) {
+      closePlayerBtn.click();
     }
   };
 

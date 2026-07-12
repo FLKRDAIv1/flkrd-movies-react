@@ -1037,7 +1037,7 @@ const TVDetailPage: React.FC = () => {
               <LiquidButton 
                 variant="default" 
                 onClick={() => handlePlayClick()} 
-                className={`font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 transition-all ${isUpcomingUnlocked ? 'border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] bg-emerald-950/20' : ''}`}
+                className={`detail-play-btn font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 transition-all ${isUpcomingUnlocked ? 'border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.2)] bg-emerald-950/20' : ''}`}
               >
                 {isUpcomingUnlocked ? (
                   <>
