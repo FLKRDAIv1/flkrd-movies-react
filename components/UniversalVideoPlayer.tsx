@@ -1234,47 +1234,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     useEffect(() => {
         if (!startFullscreen) return;
-
-        // iOS Safari: native fullscreen API not available inside iframe, use simulated
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-            (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-
-        if (isIOS) {
-            // Immediate simulated fullscreen — no API needed
-            setIsSimulatedFullscreen(true);
-            setIsFullscreen(true);
-            return;
-        }
-
-        // Desktop / Android: attempt native Fullscreen API
-        // Small delay to let the DOM render and browser consider it a user-gesture frame
-        const timer = setTimeout(() => {
-            if (!containerRef.current) return;
-            if (document.fullscreenElement) return; // already fullscreen
-
-            const req = (
-                containerRef.current.requestFullscreen ||
-                (containerRef.current as any).webkitRequestFullscreen ||
-                (containerRef.current as any).mozRequestFullScreen ||
-                (containerRef.current as any).msRequestFullscreen
-            );
-
-            if (req) {
-                req.call(containerRef.current, { navigationUI: 'hide' }).then(() => {
-                    setIsFullscreen(true);
-                }).catch(() => {
-                    // Autoplay policy blocked it — fall back to simulated fullscreen
-                    setIsSimulatedFullscreen(true);
-                    setIsFullscreen(true);
-                });
-            } else {
-                // No API support — simulated fullscreen
-                setIsSimulatedFullscreen(true);
-                setIsFullscreen(true);
-            }
-        }, 80);
-
-        return () => clearTimeout(timer);
+        // Browsers block requestFullscreen without a user gesture.
+        // Use simulated fullscreen (CSS fixed overlay) which works everywhere
+        // without any permissions or gesture requirement.
+        // The user can still enter native fullscreen via the Fullscreen button.
+        setIsSimulatedFullscreen(true);
+        setIsFullscreen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [startFullscreen]);
 

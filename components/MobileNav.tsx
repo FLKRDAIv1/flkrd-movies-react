@@ -204,8 +204,8 @@ const MobileNav: React.FC = () => {
                 <motion.div
                   whileTap={{ scale: 0.9 }}
                   style={{
-                    width: `${mobileNavConfig.height - 12}px`,
-                    height: `${mobileNavConfig.height - 12}px`,
+                    width: `${Math.max(24, (mobileNavConfig.height || 48) - 12)}px`,
+                    height: `${Math.max(24, (mobileNavConfig.height || 48) - 12)}px`,
                     borderRadius: `${pillRadius}px`
                   }}
                   className="flex items-center justify-center transition-colors duration-200 relative text-red-200/50 hover:text-white hover:bg-white/5"

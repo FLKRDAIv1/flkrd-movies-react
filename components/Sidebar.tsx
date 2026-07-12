@@ -130,24 +130,19 @@ const Sidebar: React.FC = () => {
   const { t } = useTranslation();
   const { glassConfig } = useUI();
 
-  const sidebarVariants = useMemo(() => ({
-    open: { 
-      width: "16.5rem",
-      transition: { 
-        type: "spring", 
-        stiffness: 400 * (glassConfig.elasticity / 0.35), 
-        damping: 40 * (0.35 / glassConfig.elasticity) 
-      }
-    },
-    closed: { 
-      width: "4.5rem",
-      transition: { 
-        type: "spring", 
-        stiffness: 400 * (glassConfig.elasticity / 0.35), 
-        damping: 40 * (0.35 / glassConfig.elasticity) 
-      }
-    },
-  }), [glassConfig.elasticity]);
+  const sidebarVariants = useMemo(() => {
+    const e = Math.max(0.01, glassConfig.elasticity || 0.35);
+    return {
+      open: { 
+        width: "16.5rem",
+        transition: { type: "spring", stiffness: Math.min(2000, 400 * (e / 0.35)), damping: Math.min(200, 40 * (0.35 / e)) }
+      },
+      closed: { 
+        width: "4.5rem",
+        transition: { type: "spring", stiffness: Math.min(2000, 400 * (e / 0.35)), damping: Math.min(200, 40 * (0.35 / e)) }
+      },
+    };
+  }, [glassConfig.elasticity]);
 
   return (
     <>
@@ -168,6 +163,7 @@ const Sidebar: React.FC = () => {
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}
+        style={{ width: isCollapsed ? '4.5rem' : '16.5rem' }}
       >
         {/* Pure CSS Premium Glassmorphism Background with Red Tint */}
         <div
