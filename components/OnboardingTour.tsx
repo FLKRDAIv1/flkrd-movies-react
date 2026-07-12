@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, ChevronRight, ChevronLeft, X, Sparkles } from 'lucide-react';
+import { Play, ChevronRight, ChevronLeft, X, Sparkles, RefreshCw } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -23,6 +23,7 @@ const OnboardingTour: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
   const [showInvite, setShowInvite] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -84,7 +85,7 @@ const OnboardingTour: React.FC = () => {
 
   // 2. Track Bounding Bounding Rect of target element
   const updateHighlight = useCallback(() => {
-    if (!isActive || currentIdx < 0 || currentIdx >= steps.length) {
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length || isNavigating) {
       setHighlightRect(null);
       return;
     }
@@ -95,7 +96,15 @@ const OnboardingTour: React.FC = () => {
       return;
     }
 
-    const el = document.querySelector(step.selector);
+    // Mobile specific selector mapping
+    let targetSelector = step.selector;
+    if (window.innerWidth < 768) {
+      if (targetSelector === '.global-sidebar') {
+        targetSelector = '.global-mobilenav';
+      }
+    }
+
+    const el = document.querySelector(targetSelector);
     if (el) {
       const rect = el.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
@@ -104,9 +113,9 @@ const OnboardingTour: React.FC = () => {
     } else {
       setHighlightRect(null);
     }
-  }, [isActive, currentIdx, steps]);
+  }, [isActive, currentIdx, steps, isNavigating]);
 
-  // Handle routing and element polling when step changes
+  // Handle routing when step changes
   useEffect(() => {
     if (!isActive || currentIdx < 0 || currentIdx >= steps.length) return;
 
@@ -114,40 +123,69 @@ const OnboardingTour: React.FC = () => {
     
     // Check if we need to navigate first
     if (step.route && step.route !== location.pathname) {
+      setIsNavigating(true);
       navigate(step.route);
-      setHighlightRect(null); // Clear highlight temporarily
+      setHighlightRect(null); // Clear highlight to shrink to center
+      
+      const navTimer = setTimeout(() => {
+        setIsNavigating(false);
+      }, 800);
+      return () => clearTimeout(navTimer);
+    } else {
+      setIsNavigating(false);
     }
+  }, [currentIdx, steps, navigate, location.pathname, isActive]);
 
+  // Handle element polling once navigation settles
+  useEffect(() => {
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length || isNavigating) return;
+
+    const step = steps[currentIdx];
+    
     // Begin polling to find the element selector in the DOM (allows page load delay)
     let attempts = 0;
     const interval = setInterval(() => {
       attempts++;
-      const el = document.querySelector(step.selector || '');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Re-read bounding rect after scrolling finishes
-        setTimeout(() => {
-          const rect = el.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) {
-            setHighlightRect(rect);
-          }
-        }, 150);
+      
+      let targetSelector = step.selector || '';
+      if (window.innerWidth < 768) {
+        if (targetSelector === '.global-sidebar') {
+          targetSelector = '.global-mobilenav';
+        }
+      }
 
-        clearInterval(interval);
-      } else if (attempts > 20) {
-        // Stop polling after 4 seconds if element isn't found
+      const el = document.querySelector(targetSelector);
+      if (el) {
+        const initialRect = el.getBoundingClientRect();
+        if (initialRect.width > 0 && initialRect.height > 0) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Re-read bounding rect after scrolling finishes
+          setTimeout(() => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+              setHighlightRect(rect);
+            }
+          }, 150);
+
+          clearInterval(interval);
+          return;
+        }
+      }
+      
+      if (attempts > 15) {
+        // Stop polling after 3 seconds, keep it centered
         setHighlightRect(null);
         clearInterval(interval);
       }
     }, 200);
 
     return () => clearInterval(interval);
-  }, [isActive, currentIdx, navigate, location.pathname, steps]);
+  }, [isActive, currentIdx, isNavigating, steps]);
 
   // Programmatically trigger interactive modal/drawer openings
   useEffect(() => {
-    if (!isActive || currentIdx < 0 || currentIdx >= steps.length) return;
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length || isNavigating) return;
     const step = steps[currentIdx];
 
     const timer = setTimeout(() => {
@@ -164,14 +202,14 @@ const OnboardingTour: React.FC = () => {
         const el = document.querySelector('.player-episodes-trigger') as HTMLElement;
         if (el) el.click();
       }
-    }, 800);
+    }, 600);
 
     return () => clearTimeout(timer);
-  }, [isActive, currentIdx, steps]);
+  }, [isActive, currentIdx, steps, isNavigating]);
 
   // Monitor DOM changes to re-calculate rect if viewport changes
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || isNavigating) return;
 
     updateHighlight();
     window.addEventListener('resize', updateHighlight);
@@ -190,7 +228,7 @@ const OnboardingTour: React.FC = () => {
         observerRef.current.disconnect();
       }
     };
-  }, [isActive, currentIdx, updateHighlight]);
+  }, [isActive, currentIdx, updateHighlight, isNavigating]);
 
   const handleStartTour = () => {
     setShowInvite(false);
@@ -224,9 +262,28 @@ const OnboardingTour: React.FC = () => {
 
   const currentStep = steps[currentIdx];
 
+  // Safely get display rect to avoid layout snapping
+  const getDisplayRect = () => {
+    if (highlightRect && !isNavigating) return highlightRect;
+    // Centered point representation when routing or element is missing
+    return {
+      left: window.innerWidth / 2,
+      top: window.innerHeight / 2,
+      width: 0,
+      height: 0,
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      bottom: window.innerHeight / 2,
+      right: window.innerWidth / 2,
+      toJSON: () => {}
+    } as DOMRect;
+  };
+
+  const displayRect = getDisplayRect();
+
   // Helper to dynamically position the card in responsive layouts
   const getCardStyle = () => {
-    if (!highlightRect || !currentStep || currentStep.selector === 'body') {
+    if (displayRect.width === 0 || !currentStep || currentStep.selector === 'body' || isNavigating) {
       return {
         position: 'fixed' as const,
         top: '50%',
@@ -238,15 +295,15 @@ const OnboardingTour: React.FC = () => {
       };
     }
 
-    const spaceBelow = window.innerHeight - highlightRect.bottom;
-    const spaceAbove = highlightRect.top;
+    const spaceBelow = window.innerHeight - displayRect.bottom;
+    const spaceAbove = displayRect.top;
 
-    let top = highlightRect.bottom + 16;
-    let left = Math.max(16, Math.min(window.innerWidth - 380, highlightRect.left + highlightRect.width / 2 - 180));
+    let top = displayRect.bottom + 16;
+    let left = Math.max(16, Math.min(window.innerWidth - 380, displayRect.left + displayRect.width / 2 - 180));
 
     // Show card above target if space below is too tight
     if (spaceBelow < 340 && spaceAbove > 340) {
-      top = highlightRect.top - 380;
+      top = displayRect.top - 380;
     }
 
     return {
@@ -326,30 +383,33 @@ const OnboardingTour: React.FC = () => {
         {isActive && (
           <div className="absolute inset-0 pointer-events-auto z-[999997]" dir="rtl">
             
-            {/* Dark mask spotlight layer with glowing border */}
-            {highlightRect ? (
-              <motion.div
-                className="fixed z-[999998] pointer-events-none"
-                style={{
-                  left: highlightRect.left - 8,
-                  top: highlightRect.top - 8,
-                  width: highlightRect.width + 16,
-                  height: highlightRect.height + 16,
-                  border: `2px solid rgb(${r}, ${g}, ${b})`,
-                  boxShadow: `0 0 25px rgba(${r}, ${g}, ${b}, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75)`,
-                  borderRadius: '16px',
-                }}
-                animate={{
-                  left: highlightRect.left - 8,
-                  top: highlightRect.top - 8,
-                  width: highlightRect.width + 16,
-                  height: highlightRect.height + 16,
-                }}
-                transition={{ type: "spring", stiffness: 320, damping: 30 }}
-              />
-            ) : (
-              <div className="fixed inset-0 bg-black/75 z-[999998]" />
-            )}
+            {/* Liquid spotlight mask */}
+            <motion.div
+              className="fixed z-[999998] pointer-events-none"
+              style={{
+                left: displayRect.left - 8,
+                top: displayRect.top - 8,
+                width: displayRect.width + 16,
+                height: displayRect.height + 16,
+                border: displayRect.width > 0 ? `2.5px solid rgb(${r}, ${g}, ${b})` : '0px solid transparent',
+                boxShadow: displayRect.width > 0 
+                  ? `0 0 25px rgba(${r}, ${g}, ${b}, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75)`
+                  : `0 0 0px transparent, 0 0 0 9999px rgba(0, 0, 0, 0.75)`,
+                borderRadius: displayRect.width > 0 ? '16px' : '50%',
+              }}
+              animate={{
+                left: displayRect.left - 8,
+                top: displayRect.top - 8,
+                width: displayRect.width + 16,
+                height: displayRect.height + 16,
+                border: displayRect.width > 0 ? `2.5px solid rgb(${r}, ${g}, ${b})` : '0px solid transparent',
+                boxShadow: displayRect.width > 0 
+                  ? `0 0 25px rgba(${r}, ${g}, ${b}, 0.6), 0 0 0 9999px rgba(0, 0, 0, 0.75)`
+                  : `0 0 0px transparent, 0 0 0 9999px rgba(0, 0, 0, 0.75)`,
+                borderRadius: displayRect.width > 0 ? '16px' : '50%',
+              }}
+              transition={{ type: "spring", stiffness: 280, damping: 28 }}
+            />
 
             {/* Tour step popover card */}
             {currentStep && (
@@ -361,69 +421,82 @@ const OnboardingTour: React.FC = () => {
                 style={getCardStyle()}
                 className="bg-[#0b0b0d]/95 border border-white/10 p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative text-right flex flex-col gap-4 overflow-hidden"
               >
-                {/* Visual GIF/Video Demonstration */}
-                {currentStep.media_url && (
-                  <div className="w-full h-36 rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative flex items-center justify-center animate-fadeIn">
-                    <img 
-                      src={currentStep.media_url} 
-                      className="w-full h-full object-cover" 
-                      alt="" 
-                      loading="eager"
-                    />
+                {isNavigating ? (
+                  /* Premium Loading State between routes */
+                  <div className="h-48 flex flex-col items-center justify-center gap-4 text-center select-none py-6">
+                    <RefreshCw className="animate-spin text-gray-500" size={28} style={{ color: `rgb(${r}, ${g}, ${b})` }} />
+                    <div className="space-y-1">
+                      <p className="text-white text-xs font-black">گواستنەوە بۆ لاپەڕەی پەیوەندیدار...</p>
+                      <p className="text-[10px] text-gray-400 font-bold">تکایە چاوەڕێبە تاوەکو بەشەکە لۆد دەبێت.</p>
+                    </div>
                   </div>
-                )}
-
-                {/* Content */}
-                <div className="space-y-1.5 select-none">
-                  <div className="flex items-center justify-between">
-                    <span 
-                      className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border"
-                      style={{ 
-                        color: `rgb(${r}, ${g}, ${b})`,
-                        borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
-                        backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)`
-                      }}
-                    >
-                      گەشت • {currentIdx + 1} لە {steps.length}
-                    </span>
-                    <button 
-                      onClick={handleSkipTour}
-                      className="text-gray-500 hover:text-white transition-colors"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <h4 className="text-white text-sm font-black uppercase tracking-tight">{currentStep.title_ku}</h4>
-                  <p className="text-[11px] text-gray-400 font-bold leading-relaxed">{currentStep.description_ku}</p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
-                  <button
-                    onClick={handleSkipTour}
-                    className="text-[10px] text-gray-500 hover:text-white font-black uppercase tracking-widest"
-                  >
-                    بازدان
-                  </button>
-
-                  <div className="flex gap-2">
-                    {currentIdx > 0 && (
-                      <button
-                        onClick={handleBack}
-                        className="py-2.5 px-4 bg-white/5 hover:bg-white/10 rounded-xl text-white text-[10px] font-black flex items-center gap-1 transition-colors"
-                      >
-                        <ChevronLeft size={12} /> پێشتر
-                      </button>
+                ) : (
+                  <>
+                    {/* Visual GIF/Video Demonstration */}
+                    {currentStep.media_url && (
+                      <div className="w-full h-36 rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative flex items-center justify-center animate-fadeIn">
+                        <img 
+                          src={currentStep.media_url} 
+                          className="w-full h-full object-cover" 
+                          alt="" 
+                          loading="eager"
+                        />
+                      </div>
                     )}
-                    <button
-                      onClick={handleNext}
-                      className="py-2.5 px-4 rounded-xl text-white text-[10px] font-[1000] uppercase tracking-widest flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all shadow-md"
-                      style={{ background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)` }}
-                    >
-                      {currentIdx === steps.length - 1 ? 'کۆتایی' : 'دواتر'} <ChevronRight size={12} />
-                    </button>
-                  </div>
-                </div>
+
+                    {/* Content */}
+                    <div className="space-y-1.5 select-none">
+                      <div className="flex items-center justify-between">
+                        <span 
+                          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border"
+                          style={{ 
+                            color: `rgb(${r}, ${g}, ${b})`,
+                            borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
+                            backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)`
+                          }}
+                        >
+                          گەشت • {currentIdx + 1} لە {steps.length}
+                        </span>
+                        <button 
+                          onClick={handleSkipTour}
+                          className="text-gray-500 hover:text-white transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                      <h4 className="text-white text-sm font-black uppercase tracking-tight">{currentStep.title_ku}</h4>
+                      <p className="text-[11px] text-gray-400 font-bold leading-relaxed">{currentStep.description_ku}</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
+                      <button
+                        onClick={handleSkipTour}
+                        className="text-[10px] text-gray-500 hover:text-white font-black uppercase tracking-widest"
+                      >
+                        بازدان
+                      </button>
+
+                      <div className="flex gap-2">
+                        {currentIdx > 0 && (
+                          <button
+                            onClick={handleBack}
+                            className="py-2.5 px-4 bg-white/5 hover:bg-white/10 rounded-xl text-white text-[10px] font-black flex items-center gap-1 transition-colors"
+                          >
+                            <ChevronLeft size={12} /> پێشتر
+                          </button>
+                        )}
+                        <button
+                          onClick={handleNext}
+                          className="py-2.5 px-4 rounded-xl text-white text-[10px] font-[1000] uppercase tracking-widest flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all shadow-md"
+                          style={{ background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)` }}
+                        >
+                          {currentIdx === steps.length - 1 ? 'کۆتایی' : 'دواتر'} <ChevronRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </motion.div>
             )}
 
