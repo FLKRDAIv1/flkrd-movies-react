@@ -300,18 +300,21 @@ const OnboardingTour: React.FC = () => {
   const displayRect = getDisplayRect();
 
   // Helper to dynamically position the card in responsive layouts
-  const getCardStyle = () => {
+  const getContainerStyle = () => {
     const isMobile = window.innerWidth < 768;
 
     if (displayRect.width === 0 || !currentStep || currentStep.selector === 'body' || isNavigating) {
       return {
         position: 'fixed' as const,
         top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
+        left: 0,
+        right: 0,
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        justifyContent: 'center',
         zIndex: 999999,
-        width: 'calc(100% - 32px)',
-        maxWidth: '380px',
+        padding: '0 16px',
+        pointerEvents: 'none' as const,
       };
     }
 
@@ -322,11 +325,13 @@ const OnboardingTour: React.FC = () => {
 
       return {
         position: 'fixed' as const,
-        left: '16px',
-        right: '16px',
-        width: 'calc(100% - 32px)',
+        left: 0,
+        right: 0,
+        display: 'flex',
+        justifyContent: 'center',
         zIndex: 999999,
-        // Place in top half if spotlight is in bottom half, else place at bottom
+        padding: '0 16px',
+        pointerEvents: 'none' as const,
         top: isSpotlightInBottomHalf 
           ? 'calc(1.5rem + env(safe-area-inset-top, 0px))' 
           : 'auto',
@@ -352,8 +357,7 @@ const OnboardingTour: React.FC = () => {
       top: `${top}px`,
       left: `${left}px`,
       zIndex: 999999,
-      width: 'calc(100% - 32px)',
-      maxWidth: '360px',
+      pointerEvents: 'none' as const,
     };
   };
 
@@ -454,91 +458,97 @@ const OnboardingTour: React.FC = () => {
 
             {/* Tour step popover card */}
             {currentStep && (
-              <motion.div
-                key={currentStep.id}
-                initial={{ scale: 0.9, opacity: 0, y: 15 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 15 }}
-                style={getCardStyle()}
-                className="bg-[#0b0b0d]/95 border border-white/10 p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative text-right flex flex-col gap-4 overflow-hidden"
-              >
-                {isNavigating ? (
-                  /* Premium Loading State between routes */
-                  <div className="h-48 flex flex-col items-center justify-center gap-4 text-center select-none py-6">
-                    <RefreshCw className="animate-spin text-gray-500" size={28} style={{ color: `rgb(${r}, ${g}, ${b})` }} />
-                    <div className="space-y-1">
-                      <p className="text-white text-xs font-black">گواستنەوە بۆ لاپەڕەی پەیوەندیدار...</p>
-                      <p className="text-[10px] text-gray-400 font-bold">تکایە چاوەڕێبە تاوەکو بەشەکە لۆد دەبێت.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Visual GIF/Video Demonstration */}
-                    {currentStep.media_url && (
-                      <div className="w-full h-36 rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative flex items-center justify-center animate-fadeIn">
-                        <img 
-                          src={currentStep.media_url} 
-                          className="w-full h-full object-cover" 
-                          alt="" 
-                          loading="eager"
-                        />
+              <div style={getContainerStyle()} className="pointer-events-none">
+                <motion.div
+                  key={currentStep.id}
+                  initial={{ scale: 0.9, opacity: 0, y: 15 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: 15 }}
+                  style={{
+                    width: '100%',
+                    maxWidth: window.innerWidth < 768 ? '380px' : '360px',
+                    pointerEvents: 'auto' as const,
+                  }}
+                  className="bg-[#0b0b0d]/95 border border-white/10 p-5 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.8)] text-right flex flex-col gap-4 overflow-hidden"
+                >
+                  {isNavigating ? (
+                    /* Premium Loading State between routes */
+                    <div className="h-48 flex flex-col items-center justify-center gap-4 text-center select-none py-6">
+                      <RefreshCw className="animate-spin text-gray-500" size={28} style={{ color: `rgb(${r}, ${g}, ${b})` }} />
+                      <div className="space-y-1">
+                        <p className="text-white text-xs font-black">گواستنەوە بۆ لاپەڕەی پەیوەندیدار...</p>
+                        <p className="text-[10px] text-gray-400 font-bold">تکایە چاوەڕێبە تاوەکو بەشەکە لۆد دەبێت.</p>
                       </div>
-                    )}
-
-                    {/* Content */}
-                    <div className="space-y-1.5 select-none">
-                      <div className="flex items-center justify-between">
-                        <span 
-                          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border"
-                          style={{ 
-                            color: `rgb(${r}, ${g}, ${b})`,
-                            borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
-                            backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)`
-                          }}
-                        >
-                          گەشت • {currentIdx + 1} لە {steps.length}
-                        </span>
-                        <button 
-                          onClick={handleSkipTour}
-                          className="text-gray-500 hover:text-white transition-colors"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                      <h4 className="text-white text-sm font-black uppercase tracking-tight">{currentStep.title_ku}</h4>
-                      <p className="text-[11px] text-gray-400 font-bold leading-relaxed">{currentStep.description_ku}</p>
                     </div>
+                  ) : (
+                    <>
+                      {/* Visual GIF/Video Demonstration */}
+                      {currentStep.media_url && (
+                        <div className="w-full h-36 rounded-2xl overflow-hidden bg-black/40 border border-white/5 relative flex items-center justify-center animate-fadeIn">
+                          <img 
+                            src={currentStep.media_url} 
+                            className="w-full h-full object-cover" 
+                            alt="" 
+                            loading="eager"
+                          />
+                        </div>
+                      )}
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
-                      <button
-                        onClick={handleSkipTour}
-                        className="text-[10px] text-gray-500 hover:text-white font-black uppercase tracking-widest"
-                      >
-                        بازدان
-                      </button>
-
-                      <div className="flex gap-2">
-                        {currentIdx > 0 && (
-                          <button
-                            onClick={handleBack}
-                            className="py-2.5 px-4 bg-white/5 hover:bg-white/10 rounded-xl text-white text-[10px] font-black flex items-center gap-1 transition-colors"
+                      {/* Content */}
+                      <div className="space-y-1.5 select-none">
+                        <div className="flex items-center justify-between">
+                          <span 
+                            className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border"
+                            style={{ 
+                              color: `rgb(${r}, ${g}, ${b})`,
+                              borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
+                              backgroundColor: `rgba(${r}, ${g}, ${b}, 0.08)`
+                            }}
                           >
-                            <ChevronLeft size={12} /> پێشتر
+                            گەشت • {currentIdx + 1} لە {steps.length}
+                          </span>
+                          <button 
+                            onClick={handleSkipTour}
+                            className="text-gray-500 hover:text-white transition-colors"
+                          >
+                            <X size={14} />
                           </button>
-                        )}
-                        <button
-                          onClick={handleNext}
-                          className="py-2.5 px-4 rounded-xl text-white text-[10px] font-[1000] uppercase tracking-widest flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all shadow-md"
-                          style={{ background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)` }}
-                        >
-                          {currentIdx === steps.length - 1 ? 'کۆتایی' : 'دواتر'} <ChevronRight size={12} />
-                        </button>
+                        </div>
+                        <h4 className="text-white text-sm font-black uppercase tracking-tight">{currentStep.title_ku}</h4>
+                        <p className="text-[11px] text-gray-400 font-bold leading-relaxed">{currentStep.description_ku}</p>
                       </div>
-                    </div>
-                  </>
-                )}
-              </motion.div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/5">
+                        <button
+                          onClick={handleSkipTour}
+                          className="text-[10px] text-gray-500 hover:text-white font-black uppercase tracking-widest"
+                        >
+                          بازدان
+                        </button>
+
+                        <div className="flex gap-2">
+                          {currentIdx > 0 && (
+                            <button
+                              onClick={handleBack}
+                              className="py-2.5 px-4 bg-white/5 hover:bg-white/10 rounded-xl text-white text-[10px] font-black flex items-center gap-1 transition-colors"
+                            >
+                              <ChevronLeft size={12} /> پێشتر
+                            </button>
+                          )}
+                          <button
+                            onClick={handleNext}
+                            className="py-2.5 px-4 rounded-xl text-white text-[10px] font-[1000] uppercase tracking-widest flex items-center gap-1 hover:opacity-90 active:scale-95 transition-all shadow-md"
+                            style={{ background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)` }}
+                          >
+                            {currentIdx === steps.length - 1 ? 'کۆتایی' : 'دواتر'} <ChevronRight size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              </div>
             )}
 
           </div>
