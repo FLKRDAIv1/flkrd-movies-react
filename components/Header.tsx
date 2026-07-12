@@ -528,34 +528,34 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               </div>
             )}
 
-            {/* 🛡️ Admin Panel Quick-Access Button — shown on ALL pages when admin logged in */}
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/dubbed')}
-                title="Admin Panel"
-                aria-label="Open Admin Panel"
-                className="relative border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group focus:outline-none overflow-hidden"
-                style={{
-                  background: `linear-gradient(135deg, rgba(229,9,20,${glassConfig.redOpacity * 0.55}) 0%, rgba(0,0,0,${glassConfig.darkOpacity * 0.6}) 100%)`,
-                  backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                  borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.8})`,
-                  boxShadow: `0 0 12px rgba(229,9,20,0.3), inset 0 1px 0 rgba(255,255,255,0.12)`,
-                }}
-              >
-                {/* Liquid sheen */}
-                <div className="absolute inset-0 pointer-events-none" style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%, rgba(255,255,255,0.04) 100%)'
-                }} />
-                <img
-                  src="https://img.icons8.com/?id=jqexjjILFgDS&format=png&size=32"
-                  alt="Admin"
-                  className="w-5 h-5 lg:w-5.5 lg:h-5.5 relative z-10 drop-shadow-sm transition-transform group-hover:scale-110"
-                />
-                {/* Pulsing red dot badge */}
+            {/* 🛡️ Admin Panel Quick-Access Button — shown on ALL pages for all users */}
+            <button
+              onClick={() => navigate('/dubbed')}
+              title="Admin Panel"
+              aria-label="Open Admin Panel"
+              className="relative border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg group focus:outline-none overflow-hidden"
+              style={{
+                background: `linear-gradient(135deg, rgba(229,9,20,${glassConfig.redOpacity * 0.55}) 0%, rgba(0,0,0,${glassConfig.darkOpacity * 0.6}) 100%)`,
+                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                borderColor: `rgba(229, 9, 20, ${glassConfig.borderOpacity * 0.8})`,
+                boxShadow: `0 0 12px rgba(229,9,20,0.3), inset 0 1px 0 rgba(255,255,255,0.12)`,
+              }}
+            >
+              {/* Liquid sheen */}
+              <div className="absolute inset-0 pointer-events-none" style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%, rgba(255,255,255,0.04) 100%)'
+              }} />
+              <img
+                src="https://img.icons8.com/?id=jqexjjILFgDS&format=png&size=32"
+                alt="Admin"
+                className="w-5 h-5 lg:w-5.5 lg:h-5.5 relative z-10 drop-shadow-sm transition-transform group-hover:scale-110"
+              />
+              {/* Pulsing red dot badge */}
+              {isAdmin && (
                 <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-black animate-pulse z-20" />
-              </button>
-            )}
+              )}
+            </button>
 
             {/* Profile Button */}
             {!isDubPage && (
