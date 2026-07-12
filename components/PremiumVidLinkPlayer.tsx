@@ -2457,7 +2457,7 @@ export default function PremiumVidLinkPlayer({
 
       {/* Top Controls — always visible and interactive, rendered after video element to sit on top of the iframe */}
       <div 
-        className="absolute z-50 flex items-center gap-2 md:gap-3 pointer-events-auto"
+        className="absolute z-[100] flex items-center gap-2 md:gap-3 pointer-events-auto"
         style={{
           top: '1rem',
           right: '1rem',

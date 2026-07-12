@@ -2225,7 +2225,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             ref={containerRef}
             className={`bg-black flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
                     ? 'fixed inset-0 w-screen h-screen z-[9999] overflow-hidden'
-                    : 'w-full h-full relative'
+                    : 'w-full h-full relative z-20'
                 }`}
         >
 
@@ -2249,70 +2249,97 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 }
             `}</style>
 
-
-
-            {/* HLS / Direct Video */}
-            {isHls && (
-                <video
-                    id="vidking-player"
-                    ref={videoRef}
-                    className="w-full h-full object-contain z-10 pointer-events-none"
-                    style={{
-                        WebkitPlaysInline: 'inline',
-                        filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1))
-                            ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
-                            : undefined
-                    } as any}
-                    controls={false}
-                    muted
-                    autoPlay
-                    playsInline
-                    playsinline={true}
-                    // @ts-ignore
-                    webkit-playsinline="true"
-                    preload="auto"
-                    crossOrigin="anonymous"
-                    onTimeUpdate={(e) => {
-                        const time = e.currentTarget.currentTime;
-                        setCurrentTime(time);
-                        onProgressRef.current?.({
-                            currentTime: time,
-                            paused: e.currentTarget.paused,
+            {/* Media Canvas Layer (Isolated Stack) */}
+            <div className="absolute inset-0 w-full h-full z-10 overflow-hidden pointer-events-auto">
+                {/* HLS / Direct Video */}
+                {isHls && (
+                    <video
+                        id="vidking-player"
+                        ref={videoRef}
+                        className="w-full h-full object-contain pointer-events-none"
+                        style={{
+                            WebkitPlaysInline: 'inline',
+                            filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1))
+                                ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+                                : undefined
+                        } as any}
+                        controls={false}
+                        muted
+                        autoPlay
+                        playsInline
+                        playsinline={true}
+                        // @ts-ignore
+                        webkit-playsinline="true"
+                        preload="auto"
+                        crossOrigin="anonymous"
+                        onTimeUpdate={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            setCurrentTime(time);
+                            onProgressRef.current?.({
+                                currentTime: time,
+                                paused: e.currentTarget.paused,
+                                duration: e.currentTarget.duration
+                            });
+                        }}
+                        onPlaying={() => setLoading(false)}
+                        onPlay={(e) => onProgressRef.current?.({
+                            currentTime: e.currentTarget.currentTime,
+                            paused: false,
+                            event: 'play',
                             duration: e.currentTarget.duration
-                        });
-                    }}
-                    onPlaying={() => setLoading(false)}
-                    onPlay={(e) => onProgressRef.current?.({
-                        currentTime: e.currentTarget.currentTime,
-                        paused: false,
-                        event: 'play',
-                        duration: e.currentTarget.duration
-                    })}
-                    onPause={(e) => onProgressRef.current?.({
-                        currentTime: e.currentTarget.currentTime,
-                        paused: true,
-                        event: 'pause',
-                        duration: e.currentTarget.duration
-                    })}
-                    onSeeking={(e) => onProgressRef.current?.({
-                        currentTime: e.currentTarget.currentTime,
-                        paused: e.currentTarget.paused,
-                        event: 'seek',
-                        duration: e.currentTarget.duration
-                    })}
-                >
-                    {showSubtitles && (localSubtitleUrl || subtitleUrl) && (
-                        <track
-                            key={localSubtitleUrl || subtitleUrl}
-                            src={localSubtitleUrl || subtitleUrl}
-                            kind="subtitles"
-                            srcLang="ku"
-                            label="Kurdish"
-                            default
-                        />
-                    )}
-                </video>
-            )}
+                        })}
+                        onPause={(e) => onProgressRef.current?.({
+                            currentTime: e.currentTarget.currentTime,
+                            paused: true,
+                            event: 'pause',
+                            duration: e.currentTarget.duration
+                        })}
+                        onSeeking={(e) => onProgressRef.current?.({
+                            currentTime: e.currentTarget.currentTime,
+                            paused: e.currentTarget.paused,
+                            event: 'seek',
+                            duration: e.currentTarget.duration
+                        })}
+                    >
+                        {showSubtitles && (localSubtitleUrl || subtitleUrl) && (
+                            <track
+                                key={localSubtitleUrl || subtitleUrl}
+                                src={localSubtitleUrl || subtitleUrl}
+                                kind="subtitles"
+                                srcLang="ku"
+                                label="Kurdish"
+                                default
+                            />
+                        )}
+                    </video>
+                )}
+
+                {/* Iframe Embed — key forces full remount ONLY on URL change (excluding start time) */}
+                {isIframe && iframeSrc && (
+                    <iframe
+                        ref={iframeRef}
+                        key={stableKey}
+                        src={iframeSrc}
+                        className="absolute inset-0 w-full h-full border-none"
+                        style={{
+                            display: 'block',
+                            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+                        }}
+                        // NO sandbox — providers detect sandbox and refuse to load
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        // @ts-ignore
+                        scrolling="no"
+                        // iOS Safari: prevent native video player takeover
+                        // @ts-ignore
+                        webkit-playsinline="true"
+                        // @ts-ignore
+                        x-webkit-airplay="deny"
+                        onLoad={handleIframeLoad}
+                        title="FLKRD Universal Player"
+                    />
+                )}
+            </div>
 
             {/* Custom Subtitle Overlay */}
             <AnimatePresence mode="wait">
@@ -2591,7 +2618,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
             {/* Brand Watermark (top-left) */}
             <div 
-                className="absolute z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
+                className="absolute z-[90] pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
                 style={{
                     top: '1rem',
                     left: '1rem',
@@ -2607,7 +2634,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* Top-Right: CC / Relink / Fullscreen — ABSOLUTE so they sit inside the player boundary and don't clash with page header */}
             <div 
-                className="absolute z-50 flex items-center gap-2 md:gap-3 pointer-events-auto"
+                className="absolute z-[100] flex items-center gap-2 md:gap-3 pointer-events-auto"
                 style={{
                     top: '1rem',
                     right: '1rem',
