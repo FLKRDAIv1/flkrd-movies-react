@@ -188,16 +188,33 @@ const OnboardingTour: React.FC = () => {
     if (!isActive || currentIdx < 0 || currentIdx >= steps.length || isNavigating) return;
     const step = steps[currentIdx];
 
-    const timer = setTimeout(() => {
-      // If we are showing a player guide step, but the player modal is not open yet, open it!
+    // Poll for the play button to open the player modal if we are on a player guide step
+    let playBtnAttempts = 0;
+    const playBtnInterval = setInterval(() => {
+      playBtnAttempts++;
+      
+      const playerOpen = document.querySelector('.player-relink-trigger') || 
+                         document.querySelector('.player-cc-trigger') || 
+                         document.querySelector('.player-episodes-trigger');
+      if (playerOpen) {
+        clearInterval(playBtnInterval);
+        return;
+      }
+
       if (step.selector && step.selector.startsWith('.player-')) {
-        const playerOpen = document.querySelector('.player-relink-trigger') || document.querySelector('.player-cc-trigger') || document.querySelector('.player-episodes-trigger');
-        if (!playerOpen) {
-          const playBtn = document.querySelector('.detail-play-btn') as HTMLElement;
-          if (playBtn) playBtn.click();
+        const playBtn = document.querySelector('.detail-play-btn') as HTMLElement;
+        if (playBtn) {
+          playBtn.click();
+          clearInterval(playBtnInterval);
         }
       }
 
+      if (playBtnAttempts > 25) {
+        clearInterval(playBtnInterval);
+      }
+    }, 200);
+
+    const timer = setTimeout(() => {
       if (step.selector === '.header-settings-trigger') {
         const el = document.querySelector('.header-settings-trigger') as HTMLElement;
         if (el) el.click();
@@ -211,9 +228,12 @@ const OnboardingTour: React.FC = () => {
         const el = document.querySelector('.player-episodes-trigger') as HTMLElement;
         if (el) el.click();
       }
-    }, 850);
+    }, 950);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearInterval(playBtnInterval);
+      clearTimeout(timer);
+    };
   }, [isActive, currentIdx, steps, isNavigating]);
 
   // Auto-close settings modal when moving away from the settings step
