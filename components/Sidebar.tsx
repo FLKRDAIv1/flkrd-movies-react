@@ -168,8 +168,6 @@ const Sidebar: React.FC = () => {
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}
-        onMouseEnter={() => setIsCollapsed(false)}
-        onMouseLeave={() => setIsCollapsed(true)}
       >
         {/* Pure CSS Premium Glassmorphism Background with Red Tint */}
         <div
@@ -203,14 +201,19 @@ const Sidebar: React.FC = () => {
 
         {/* Content panel sitting above LiquidGlass */}
         <div className="relative z-10 flex flex-col h-full w-full overflow-hidden" style={{ borderRadius: `${glassConfig.cornerRadius}px` }}>
-          <div className="flex items-center justify-center h-32 flex-shrink-0 relative overflow-hidden">
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsCollapsed(prev => !prev); }}
+            className="flex items-center justify-center h-32 flex-shrink-0 relative overflow-hidden w-full cursor-pointer select-none group"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
             <div className="absolute inset-0 bg-gradient-to-b from-brand/20 to-transparent opacity-50" />
             <motion.div 
               animate={{ 
                 scale: isCollapsed ? 1 : 1.1,
                 width: isCollapsed ? "4rem" : "12rem"
               }}
-              className="relative z-10 flex items-center justify-center p-3 bg-main-text/5 rounded-2xl border border-main-text/10 shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden"
+              className="relative z-10 flex items-center justify-center p-3 bg-main-text/5 rounded-2xl border border-main-text/10 shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden group-hover:border-white/20 transition-all duration-300"
             >
                <AnimatePresence mode="wait">
                  {isCollapsed ? (
@@ -237,7 +240,7 @@ const Sidebar: React.FC = () => {
                </AnimatePresence>
                <div className="absolute -inset-2 bg-red-600/20 blur-2xl opacity-50 rounded-full" />
             </motion.div>
-          </div>
+          </button>
 
           <nav className="flex-grow flex flex-col space-y-3.5 mt-4 overflow-y-auto scrollbar-hide py-4">
             <NavItem to="/" icon={<Home size={20} />} text={t('home')} location={location} isCollapsed={isCollapsed} />
