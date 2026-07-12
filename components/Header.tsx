@@ -198,7 +198,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
             <button
               onClick={() => navigate('/search')}
-              className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-white/5 active:scale-90 transition-all cursor-pointer focus:outline-none"
+              className="global-search-trigger w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-white/10 border border-white/5 active:scale-90 transition-all cursor-pointer focus:outline-none"
               style={{
                 background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
                 backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,
@@ -578,7 +578,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             {!isDubPage && (
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg focus:outline-none text-gray-400 hover:text-white"
+                className="header-settings-trigger border rounded-full w-10 h-10 lg:w-11 lg:h-11 flex items-center justify-center transition-all shadow-lg focus:outline-none text-gray-400 hover:text-white"
                 style={{
                   background: `rgba(229, 9, 20, ${glassConfig.redOpacity * 0.35})`,
                   backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px) saturate(${glassConfig.saturation}%)`,

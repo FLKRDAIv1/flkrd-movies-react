@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, ChevronRight, ChevronLeft, X, Sparkles } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
@@ -13,6 +13,7 @@ export interface TourStep {
   description_ku: string;
   media_url?: string;
   selector?: string;
+  route?: string;
   priority: number;
 }
 
@@ -24,6 +25,7 @@ const OnboardingTour: React.FC = () => {
   const [showInvite, setShowInvite] = useState(false);
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { mobileNavConfig } = useUI();
   const observerRef = useRef<MutationObserver | null>(null);
@@ -95,10 +97,7 @@ const OnboardingTour: React.FC = () => {
 
     const el = document.querySelector(step.selector);
     if (el) {
-      // Scroll to element gently if off-screen
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const rect = el.getBoundingClientRect();
-      // Only set if bounding box is valid
       if (rect.width > 0 && rect.height > 0) {
         setHighlightRect(rect);
       }
@@ -107,7 +106,46 @@ const OnboardingTour: React.FC = () => {
     }
   }, [isActive, currentIdx, steps]);
 
-  // Monitor DOM changes to re-calculate rect if viewport changes or elements render late
+  // Handle routing and element polling when step changes
+  useEffect(() => {
+    if (!isActive || currentIdx < 0 || currentIdx >= steps.length) return;
+
+    const step = steps[currentIdx];
+    
+    // Check if we need to navigate first
+    if (step.route && step.route !== location.pathname) {
+      navigate(step.route);
+      setHighlightRect(null); // Clear highlight temporarily
+    }
+
+    // Begin polling to find the element selector in the DOM (allows page load delay)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      const el = document.querySelector(step.selector || '');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Re-read bounding rect after scrolling finishes
+        setTimeout(() => {
+          const rect = el.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            setHighlightRect(rect);
+          }
+        }, 150);
+
+        clearInterval(interval);
+      } else if (attempts > 20) {
+        // Stop polling after 4 seconds if element isn't found
+        setHighlightRect(null);
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [isActive, currentIdx, navigate, location.pathname, steps]);
+
+  // Monitor DOM changes to re-calculate rect if viewport changes
   useEffect(() => {
     if (!isActive) return;
 
@@ -145,15 +183,7 @@ const OnboardingTour: React.FC = () => {
 
   const handleNext = () => {
     if (currentIdx < steps.length - 1) {
-      const nextIdx = currentIdx + 1;
-      const nextStep = steps[nextIdx];
-
-      // Smart routing: navigate to routes if steps require it
-      if (nextStep.step_key === 'player_guide' && !location.hash.includes('/details') && !location.hash.includes('/dubbed-details')) {
-        navigate('/dubbed');
-      }
-
-      setCurrentIdx(nextIdx);
+      setCurrentIdx(currentIdx + 1);
     } else {
       // Completed Tour
       handleSkipTour();
