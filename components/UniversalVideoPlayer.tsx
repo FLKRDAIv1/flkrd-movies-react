@@ -2607,9 +2607,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             )}
 
             {/* ═══ TOP CONTROLS — always visible, even during load ═══ */}
-            {/* Brand Watermark (top-left) */}
+            {/* Top-Left: Close Button and Watermark */}
             <div 
-                className="absolute z-[90] pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
+                className="absolute z-[100] flex items-center gap-3 pointer-events-auto"
                 style={{
                     top: '1rem',
                     left: '1rem',
@@ -2617,9 +2617,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     WebkitTransform: 'translate3d(0, 0, 0)'
                 }}
             >
-                <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
-                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl md:rounded-t-2xl" />
-                    <span className="text-lg md:text-xl font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-2 bg-black/40 hover:bg-red-600/30 border border-white/10 hover:border-red-500/20 text-gray-400 hover:text-white rounded-xl transition-all group active:scale-95 flex items-center justify-center shadow-2xl"
+                        title={(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close'}
+                    >
+                        <X size={16} className="group-hover:rotate-90 transition-transform" />
+                    </button>
+                )}
+
+                <div className="w-8 h-8 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden opacity-40 hover:opacity-100 transition-opacity duration-500">
+                    <div className="absolute top-0 left-0 right-0 h-1/2 bg-gradient-to-b from-white/20 to-transparent rounded-t-xl" />
+                    <span className="text-lg font-[1000] italic bg-gradient-to-br from-white via-white/80 to-white/20 bg-clip-text text-transparent drop-shadow-2xl relative z-10">F</span>
                 </div>
             </div>
 

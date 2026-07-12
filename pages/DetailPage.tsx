@@ -687,56 +687,8 @@ const DetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999] flex flex-col" dir="ltr">
-            <div
-              className="w-full flex items-center justify-between bg-black/80 backdrop-blur-xl border-b border-white/5 z-[10000]"
-              style={{
-                /* iOS 11.0 constant() fallback */
-                paddingTop: 'constant(safe-area-inset-top, 16px)',
-                paddingRight: 'constant(safe-area-inset-right, 16px)',
-                paddingBottom: '16px',
-                paddingLeft: 'constant(safe-area-inset-left, 16px)',
-              } as any}
-              ref={(el) => {
-                if (el) {
-                  // iOS 11.2+ env() override — applied after render
-                  el.style.paddingTop = 'env(safe-area-inset-top, 16px)';
-                  el.style.paddingRight = 'env(safe-area-inset-right, 16px)';
-                  el.style.paddingLeft = 'env(safe-area-inset-left, 16px)';
-                }
-              }}
-            >
-              <button onClick={handleClosePlayer} aria-label="Close video player" className="text-white bg-white/5 p-2.5 md:p-3 rounded-xl md:rounded-2xl hover:bg-red-600 transition-all shadow-xl group">
-                <X size={20} className="md:w-6 md:h-6 group-hover:rotate-90 transition-transform" />
-              </button>
-              <div className="flex flex-col items-center text-center">
-                <div className="flex items-center justify-center gap-2 mb-1 bg-blue-600/20 px-3 py-1 rounded-full border border-blue-600/30">
-                  <Shield size={12} className="text-blue-500" />
-                  <p className="text-[8px] md:text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">{(language === 'ku' || language === 'badini') ? 'پەیوەندی پارێزراوە' : 'SECURE NODE ACTIVE'}</p>
-                </div>
-                <h2 className="text-xs md:sm font-bold uppercase tracking-tight italic line-clamp-1 text-white">{content.title}</h2>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={handleRefreshSource}
-                  className="p-2 md:p-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center group"
-                  title={(language === 'ku' || language === 'badini') ? 'نوێکردنەوەی سەرچاوە' : 'Refresh Source'}
-                  aria-label="Refresh source connection"
-                >
-                  <motion.div
-                    animate={{ rotate: isSpinning ? 360 : 0 }}
-                    transition={{ duration: 0.6, ease: "easeInOut" }}
-                  >
-                    <RefreshCcw size={12} className="group-hover:scale-110 transition-transform" />
-                  </motion.div>
-                </button>
-                <button onClick={() => setShowSourceSwitcher(!showSourceSwitcher)} aria-label="Switch streaming source server" className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl bg-red-600/10 border border-red-500/20 text-red-500 text-[8px] md:text-[10px] font-black hover:bg-red-600 hover:text-white transition-all">
-                  <RefreshCcw size={12} /> <span className="hidden sm:inline">RELINK</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 w-full relative bg-black overflow-hidden">
+          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999]" dir="ltr">
+            <div className="w-full h-full relative bg-black overflow-hidden">
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
                   key={`premium-${playerKey}`}
