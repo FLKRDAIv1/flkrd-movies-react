@@ -64,12 +64,12 @@ const AtmosphereParticles: React.FC<{ active?: boolean }> = ({ active = true }) 
             {[...Array(20)].map((_, i) => (
                 <motion.div
                     key={i}
-                    initial={{ 
-                        x: Math.random() * 100 + "%", 
+                    initial={{
+                        x: Math.random() * 100 + "%",
                         y: Math.random() * 100 + "%",
-                        opacity: 0 
+                        opacity: 0
                     }}
-                    animate={{ 
+                    animate={{
                         y: [null, Math.random() * 100 + "%"],
                         opacity: [0, 0.4, 0]
                     }}
@@ -88,14 +88,14 @@ const AtmosphereParticles: React.FC<{ active?: boolean }> = ({ active = true }) 
 const BreathingLogo: React.FC = () => (
     <div className="relative">
         <motion.div
-            animate={{ 
+            animate={{
                 scale: [1, 1.05, 1],
                 opacity: [0.8, 1, 0.8]
             }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             className="w-40 h-40 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[3.5rem] flex items-center justify-center relative overflow-hidden shadow-[0_0_150px_rgba(var(--brand-red-rgb),0.1)]"
         >
-            <motion.div 
+            <motion.div
                 animate={{ opacity: [0.1, 0.3, 0.1] }}
                 transition={{ duration: 8, repeat: Infinity }}
                 className="absolute inset-0 bg-gradient-to-tr from-brand/20 via-transparent to-brand/10"
@@ -119,7 +119,7 @@ const BreathingLogo: React.FC = () => (
 
 const CinematicLoader: React.FC<{ progress: number, status: string, performanceMode?: boolean }> = ({ progress, status, performanceMode }) => {
     const [displayStatus, setDisplayStatus] = React.useState("ئامادەکردنی باشترین کوالیتی...");
-    
+
     React.useEffect(() => {
         if (status.toLowerCase().includes('initial')) setDisplayStatus("بەخێربێن بۆ جیهانی FLKRD");
         else if (status.toLowerCase().includes('sync')) setDisplayStatus("هاوکاتکردنی چیرۆکەکان...");
@@ -136,7 +136,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
             className="fixed inset-0 z-[1000] bg-[#030303] flex flex-col items-center justify-center overflow-hidden"
         >
             <AtmosphereParticles active={!performanceMode} />
-            
+
             {/* Soft Ambient Glows */}
             <div className="absolute top-0 inset-x-0 h-full bg-gradient-to-b from-brand/[0.03] to-transparent pointer-events-none" />
 
@@ -158,7 +158,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
                                 بە کوردی کردنی چیرۆکەکانی جیهان
                             </p>
                         </motion.div>
-                        
+
                         <div className="h-10 flex items-center justify-center">
                             <AnimatePresence mode="wait">
                                 <motion.div
@@ -180,15 +180,15 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
                     <div className="flex flex-col items-center gap-4 w-full">
                         <div className="w-48 h-[1px] bg-white/[0.03] relative overflow-hidden rounded-full">
                             <motion.div
-                                transition={{ 
-                                    duration: 4, 
-                                    repeat: Infinity, 
-                                    ease: "easeInOut" 
+                                transition={{
+                                    duration: 4,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
                                 }}
                                 className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-brand/40 to-transparent shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.3)]"
                             />
                         </div>
-                        <motion.span 
+                        <motion.span
                             animate={{ opacity: [0.1, 0.3, 0.1] }}
                             transition={{ duration: 3, repeat: Infinity }}
                             className="text-[9px] text-white/20 font-sans tracking-[0.5em] font-black uppercase select-none"
@@ -198,7 +198,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
                     </div>
                 </div>
             </div>
-            
+
             {/* Minimalist Studio Credit */}
             <div className="absolute bottom-12 flex flex-col items-center opacity-10">
                 <span className="text-[8px] font-sans font-black tracking-[1em] text-white uppercase mb-2">PRODUCED BY</span>
@@ -280,17 +280,17 @@ const DubbedMoviesPage: React.FC = () => {
     const [isTmdbSearching, setIsTmdbSearching] = useState(false);
 
     const fetchFromTmdb = async (endpoint: string) => {
-        const primaryUrl = API_BASE_URL.startsWith('http') 
-            ? `${API_BASE_URL}${endpoint}` 
+        const primaryUrl = API_BASE_URL.startsWith('http')
+            ? `${API_BASE_URL}${endpoint}`
             : `${window.location.origin}${API_BASE_URL}${endpoint}`;
-        
+
         try {
             const res = await fetch(primaryUrl);
             if (res.ok) return await res.json();
         } catch (e) {
             console.warn("Primary TMDB fetch failed, trying direct endpoint:", e);
         }
-        
+
         const fallbackUrl = `https://api.themoviedb.org/3${endpoint}`;
         const res = await fetch(fallbackUrl);
         if (!res.ok) throw new Error(`TMDB call failed: ${res.statusText}`);
@@ -314,7 +314,7 @@ const DubbedMoviesPage: React.FC = () => {
     const handleSelectTmdbMovie = async (movie: any, target: 'upload' | 'edit') => {
         try {
             addNotification({ type: 'info', title: 'Fetching Data', message: 'Pulling details and IDs from TMDB...' });
-            
+
             const [details, extIds] = await Promise.all([
                 fetchFromTmdb(`/movie/${movie.id}?api_key=${API_KEY}&language=en-US`),
                 fetchFromTmdb(`/movie/${movie.id}/external_ids?api_key=${API_KEY}`)
@@ -386,7 +386,7 @@ const DubbedMoviesPage: React.FC = () => {
         const loadDubbedArchive = async () => {
             const isEstablished = sessionStorage.getItem('zana_protocol_established');
             let resolveLoader: () => void;
-            const loaderPromise = new Promise<void>(res => { 
+            const loaderPromise = new Promise<void>(res => {
                 resolveLoader = res;
                 // Guarded Timeout (Zana Protocol Integrity)
                 setTimeout(() => {
@@ -425,7 +425,7 @@ const DubbedMoviesPage: React.FC = () => {
                 let customMovies = [];
                 try {
                     await setDynamicStatus('QUERYING ZANA POSTGRES...', 400);
-                    
+
                     const dbFetchPromise = supabase
                         .from('dubbed_movies')
                         .select('id, title, description, videoUrl, imageBase64, bannerBase64, created_at, level')
@@ -444,11 +444,11 @@ const DubbedMoviesPage: React.FC = () => {
                         }),
                         timeoutPromise
                     ]);
-                    
+
                     const { data, error } = response;
 
                     if (error) throw error;
-                    
+
                     if (data) {
                         await setDynamicStatus('DATA STREAM ALIGNED...', 300);
                         customMovies = data;
@@ -470,18 +470,18 @@ const DubbedMoviesPage: React.FC = () => {
                         const formattedCustom = customMovies
                             .filter((m: any) => !bannedIds.has(String(m.id).replace('custom_', '')))
                             .map((movie: any) => ({
-                            ...movie,
-                            id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
-                            poster_path: movie.imageBase64,
-                            backdrop_path: movie.bannerBase64 || movie.imageBase64,
-                            title: movie.title,
-                            kurdishTitle: movie.title,
-                            overview: movie.description,
-                            kurdishOverview: movie.description,
-                            customStream: movie.videoUrl,
-                            media_type: 'dubbed',
-                            level: movie.level || 'KING'
-                        }));
+                                ...movie,
+                                id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
+                                poster_path: movie.imageBase64,
+                                backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                                title: movie.title,
+                                kurdishTitle: movie.title,
+                                overview: movie.description,
+                                kurdishOverview: movie.description,
+                                customStream: movie.videoUrl,
+                                media_type: 'dubbed',
+                                level: movie.level || 'KING'
+                            }));
 
                         formattedCustom.sort((a, b) => {
                             const dateA = new Date(a.created_at || 0).getTime();
@@ -526,7 +526,7 @@ const DubbedMoviesPage: React.FC = () => {
             .channel('public:dubbed_movies')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'dubbed_movies' }, async (payload) => {
                 console.log('Zana Engine Real-time Signal:', payload.eventType);
-                
+
                 // For heavy changes, trigger a silent re-sync to ensure total grid integrity
                 if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
                     setHasNewMovies(true);
@@ -537,18 +537,18 @@ const DubbedMoviesPage: React.FC = () => {
                         const formatted = data
                             .filter((movie: any) => !bannedIds.has(String(movie.id).replace('custom_', '')))
                             .map((movie: any) => ({
-                            ...movie,
-                            id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
-                            poster_path: movie.imageBase64,
-                            backdrop_path: movie.bannerBase64 || movie.imageBase64,
-                            title: movie.title,
-                            kurdishTitle: movie.title,
-                            overview: movie.description,
-                            kurdishOverview: movie.description,
-                            customStream: movie.videoUrl,
-                            media_type: 'dubbed',
-                            level: movie.level || 'KING'
-                        }));
+                                ...movie,
+                                id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
+                                poster_path: movie.imageBase64,
+                                backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                                title: movie.title,
+                                kurdishTitle: movie.title,
+                                overview: movie.description,
+                                kurdishOverview: movie.description,
+                                customStream: movie.videoUrl,
+                                media_type: 'dubbed',
+                                level: movie.level || 'KING'
+                            }));
 
                         // ✅ Neural Date Alignment: Newest First
                         formatted.sort((a, b) => {
@@ -558,7 +558,7 @@ const DubbedMoviesPage: React.FC = () => {
                         });
 
                         setDubbedContent([...formatted]);
-                        db.saveMovies(formatted).catch(() => {});
+                        db.saveMovies(formatted).catch(() => { });
                     }
                 } else if (payload.eventType === 'UPDATE') {
                     const eventId = String(payload.new.id).startsWith('custom_') ? payload.new.id : `custom_${payload.new.id}`;
@@ -573,7 +573,7 @@ const DubbedMoviesPage: React.FC = () => {
                             overview: (payload.new as any).description,
                             kurdishOverview: (payload.new as any).description,
                         } : m);
-                        db.saveMovies(next).catch(() => {});
+                        db.saveMovies(next).catch(() => { });
                         return next;
                     });
                 }
@@ -624,22 +624,22 @@ const DubbedMoviesPage: React.FC = () => {
                 const formatted = data
                     .filter((m: any) => !bannedIds.has(String(m.id)))
                     .map((movie: any) => ({
-                    ...movie,
-                    id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
-                    poster_path: movie.imageBase64,
-                    backdrop_path: movie.bannerBase64 || movie.imageBase64,
-                    title: movie.title,
-                    kurdishTitle: movie.title,
-                    overview: movie.description,
-                    kurdishOverview: movie.description,
-                    customStream: movie.videoUrl,
-                    media_type: 'dubbed',
-                    level: movie.level || 'KING'
-                }));
+                        ...movie,
+                        id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
+                        poster_path: movie.imageBase64,
+                        backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                        title: movie.title,
+                        kurdishTitle: movie.title,
+                        overview: movie.description,
+                        kurdishOverview: movie.description,
+                        customStream: movie.videoUrl,
+                        media_type: 'dubbed',
+                        level: movie.level || 'KING'
+                    }));
 
                 setDubbedContent(prev => {
                     const next = [...prev, ...formatted];
-                    db.saveMovies(next).catch(() => {});
+                    db.saveMovies(next).catch(() => { });
                     return next;
                 });
                 setPage(nextPage);
@@ -684,7 +684,7 @@ const DubbedMoviesPage: React.FC = () => {
 
         try {
             let timeoutId: any;
-            const timeoutPromise = new Promise((_, reject) => 
+            const timeoutPromise = new Promise((_, reject) =>
                 timeoutId = setTimeout(() => reject(new Error('Operation timeout (30s limit)')), 30000)
             );
 
@@ -713,18 +713,18 @@ const DubbedMoviesPage: React.FC = () => {
                 const formattedCustom = data
                     .filter((m: any) => !bannedIds.has(String(m.id)))
                     .map((movie: any) => ({
-                    ...movie,
-                    id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
-                    poster_path: movie.imageBase64,
-                    backdrop_path: movie.bannerBase64 || movie.imageBase64,
-                    title: movie.title,
-                    kurdishTitle: movie.title,
-                    overview: movie.description,
-                    kurdishOverview: movie.description,
-                    customStream: movie.videoUrl,
-                    media_type: 'dubbed',
-                    level: movie.level || 'KING'
-                }));
+                        ...movie,
+                        id: String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`,
+                        poster_path: movie.imageBase64,
+                        backdrop_path: movie.bannerBase64 || movie.imageBase64,
+                        title: movie.title,
+                        kurdishTitle: movie.title,
+                        overview: movie.description,
+                        kurdishOverview: movie.description,
+                        customStream: movie.videoUrl,
+                        media_type: 'dubbed',
+                        level: movie.level || 'KING'
+                    }));
 
                 formattedCustom.sort((a, b) => {
                     const dateA = new Date(a.created_at || 0).getTime();
@@ -734,15 +734,15 @@ const DubbedMoviesPage: React.FC = () => {
 
                 setDubbedContent([...formattedCustom]);
                 await db.saveMovies(formattedCustom);
-                
+
                 // RESET PAGINATION ON FORCE SYNC
                 setPage(0);
                 setHasMore(data.length === 40); // Since forceSync fetches 40
-                
-                addNotification({ 
-                    type: 'success', 
-                    title: 'Sync Integrity Established', 
-                    message: `Grid synced with ${formattedCustom.length} active nodes.` 
+
+                addNotification({
+                    type: 'success',
+                    title: 'Sync Integrity Established',
+                    message: `Grid synced with ${formattedCustom.length} active nodes.`
                 });
             } else if (data && data.length === 0) {
                 throw new Error('Server returned empty set');
@@ -759,10 +759,10 @@ const DubbedMoviesPage: React.FC = () => {
                     message: 'Main connection delayed. Viewing local archive.'
                 });
             } else {
-                addNotification({ 
-                    type: 'error', 
-                    title: 'Sync Interrupted', 
-                    message: 'Could not reach Zana Servers. Please check your connection.' 
+                addNotification({
+                    type: 'error',
+                    title: 'Sync Interrupted',
+                    message: 'Could not reach Zana Servers. Please check your connection.'
                 });
             }
         } finally {
@@ -772,7 +772,7 @@ const DubbedMoviesPage: React.FC = () => {
 
     // Latest Movie Banner Carousel Logic - Truly Newer First (Top 10)
     const heroMovies = dubbedContent.slice(0, 10);
-    
+
     const handleNextHero = () => {
         setCurrentHeroIndex((prev) => (prev + 1) % heroMovies.length);
     };
@@ -848,7 +848,7 @@ const DubbedMoviesPage: React.FC = () => {
             const { error } = await supabase
                 .from('server_config')
                 .upsert(updates);
-            
+
             if (error) throw error;
 
             const scores: { [key: string]: number } = {};
@@ -913,9 +913,9 @@ const DubbedMoviesPage: React.FC = () => {
             // 2. Dubbed Physical Deletion
             const dbId = String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`;
             await supabase.from('dubbed_movies').delete().eq('id', dbId);
-            
+
             addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
-            
+
             // Refresh local state
             setDubbedContent(prev => prev.filter(m => m.id !== movie.id));
         } catch (err) {
@@ -1068,8 +1068,8 @@ const DubbedMoviesPage: React.FC = () => {
 
         try {
             // 1. Robust ID Normalization: DB expects ID starting with 'custom_'
-            const dbId = nodeToEdit.id.startsWith('custom_') 
-                ? nodeToEdit.id 
+            const dbId = nodeToEdit.id.startsWith('custom_')
+                ? nodeToEdit.id
                 : `custom_${nodeToEdit.id}`;
 
             console.log(`[ZANA PROTOCOL] Initiating Node Modification: ${dbId}`);
@@ -1124,10 +1124,10 @@ const DubbedMoviesPage: React.FC = () => {
                 return next;
             });
 
-            addNotification({ 
-                type: 'success', 
-                title: 'Data Stream Updated', 
-                message: 'Movie records have been successfully synchronized.' 
+            addNotification({
+                type: 'success',
+                title: 'Data Stream Updated',
+                message: 'Movie records have been successfully synchronized.'
             });
 
             setIsEditModalOpen(false);
@@ -1135,10 +1135,10 @@ const DubbedMoviesPage: React.FC = () => {
 
         } catch (error: any) {
             console.error('[CRITICAL MODIFICATION FAILURE]', error);
-            addNotification({ 
-                type: 'error', 
-                title: 'Operation Failed', 
-                message: error.message || 'The data stream refused to update.' 
+            addNotification({
+                type: 'error',
+                title: 'Operation Failed',
+                message: error.message || 'The data stream refused to update.'
             });
         } finally {
             setIsUpdating(false);
@@ -1154,8 +1154,8 @@ const DubbedMoviesPage: React.FC = () => {
         setIsUpdating(true);
         try {
             // 1. Robust ID Normalization: DB expects ID starting with 'custom_'
-            const dbId = movieToDelete.startsWith('custom_') 
-                ? movieToDelete 
+            const dbId = movieToDelete.startsWith('custom_')
+                ? movieToDelete
                 : `custom_${movieToDelete}`;
 
             console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${dbId}`);
@@ -1163,11 +1163,11 @@ const DubbedMoviesPage: React.FC = () => {
             // 2. Database Execution (Try RPC Call first, fallback to direct DELETE if it fails)
             console.log(`[ZANA PROTOCOL] Executing deletion RPC for Node: ${dbId}`);
             let deleteSuccess = false;
-            
+
             try {
                 const { error: rpcError } = await supabase
                     .rpc('delete_dubbed_movie', { target_id: dbId });
-                
+
                 if (!rpcError) {
                     deleteSuccess = true;
                     console.log('[ZANA PROTOCOL] RPC deletion completed successfully.');
@@ -1184,7 +1184,7 @@ const DubbedMoviesPage: React.FC = () => {
                     .from('dubbed_movies')
                     .delete()
                     .eq('id', dbId);
-                
+
                 if (directError) {
                     console.error('[SUPABASE DIRECT DELETE ERROR]', directError);
                     throw new Error(`Direct deletion failed: ${directError.message}`);
@@ -1193,7 +1193,7 @@ const DubbedMoviesPage: React.FC = () => {
             }
 
             // --- Synchronization Protocols ---
-            
+
             try {
                 // Redis is decommissioned, syncing via direct Supabase alignment
             } catch (cacheErr) {
@@ -1212,18 +1212,18 @@ const DubbedMoviesPage: React.FC = () => {
             setMovieToDelete(null);
             setShowUploadModal(false);
 
-            addNotification({ 
-                type: 'success', 
-                title: 'Node Terminated', 
-                message: 'Target movie has been permanently removed from the Zana Database.' 
+            addNotification({
+                type: 'success',
+                title: 'Node Terminated',
+                message: 'Target movie has been permanently removed from the Zana Database.'
             });
 
         } catch (e: any) {
             console.error('[UI ACTION ERROR]', e);
-            addNotification({ 
-                type: 'error', 
-                title: 'Operation Failed', 
-                message: `Failed to remove record. ${e?.message || 'Database connection error.'}` 
+            addNotification({
+                type: 'error',
+                title: 'Operation Failed',
+                message: `Failed to remove record. ${e?.message || 'Database connection error.'}`
             });
         } finally {
             setIsUpdating(false);
@@ -1461,7 +1461,7 @@ const DubbedMoviesPage: React.FC = () => {
 
                     {/* --- Standalone System Utility --- */}
                     <div className="flex items-center gap-6 mb-4 md:mb-0">
-                        <div 
+                        <div
                             className={`p-5 rounded-[2rem] border border-white/10 bg-white/5 text-gray-500 transition-all hover:bg-white/10 hover:text-white cursor-pointer ${isForceSyncing ? 'animate-pulse' : ''}`}
                             onClick={forceSync}
                         >
@@ -1480,7 +1480,7 @@ const DubbedMoviesPage: React.FC = () => {
                     <span className="text-2xl font-bold">+</span>
                 </button>
 
-                 {loading && dubbedContent.length === 0 ? (
+                {loading && dubbedContent.length === 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 px-4 md:px-12">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
                             <div key={n} className="flex flex-col gap-6 animate-pulse">
@@ -1504,7 +1504,7 @@ const DubbedMoviesPage: React.FC = () => {
                             <div className="absolute inset-0 bg-brand/20 blur-[100px]" />
                             <div className="relative text-5xl md:text-[10rem] font-[1000] uppercase italic tracking-tighter text-white/5 select-none text-center">NO NODES DETECTED</div>
                         </div>
-                        
+
                         <div className="flex flex-col items-center gap-6">
                             <p className="text-gray-500 font-black uppercase tracking-[0.4em] text-[10px] max-w-xs text-center border-t border-white/5 pt-6">Archive Transmission Interrupted. The Zana Engine is waiting for a manual handshake.</p>
                             <motion.button
@@ -1522,7 +1522,7 @@ const DubbedMoviesPage: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 px-4 md:px-12">
                         {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).map((movie, index) => (
                             <MovieCard
-                                key={movie.id}
+                                key={`${movie.id}-${index}`}
                                 item={movie}
                                 type="dubbed"
                                 className="w-full"
@@ -1541,7 +1541,7 @@ const DubbedMoviesPage: React.FC = () => {
                     ) : !hasMore && dubbedContent.length > 0 ? (
                         <div className="flex flex-col items-center gap-2 opacity-30">
                             <div className="h-[1px] w-20 bg-brand/20" />
-                            <span className="text-[10px] text-white/50 font-black uppercase tracking-[0.5em] text-center px-4">Catalog Integrity Check Successful.<br/>End of Reached Nodes.</span>
+                            <span className="text-[10px] text-white/50 font-black uppercase tracking-[0.5em] text-center px-4">Catalog Integrity Check Successful.<br />End of Reached Nodes.</span>
                         </div>
                     ) : null}
                 </div>
@@ -1730,11 +1730,11 @@ const DubbedMoviesPage: React.FC = () => {
                                                     {/* TMDB Search Dropdown Results */}
                                                     {tmdbSearchResults.length > 0 && (
                                                         <div className="absolute z-50 left-0 right-0 mt-2 bg-[#161616] border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1 backdrop-blur-xl">
-                                                            {tmdbSearchResults.map((movie: any) => {
+                                                            {tmdbSearchResults.map((movie: any, idx: number) => {
                                                                 const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
                                                                 return (
                                                                     <button
-                                                                        key={movie.id}
+                                                                        key={`${movie.id}-${idx}`}
                                                                         type="button"
                                                                         onClick={() => handleSelectTmdbMovie(movie, 'upload')}
                                                                         className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 text-left transition-colors group"
@@ -1745,6 +1745,7 @@ const DubbedMoviesPage: React.FC = () => {
                                                                                     src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`}
                                                                                     alt=""
                                                                                     className="w-full h-full object-cover"
+
                                                                                 />
                                                                             ) : (
                                                                                 <div className="w-full h-full flex items-center justify-center text-gray-600 text-[10px] font-bold">NO IMG</div>
@@ -2125,11 +2126,11 @@ const DubbedMoviesPage: React.FC = () => {
                                                 {/* TMDB Search Dropdown Results */}
                                                 {tmdbSearchResults.length > 0 && (
                                                     <div className="absolute z-50 left-0 right-0 mt-2 bg-[#161616] border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1 backdrop-blur-xl">
-                                                        {tmdbSearchResults.map((movie: any) => {
+                                                        {tmdbSearchResults.map((movie: any, idx: number) => {
                                                             const year = movie.release_date ? new Date(movie.release_date).getFullYear() : 'N/A';
                                                             return (
                                                                 <button
-                                                                    key={movie.id}
+                                                                    key={`${movie.id}-${idx}`}
                                                                     type="button"
                                                                     onClick={() => handleSelectTmdbMovie(movie, 'edit')}
                                                                     className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 text-left transition-colors group"
@@ -2354,10 +2355,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕادەی لێڵی پاشبنەما (Blur)</span>
                         <span className="font-mono text-brand">{localConfig.blurAmount}px</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="5" 
-                        max="120" 
+                    <input
+                        type="range"
+                        min="5"
+                        max="120"
                         step="1"
                         value={localConfig.blurAmount}
                         onChange={(e) => setLocalConfig({ ...localConfig, blurAmount: Number(e.target.value) })}
@@ -2374,10 +2375,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>تێربوونی ڕەنگ (Saturation)</span>
                         <span className="font-mono text-brand">{localConfig.saturation}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="50" 
-                        max="250" 
+                    <input
+                        type="range"
+                        min="50"
+                        max="250"
                         value={localConfig.saturation}
                         onChange={(e) => setLocalConfig({ ...localConfig, saturation: Number(e.target.value) })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2390,10 +2391,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕوونی تیشکی سوور (Red Tint Opacity)</span>
                         <span className="font-mono text-brand">{Math.round(localConfig.redOpacity * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="80" 
+                    <input
+                        type="range"
+                        min="0"
+                        max="80"
                         value={Math.round(localConfig.redOpacity * 100)}
                         onChange={(e) => setLocalConfig({ ...localConfig, redOpacity: Number(e.target.value) / 100 })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2406,10 +2407,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>تاریکی بنەڕەتی (Dark Base Opacity)</span>
                         <span className="font-mono text-brand">{Math.round(localConfig.darkOpacity * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="10" 
-                        max="95" 
+                    <input
+                        type="range"
+                        min="10"
+                        max="95"
                         value={Math.round(localConfig.darkOpacity * 100)}
                         onChange={(e) => setLocalConfig({ ...localConfig, darkOpacity: Number(e.target.value) / 100 })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2422,10 +2423,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕوونی چوارچێوەی بەشەکان (Border Opacity)</span>
                         <span className="font-mono text-brand">{Math.round(localConfig.borderOpacity * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="90" 
+                    <input
+                        type="range"
+                        min="0"
+                        max="90"
                         value={Math.round(localConfig.borderOpacity * 100)}
                         onChange={(e) => setLocalConfig({ ...localConfig, borderOpacity: Number(e.target.value) / 100 })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2438,10 +2439,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕادەی چەمانەوەی شووشەیی (Displacement Scale)</span>
                         <span className="font-mono text-brand">{localConfig.displacementScale}</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="120" 
+                    <input
+                        type="range"
+                        min="0"
+                        max="120"
                         value={localConfig.displacementScale}
                         onChange={(e) => setLocalConfig({ ...localConfig, displacementScale: Number(e.target.value) })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2454,10 +2455,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕادەی لادانی ڕەنگی شووشەیی (Aberration Intensity)</span>
                         <span className="font-mono text-brand">{localConfig.aberrationIntensity}</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="15" 
+                    <input
+                        type="range"
+                        min="0"
+                        max="15"
                         value={localConfig.aberrationIntensity}
                         onChange={(e) => setLocalConfig({ ...localConfig, aberrationIntensity: Number(e.target.value) })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2470,10 +2471,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>نەرمی و جیڕی لەرینەوە (Elasticity)</span>
                         <span className="font-mono text-brand">{Math.round(localConfig.elasticity * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="10" 
-                        max="90" 
+                    <input
+                        type="range"
+                        min="10"
+                        max="90"
                         value={Math.round(localConfig.elasticity * 100)}
                         onChange={(e) => setLocalConfig({ ...localConfig, elasticity: Number(e.target.value) / 100 })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2486,10 +2487,10 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕادەی بازنەیی گۆشەکان (Corner Radius)</span>
                         <span className="font-mono text-brand">{localConfig.cornerRadius}px</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="50" 
+                    <input
+                        type="range"
+                        min="0"
+                        max="50"
                         value={localConfig.cornerRadius}
                         onChange={(e) => setLocalConfig({ ...localConfig, cornerRadius: Number(e.target.value) })}
                         className="w-full accent-brand bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
@@ -2502,9 +2503,9 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕووناکی برووسکی دەوروبەر (Glow Intensity)</span>
                         <span className="font-mono text-brand">{Math.round((localConfig.glowIntensity ?? 0.4) * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
+                    <input
+                        type="range"
+                        min="0"
                         max="100"
                         step="1"
                         value={Math.round((localConfig.glowIntensity ?? 0.4) * 100)}
@@ -2519,9 +2520,9 @@ const GlassCustomizer: React.FC = () => {
                         <span>ڕووناکی تیشکی ژوورەوە (Shine Highlight)</span>
                         <span className="font-mono text-brand">{Math.round((localConfig.shineBrightness ?? 0.12) * 100)}%</span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
+                    <input
+                        type="range"
+                        min="0"
                         max="60"
                         step="1"
                         value={Math.round((localConfig.shineBrightness ?? 0.12) * 100)}
@@ -2535,13 +2536,11 @@ const GlassCustomizer: React.FC = () => {
                     <span className="text-[11px] font-black uppercase text-gray-400">ئەنیمەیشنی جیری (Jelly Bounce)</span>
                     <button
                         onClick={() => setLocalConfig({ ...localConfig, enableJelly: !(localConfig.enableJelly ?? true) })}
-                        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${
-                            (localConfig.enableJelly ?? true) ? 'bg-brand' : 'bg-white/10'
-                        }`}
+                        className={`relative w-12 h-6 rounded-full transition-all duration-300 ${(localConfig.enableJelly ?? true) ? 'bg-brand' : 'bg-white/10'
+                            }`}
                     >
-                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${
-                            (localConfig.enableJelly ?? true) ? 'translate-x-6' : 'translate-x-0'
-                        }`} />
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-300 ${(localConfig.enableJelly ?? true) ? 'translate-x-6' : 'translate-x-0'
+                            }`} />
                     </button>
                 </div>
 
@@ -2552,7 +2551,7 @@ const GlassCustomizer: React.FC = () => {
                 <span className="text-[10px] font-black uppercase text-gray-500 tracking-wider block">پێشبینی ڕاستەوخۆ (Live Preview)</span>
 
                 {/* Simulated Glass Element */}
-                <div 
+                <div
                     className="relative border overflow-hidden transition-all duration-300"
                     style={{
                         borderRadius: `${localConfig.cornerRadius}px`,
@@ -2561,7 +2560,7 @@ const GlassCustomizer: React.FC = () => {
                     }}
                 >
                     {/* Isolated Liquid-Glass background overlay */}
-                    <div 
+                    <div
                         className="absolute inset-0 z-0 transition-all duration-300 pointer-events-none overflow-hidden"
                         style={{
                             background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${localConfig.redOpacity}), transparent 80%), rgba(10, 10, 10, ${localConfig.darkOpacity})`,
@@ -2580,14 +2579,14 @@ const GlassCustomizer: React.FC = () => {
                     >
                         {/* Smooth sheen overlay — NO jelly, linear pan only */}
                         {localConfig.displacementScale > 0 && (
-                          <div 
-                            className="absolute inset-0 pointer-events-none mix-blend-overlay"
-                            style={{
-                              background: `linear-gradient(105deg, transparent 30%, rgba(255,255,255,${(localConfig.shineBrightness ?? 0.12) * 0.6}) 50%, transparent 70%)`,
-                              animation: `glass-sheen-pan ${20 * (1 / Math.max(0.1, localConfig.elasticity))}s linear infinite`,
-                              opacity: (localConfig.displacementScale / 120),
-                            }}
-                          />
+                            <div
+                                className="absolute inset-0 pointer-events-none mix-blend-overlay"
+                                style={{
+                                    background: `linear-gradient(105deg, transparent 30%, rgba(255,255,255,${(localConfig.shineBrightness ?? 0.12) * 0.6}) 50%, transparent 70%)`,
+                                    animation: `glass-sheen-pan ${20 * (1 / Math.max(0.1, localConfig.elasticity))}s linear infinite`,
+                                    opacity: (localConfig.displacementScale / 120),
+                                }}
+                            />
                         )}
                     </div>
                     {/* Sharp content above background overlay */}
@@ -2664,8 +2663,8 @@ const MobileNavCustomizer: React.FC = () => {
     };
 
     const currentColorHex = rgbToHex(
-        localConfig.colorR ?? 220, 
-        localConfig.colorG ?? 38, 
+        localConfig.colorR ?? 220,
+        localConfig.colorG ?? 38,
         localConfig.colorB ?? 38
     );
 
@@ -2694,7 +2693,7 @@ const MobileNavCustomizer: React.FC = () => {
                 {/* 1. Theme Color Customizer */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">ڕەنگی تەوەرە و درەوشانەوە (Theme Color Settings)</h4>
-                    
+
                     {/* Theme color picker */}
                     <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-white/5 border border-white/10">
                         <div className="text-right">
@@ -2702,8 +2701,8 @@ const MobileNavCustomizer: React.FC = () => {
                             <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Hex Code: {currentColorHex} • RGB: ({localConfig.colorR}, {localConfig.colorG}, {localConfig.colorB})</span>
                         </div>
                         <div className="flex items-center gap-3">
-                            <input 
-                                type="color" 
+                            <input
+                                type="color"
                                 value={currentColorHex}
                                 onChange={(e) => handleColorChange(e.target.value)}
                                 className="w-12 h-12 rounded-xl bg-transparent border-0 cursor-pointer overflow-hidden p-0"
@@ -2715,14 +2714,14 @@ const MobileNavCustomizer: React.FC = () => {
                 {/* 2. Layout Dimensions & Padding */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">سایز، ڕەهەندەکان و شێواز (Dimensions & Sizing)</h4>
-                    
+
                     {/* Capsule Width */}
                     <div className="space-y-1">
                         <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
                             <span>پانی بارەکە (Capsule Width / Span)</span>
                             <span className="font-mono text-rose-500">{localConfig.capsuleWidth}%</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="70" max="100" step="1"
                             value={localConfig.capsuleWidth}
                             onChange={(e) => setLocalConfig({ ...localConfig, capsuleWidth: Number(e.target.value) })}
@@ -2736,7 +2735,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>بەرزی بارەکە (Bar Height / Thickness)</span>
                             <span className="font-mono text-rose-500">{localConfig.height}px</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="40" max="65" step="1"
                             value={localConfig.height}
                             onChange={(e) => setLocalConfig({ ...localConfig, height: Number(e.target.value) })}
@@ -2750,7 +2749,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>سایزی ئایکۆنەکان (Icon Size / Scaling)</span>
                             <span className="font-mono text-rose-500">{localConfig.iconSize}px</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="12" max="22" step="1"
                             value={localConfig.iconSize}
                             onChange={(e) => setLocalConfig({ ...localConfig, iconSize: Number(e.target.value) })}
@@ -2764,7 +2763,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>مەودای نێوان دوگمەکان (Spacing / Gap)</span>
                             <span className="font-mono text-rose-500">{localConfig.itemsGap}px</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="0" max="16" step="1"
                             value={localConfig.itemsGap}
                             onChange={(e) => setLocalConfig({ ...localConfig, itemsGap: Number(e.target.value) })}
@@ -2778,7 +2777,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>مەودا لە خوارەوەی شاشە (Bottom Margin Offset)</span>
                             <span className="font-mono text-rose-500">{localConfig.bottomOffset}px</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="5" max="50" step="1"
                             value={localConfig.bottomOffset}
                             onChange={(e) => setLocalConfig({ ...localConfig, bottomOffset: Number(e.target.value) })}
@@ -2795,7 +2794,7 @@ const MobileNavCustomizer: React.FC = () => {
                             </span>
                         </div>
                         <div className="flex items-center gap-4">
-                            <input 
+                            <input
                                 type="range" min="0" max="32" step="1"
                                 disabled={localConfig.borderRadius === 9999}
                                 value={localConfig.borderRadius === 9999 ? 32 : localConfig.borderRadius}
@@ -2803,15 +2802,14 @@ const MobileNavCustomizer: React.FC = () => {
                                 className="flex-1 accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer disabled:opacity-40"
                             />
                             <button
-                                onClick={() => setLocalConfig({ 
-                                    ...localConfig, 
-                                    borderRadius: localConfig.borderRadius === 9999 ? 24 : 9999 
+                                onClick={() => setLocalConfig({
+                                    ...localConfig,
+                                    borderRadius: localConfig.borderRadius === 9999 ? 24 : 9999
                                 })}
-                                className={`px-4 py-2 text-[10px] font-[1000] uppercase tracking-widest rounded-xl border transition-all ${
-                                    localConfig.borderRadius === 9999 
-                                        ? 'bg-rose-600 text-white border-rose-500 shadow-md' 
+                                className={`px-4 py-2 text-[10px] font-[1000] uppercase tracking-widest rounded-xl border transition-all ${localConfig.borderRadius === 9999
+                                        ? 'bg-rose-600 text-white border-rose-500 shadow-md'
                                         : 'bg-white/5 text-gray-400 border-white/10 hover:text-white'
-                                }`}
+                                    }`}
                             >
                                 Capsule Pill
                             </button>
@@ -2822,11 +2820,11 @@ const MobileNavCustomizer: React.FC = () => {
                 {/* 3. Glassmorphism Aesthetics */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">شێوازی شووشە و پاشبنەما (Aesthetics)</h4>
-                    
+
                     {/* Background Type */}
                     <div className="space-y-1.5 text-right">
                         <span className="text-[11px] font-black uppercase text-gray-400 block mb-1">جۆری پاشبنەما (Background Type)</span>
-                        <select 
+                        <select
                             value={localConfig.bgType}
                             onChange={(e) => setLocalConfig({ ...localConfig, bgType: Number(e.target.value) })}
                             className="w-full bg-[#151515] border border-white/10 text-white rounded-xl py-3 px-4 text-xs font-black focus:outline-none focus:border-rose-500 transition-colors"
@@ -2841,7 +2839,7 @@ const MobileNavCustomizer: React.FC = () => {
                     {/* Active Pill Type */}
                     <div className="space-y-1.5 text-right">
                         <span className="text-[11px] font-black uppercase text-gray-400 block mb-1">شێوازی دیاریکردنی دوگمەی چالاک (Active Tab Style)</span>
-                        <select 
+                        <select
                             value={localConfig.pillType}
                             onChange={(e) => setLocalConfig({ ...localConfig, pillType: Number(e.target.value) })}
                             className="w-full bg-[#151515] border border-white/10 text-white rounded-xl py-3 px-4 text-xs font-black focus:outline-none focus:border-rose-500 transition-colors"
@@ -2858,7 +2856,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>لێڵی پاشبنەما (Blur)</span>
                             <span className="font-mono text-rose-500">{localConfig.blurAmount}px</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="0" max="45" step="1"
                             value={localConfig.blurAmount}
                             onChange={(e) => setLocalConfig({ ...localConfig, blurAmount: Number(e.target.value) })}
@@ -2872,7 +2870,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>ڕادەی ڕووناکی سوور (Red Tint Opacity)</span>
                             <span className="font-mono text-rose-500">{localConfig.redOpacity}%</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="0" max="100" step="1"
                             value={localConfig.redOpacity}
                             onChange={(e) => setLocalConfig({ ...localConfig, redOpacity: Number(e.target.value) })}
@@ -2886,7 +2884,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>ڕادەی تاریکی پاشبنەما (Dark Opacity)</span>
                             <span className="font-mono text-rose-500">{localConfig.darkOpacity}%</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="10" max="100" step="1"
                             value={localConfig.darkOpacity}
                             onChange={(e) => setLocalConfig({ ...localConfig, darkOpacity: Number(e.target.value) })}
@@ -2900,7 +2898,7 @@ const MobileNavCustomizer: React.FC = () => {
                             <span>ڕادەی چوارچێوەی بەشەکان (Border Opacity)</span>
                             <span className="font-mono text-rose-500">{localConfig.borderOpacity}%</span>
                         </div>
-                        <input 
+                        <input
                             type="range" min="0" max="100" step="1"
                             value={localConfig.borderOpacity}
                             onChange={(e) => setLocalConfig({ ...localConfig, borderOpacity: Number(e.target.value) })}
@@ -2912,7 +2910,7 @@ const MobileNavCustomizer: React.FC = () => {
                 {/* 4. Items Visibilities & Buttons order */}
                 <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-3.5">
                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest border-b border-white/5 pb-2">دوگمە و بەشەکان (Nav Tabs & Visibility)</h4>
-                    
+
                     {/* Show Sparkles */}
                     <div className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/10">
                         <span className="text-[11px] font-black uppercase text-gray-400">دوگمەی پۆڕتاڵی بەردەوامبوون (Sparkles Portal Button)</span>
@@ -3134,7 +3132,7 @@ const OnboardingCustomizer: React.FC = () => {
                 title: 'زیاد کرا',
                 message: 'هەنگاوی نوێ بە سەرکەوتوویی بۆ گەشتەکە زیاد کرا!'
             });
-            
+
             // Reset form
             setNewStepKey('');
             setNewTitle('');
@@ -3142,7 +3140,7 @@ const OnboardingCustomizer: React.FC = () => {
             setNewMedia('');
             setNewSelector('');
             setNewPriority(10);
-            
+
             fetchSteps();
         } catch (e: any) {
             addNotification({
@@ -3166,7 +3164,7 @@ const OnboardingCustomizer: React.FC = () => {
 
     return (
         <div className="space-y-6 pb-6 text-right animate-fadeIn" dir="rtl">
-            
+
             {/* Intro */}
             <div className="bg-white/5 border border-white/5 p-4 rounded-2xl flex items-center justify-between gap-4">
                 <div>
@@ -3186,10 +3184,10 @@ const OnboardingCustomizer: React.FC = () => {
             {/* Steps list */}
             <div className="space-y-4">
                 <h4 className="text-xs font-black text-teal-400 uppercase tracking-widest px-1">هەنگاوە تۆمارکراوەکان ({steps.length})</h4>
-                
+
                 {steps.map((step) => (
-                    <div 
-                        key={step.id} 
+                    <div
+                        key={step.id}
                         className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4 hover:border-teal-500/30 transition-colors"
                     >
                         <div className="flex items-center justify-between border-b border-white/5 pb-2">
@@ -3206,8 +3204,8 @@ const OnboardingCustomizer: React.FC = () => {
                             {/* Title */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-gray-400">ناونیشانی هەنگاو (Title - KU)</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     defaultValue={step.title_ku}
                                     onBlur={(e) => handleUpdateStep(step.id, { title_ku: e.target.value })}
                                     className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3217,8 +3215,8 @@ const OnboardingCustomizer: React.FC = () => {
                             {/* Selector */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-gray-400">بەشی نیشانەکراو (CSS Selector)</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     defaultValue={step.selector}
                                     onBlur={(e) => handleUpdateStep(step.id, { selector: e.target.value })}
                                     className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3230,7 +3228,7 @@ const OnboardingCustomizer: React.FC = () => {
                         {/* Description */}
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400">لێکدانەوە و ڕوونکردنەوە (Description - KU)</label>
-                            <textarea 
+                            <textarea
                                 defaultValue={step.description_ku}
                                 onBlur={(e) => handleUpdateStep(step.id, { description_ku: e.target.value })}
                                 rows={2}
@@ -3242,8 +3240,8 @@ const OnboardingCustomizer: React.FC = () => {
                             {/* Media URL */}
                             <div className="col-span-2 space-y-1.5">
                                 <label className="text-[10px] font-black text-gray-400">لینک یان بەستەری GIF/ڤیدیۆ (Demonstration GIF URL)</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     defaultValue={step.media_url}
                                     onBlur={(e) => handleUpdateStep(step.id, { media_url: e.target.value })}
                                     className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3254,8 +3252,8 @@ const OnboardingCustomizer: React.FC = () => {
                             {/* Priority */}
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-gray-400">ڕیزبەندی (Priority Order)</label>
-                                <input 
-                                    type="number" 
+                                <input
+                                    type="number"
                                     defaultValue={step.priority}
                                     onBlur={(e) => handleUpdateStep(step.id, { priority: Number(e.target.value) })}
                                     className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3274,13 +3272,13 @@ const OnboardingCustomizer: React.FC = () => {
             {/* Create New Step Form */}
             <div className="bg-white/5 border border-white/10 p-5 rounded-2xl space-y-4">
                 <h4 className="text-xs font-black text-teal-400 uppercase tracking-widest border-b border-white/5 pb-2">زیادکردنی هەنگاوی نوێ (Add New Step)</h4>
-                
+
                 <form onSubmit={handleCreateStep} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400">کلیلی ناسەرەوە (Step Key - Unique)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={newStepKey}
                                 onChange={(e) => setNewStepKey(e.target.value)}
                                 className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3290,8 +3288,8 @@ const OnboardingCustomizer: React.FC = () => {
 
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400">بەشی نیشانەکراو (CSS Selector)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={newSelector}
                                 onChange={(e) => setNewSelector(e.target.value)}
                                 className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3303,8 +3301,8 @@ const OnboardingCustomizer: React.FC = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400">ناونیشان (Title - KU)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
                                 className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3314,8 +3312,8 @@ const OnboardingCustomizer: React.FC = () => {
 
                         <div className="space-y-1.5">
                             <label className="text-[10px] font-black text-gray-400">ڕیزبەندی (Order)</label>
-                            <input 
-                                type="number" 
+                            <input
+                                type="number"
                                 value={newPriority}
                                 onChange={(e) => setNewPriority(Number(e.target.value))}
                                 className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"
@@ -3325,7 +3323,7 @@ const OnboardingCustomizer: React.FC = () => {
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-gray-400">لێکدانەوە (Description - KU)</label>
-                        <textarea 
+                        <textarea
                             value={newDesc}
                             onChange={(e) => setNewDesc(e.target.value)}
                             rows={2}
@@ -3336,8 +3334,8 @@ const OnboardingCustomizer: React.FC = () => {
 
                     <div className="space-y-1.5">
                         <label className="text-[10px] font-black text-gray-400">بەستەری GIF/وێنەی جوڵاو (Demonstration media URL)</label>
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             value={newMedia}
                             onChange={(e) => setNewMedia(e.target.value)}
                             className="w-full bg-[#151515] border border-white/10 rounded-xl py-2 px-3 text-xs font-bold text-white focus:outline-none focus:border-teal-500 transition-colors"

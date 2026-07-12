@@ -2457,10 +2457,12 @@ export default function PremiumVidLinkPlayer({
 
       {/* Top Controls — always visible and interactive, rendered after video element to sit on top of the iframe */}
       <div 
-        className="absolute z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+        className="absolute z-50 flex items-center gap-2 md:gap-3 pointer-events-auto"
         style={{
-          top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
-          right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
+          top: '1rem',
+          right: '1rem',
+          transform: 'translate3d(0, 0, 999px)',
+          WebkitTransform: 'translate3d(0, 0, 999px)'
         }}
       >
         {type === 'tv' && onEpisodeChange && (

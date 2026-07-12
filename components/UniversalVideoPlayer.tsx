@@ -2593,8 +2593,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             <div 
                 className="absolute z-40 pointer-events-none opacity-40 hover:opacity-100 transition-opacity duration-500"
                 style={{
-                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
-                    left: 'calc(0.75rem + env(safe-area-inset-left, 0px))'
+                    top: '1rem',
+                    left: '1rem',
+                    transform: 'translate3d(0, 0, 999px)',
+                    WebkitTransform: 'translate3d(0, 0, 999px)'
                 }}
             >
                 <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center bg-white/5 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden">
@@ -2603,12 +2605,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 </div>
             </div>
 
-            {/* Top-Right: CC / Relink / Fullscreen — FIXED so they escape all parent overflow/transform stacking contexts */}
+            {/* Top-Right: CC / Relink / Fullscreen — ABSOLUTE so they sit inside the player boundary and don't clash with page header */}
             <div 
-                className="fixed z-[2147483647] flex items-center gap-2 md:gap-3 pointer-events-auto"
+                className="absolute z-50 flex items-center gap-2 md:gap-3 pointer-events-auto"
                 style={{
-                    top: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
-                    right: 'calc(0.75rem + env(safe-area-inset-right, 0px))'
+                    top: '1rem',
+                    right: '1rem',
+                    transform: 'translate3d(0, 0, 999px)',
+                    WebkitTransform: 'translate3d(0, 0, 999px)'
                 }}
             >
                 {contentType === 'tv' && onEpisodeChange && (
