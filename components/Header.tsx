@@ -26,6 +26,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
 
   useEffect(() => {
     const loadHistory = () => {
@@ -128,7 +129,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             style={{
               background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.1}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
               opacity: (glassConfig.displacementScale / 120) * 0.6,
-              animationDuration: `${40 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+              animationDuration: `${40 * (0.35 / elasticity)}s`
             }}
           />
         </div>
@@ -616,8 +617,8 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               transition={{ 
                 type: 'spring', 
-                stiffness: 220 * (glassConfig.elasticity / 0.35), 
-                damping: 26 * (0.35 / glassConfig.elasticity) 
+                stiffness: 220 * (elasticity / 0.35), 
+                damping: 26 * (0.35 / elasticity) 
               }}
               className={`fixed top-0 bottom-0 ${
                 (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
@@ -653,7 +654,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   style={{
                     background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                     opacity: (glassConfig.displacementScale / 120) * 0.9,
-                    animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                    animationDuration: `${30 * (0.35 / elasticity)}s`
                   }}
                 />
               </div>

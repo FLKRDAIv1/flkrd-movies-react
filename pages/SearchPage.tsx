@@ -237,7 +237,7 @@ const SearchPage: React.FC = () => {
               style={{
                 background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                 opacity: (glassConfig.displacementScale / 120) * 0.9,
-                animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
               }}
             />
 
@@ -325,7 +325,7 @@ const SearchPage: React.FC = () => {
                 style={{
                   background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                   opacity: (glassConfig.displacementScale / 120) * 0.9,
-                  animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+                  animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
                 }}
               />
               {suggestions.length > 0 ? (

@@ -217,8 +217,8 @@ const MobileNav: React.FC = () => {
                       style={getActivePillStyle()}
                       transition={{ 
                         type: "spring", 
-                        stiffness: 420 * (glassConfig.elasticity / 0.35), 
-                        damping: 32 * (0.35 / glassConfig.elasticity) 
+                        stiffness: 420 * ((glassConfig.elasticity || 0.35) / 0.35), 
+                        damping: 32 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35)) 
                       }}
                     />
                   )}

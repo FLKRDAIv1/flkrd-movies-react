@@ -127,7 +127,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
     try {
       const saved = localStorage.getItem('flkrd_glass_config');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed) {
+          parsed.elasticity = parsed.elasticity ?? 0.35;
+          return parsed;
+        }
+      }
     } catch (e) {}
     return {
       blurAmount: 20,
@@ -233,7 +239,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (row.server_name === 'glass_border_opacity') newConfig.borderOpacity = row.priority / 100;
             if (row.server_name === 'glass_displacement_scale') newConfig.displacementScale = row.priority;
             if (row.server_name === 'glass_aberration_intensity') newConfig.aberrationIntensity = row.priority;
-            if (row.server_name === 'glass_elasticity') newConfig.elasticity = row.priority / 100;
+            if (row.server_name === 'glass_elasticity') newConfig.elasticity = (row.priority / 100) || 0.35;
             if (row.server_name === 'glass_corner_radius') newConfig.cornerRadius = row.priority;
 
             // Mobile Nav Customizer config keys

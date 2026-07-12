@@ -3107,7 +3107,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 style={{
                                     background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (activeGlass.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
                                     opacity: (activeGlass.displacementScale / 120) * 0.9,
-                                    animationDuration: `${30 * (0.35 / Math.max(0.1, activeGlass.elasticity))}s`
+                                    animationDuration: `${30 * (0.35 / Math.max(0.01, activeGlass.elasticity || 0.35))}s`
                                 }}
                             />
 

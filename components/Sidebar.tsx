@@ -24,8 +24,9 @@ interface NavItemProps {
 }
 
 const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) => {
-  const isActive = location.pathname === to || (to === '/discover' && location.pathname.startsWith('/discover'));
+  const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
   const { glassConfig } = useUI();
+  const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
   
   // Prefetch logic for snappier navigation
   const handlePrefetch = () => {
@@ -48,8 +49,8 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       whileTap={{ scale: 0.95 }}
       transition={{ 
         type: "spring", 
-        stiffness: 450 * (glassConfig.elasticity / 0.35), 
-        damping: 18 * (0.35 / glassConfig.elasticity) 
+        stiffness: 450 * (elasticity / 0.35), 
+        damping: 18 * (0.35 / elasticity) 
       }}
       className="w-full"
     >
@@ -91,14 +92,15 @@ interface StudioItemProps {
 const StudioItem = memo(({ to, icon, text, location }: StudioItemProps) => {
   const isActive = location.pathname.startsWith(to.split('/').slice(0, 3).join('/'));
   const { glassConfig } = useUI();
+  const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
   return (
     <motion.div
       whileHover={{ scale: 1.05, x: 4 }}
       whileTap={{ scale: 0.95 }}
       transition={{ 
         type: "spring", 
-        stiffness: 450 * (glassConfig.elasticity / 0.35), 
-        damping: 18 * (0.35 / glassConfig.elasticity) 
+        stiffness: 450 * (elasticity / 0.35), 
+        damping: 18 * (0.35 / elasticity) 
       }}
       className="w-full"
     >
@@ -190,7 +192,7 @@ const Sidebar: React.FC = () => {
             style={{
               background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
               opacity: (glassConfig.displacementScale / 120) * 0.9,
-              animationDuration: `${30 * (0.35 / Math.max(0.1, glassConfig.elasticity))}s`
+              animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
             }}
           />
         </div>
