@@ -528,13 +528,12 @@ const DetailPage: React.FC = () => {
               const ranked = getRankedSources(true);
               setSources(ranked);
             } else if (activeImdbId) {
-              const results = await subtitleService.searchSubtitles(activeImdbId, 'movie', undefined, undefined, 'ku');
+              const results = await subtitleService.searchSubtitles(activeImdbId, 'movie', undefined, undefined, 'en');
               if (results && results.length > 0) {
-                  // Filter for the best Kurdish track
+                  // Filter for the best English track
                   const bestTrack = results.find(r => 
-                      r.attributes.language === 'ku' || 
-                      r.attributes.language === 'ckb' || 
-                      r.attributes.display_name?.toLowerCase().includes('kurd')
+                      r.attributes.language === 'en' || 
+                      r.attributes.language === 'eng'
                   ) || results[0];
 
                   const downloadLink = bestTrack.attributes.file_id !== 0 

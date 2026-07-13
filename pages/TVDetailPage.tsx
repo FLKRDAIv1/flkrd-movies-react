@@ -301,14 +301,13 @@ const TVDetailPage: React.FC = () => {
               'tv', 
               selectedSeason, 
               selectedEpisode, 
-              'ku'
+              'en'
             );
             if (results && results.length > 0) {
-              // Prioritize true Kurdish (ku/ckb) or titles with "kurd"
+              // Prioritize true English (en/eng)
               const bestTrack = results.find(r => 
-                  r.attributes.language === 'ku' || 
-                  r.attributes.language === 'ckb' || 
-                  r.attributes.display_name.toLowerCase().includes('kurd')
+                  r.attributes.language === 'en' || 
+                  r.attributes.language === 'eng'
               ) || results[0];
 
               const downloadLink = bestTrack.attributes.file_id !== 0 

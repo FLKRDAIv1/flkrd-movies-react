@@ -843,10 +843,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
     const handleSearchAllSubs = async () => {
-        if (!imdbId || !contentType) return;
+        if (!imdbId) return;
         setIsSearchingSubs(true);
         try {
-            const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
+            console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for imdbId:", imdbId);
+            const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
             setAvailableSubsWithVirtual(results);
         } catch (e) {
             console.error("Manual search error:", e);
@@ -903,7 +904,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 let safeResults: SubtitleResult[] = [];
                 if (imdbId) {
                     try {
-                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'ku', true);
+                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
                         safeResults = Array.isArray(results) ? results : [];
                     } catch (openSubErr) {
                         console.warn("[UNIVERSAL-PLAYER] OpenSubtitles search failed:", openSubErr);
@@ -953,17 +954,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 let finalSubs = safeResults;
                 if (customSub) {
-                    // Filter out any other Kurdish subtitles to show only the official admin-uploaded one
-                    const nonKurdishSubs = safeResults.filter(s => {
-                        if (!s || !s.attributes) return false;
-                        const lang = (s.attributes.language || '').toLowerCase();
-                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && lang !== 'badini';
-                    });
-                    finalSubs = [customSub, ...nonKurdishSubs];
+                    // Combine custom Kurdish subtitle with English ones
+                    finalSubs = [customSub, ...safeResults];
 
-                    // Auto-select and auto-apply the custom subtitle by default
-                    if (!subtitleUrl && !localSubtitleUrl) {
-                        console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded subtitle:", customSub.attributes.url);
+                    // Auto-select and auto-apply the custom Kurdish subtitle by default
+                    if (!localSubtitleUrl) {
+                        console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
                         try {
                             const text = await subtitleService.downloadSubtitle(customSub);
                             if (text) {
@@ -980,33 +976,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         setKurdishSub(customSub);
                     }
                 } else if (safeResults.length > 0) {
-                    const foundKu = safeResults.find(sub => {
+                    const foundEn = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
-                        return lang === 'ku' || lang === 'ckb' || lang === 'kur';
-                    });
-                    if (foundKu) {
-                        setKurdishSub(foundKu);
+                        return lang === 'en' || lang === 'eng';
+                    }) || safeResults[0];
 
-                        // [AUTO APPLY] Automatically download and apply the background-discovered Kurdish subtitle if not already loaded!
+                    if (foundEn) {
+                        // [AUTO APPLY] Automatically download and apply the default English base subtitle if not already loaded!
                         if (!subtitleUrl && !localSubtitleUrl) {
-                            console.log("[UNIVERSAL-PLAYER] Automatically downloading background-discovered Kurdish CC...");
+                            console.log("[UNIVERSAL-PLAYER] Automatically downloading default English base CC...");
                             try {
-                                const text = await subtitleService.downloadSubtitle(foundKu);
+                                const text = await subtitleService.downloadSubtitle(foundEn);
                                 if (text) {
                                     const processedText = cleanAndFormatVtt(text);
                                     const blob = new Blob([processedText], { type: 'text/vtt' });
                                     setLocalSubtitleUrl(URL.createObjectURL(blob));
-                                    setKuCCNotificationVisible(false); // Applied automatically, so no need for prompt banner
-                                } else {
-                                    setKuCCNotificationVisible(true);
+                                    setKuCCNotificationVisible(false); // No banner for English base
                                 }
                             } catch (err: any) {
-                                console.warn("[UNIVERSAL-PLAYER] Background CC auto-apply failed:", err?.message || err);
-                                setKuCCNotificationVisible(true);
+                                console.warn("[UNIVERSAL-PLAYER] Base English CC auto-apply failed:", err?.message || err);
                             }
-                        } else {
-                            // If a subtitle is already loaded, still show banner in case they want the official one
-                            setKuCCNotificationVisible(true);
                         }
                     }
                 }
