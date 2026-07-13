@@ -922,14 +922,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }
                 }
 
-                // 2. Fetch custom subtitle from Supabase custom_subtitles table
                 let customSub: SubtitleResult | null = null;
+                const activeLanguageCode = (language === 'badini') ? 'badini' : 'ku';
                 let query = supabase
                     .from('custom_subtitles')
                     .select('*')
                     .eq('tmdb_id', String(idToQuery))
                     .eq('media_type', contentType || 'movie')
-                    .eq('language', 'ku')
+                    .eq('language', activeLanguageCode)
                     .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
                     .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
@@ -1274,7 +1274,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 // Wait a small delay for state and network to stabilize
                 const timer = setTimeout(() => {
                     console.log("[UNIVERSAL-PLAYER] Resuming translation for:", cache.sub.attributes?.display_name);
-                    handleStartTranslation(cache.sub);
+                    handleStartTranslation(cache.sub, cache.targetLang || 'ku');
                 }, 1500);
 
                 return () => clearTimeout(timer);
@@ -1284,10 +1284,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [tmdbId, imdbId, season, episode]);
 
-    const handleStartTranslation = async (sub: SubtitleResult) => {
+    const handleStartTranslation = async (sub: SubtitleResult, targetLang: 'ku' | 'badini') => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
-        startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0);
+        startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0, targetLang);
     };
 
     // Sync with global background subtitle translator

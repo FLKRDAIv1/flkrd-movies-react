@@ -92,7 +92,7 @@ interface SubtitleManagerPanelProps {
   currentSubId?: string | number | null;
   isSearchingSubs?: boolean;
   onSelectSub?: (sub: SubtitleTrack) => void;
-  onStartTranslation?: (sub: SubtitleTrack) => void;
+  onStartTranslation?: (sub: SubtitleTrack, targetLang: 'ku' | 'badini') => void;
   onRetrySearch?: () => void;
   getLanguageFlag?: (lang: string) => string;
 
@@ -561,6 +561,17 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                               <span className="w-1.5 h-1.5 rounded-full bg-yellow-500/70 animate-pulse"></span>
                               <span className="w-1.5 h-1.5 rounded-full bg-green-500/70 animate-pulse"></span>
                             </div>
+                          </div>
+
+                          {/* Visual Glowing Progress Bar */}
+                          <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden border border-white/5 relative shadow-inner">
+                            <motion.div
+                              className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full relative transition-all duration-300"
+                              style={{ width: `${translationProgress}%` }}
+                            >
+                              <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.4)_50%,transparent_100%)] animate-[pulse_1s_infinite] opacity-60" />
+                              <div className="absolute right-0 top-0 bottom-0 w-2 bg-white blur-[2px] opacity-80" />
+                            </motion.div>
                           </div>
 
                           {/* Terminal Output */}
@@ -1345,12 +1356,26 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       onClick={() => {
                         const sub = confirmTranslateSub;
                         setConfirmTranslateSub(null);
-                        onStartTranslation?.(sub);
+                        onStartTranslation?.(sub, 'ku');
                       }}
-                      className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-2xl text-[13px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-red-600/20"
+                      className="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-2xl text-[13px] font-[1000] uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg shadow-red-600/20 flex items-center justify-center gap-2"
                       style={{ fontFamily: "'Zain', sans-serif" }}
                     >
-                      {isKu ? 'وەرگێڕان بۆ کوردی' : 'Translate to Kurdish'}
+                      <Sparkles size={13} className="text-yellow-300 animate-pulse" />
+                      {isKu ? 'وەرگێڕان بۆ سۆرانی (Sorani)' : 'Translate to Kurdish Sorani'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const sub = confirmTranslateSub;
+                        setConfirmTranslateSub(null);
+                        onStartTranslation?.(sub, 'badini');
+                      }}
+                      className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl text-[13px] font-[1000] uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+                      style={{ fontFamily: "'Zain', sans-serif" }}
+                    >
+                      <Globe size={13} className="text-emerald-300" />
+                      {isKu ? 'وەرگێڕان بۆ بادینی (Badini)' : 'Translate to Kurdish Badini'}
                     </button>
                     <button
                       type="button"

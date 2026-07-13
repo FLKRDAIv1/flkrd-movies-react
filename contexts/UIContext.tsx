@@ -94,7 +94,7 @@ interface UIContextType {
   
   // Background Subtitle Translation System
   activeTranslation: ActiveTranslationState;
-  startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number) => Promise<void>;
+  startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number, targetLang?: 'ku' | 'badini') => Promise<void>;
   cancelGlobalTranslation: () => void;
   dismissCelebration: () => void;
 
@@ -645,7 +645,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     tmdbId: string | number,
     mediaType: string,
     season: number = 0,
-    episode: number = 0
+    episode: number = 0,
+    targetLang: 'ku' | 'badini' = 'ku'
   ) => {
     const subName = sub.attributes?.display_name || 'Selected Track';
     setActiveTranslation({
@@ -669,6 +670,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         mediaType,
         season,
         episode,
+        targetLang,
         progress: 0,
         statusText: 'Starting...'
       }));
@@ -681,6 +683,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         mediaType,
         season,
         episode,
+        targetLang,
         (progress, status) => {
           setActiveTranslation(prev => {
             const next = {
@@ -695,6 +698,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 mediaType: prev.mediaType,
                 season: prev.season,
                 episode: prev.episode,
+                targetLang,
                 progress,
                 statusText: status
               }));
