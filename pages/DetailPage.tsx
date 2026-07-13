@@ -527,41 +527,7 @@ const DetailPage: React.FC = () => {
               setSubtitleUrl(supabaseSubUrl);
               const ranked = getRankedSources(true);
               setSources(ranked);
-            } else if (activeImdbId) {
-              const results = await subtitleService.searchSubtitles(activeImdbId, 'movie', undefined, undefined, 'en');
-              if (results && results.length > 0) {
-                  // Filter for the best English track
-                  const bestTrack = results.find(r => 
-                      r.attributes.language === 'en' || 
-                      r.attributes.language === 'eng'
-                  ) || results[0];
-
-                  const downloadLink = bestTrack.attributes.file_id !== 0 
-                      ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
-                      : bestTrack.attributes.url;
-
-                      if (downloadLink) {
-                          console.log("[SUBTITLE SYNC] Kurdish Track Established:", downloadLink);
-                          setSubtitleUrl(downloadLink);
-                          
-                          // [PINNING] Boost Kurdish-ready servers
-                          const ranked = getRankedSources(true);
-                          setSources(ranked);
-
-                          addNotification({ 
-                            type: 'success', 
-                            title: 'ژێرنووسی کوردی', 
-                            message: 'ژێرنووسی کوردی دۆزرایەوە و بە ئۆتۆماتیکی چالاک کرا.' 
-                          });
-                      }
-                  } else {
-                      addNotification({ 
-                        type: 'info', 
-                        title: 'ژێرنووس', 
-                        message: 'ببورە، ژێرنووسی کوردی بۆ ئەم بەرهەمە لە OpenSubtitles نەدۆزرایەوە.' 
-                      });
-                  }
-              }
+            }
           } catch (e) {
               console.warn("[SUBTITLE SYNC] Error fetching automated tracks:", e);
           }

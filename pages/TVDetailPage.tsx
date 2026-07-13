@@ -293,49 +293,12 @@ const TVDetailPage: React.FC = () => {
           const ranked = getRankedSources(true);
           setSources(ranked);
         } else {
-          const externalIds = await fetchExternalIds(id, 'tv');
-          if (externalIds && externalIds.imdb_id) {
-            setImdbId(externalIds.imdb_id);
-            const results = await subtitleService.searchSubtitles(
-              externalIds.imdb_id, 
-              'tv', 
-              selectedSeason, 
-              selectedEpisode, 
-              'en'
-            );
-            if (results && results.length > 0) {
-              // Prioritize true English (en/eng)
-              const bestTrack = results.find(r => 
-                  r.attributes.language === 'en' || 
-                  r.attributes.language === 'eng'
-              ) || results[0];
-
-              const downloadLink = bestTrack.attributes.file_id !== 0 
-                  ? await subtitleService.getDownloadLink(bestTrack.attributes.file_id)
-                  : bestTrack.attributes.url;
-
-              if (downloadLink) {
-                console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Kurdish Track:`, downloadLink);
-                setSubtitleUrl(downloadLink);
-                
-                // [PINNING] Boost Kurdish-ready servers
-                const ranked = getRankedSources(true);
-                setSources(ranked);
-
-                addNotification({ 
-                  type: 'success', 
-                  title: 'ژێرنووسی کوردی', 
-                  message: `ژێرنووسی کوردی بۆ ئەڵقەی ${selectedEpisode} دۆزرایەوە و چالاک کرا.` 
-                });
-              }
-            } else {
-              addNotification({ 
-                type: 'info', 
-                title: 'ژێرنووس', 
-                message: `ببورە، ژێرنووسی کوردی بۆ S${selectedSeason} E${selectedEpisode} بەردەست نییە.` 
-              });
+          // Fetch IMDb ID for player use if needed, but do not set default subtitleUrl prop in parent
+          fetchExternalIds(id, 'tv').then(externalIds => {
+            if (externalIds && externalIds.imdb_id) {
+              setImdbId(externalIds.imdb_id);
             }
-          }
+          }).catch(() => {});
         }
       } catch (e) {
         console.warn("[SUBTITLE SYNC] Error fetching TV tracks:", e);

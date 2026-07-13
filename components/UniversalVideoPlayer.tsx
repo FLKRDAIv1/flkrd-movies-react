@@ -848,7 +848,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         try {
             console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for imdbId:", imdbId);
             const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
-            setAvailableSubsWithVirtual(results);
+            const list = Array.isArray(results) ? results : [];
+            const filtered = list.filter(s => {
+                if (!s || !s.attributes) return false;
+                const lang = (s.attributes.language || '').toLowerCase();
+                return lang === 'en' || lang === 'eng';
+            });
+            setAvailableSubsWithVirtual(filtered);
         } catch (e) {
             console.error("Manual search error:", e);
         } finally {
@@ -905,7 +911,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (imdbId) {
                     try {
                         const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
-                        safeResults = Array.isArray(results) ? results : [];
+                        const list = Array.isArray(results) ? results : [];
+                        safeResults = list.filter(s => {
+                            if (!s || !s.attributes) return false;
+                            const lang = (s.attributes.language || '').toLowerCase();
+                            return lang === 'en' || lang === 'eng';
+                        });
                     } catch (openSubErr) {
                         console.warn("[UNIVERSAL-PLAYER] OpenSubtitles search failed:", openSubErr);
                     }
