@@ -1611,15 +1611,17 @@ const DubbedMoviesPage: React.FC = () => {
                                 <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#111] border border-white/10 p-8 rounded-3xl w-full max-w-sm relative">
                                     <button onClick={() => setShowLoginModal(false)} className="absolute top-6 right-6 text-gray-500 hover:text-white"><X size={20} /></button>
                                     <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-6">Admin Login</h2>
-                                    <form onSubmit={handleLogin} className="space-y-4">
+                                    <form onSubmit={handleLogin} className="space-y-4" toolname="admin_login" tooldescription="Authenticate as administrator using email and passcode">
                                         <input
                                             type="email"
+                                            name="email"
                                             placeholder="Admin Email"
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-brand outline-none"
                                             value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required
                                         />
                                         <input
                                             type="password"
+                                            name="passcode"
                                             placeholder="Passcode"
                                             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-brand outline-none"
                                             value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required

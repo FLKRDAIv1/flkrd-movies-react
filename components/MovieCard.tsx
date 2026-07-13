@@ -238,6 +238,7 @@ export const MovieCard = React.memo(
                 variant={isAdded ? "default" : "secondary"}
                 onClick={handleToggleMyList}
                 className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${isAdded ? 'bg-brand text-white' : 'text-white'}`}
+                aria-label={isAdded ? t('myListRemoveSuccess') || "Remove from my list" : t('myListAddSuccess') || "Add to my list"}
               >
                 {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
               </LiquidButton>
@@ -248,6 +249,7 @@ export const MovieCard = React.memo(
                 variant="default"
                 onClick={handleRemoveProgress}
                 className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
+                aria-label="Remove watch progress"
               >
                 <X className="w-4 h-4" strokeWidth={4} />
               </LiquidButton>
@@ -258,6 +260,7 @@ export const MovieCard = React.memo(
                 variant="destructive"
                 onClick={handleBan}
                 className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
+                aria-label="Ban content from global registry"
               >
                 <Trash2 className="w-4 h-4" />
               </LiquidButton>

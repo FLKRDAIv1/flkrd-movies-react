@@ -213,8 +213,11 @@ const SearchPage: React.FC = () => {
       <div className="relative mb-12 max-w-3xl mx-auto z-[60]">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-brand to-red-900 rounded-3xl blur opacity-10 group-hover:opacity-25 transition duration-1000"></div>
-          <div 
-            className="relative flex items-center overflow-hidden border transition-all duration-300"
+          <form 
+            onSubmit={(e) => { e.preventDefault(); }}
+            toolname="search"
+            tooldescription="Search movies, TV shows, dubbed movies, and animated classics by title, actor, or genre"
+            className="relative flex items-center overflow-hidden border transition-all duration-300 w-full"
             style={{
               borderRadius: '24px',
               borderStyle: 'solid',
@@ -244,6 +247,7 @@ const SearchPage: React.FC = () => {
             <SearchIcon className={`absolute left-6 z-10 transition-all duration-500 ${isProcessing ? 'text-brand scale-110' : 'text-sec-text'}`} size={24} />
             <input
               type="text"
+              name="query"
               value={inputValue}
               onChange={handleInputChange}
               onFocus={() => inputValue.trim().length > 1 && setIsSuggestionsVisible(true)}
@@ -270,7 +274,7 @@ const SearchPage: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </form>
         </motion.div>
 
         {/* Smart "Did you mean" Suggestion */}
