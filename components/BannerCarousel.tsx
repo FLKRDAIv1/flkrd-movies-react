@@ -133,6 +133,9 @@ const HeroBanner: React.FC = () => {
             height={720}
             className="w-full h-full object-cover opacity-60 ken-burns"
             alt={currentItem.title || currentItem.name || "Carousel Slide Backdrop"}
+            fetchpriority="high"
+            loading="eager"
+            decoding="sync"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />

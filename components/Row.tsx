@@ -21,9 +21,10 @@ interface RowProps {
   items?: (Content | WatchProgress | MyListItem)[];
   isProgressRow?: boolean;
   limit?: number;
+  loading?: boolean;
 }
 
-const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, limit }) => {
+const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, limit, loading: externalLoading }) => {
   const [content, setContent] = useState<(Content | WatchProgress | MyListItem)[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -188,10 +189,15 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
     }
   };
 
-  if (loading) return (
-    <div className="mb-12 px-8">
-        <div className="h-8 w-64 bg-main-text/5 rounded-full mb-8 animate-pulse" />
-        <div className="flex gap-5 overflow-hidden">
+  const isRowLoading = externalLoading !== undefined ? externalLoading : loading;
+
+  if (isRowLoading) return (
+    <div className="mb-10 md:mb-20 px-4 md:px-20 relative z-20 overflow-visible">
+        <div className="flex items-center mb-8">
+            <span className="w-1 md:w-2 h-8 md:h-12 bg-main-text/5 rounded-full me-4 md:me-6" />
+            <div className="h-8 md:h-12 w-48 md:w-64 bg-main-text/5 rounded-full animate-pulse" />
+        </div>
+        <div className="flex gap-4 md:gap-8 overflow-hidden py-4 px-1">
             {[1,2,3,4,5,6].map(i => <div key={i} className="flex-shrink-0 w-32 md:w-56 aspect-[2/3] bg-main-text/5 rounded-[2rem] animate-pulse" />)}
         </div>
     </div>

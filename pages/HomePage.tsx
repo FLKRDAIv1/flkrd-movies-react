@@ -130,6 +130,8 @@ const HomePage: React.FC = () => {
   const [recentlyViewedItems, setRecentlyViewedItems] = useState<WatchProgress[]>([]);
   const [dubbedItems, setDubbedItems] = useState<Content[]>([]);
   const [kurdishCCItems, setKurdishCCItems] = useState<Content[]>([]);
+  const [loadingDubbed, setLoadingDubbed] = useState(true);
+  const [loadingKurdishCC, setLoadingKurdishCC] = useState(true);
 
   // Update browser window title dynamically back to the premium brand identity on landing
   useEffect(() => {
@@ -165,6 +167,7 @@ const HomePage: React.FC = () => {
   }, []);
 
   const loadDubbed = useCallback(async () => {
+    setLoadingDubbed(true);
     let rawItems = [];
     try {
       // 1. Direct Supabase Fetch (Optimized with 30s Timeout & Cleanup)
@@ -242,10 +245,13 @@ const HomePage: React.FC = () => {
       if (localItems && localItems.length > 0) {
          setDubbedItems(localItems.slice(0, 20));
       }
+    } finally {
+      setLoadingDubbed(false);
     }
   }, []);
   
   const loadKurdishCC = useCallback(async () => {
+    setLoadingKurdishCC(true);
     try {
       // Use the curated registry and fetch from TMDB directly (no CORS issues)
       const top12 = KURDISH_CC_REGISTRY.slice(0, 12);
@@ -262,6 +268,8 @@ const HomePage: React.FC = () => {
       setKurdishCCItems(results.filter(Boolean) as Content[]);
     } catch (err) {
       console.error("[HP] Kurdish CC Load Error:", err);
+    } finally {
+      setLoadingKurdishCC(false);
     }
   }, [language]);
 
@@ -338,32 +346,30 @@ const HomePage: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {kurdishCCItems.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="relative">
-              <Row 
-                title={(language === 'ku' || language === 'badini') ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
-                items={kurdishCCItems} 
-              />
+        {(loadingKurdishCC || kurdishCCItems.length > 0) && (
+          <div className="relative">
+            <Row 
+              title={(language === 'ku' || language === 'badini') ? 'فیلمە ژێرنووسکراوە کوردییەکان' : 'Kurdish Subtitles'} 
+              items={kurdishCCItems} 
+              loading={loadingKurdishCC}
+            />
+            {!loadingKurdishCC && (
               <div className="absolute top-2 right-6 md:right-32 hidden md:flex items-center gap-2 bg-red-600/20 px-3 py-1.5 rounded-xl border border-red-500/30">
                 <Subtitles size={12} className="text-red-500" />
                 <span className="text-[9px] font-black text-white uppercase tracking-wider">PREMIUM CC</span>
               </div>
-            </div>
-          </motion.div>
+            )}
+          </div>
         )}
 
         <Row title={t('trendingNow')} fetchUrl={requests.fetchTrending(langCode)} />
         
-        {dubbedItems.length > 0 && (
+        {(loadingDubbed || dubbedItems.length > 0) && (
           <div className="relative">
             <Row 
               title={(language === 'ku' || language === 'badini') ? 'دۆبلاژکراوە تاقانەکان' : 'Exclusive Dubbed Movies'} 
               items={dubbedItems} 
+              loading={loadingDubbed}
               type="dubbed"
             />
           </div>

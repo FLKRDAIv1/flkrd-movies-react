@@ -50,31 +50,21 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FLKRD MOVIES" />
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://unpkg.com/@lottiefiles/dotlottie-wc@0.8.11/dist/dotlottie-wc.js" type="module"></script>
+  <!-- Deferred scripts to prevent render blocking (FCP / LCP Optimization) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest" defer></script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://va.vercel-scripts.com">
   <link rel="preconnect" href="https://api.themoviedb.org">
-  
-  <!-- Video Provider Preconnects — Speed up stream handshake -->
-  <link rel="preconnect" href="https://www.vidking.net">
-  <link rel="preconnect" href="https://vidsrc.to">
-  <link rel="preconnect" href="https://embed.su">
-  <link rel="preconnect" href="https://autoembed.cc">
-  <link rel="preconnect" href="https://multiembed.mov">
-  <link rel="preconnect" href="https://vidsrc.me">
-  <link rel="preconnect" href="https://vidsrc.pro">
-  <link rel="preconnect" href="https://player.smashy.stream">
-  <link rel="dns-prefetch" href="https://www.vidking.net">
-  <link rel="dns-prefetch" href="https://vidsrc.to">
+  <link rel="preconnect" href="https://image.tmdb.org">
   <link rel="dns-prefetch" href="https://api.themoviedb.org">
-  <link rel="dns-prefetch" href="https://va.vercel-scripts.com">
+  <link rel="dns-prefetch" href="https://image.tmdb.org">
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap');
-  </style>
+  <!-- Optimized Font Loading — Prevents Render Blocking (CWV Optimization) -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zain:ital,wght@0,200;0,300;0,400;0,700;0,800;0,900;1,300;1,400&display=swap">
+  </noscript>
   <style>
     :root {
       --brand-red: #e50914;
