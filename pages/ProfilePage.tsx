@@ -36,21 +36,31 @@ const ProfilePage: React.FC = () => {
     const [formSubmitting, setFormSubmitting] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempUserName, setTempUserName] = useState('');
-    const [backdropUrl, setBackdropUrl] = useState('');
+
+    // Known TMDB backdrop paths — displayed immediately, no API wait
+    const STATIC_BACKDROPS = [
+        'https://image.tmdb.org/t/p/w1280/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg',  // Dune 2
+        'https://image.tmdb.org/t/p/w1280/f1AQhx6ZfGhPkFzvgARFNoeavvg.jpg',  // Oppenheimer
+        'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',  // Avengers Endgame
+        'https://image.tmdb.org/t/p/w1280/drulhSX7P5TQlEMQZ3JoXKSDEfz.jpg',  // Interstellar
+        'https://image.tmdb.org/t/p/w1280/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',  // The Dark Knight
+    ];
+    const [backdropUrl, setBackdropUrl] = useState(
+        () => STATIC_BACKDROPS[Math.floor(Math.random() * STATIC_BACKDROPS.length)]
+    );
 
     useEffect(() => {
         const loadBackdrop = async () => {
             try {
                 const data = await fetchData(requests.fetchTrending('en-US'), 'en');
                 if (data && data.length > 0) {
-                    const randomIndex = Math.min(5, data.length - 1);
-                    const movie = data[randomIndex] || data[0];
-                    if (movie.backdrop_path) {
-                        setBackdropUrl(`${IMAGE_BASE_URL.replace('w1280', 'original')}${movie.backdrop_path}`);
+                    const pick = data.find((m: any) => m.backdrop_path) || data[0];
+                    if (pick?.backdrop_path) {
+                        setBackdropUrl(`https://image.tmdb.org/t/p/w1280${pick.backdrop_path}`);
                     }
                 }
             } catch (e) {
-                setBackdropUrl('https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&fit=crop');
+                // already showing static fallback, no change needed
             }
         };
         loadBackdrop();
@@ -164,27 +174,28 @@ const ProfilePage: React.FC = () => {
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
                 {/* Dynamic TMDB Backdrop — always visible, cinematic blur like the mockup */}
-                <div className="absolute inset-0 bg-zinc-950 overflow-hidden">
+                <div className="absolute inset-0 bg-zinc-900 overflow-hidden">
                     <img
-                        src={backdropUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80&fit=crop'}
+                        key={backdropUrl}
+                        src={backdropUrl}
                         alt=""
                         onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80&fit=crop';
+                            (e.currentTarget as HTMLImageElement).src = STATIC_BACKDROPS[0];
                         }}
                         className="absolute inset-0 w-full h-full object-cover"
                         style={{
-                            opacity: 0.75,
-                            filter: 'blur(30px) brightness(0.55) saturate(1.2)',
-                            transform: 'scale(1.15)',
+                            opacity: 0.85,
+                            filter: 'blur(22px) brightness(0.50) saturate(1.3)',
+                            transform: 'scale(1.12)',
                             animation: 'kenburns-bg 40s ease-in-out infinite alternate',
                         }}
                     />
-                    {/* Radial dark vignette overlay so centre is darker and silhouette-like */}
+                    {/* Dark centre vignette for silhouette depth */}
                     <div className="absolute inset-0" style={{
-                        background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 100%)'
+                        background: 'radial-gradient(ellipse 70% 70% at 50% 40%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.75) 100%)'
                     }} />
-                    {/* Bottom fade to black */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
+                    {/* Bottom fade */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/70" />
                 </div>
 
                 {/* Ken-Burns keyframe injection */}
