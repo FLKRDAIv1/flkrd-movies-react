@@ -206,7 +206,7 @@ const ProfilePage: React.FC = () => {
 
                     {/* Logo & Header */}
                     <div className="text-center space-y-2 mt-10 mb-8 select-none">
-                        <span className="text-[14px] font-[1000] text-white tracking-widest italic block">Lumora</span>
+                        <span className="text-[14px] font-[1000] text-white tracking-widest italic block">FLKRD MOVIE</span>
                         <h2 className="text-xl md:text-2xl font-[900] text-white tracking-tight uppercase leading-tight max-w-[280px] mx-auto opacity-95">
                             {authScreen === 'login' && (isRTL ? 'بچۆ ژوورەوە، گەشتەکەت دەستپێبکە' : 'Log In, Start Your AI Journey')}
                             {authScreen === 'signup' && (isRTL ? 'ئەکاونتت دروست بکە' : 'Start Here, Create Your Account')}
