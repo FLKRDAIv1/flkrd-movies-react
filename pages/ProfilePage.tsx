@@ -162,31 +162,36 @@ const ProfilePage: React.FC = () => {
         const isRTL = language === 'ku' || language === 'badini';
 
         return (
-            <div className="min-h-screen pt-28 pb-32 flex items-center justify-center relative overflow-hidden px-4">
-                {/* Dynamic, 4K animated TMDB backdrop (highly blurred for silhouette gradient depth) */}
-                <div className="absolute inset-0 -z-10 bg-black overflow-hidden">
-                    {backdropUrl ? (
-                        <img 
-                            src={backdropUrl} 
-                            alt="" 
-                            className="w-full h-full object-cover opacity-45 scale-110 blur-[85px] transition-all duration-1000"
-                            style={{ 
-                                animation: 'kenburns-slow 35s ease-in-out infinite',
-                                filter: 'blur(85px) brightness(0.6)'
-                            }}
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-zinc-950" />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black z-10" />
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
+                {/* Dynamic TMDB Backdrop — always visible, cinematic blur like the mockup */}
+                <div className="absolute inset-0 bg-zinc-950 overflow-hidden">
+                    <img
+                        src={backdropUrl || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80&fit=crop'}
+                        alt=""
+                        onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1600&q=80&fit=crop';
+                        }}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{
+                            opacity: 0.75,
+                            filter: 'blur(30px) brightness(0.55) saturate(1.2)',
+                            transform: 'scale(1.15)',
+                            animation: 'kenburns-bg 40s ease-in-out infinite alternate',
+                        }}
+                    />
+                    {/* Radial dark vignette overlay so centre is darker and silhouette-like */}
+                    <div className="absolute inset-0" style={{
+                        background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.7) 100%)'
+                    }} />
+                    {/* Bottom fade to black */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/80" />
                 </div>
 
                 {/* Ken-Burns keyframe injection */}
                 <style dangerouslySetInnerHTML={{__html: `
-                    @keyframes kenburns-slow {
-                        0% { transform: scale(1.1) translate(0, 0); }
-                        50% { transform: scale(1.22) translate(-2%, -1%); }
-                        100% { transform: scale(1.1) translate(0, 0); }
+                    @keyframes kenburns-bg {
+                        0%   { transform: scale(1.15) translate(0px, 0px); }
+                        100% { transform: scale(1.25) translate(-15px, -8px); }
                     }
                 `}} />
 
