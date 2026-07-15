@@ -5,6 +5,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { UIProvider } from './contexts/UIContext';
 import { GamepadProvider } from './contexts/GamepadContext';
+import { AuthProvider } from './contexts/AuthContext';
 
 // ── Google Translate Node Manipulation Crash Prevention ──
 const nativeInsertBefore = Node.prototype.insertBefore;
@@ -44,7 +45,9 @@ root.render(
       <GamepadProvider>
         <LanguageProvider>
           <NotificationProvider>
-            <App />
+            <AuthProvider>
+              <App />
+            </AuthProvider>
           </NotificationProvider>
         </LanguageProvider>
       </GamepadProvider>

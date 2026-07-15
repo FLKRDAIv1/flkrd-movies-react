@@ -10,6 +10,8 @@ import { WatchProgress } from '../types';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import AnimatedThemeToggler from './ui/animated-theme-toggler';
 import StoryReels from './StoryReels';
+import { useAuth } from '../contexts/AuthContext';
+
 
 const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -26,11 +28,30 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     theme, toggleTheme, accentColor, setIsSettingsOpen, glassConfig, isAdmin, isPerformanceMode, setIsPerformanceMode,
     activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration 
   } = useUI();
+  const { user } = useAuth();
   const { t, language } = useTranslation();
+
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
   const isHomePage = pathname === '/';
+
+  const renderAvatar = () => {
+    if (user) {
+      const initial = user.user_metadata?.user_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U';
+      return (
+        <div className="w-full h-full bg-red-600 text-white flex items-center justify-center font-black text-xs">
+          {initial}
+        </div>
+      );
+    }
+    return (
+      <div className="w-full h-full bg-zinc-800 text-gray-400 flex items-center justify-center">
+        <User size={14} />
+      </div>
+    );
+  };
+
 
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [localScrolled, setLocalScrolled] = useState(scrolled);
@@ -296,13 +317,9 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               {/* Avatar with halo */}
               <div 
                 onClick={() => navigate('/profile')}
-                className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color cursor-pointer active:scale-95"
+                className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color cursor-pointer active:scale-95 flex items-center justify-center"
               >
-                <img
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop"
-                  alt="User"
-                  className="w-full h-full object-cover"
-                />
+                {renderAvatar()}
               </div>
 
               {/* Play icon button */}
@@ -391,12 +408,8 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 className="flex items-center gap-2 p-1 bg-box-bg border border-border-color rounded-full cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-white/10 transition-all select-none"
               >
                 {/* Avatar Image with white Halo */}
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color">
-                  <img
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop"
-                    alt="User Profile"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color flex items-center justify-center">
+                  {renderAvatar()}
                 </div>
                 {/* Minimalist stacked quick icons inside the capsule */}
                 <div className="hidden lg:flex items-center gap-1.5 px-2 text-sec-text">
@@ -415,6 +428,17 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
                     className="absolute left-0 mt-3 w-40 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
                   >
+                    <button
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        navigate('/profile');
+                      }}
+                      className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                    >
+                      <User size={14} className="text-sec-text" />
+                      <span>{t('profile') || 'Profile'}</span>
+                    </button>
+
                     <button
                       onClick={() => {
                         setIsProfileDropdownOpen(false);

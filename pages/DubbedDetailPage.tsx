@@ -18,6 +18,8 @@ import { db } from '../utils/db';
 import { useLocalUser } from '../hooks/useLocalUser';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import Portal from '../components/Portal';
+import CommentSection from '../components/CommentSection';
+
 
 const DubbedDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -574,6 +576,9 @@ return (
                         </div>
                     </div>
                 )}
+
+                {/* Comment Discussion Section */}
+                <CommentSection movieId={id!} mediaType="dubbed" />
             </div>
 
             <AnimatePresence>

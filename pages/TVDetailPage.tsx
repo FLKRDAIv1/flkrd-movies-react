@@ -24,6 +24,8 @@ import { bannedService } from '../services/bannedService';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { supabase } from '../utils/supabaseClient';
 import { useLocalUser } from '../hooks/useLocalUser';
+import CommentSection from '../components/CommentSection';
+
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -1137,6 +1139,9 @@ const TVDetailPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Comment Discussion Section */}
+        <CommentSection movieId={id!} mediaType="tv" />
       </div>
 
       <AnimatePresence>

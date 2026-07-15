@@ -27,6 +27,8 @@ import { useLocalUser } from '../hooks/useLocalUser';
 import { generateUUID } from '../utils/uuidUtils';
 import { supabase } from '../utils/supabaseClient';
 import { bannedService } from '../services/bannedService';
+import CommentSection from '../components/CommentSection';
+
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
@@ -1106,6 +1108,9 @@ const DetailPage: React.FC = () => {
             <Row title={(language === 'ku' || language === 'badini') ? 'زیاتر لەم جۆرە' : 'MORE LIKE THIS'} items={recommendations} type="movie" />
           </div>
         )}
+
+        {/* Comment Discussion Section */}
+        <CommentSection movieId={id!} mediaType="movie" />
       </div>
 
       <AnimatePresence>
