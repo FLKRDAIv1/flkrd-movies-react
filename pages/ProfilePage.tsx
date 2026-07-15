@@ -184,8 +184,8 @@ const ProfilePage: React.FC = () => {
                         className="absolute inset-0 w-full h-full object-cover"
                         style={{
                             opacity: 0.9,
-                            filter: 'blur(4px) brightness(0.60) saturate(1.15)',
-                            transform: 'scale(1.04)',
+                            filter: 'brightness(0.60) saturate(1.15)',
+                            transform: 'scale(1.0)',
                         }}
                     />
                     {/* Subtle dark vignette — edges darker, centre more visible */}
