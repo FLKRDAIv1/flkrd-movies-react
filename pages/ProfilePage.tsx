@@ -479,15 +479,34 @@ const ProfilePage: React.FC = () => {
     }
 
     // ─── AUTHENTICATED PROFILE VIEW ──────────────────────────────────────────────────
-    return (
-        <div className="min-h-screen pt-32 pb-40 container mx-auto px-4 md:px-8 relative overflow-x-hidden">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[50vh] bg-gradient-to-b from-[var(--brand-red)]/10 via-transparent to-transparent pointer-events-none" />
-            <div
-                className="absolute -top-24 -right-24 w-96 h-96 blur-3xl md:blur-[120px] rounded-full animate-pulse transition-colors duration-1000"
-                style={{ backgroundColor: accentColor + '0D' }}
-            />
+    const PROFILE_VIDEO_DARK = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260506_031045_0e1165dd-ab48-46e3-ad3d-5fe77f217647.mp4';
+    const PROFILE_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_171521_25968ba2-b594-4b32-aab7-f6b69398a6fa.mp4';
+    const profileVideo = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
 
-            <div className="max-w-5xl mx-auto relative z-10">
+    return (
+        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden">
+            {/* Cinematic Video Background */}
+            <div className="fixed inset-0 -z-10 overflow-hidden">
+                <video
+                    key={profileVideo}
+                    src={profileVideo}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover"
+                    style={{
+                        opacity: theme === 'dark' ? 0.85 : 0.70,
+                        filter: theme === 'dark'
+                            ? 'brightness(0.45) saturate(1.1)'
+                            : 'brightness(0.65) saturate(0.9)',
+                    }}
+                />
+                {/* Bottom fade */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
+            </div>
+
+            <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
                 <button
                     onClick={() => navigate(-1)}
                     className="mb-8 flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-xl group w-fit"
@@ -501,7 +520,7 @@ const ProfilePage: React.FC = () => {
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-[var(--card-bg)] border border-white/10 rounded-[3rem] p-10 text-center relative overflow-hidden shadow-2xl transition-colors duration-500"
+                            className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[3rem] p-10 text-center relative overflow-hidden shadow-2xl transition-colors duration-500"
                         >
                             <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-red)]" />
 
@@ -550,7 +569,7 @@ const ProfilePage: React.FC = () => {
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
-                            className="bg-white/[0.02] backdrop-blur-xl md:backdrop-blur-[60px] border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl relative"
+                            className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl relative"
                         >
                             <div className="flex items-center gap-4 mb-10">
                                 <div className="p-3 bg-[var(--brand-red)]/20 rounded-2xl border border-[var(--brand-red)]/20">
@@ -652,7 +671,7 @@ const ProfilePage: React.FC = () => {
                                         addNotification({ type: 'info', title: 'Signed Out', message: 'Session terminated.' });
                                     }
                                 }}
-                                className="bg-white/[0.02] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group flex flex-col justify-between cursor-pointer hover:border-red-500/30 transition-all"
+                                className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group flex flex-col justify-between cursor-pointer hover:border-red-500/30 transition-all"
                             >
                                 <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <div className="relative z-10">
