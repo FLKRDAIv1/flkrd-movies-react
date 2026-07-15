@@ -173,38 +173,28 @@ const ProfilePage: React.FC = () => {
 
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
-                {/* Dynamic TMDB Backdrop — always visible, cinematic blur like the mockup */}
-                <div className="absolute inset-0 bg-zinc-900 overflow-hidden">
-                    <img
-                        key={backdropUrl}
-                        src={backdropUrl}
-                        alt=""
-                        onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = STATIC_BACKDROPS[0];
-                        }}
+                {/* Cinematic Video Background */}
+                <div className="absolute inset-0 bg-black overflow-hidden">
+                    <video
+                        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
                         className="absolute inset-0 w-full h-full object-cover"
                         style={{
-                            opacity: 0.85,
-                            filter: 'blur(22px) brightness(0.50) saturate(1.3)',
-                            transform: 'scale(1.12)',
-                            animation: 'kenburns-bg 40s ease-in-out infinite alternate',
+                            opacity: 0.9,
+                            filter: 'blur(4px) brightness(0.60) saturate(1.15)',
+                            transform: 'scale(1.04)',
                         }}
                     />
-                    {/* Dark centre vignette for silhouette depth */}
+                    {/* Subtle dark vignette — edges darker, centre more visible */}
                     <div className="absolute inset-0" style={{
-                        background: 'radial-gradient(ellipse 70% 70% at 50% 40%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.75) 100%)'
+                        background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.65) 100%)'
                     }} />
-                    {/* Bottom fade */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/70" />
+                    {/* Bottom gradient so glass card reads cleanly */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/60" />
                 </div>
-
-                {/* Ken-Burns keyframe injection */}
-                <style dangerouslySetInnerHTML={{__html: `
-                    @keyframes kenburns-bg {
-                        0%   { transform: scale(1.15) translate(0px, 0px); }
-                        100% { transform: scale(1.25) translate(-15px, -8px); }
-                    }
-                `}} />
 
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
