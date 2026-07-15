@@ -439,7 +439,7 @@ if (!isReady) return <SkeletonDetailPage />;
 return (
     <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
-            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
+            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
                 {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-110" alt="" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
             </div>
@@ -449,7 +449,7 @@ return (
                 <div className={`fixed top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
                     <button
                         onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 px-5 py-2.5 rounded-2xl text-[var(--text-primary)] hover:bg-[var(--brand-red)] hover:text-white active:scale-90 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl"
+                        className="flex items-center gap-2 bg-box-bg/85 backdrop-blur-2xl border border-border-color px-5 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-90 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl"
                     >
                         <ArrowLeft size={18} className={(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} />
                         {t('back')}
@@ -458,7 +458,7 @@ return (
             </Portal>
 
                 <div className="w-full max-w-7xl mx-auto mb-8 md:mb-12">
-                    <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-white/5 shadow-2xl group aspect-video" dir="ltr">
+                    <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-border-color shadow-2xl group aspect-video" dir="ltr">
                         {embedUrl ? (
                             <UniversalVideoPlayer
                                 src={embedUrl}
@@ -485,7 +485,7 @@ return (
                             {dubbedData?.isSubtitled ? ((language === 'ku' || language === 'badini') ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : ((language === 'ku' || language === 'badini') ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
                         </div>
                         {dubbedData?.level && (
-                            <div className="bg-white/5 border border-white/10 text-white/60 text-[8px] md:text-[9px] font-black px-4 py-2.5 rounded-full uppercase tracking-widest">
+                            <div className="bg-box-bg border border-border-color text-sec-text text-[8px] md:text-[9px] font-black px-4 py-2.5 rounded-full uppercase tracking-widest">
                                 {dubbedData.level} RANK
                             </div>
                         )}
@@ -510,7 +510,7 @@ return (
                 </div>
 
                 <div className="max-w-7xl mx-auto mb-24">
-                    <div className="bg-white/[0.02] backdrop-blur-[60px] border border-white/10 p-10 rounded-3xl md:rounded-[4rem] shadow-2xl relative overflow-hidden group">
+                    <div className="bg-box-bg border border-border-color p-10 rounded-3xl md:rounded-[4rem] shadow-2xl relative overflow-hidden group">
                         <div className="flex items-center justify-between mb-10">
                             <div className="flex items-center gap-4">
                                 <div className="w-1.5 h-6 rounded-full shadow-[0_0_15px_currentColor]" style={{ backgroundColor: accentColor, color: accentColor }} />
@@ -531,16 +531,16 @@ return (
                         </p>
 
                         {/* Aesthetic Data Layer */}
-                        <div className="mt-12 flex flex-wrap gap-8 items-center border-t border-white/5 pt-10">
+                        <div className="mt-12 flex flex-wrap gap-8 items-center border-t border-border-color pt-10">
                              <div className="flex flex-col gap-1.5">
-                                 <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Release Cycle</span>
-                                 <div className="flex items-center gap-2 text-white font-black text-xs">
+                                 <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Release Cycle</span>
+                                 <div className="flex items-center gap-2 text-main-text font-black text-xs">
                                      <Calendar size={14} className="text-brand" />
                                      {dubbedData?.created_at ? new Date(dubbedData.created_at).getFullYear() : (content?.release_date?.split('-')[0] || '2025')}
                                  </div>
                              </div>
                              <div className="flex flex-col gap-1.5">
-                                 <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Source Protocol</span>
+                                 <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Source Protocol</span>
                                  <div className="flex items-center gap-2 text-[var(--text-secondary)] font-black text-[10px] uppercase tracking-tighter">
                                      <Monitor size={14} style={{ color: accentColor }} />
                                      {dubbedData?.customStream ? "Private Node" : "Standard API"}
@@ -553,22 +553,22 @@ return (
                 {cast.length > 0 && (
                     <div className="max-w-7xl mx-auto mb-24 mt-12">
                         <div className="flex items-center gap-4 mb-12">
-                            <h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-white">
+                            <h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-main-text">
                                 {(language === 'ku' || language === 'badini') ? 'ئەکتەرەکان' : 'ACTORS'}
                             </h2>
-                            <div className="h-[2px] flex-grow bg-white/5 rounded-full"></div>
+                            <div className="h-[2px] flex-grow bg-border-color rounded-full"></div>
                         </div>
                         <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8">
                             {cast.map(person => (
                                 <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
-                                    <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-white/5 shadow-2xl relative">
+                                    <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative">
                                         <img 
                                             src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} 
                                             alt={person.name} 
                                             className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
                                         />
                                     </div>
-                                    <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-white">{person.name}</p>
+                                    <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-main-text">{person.name}</p>
                                 </div>
                             ))}
                         </div>
@@ -590,20 +590,24 @@ return (
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.9, y: 20, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="relative w-full max-w-4xl bg-[#0a0a0a]/90 border border-white/10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
+                            className="relative w-full max-w-4xl bg-card-bg border border-border-color rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
                             dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                             style={{
-                                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
+                                background: theme === 'light'
+                                    ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 85%), rgba(255, 255, 255, 0.85)`
+                                    : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
                                 backdropFilter: 'blur(30px) saturate(130%)',
                                 WebkitBackdropFilter: 'blur(30px) saturate(130%)',
-                                boxShadow: '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)'
+                                boxShadow: theme === 'light'
+                                    ? '0 50px 100px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
+                                    : '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)'
                             }}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Close Button */}
                             <button 
                                 onClick={() => setSelectedActorId(null)}
-                                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-white/5 hover:bg-red-600 rounded-2xl text-white transition-all z-50 group hover:rotate-90`}
+                                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-box-bg border border-border-color hover:bg-red-600 rounded-2xl text-main-text hover:text-white transition-all z-50 group hover:rotate-90`}
                             >
                                 <X size={20} />
                             </button>
@@ -617,7 +621,7 @@ return (
                                 <>
                                     {/* Left Column: Image */}
                                     <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
-                                        <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
+                                        <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-border-color shadow-2xl relative bg-box-bg mx-auto">
                                             <img 
                                                 src={actorDetails.profile_path ? `${IMAGE_BASE_URL}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
                                                 alt={actorDetails.name}
@@ -626,20 +630,20 @@ return (
                                         </div>
                                         
                                         <div className="space-y-4 px-2 text-center md:text-start">
-                                            <h3 className="text-2xl md:text-3xl font-[1000] uppercase italic tracking-tighter text-white leading-tight">
+                                            <h3 className="text-2xl md:text-3xl font-[1000] uppercase italic tracking-tighter text-main-text leading-tight">
                                                 {actorDetails.name}
                                             </h3>
                                             {actorDetails.birthday && (
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Born</span>
-                                                    <span className="text-xs font-bold text-gray-400">
+                                                    <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Born</span>
+                                                    <span className="text-xs font-bold text-sec-text">
                                                         {actorDetails.birthday} {actorDetails.place_of_birth ? `in ${actorDetails.place_of_birth}` : ''}
                                                     </span>
                                                 </div>
                                             )}
                                             {actorDetails.known_for_department && (
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">Department</span>
+                                                    <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Department</span>
                                                     <span className="text-xs font-bold text-brand uppercase tracking-wider">
                                                         {actorDetails.known_for_department}
                                                     </span>
@@ -653,9 +657,9 @@ return (
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
-                                                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 italic">{(language === 'ku' || language === 'badini') ? 'ژیاننامە' : 'Biography'}</h4>
+                                                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{(language === 'ku' || language === 'badini') ? 'ژیاننامە' : 'Biography'}</h4>
                                             </div>
-                                            <p className="text-gray-300 text-sm leading-relaxed font-bold italic opacity-95">
+                                            <p className="text-sec-text text-sm leading-relaxed font-bold italic opacity-95">
                                                 {actorDetails.biography || ((language === 'ku' || language === 'badini') ? "زانیاری لەسەر ئەم ئەکتەرە بەردەست نییە." : "No biography compiled for this subject node.")}
                                             </p>
                                         </div>
@@ -664,7 +668,7 @@ return (
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
-                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-500 italic">{(language === 'ku' || language === 'badini') ? 'کارە دیارەکان' : 'Featured Works'}</h4>
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{(language === 'ku' || language === 'badini') ? 'کارە دیارەکان' : 'Featured Works'}</h4>
                                                 </div>
                                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" dir="ltr">
                                                     {actorDetails.combined_credits.cast
@@ -674,13 +678,13 @@ return (
                                                         .map((movie: any) => (
                                                             <div 
                                                                 key={movie.id} 
-                                                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                                                                className="group/work cursor-pointer bg-box-bg border border-border-color p-2 rounded-2xl flex flex-col gap-2 hover:bg-brand/10 hover:border-brand/20 transition-all"
                                                                 onClick={() => {
                                                                     setSelectedActorId(null);
                                                                     navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`);
                                                                 }}
                                                             >
-                                                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-white/5">
+                                                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-border-color">
                                                                     <img 
                                                                         src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
                                                                         alt={movie.title || movie.name}
@@ -688,7 +692,7 @@ return (
                                                                         loading="lazy"
                                                                     />
                                                                 </div>
-                                                                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tight truncate text-white block text-center mt-1">
+                                                                <span className="text-[8px] md:text-[9px] font-black uppercase tracking-tight truncate text-main-text block text-center mt-1">
                                                                     {movie.title || movie.name}
                                                                 </span>
                                                             </div>

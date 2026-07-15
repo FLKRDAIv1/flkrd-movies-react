@@ -807,11 +807,46 @@ export default function PremiumVidLinkPlayer({
   }, [activeTranslation, tmdbId, imdbId, resolvedTmdbId, resolvedSubUrl]);
 
   // Flag Helper
-  const getLanguageFlag = (lang: string) => {
-    const map: { [key: string]: string } = {
-      'ku': '☀️', 'ckb': '☀️', 'kur': '☀️', 'en': '🇺🇸', 'ar': '🇸🇦', 'fa': '🇮🇷', 'tr': '🇹🇷', 'fr': '🇫🇷', 'de': '🇩🇪', 'es': '🇪🇸'
+  const getLanguageFlag = (langCode: string) => {
+    const code = langCode?.toLowerCase();
+    const defaultFlag = <span className="text-zinc-500">🏳️</span>;
+
+    if (!code) return defaultFlag;
+    if (code === 'ku' || code === 'ckb' || code === 'badini' || code === 'kur') {
+      return <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" alt="Kurdistan" className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
+    }
+
+    const flagMap: Record<string, string> = {
+      'en': 'us', 'eng': 'us', 'en-us': 'us', 'en-gb': 'gb',
+      'ar': 'sa', 'ara': 'sa',
+      'fa': 'ir', 'per': 'ir', 'fas': 'ir',
+      'tr': 'tr', 'tur': 'tr',
+      'fr': 'fr', 'fre': 'fr', 'fra': 'fr',
+      'de': 'de', 'ger': 'de', 'deu': 'de',
+      'es': 'es', 'spa': 'es',
+      'it': 'it', 'ita': 'it',
+      'ru': 'ru', 'rus': 'ru',
+      'zh': 'cn', 'chi': 'cn', 'zho': 'cn',
+      'ja': 'jp', 'jpn': 'jp',
+      'ko': 'kr', 'kor': 'kr',
+      'hi': 'in', 'hin': 'in',
+      'nl': 'nl', 'dut': 'nl', 'nld': 'nl',
+      'pt': 'pt', 'por': 'pt',
+      'pl': 'pl', 'pol': 'pl',
+      'sv': 'se', 'swe': 'se',
+      'no': 'no', 'nor': 'no',
+      'da': 'dk', 'dan': 'dk',
+      'fi': 'fi', 'fin': 'fi',
+      'cs': 'cz', 'cze': 'cz', 'ces': 'cz',
+      'sk': 'sk', 'slo': 'sk', 'slk': 'sk',
     };
-    return map[lang.toLowerCase()] || '🏳️';
+
+    const countryCode = flagMap[code];
+    if (countryCode) {
+      return <img src={`https://flagcdn.com/w40/${countryCode}.png`} alt={code} className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
+    }
+
+    return defaultFlag;
   };
 
   // Resolve subtitleUrl prop or auto-discover subtitle from DB automatically on mount or change
@@ -835,23 +870,34 @@ export default function PremiumVidLinkPlayer({
       }
 
       try {
-        const { data } = await supabase
+        const { data: dbSubs } = await supabase
           .from('custom_subtitles')
           .select('*')
           .eq('tmdb_id', String(activeId))
           .eq('media_type', type || 'movie')
-          .eq('language', 'ku')
+          .in('language', ['ku', 'badini', 'ckb', 'kur'])
           .eq('season', type === 'tv' ? (season ?? 0) : 0)
-          .eq('episode', type === 'tv' ? (episode ?? 0) : 0)
-          .maybeSingle();
+          .eq('episode', type === 'tv' ? (episode ?? 0) : 0);
 
-        if (data && data.subtitle_url && isMounted) {
-          let url = data.subtitle_url;
+        if (dbSubs && dbSubs.length > 0 && isMounted) {
+          const activeLanguageCode = (language === 'badini') ? 'badini' : 'ku';
+          const sortedDbSubs = [...dbSubs].sort((a, b) => {
+            const score = (lang: string) => {
+              if (lang === activeLanguageCode) return 10;
+              if (lang === 'ku') return 5;
+              if (lang === 'badini') return 3;
+              if (lang === 'ckb') return 2;
+              return 1;
+            };
+            return score(b.language) - score(a.language);
+          });
+          const bestSub = sortedDbSubs[0];
+          let url = bestSub.subtitle_url;
           if (url.startsWith('//')) {
             url = `https:${url}`;
           }
           console.log("[VIP-PLAYER] Automatically applying Kurdish subtitle from database:", url);
-          setResolvedSubDisplayName(data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)');
+          setResolvedSubDisplayName(bestSub.file_name ? bestSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)');
           setResolvedSubUrl(url);
         } else if (subtitleUrl && isMounted) {
           setResolvedSubDisplayName('Kurdish (Verified)');
@@ -976,12 +1022,12 @@ export default function PremiumVidLinkPlayer({
             if (isImdb && m.imdb_id === cleanId) return true;
             if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
 
-            if (targetTitleClean) {
+            if (targetTitleClean && targetTitleClean.length > 0) {
               const dbTitleClean = cleanString(m.title);
               const dbKurdishClean = cleanString(m.kurdishTitle);
               
-              if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
-              if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+              if (dbTitleClean && dbTitleClean.length > 0 && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+              if (dbKurdishClean && dbKurdishClean.length > 0 && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
             }
             return false;
           });
@@ -1025,12 +1071,12 @@ export default function PremiumVidLinkPlayer({
             if (isImdb && m.imdb_id === cleanId) return true;
             if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
 
-            if (targetTitleClean) {
+            if (targetTitleClean && targetTitleClean.length > 0) {
               const dbTitleClean = cleanString(m.title);
               const dbKurdishClean = cleanString(m.kurdishTitle);
               
-              if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
-              if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+              if (dbTitleClean && dbTitleClean.length > 0 && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+              if (dbKurdishClean && dbKurdishClean.length > 0 && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
             }
             return false;
           });
@@ -1508,7 +1554,7 @@ export default function PremiumVidLinkPlayer({
   return (
     <div 
       ref={containerRef} 
-      className={`bg-black relative flex flex-col overflow-hidden transition-all duration-300 ${
+      className={`bg-transparent relative flex flex-col overflow-hidden transition-all duration-300 ${
         isSimulatedFullscreen 
           ? 'fixed inset-0 w-screen h-screen z-[9999]' 
           : 'w-full h-full'
@@ -1516,7 +1562,7 @@ export default function PremiumVidLinkPlayer({
     >
 
 
-      <div className="relative flex-1 w-full bg-black">
+      <div className="relative flex-1 w-full bg-transparent">
         {(isResolvingId || isPlayerLoading) && (
           <div className="absolute inset-0 bg-[#060606] flex flex-col items-center justify-center gap-4 z-50">
             <Loader2 className="w-12 h-12 text-red-600 animate-spin" />

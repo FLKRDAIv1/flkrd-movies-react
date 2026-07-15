@@ -60,11 +60,11 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       onMouseEnter={handlePrefetch}
       className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-500 overflow-hidden border ${
         isActive 
-        ? 'bg-white border-white text-red-950 shadow-[0_4px_25px_rgba(255,255,255,0.25)] font-black' 
-        : 'bg-transparent border-transparent hover:bg-white/10 hover:backdrop-blur-md hover:border-white/20 text-zinc-100/80 hover:text-white'
+        ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black' 
+        : 'bg-transparent border-transparent hover:bg-box-bg hover:backdrop-blur-md hover:border-border-color text-sec-text hover:text-main-text'
       }`}
     >
-      <div className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-red-800' : 'group-hover:scale-110 text-zinc-400'}`}>
+      <div className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-white' : 'group-hover:scale-110 text-sec-text'}`}>
         {icon}
       </div>
       <motion.span 
@@ -75,7 +75,7 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
       </motion.span>
       
       {!isCollapsed && isActive && (
-        <ChevronRight size={14} className="ml-auto opacity-50 text-emerald-900" />
+        <ChevronRight size={14} className="ml-auto opacity-50 text-white" />
       )}
     </NavLink>
     </motion.div>
@@ -108,11 +108,11 @@ const StudioItem = memo(({ to, icon, text, location }: StudioItemProps) => {
       to={to} 
       className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-500 border ${
         isActive 
-        ? 'bg-white/20 backdrop-blur-md border-white/30 text-white font-black shadow-[0_0_15px_rgba(255,255,255,0.15)]' 
-        : 'bg-transparent border-transparent hover:bg-white/5 hover:backdrop-blur-sm hover:border-white/10 text-zinc-100/60 hover:text-white'
+        ? 'bg-brand/20 backdrop-blur-md border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]' 
+        : 'bg-transparent border-transparent hover:bg-box-bg hover:backdrop-blur-sm hover:border-border-color text-sec-text hover:text-main-text'
       }`}
     >
-      <div className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${isActive ? 'scale-110 text-white' : 'group-hover:rotate-12 text-zinc-400'}`}>
+      <div className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${isActive ? 'scale-110 text-brand' : 'group-hover:rotate-12 text-sec-text'}`}>
         {icon}
       </div>
       <motion.span 
@@ -130,7 +130,7 @@ const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const { t } = useTranslation();
-  const { glassConfig } = useUI();
+  const { theme, glassConfig } = useUI();
 
   const sidebarVariants = useMemo(() => {
     const e = Math.max(0.01, glassConfig.elasticity || 0.35);
@@ -166,24 +166,32 @@ const Sidebar: React.FC = () => {
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}
         style={{ width: isCollapsed ? '4.5rem' : '16.5rem' }}
+        onMouseEnter={() => setIsCollapsed(false)}
+        onMouseLeave={() => setIsCollapsed(true)}
       >
         {/* Pure CSS Premium Glassmorphism Background with Red Tint */}
         <div
-          className="absolute inset-0 z-0 w-full h-full border backdrop-blur-2xl shadow-[0_30px_60px_rgba(0,0,0,0.55)] transition-all duration-300 overflow-hidden"
+          className="absolute inset-0 z-0 w-full h-full border backdrop-blur-2xl transition-all duration-300 overflow-hidden"
           style={{
-            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 70%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
+            background: theme === 'light'
+              ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 70%), rgba(255, 255, 255, 0.75)`
+              : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 70%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
             backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
             WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
             borderStyle: 'solid',
-            borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+            borderColor: theme === 'light' 
+              ? `rgba(0, 0, 0, 0.06)`
+              : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
             borderRadius: `${glassConfig.cornerRadius}px`,
-            boxShadow: `
-              inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-              inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-              inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-              inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-              0 30px 60px rgba(0,0,0,0.55)
-            `
+            boxShadow: theme === 'light'
+              ? `0 30px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
+              : `
+                inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                0 30px 60px rgba(0,0,0,0.55)
+              `
           }}
         >
           {/* Dynamic GPU-accelerated water sheen overlay */}
@@ -211,7 +219,7 @@ const Sidebar: React.FC = () => {
                 scale: isCollapsed ? 1 : 1.1,
                 width: isCollapsed ? "4rem" : "12rem"
               }}
-              className="relative z-10 flex items-center justify-center p-3 bg-main-text/5 rounded-2xl border border-main-text/10 shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden group-hover:border-white/20 transition-all duration-300"
+              className="relative z-10 flex items-center justify-center p-3 bg-box-bg rounded-2xl border border-border-color shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden hover:border-brand/20 transition-all duration-300"
             >
                <AnimatePresence mode="wait">
                  {isCollapsed ? (
@@ -284,9 +292,9 @@ const Sidebar: React.FC = () => {
             </AnimatePresence>
           </nav>
           
-          <div className="p-6 border-t border-main-text/10 bg-main-text/[0.02] backdrop-blur-20 relative z-20">
+          <div className="p-6 border-t border-border-color bg-box-bg backdrop-blur-20 relative z-20">
              <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-900 flex-shrink-0 border border-main-text/20 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]" />
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-900 flex-shrink-0 border border-border-color shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]" />
                 {!isCollapsed && (
                   <div className="flex flex-col min-w-0">
                     <p className="text-[10px] font-black text-main-text uppercase tracking-tighter truncate">Premium Member</p>

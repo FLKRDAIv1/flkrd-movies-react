@@ -43,7 +43,7 @@ const SearchVisualEffect = () => {
         <div className="relative z-10 flex flex-col items-center gap-4">
           <div className="w-20 h-20 mb-2 relative">
             <div className="absolute inset-0 bg-brand/30 blur-xl animate-pulse rounded-full" />
-            <div className="relative z-10 w-full h-full border border-white/20 hover:border-brand/40 bg-black/50 backdrop-blur-sm rounded-3xl flex items-center justify-center transition-colors">
+            <div className="relative z-10 w-full h-full border border-border-color hover:border-brand/40 bg-box-bg/50 backdrop-blur-sm rounded-3xl flex items-center justify-center transition-colors">
               <span className="text-3xl font-black italic text-brand/80 drop-shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)] flex items-center gap-1">
                 <span className="text-5xl">F</span>
               </span>
@@ -129,7 +129,7 @@ const SearchPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { isAdmin, glassConfig = {
+  const { theme, isAdmin, glassConfig = {
     redOpacity: 0.15,
     darkOpacity: 0.85,
     blurAmount: 20,
@@ -147,6 +147,10 @@ const SearchPage: React.FC = () => {
     window.addEventListener('banned-list-updated', handleBannedUpdate);
     return () => window.removeEventListener('banned-list-updated', handleBannedUpdate);
   }, [inputValue, executeSearch]);
+
+  useEffect(() => {
+    setInputValue(queryParam);
+  }, [queryParam]);
 
   useEffect(() => {
     if (inputValue === queryParam && results.length > 0) {
@@ -310,17 +314,23 @@ const SearchPage: React.FC = () => {
               style={{
                 borderRadius: '32px',
                 borderStyle: 'solid',
-                borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15})`,
+                borderColor: theme === 'light'
+                  ? `rgba(0, 0, 0, 0.06)`
+                  : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
+                background: theme === 'light'
+                  ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 85%), rgba(255, 255, 255, 0.85)`
+                  : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15})`,
                 backdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
                 WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                  inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                  inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                  0 50px 100px rgba(0, 0, 0, 0.8)
-                `
+                boxShadow: theme === 'light'
+                  ? `0 30px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
+                  : `
+                    inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
+                    inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                    inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
+                    0 50px 100px rgba(0, 0, 0, 0.8)
+                  `
               }}
             >
               {/* Dynamic GPU-accelerated water sheen overlay */}
@@ -334,13 +344,13 @@ const SearchPage: React.FC = () => {
               />
               {suggestions.length > 0 ? (
                 <>
-                  <div className="px-6 py-4 bg-white/5 border-b border-white/10 flex items-center justify-between">
+                  <div className="px-6 py-4 bg-box-bg border-b border-border-color flex items-center justify-between">
                     <span className="text-[10px] font-black text-sec-text uppercase tracking-[0.3em] flex items-center gap-2">
                       <TrendingUp size={12} className="text-brand" /> Matches Found
                     </span>
                     <span className="text-[8px] font-bold text-sec-text uppercase tracking-widest">Select to Launch</span>
                   </div>
-                  <ul className="max-h-[450px] overflow-y-auto scrollbar-hide divide-y divide-white/5">
+                  <ul className="max-h-[450px] overflow-y-auto scrollbar-hide divide-y divide-border-color">
                     {suggestions.map((item) => (
                       <li key={item.id}>
                         <button
@@ -355,7 +365,7 @@ const SearchPage: React.FC = () => {
                           }}
                           className="w-full text-left flex items-center gap-5 p-5 hover:bg-brand/10 transition-all group"
                         >
-                          <div className="relative overflow-hidden rounded-xl shadow-xl border border-white/5 w-14 h-20 flex-shrink-0 bg-white/5">
+                          <div className="relative overflow-hidden rounded-xl shadow-xl border border-border-color w-14 h-20 flex-shrink-0 bg-box-bg">
                             <img 
                               src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
                               alt="" 
@@ -372,7 +382,7 @@ const SearchPage: React.FC = () => {
                               {item.title || item.name}
                             </p>
                             <div className="flex items-center gap-3 mt-1.5">
-                              <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                              <div className="flex items-center gap-1 bg-box-bg px-2 py-0.5 rounded-lg border border-border-color">
                                 <Calendar size={10} className="text-sec-text" />
                                 <span className="text-[10px] font-bold text-sec-text uppercase tracking-tighter">
                                   {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0] || 'N/A'}

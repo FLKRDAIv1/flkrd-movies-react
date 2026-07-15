@@ -568,6 +568,7 @@ const AppContent: React.FC<{
 
     // Determine watch room or cinema directly from router location
     const isWatchPage = location.pathname.startsWith('/watch/') || location.pathname.startsWith('/watch-room/');
+    const isFullBleedPage = location.pathname === '/' || location.pathname.startsWith('/details/') || location.pathname.startsWith('/dubbed-details/');
 
     useEffect(() => {
         try {
@@ -614,7 +615,7 @@ const AppContent: React.FC<{
             {!isWatchPage && <Header scrolled={scrolled} />}
             <div className="flex flex-1 h-full overflow-hidden relative">
                 {!isWatchPage && <Sidebar />}
-                <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : 'pt-10 tauri-only-pt'}`}>
+                <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : (isFullBleedPage ? 'pt-0 tauri-only-pt' : 'pt-14 md:pt-18 tauri-only-pt')}`}>
                     <ChunkErrorBoundary>
                       <React.Suspense fallback={
                         <div className="flex-1 w-full min-h-screen">
@@ -819,7 +820,7 @@ const App: React.FC = () => {
 
     return (
         <MotionConfig reducedMotion={isPerformanceMode ? "always" : "user"}>
-            <div className={`h-screen w-screen overflow-hidden bg-black transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-transparent'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+            <div className={`h-screen w-screen overflow-hidden transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-black'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                 <AnimatePresence mode="wait">
                     {loading && <SplashScreen key="splash" onComplete={() => setLoading(false)} />}
                 </AnimatePresence>

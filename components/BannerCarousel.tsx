@@ -1,58 +1,294 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Star, Play, Info, ChevronLeft, ChevronRight, Zap, Calendar, Trash2 } from 'lucide-react';
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useTransform,
+  useSpring,
+  animate,
+} from 'framer-motion';
+import { Play, Info } from 'lucide-react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
-import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
+import { requests, IMAGE_BASE_URL, API_KEY, GENRES_T } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import Spinner from './Spinner';
 import { useUI } from '../contexts/UIContext';
-import { useNotification } from '../contexts/NotificationContext';
 import { bannedService } from '../services/bannedService';
-import { LiquidButton } from './ui/liquid-glass-button';
 
 interface ExtendedContent extends Content {
   logo?: string;
 }
 
-const HeroBanner: React.FC = () => {
-  const [items, setItems] = useState<ExtendedContent[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { t, language } = useTranslation();
-  const { isAdmin } = useUI();
-  const { addNotification } = useNotification();
-  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
+// Default carousel settings — overridden by admin via localStorage
+export const DEFAULT_CAROUSEL_SETTINGS = {
+  autoplayInterval: 10000,
+  cardCount: 10,
+  cardHeightVh: 65,
+  deckOffset: 10,
+  deckScale: 0.055,
+  gradientStrength: 85,
+  glowOpacity: 35,
+  roundedSize: '3rem',
+  visibleCards: 3,
+};
 
+export type CarouselSettings = typeof DEFAULT_CAROUSEL_SETTINGS;
+
+const getSettings = (): CarouselSettings => {
+  try {
+    const stored = localStorage.getItem('carouselSettings');
+    return stored ? { ...DEFAULT_CAROUSEL_SETTINGS, ...JSON.parse(stored) } : DEFAULT_CAROUSEL_SETTINGS;
+  } catch {
+    return DEFAULT_CAROUSEL_SETTINGS;
+  }
+};
+
+// ─── Single draggable top card ───────────────────────────────────────────────
+interface TopCardProps {
+  item: ExtendedContent;
+  cardHeight: string;
+  roundedSize: string;
+  gradientOpacity: number;
+  isRTL: boolean;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  onInfo: () => void;
+  onPlay: () => void;
+  getGenreName: (id: number) => string;
+  t: (key: string) => string;
+}
+
+const TopCard: React.FC<TopCardProps> = ({
+  item, cardHeight, roundedSize, gradientOpacity, isRTL,
+  onSwipeLeft, onSwipeRight, onInfo, onPlay, getGenreName, t,
+}) => {
+  const x = useMotionValue(0);
+  const isDragging = useRef(false);
+
+  // Real-time tilt based on drag position
+  const rotate = useTransform(x, [-300, 0, 300], isRTL ? [10, 0, -10] : [-10, 0, 10]);
+  // Subtle brightness shift while dragging
+  const overlayOpacity = useTransform(x, [-200, 0, 200], [0.15, 0, 0.15]);
+
+  const handleDragStart = () => { isDragging.current = true; };
+
+  const handleDragEnd = (_: any, info: any) => {
+    isDragging.current = false;
+    const SWIPE_THRESHOLD = 80;    // px to commit
+    const VEL_THRESHOLD   = 400;   // px/s velocity shortcut
+
+    const swipeByOffset   = Math.abs(info.offset.x)   > SWIPE_THRESHOLD;
+    const swipeByVelocity = Math.abs(info.velocity.x) > VEL_THRESHOLD;
+
+    if (swipeByOffset || swipeByVelocity) {
+      const goLeft = isRTL
+        ? info.offset.x > 0
+        : info.offset.x < 0;
+
+      // Fly the card out, then call parent callback
+      const flyX = goLeft ? -500 : 500;
+      animate(x, flyX, { duration: 0.35, ease: [0.16, 1, 0.3, 1] }).then(() => {
+        goLeft ? onSwipeLeft() : onSwipeRight();
+        x.set(0);
+      });
+    } else {
+      // Snap back with spring physics
+      animate(x, 0, { type: 'spring', stiffness: 500, damping: 40 });
+    }
+  };
+
+  const handleClick = () => {
+    if (!isDragging.current && Math.abs(x.get()) < 5) {
+      onPlay();
+    }
+  };
+
+  return (
+    <motion.div
+      style={{
+        x,
+        rotate,
+        borderRadius: roundedSize,
+        zIndex: 30,
+        position: 'absolute',
+        top: 0,
+        left: isRTL ? undefined : 0,
+        right: isRTL ? 0 : undefined,
+        width: '84%',
+        height: '100%',
+        overflow: 'hidden',
+        cursor: 'grab',
+        willChange: 'transform',
+        boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={0.18}
+      dragMomentum={false}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onClick={handleClick}
+      whileDrag={{ cursor: 'grabbing' }}
+    >
+      {/* Background image */}
+      <img
+        src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${item.backdrop_path}`}
+        className="w-full h-full object-cover absolute inset-0 z-0"
+        style={{ animation: 'kenburns 40s ease infinite alternate' }}
+        alt={item.title || item.name}
+        fetchPriority="high"
+        loading="eager"
+      />
+
+      {/* Drag direction tint */}
+      <motion.div
+        className="absolute inset-0 z-10 pointer-events-none bg-black"
+        style={{ opacity: overlayOpacity }}
+      />
+
+      {/* Bottom gradient */}
+      <div
+        className="absolute inset-0 z-10 pointer-events-none"
+        style={{ background: `linear-gradient(to top, rgba(0,0,0,${gradientOpacity}) 0%, rgba(0,0,0,0.35) 40%, transparent 100%)` }}
+      />
+
+      {/* Top Metadata Tags */}
+      <div className={`absolute top-6 ${isRTL ? 'right-6 flex-row-reverse' : 'left-6'} z-20 flex flex-wrap gap-2 pointer-events-none`}>
+        <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full">
+          {item.release_date?.split('-')[0] || (item as any).first_air_date?.split('-')[0]}
+        </span>
+        {item.genre_ids?.[0] && (
+          <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full">
+            {getGenreName(item.genre_ids[0])}
+          </span>
+        )}
+        <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full">
+          {item.vote_average?.toFixed(1)} ★
+        </span>
+        <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+          {item.media_type || 'movie'}
+        </span>
+      </div>
+
+      {/* Swipe hint arrows (fade on drag) */}
+      <motion.div
+        className="absolute inset-y-0 left-3 z-20 flex items-center pointer-events-none"
+        style={{ opacity: useTransform(x, [0, -60], [0, 0.7]) }}
+      >
+        <div className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white text-lg font-black">←</div>
+      </motion.div>
+      <motion.div
+        className="absolute inset-y-0 right-3 z-20 flex items-center pointer-events-none"
+        style={{ opacity: useTransform(x, [0, 60], [0, 0.7]) }}
+      >
+        <div className="w-9 h-9 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white text-lg font-black">→</div>
+      </motion.div>
+
+      {/* Bottom Row */}
+      <div className={`absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
+        <div className={`flex items-center gap-4 ${isRTL ? 'flex-row-reverse text-right' : 'text-left'}`}>
+          <div
+            onClick={(e) => { e.stopPropagation(); onPlay(); }}
+            className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-105 shadow-lg cursor-pointer pointer-events-auto"
+          >
+            <Play fill="currentColor" size={20} className="ml-0.5" />
+          </div>
+          <div className="flex flex-col">
+            {(item as ExtendedContent).logo ? (
+              <img
+                src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${(item as ExtendedContent).logo}`}
+                alt={item.title || item.name}
+                className="h-6 md:h-10 w-auto object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]"
+              />
+            ) : (
+              <h2 className="text-xl md:text-3xl font-[1000] text-white tracking-tight drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+                {item.title || item.name}
+              </h2>
+            )}
+            <span className="text-white/60 text-[10px] md:text-xs font-bold mt-0.5">
+              {t('play')}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onInfo(); }}
+          className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all hover:scale-105 shadow-lg cursor-pointer pointer-events-auto"
+          aria-label="View details"
+        >
+          <Info size={20} />
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+const HeroBanner: React.FC = () => {
+  const [items, setItems]             = useState<ExtendedContent[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading]         = useState(true);
+  const [settings, setSettings]       = useState<CarouselSettings>(getSettings);
+  const navigate  = useNavigate();
+  const { t, language } = useTranslation();
+  const { isAdmin }     = useUI();
+  const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
+  const isRTL    = language === 'ku' || language === 'badini';
+
+  // ── Settings sync ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const h = () => setSettings(getSettings());
+    window.addEventListener('carousel-settings-updated', h);
+    return () => window.removeEventListener('carousel-settings-updated', h);
+  }, []);
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchHeroContent = useCallback(async () => {
     setLoading(true);
-    const trendingData = await fetchData(requests.fetchTrending(langCode), language);
-    if (trendingData && trendingData.length > 0) {
-      const topItems = trendingData.slice(0, 5);
-
-      const enrichedItems = await Promise.all(topItems.map(async (item: any) => {
+    try {
+      const nowPlayingData = await fetchData(requests.fetchLatestMovies(langCode), language);
+      if (nowPlayingData?.length > 0) {
+        const topItems = nowPlayingData.slice(0, settings.cardCount);
+        const enrichedItems = await Promise.all(topItems.map(async (item: any) => {
+          try {
+            const type     = item.media_type || 'movie';
+            const imageData = await fetchData(`/${type}/${item.id}/images?api_key=${API_KEY}`, 'en');
+            const logo      = imageData?.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
+            fetchData(`/${type}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`, language).catch(() => {});
+            return { ...item, logo, media_type: type };
+          } catch { return { ...item, media_type: item.media_type || 'movie' }; }
+        }));
         try {
-          const type = item.media_type || 'movie';
-          const endpoint = `/${type}/${item.id}/images?api_key=${API_KEY}`;
-          const imageData = await fetchData(endpoint, 'en');
-          const logo = imageData?.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
-          
-          // Prefetch details endpoint in the background
-          const detailsEndpoint = `/${type}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
-          fetchData(detailsEndpoint, language).catch(() => {});
+          const bannedSet = await bannedService.fetchBannedList();
+          const filtered  = enrichedItems.filter(item => !bannedSet.has(String(item.id)));
+          setItems(filtered.length > 0 ? filtered : enrichedItems);
+        } catch { setItems(enrichedItems); }
+        setLoading(false);
+        return;
+      }
+    } catch {}
 
-          return { ...item, logo };
-        } catch (e) {
-          return item;
-        }
-      }));
-
-      setItems(enrichedItems);
-    }
+    // Fallback: trending
+    try {
+      const trendingData = await fetchData(requests.fetchTrending(langCode), language);
+      if (trendingData?.length > 0) {
+        const topItems = trendingData.slice(0, settings.cardCount);
+        const enrichedItems = await Promise.all(topItems.map(async (item: any) => {
+          try {
+            const type      = item.media_type || 'movie';
+            const imageData = await fetchData(`/${type}/${item.id}/images?api_key=${API_KEY}`, 'en');
+            const logo      = imageData?.logos?.find((l: any) => l.iso_639_1 === 'en' || !l.iso_639_1)?.file_path;
+            return { ...item, logo };
+          } catch { return item; }
+        }));
+        setItems(enrichedItems);
+      }
+    } catch {}
     setLoading(false);
-  }, [langCode, language]);
+  }, [langCode, language, settings.cardCount]);
 
   useEffect(() => {
     fetchHeroContent();
@@ -60,212 +296,163 @@ const HeroBanner: React.FC = () => {
     return () => window.removeEventListener('banned-list-updated', fetchHeroContent);
   }, [fetchHeroContent]);
 
+  // ── Auto-play ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (items.length === 0 || loading) return;
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % items.length);
-    }, 10000);
+      setCurrentIndex(prev => (prev + 1) % items.length);
+    }, settings.autoplayInterval);
     return () => clearInterval(interval);
-  }, [items, loading]);
+  }, [items.length, loading, settings.autoplayInterval]);
 
-  const handleNext = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex((prev) => (prev + 1) % items.length);
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const goNext = useCallback(() => setCurrentIndex(p => (p + 1) % items.length), [items.length]);
+  const goPrev = useCallback(() => setCurrentIndex(p => (p - 1 + items.length) % items.length), [items.length]);
+
+  const getGenreName = (genreId: number) => {
+    const genre = GENRES_T.find(g => g.id === genreId);
+    return genre ? t(genre.nameKey) : '';
   };
 
-  const handlePrev = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-  };
-
-  const handleBan = async (e: React.MouseEvent, item: ExtendedContent) => {
-    e.stopPropagation();
-    const cleanId = String(item.id);
-    const mediaType = item.media_type || 'movie';
-
-    if (!window.confirm(`TERMINATE HERO NODE ${cleanId}? [GLOBAL BAN]`)) return;
-
-    try {
-        const success = await bannedService.banContent(cleanId, mediaType);
-        if (success) {
-            addNotification({ type: 'success', title: 'HERO PURGED', message: 'Content removed from global registry.' });
-            setItems(prev => prev.filter(r => r.id !== item.id));
-            if (currentIndex >= items.length - 1) {
-              setCurrentIndex(0);
-            }
-        }
-    } catch (err) {
-        console.error("Ban failed:", err);
-    }
-  };
-
-  if (loading && items.length === 0) return <div className="h-[85vh] flex items-center justify-center bg-black"><Spinner /></div>;
+  // ── Guards ────────────────────────────────────────────────────────────────
+  if (loading && items.length === 0)
+    return <div className="w-full relative px-4 md:px-12 pt-24 md:pt-32 pb-4 bg-transparent flex items-center justify-center min-h-[40vh]"><Spinner /></div>;
   if (items.length === 0) return null;
 
   const currentItem = items[currentIndex];
-  if (!currentItem) return <div className="h-[85vh] md:h-screen w-full bg-black flex items-center justify-center"><Spinner /></div>;
+  if (!currentItem)
+    return <div className="w-full relative px-4 md:px-12 pt-24 md:pt-32 pb-4 bg-transparent flex items-center justify-center min-h-[40vh]"><Spinner /></div>;
+
+  const cardHeight      = `${settings.cardHeightVh}vh`;
+  const gradientOpacity = settings.gradientStrength / 100;
+  const glowOpacity     = settings.glowOpacity     / 100;
 
   return (
-    <div className="relative h-[85vh] md:h-screen w-full overflow-hidden bg-black group/hero">
-      <style>
-        {`
-          .ken-burns {
-            animation: kenburns 40s ease infinite alternate;
-          }
-          @keyframes kenburns {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.2) translate(-2%, -1%); }
-          }
-        `}
-      </style>
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`bg-${currentItem.id}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.5 }}
-          className="absolute inset-0 z-0 overflow-hidden"
-        >
-          <img
-            src={`${IMAGE_BASE_URL}${currentItem.backdrop_path}`}
-            width={1280}
-            height={720}
-            className="w-full h-full object-cover opacity-60 ken-burns"
-            alt={currentItem.title || currentItem.name || "Carousel Slide Backdrop"}
-            fetchpriority="high"
-            loading="eager"
-            decoding="sync"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
-        </motion.div>
-      </AnimatePresence>
+    <div className="w-full relative px-4 md:px-12 pt-24 md:pt-32 pb-20 md:pb-16 bg-transparent">
+      <style>{`
+        @keyframes kenburns {
+          0%   { transform: scale(1); }
+          100% { transform: scale(1.15) translate(-2%, -1%); }
+        }
+      `}</style>
 
-      <div className={`absolute bottom-[15%] md:bottom-[20%] ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-40' : 'left-6 md:left-40'} z-30 flex flex-col items-start pointer-events-auto max-w-[95%] md:max-w-4xl`}>
+      {/* Immersive backdrop glow */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none transition-all duration-1000">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F8F9FA]/40 dark:to-black/40 z-10" />
+        <img
+          src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${currentItem.backdrop_path}`}
+          className="w-full h-full object-cover scale-125 blur-[100px] transition-opacity duration-1000"
+          style={{ opacity: glowOpacity }}
+          alt=""
+        />
+      </div>
+
+      {/* ── Card Deck ─────────────────────────────────────────────────────── */}
+      <div className="relative w-full overflow-visible" style={{ height: cardHeight }}>
+
+        {/* Back stacked cards (d > 0) */}
+        {Array.from({ length: settings.visibleCards || 3 }).map((_, stackPos) => {
+          // stackPos 0 = immediately behind top, 1 = further, etc.
+          const d         = stackPos + 1;
+          const itemIdx   = (currentIndex + d) % items.length;
+          const backItem  = items[itemIdx];
+          if (!backItem) return null;
+
+          const bg = `${IMAGE_BASE_URL.replace('w1280', 'w780')}${backItem.backdrop_path}`;
+          const tx = d * settings.deckOffset;
+          const sc = 1 - d * settings.deckScale;
+          const op = Math.max(0.55, 0.92 - d * (0.25 / (settings.visibleCards || 3)));
+
+          return (
+            <div
+              key={`back-${backItem.id}-${d}`}
+              onClick={() => setCurrentIndex(itemIdx)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: isRTL ? undefined : 0,
+                right: isRTL ? 0 : undefined,
+                width: '84%',
+                height: '100%',
+                borderRadius: settings.roundedSize,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+                transform: `translateX(${isRTL ? -tx : tx}%) scale(${sc})`,
+                transformOrigin: isRTL ? 'right center' : 'left center',
+                zIndex: 30 - d * 10,
+                opacity: op,
+                cursor: 'pointer',
+                transition: 'transform 0.5s cubic-bezier(0.16,1,0.3,1), opacity 0.4s ease',
+              }}
+            >
+              <img src={bg} alt="" className="w-full h-full object-cover" loading="lazy" />
+              {/* Subtle dark overlay so stacked cards look recessed */}
+              <div className="absolute inset-0 bg-black/25" />
+            </div>
+          );
+        })}
+
+        {/* Active / top draggable card */}
         <AnimatePresence mode="wait">
           <motion.div
-            key={`content-${currentItem.id}`}
-            initial={{ opacity: 0, x: (language === 'ku' || language === 'badini') ? 40 : -40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: (language === 'ku' || language === 'badini') ? -20 : 20 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className={`w-full flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}
+            key={currentIndex}
+            initial={{ scale: 0.92, opacity: 0, x: 0 }}
+            animate={{ scale: 1, opacity: 1, x: 0, transition: { type: 'spring', stiffness: 380, damping: 32 } }}
+            exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            style={{
+              position: 'absolute', top: 0, zIndex: 30,
+              left: isRTL ? undefined : 0,
+              right: isRTL ? 0 : undefined,
+              width: '84%', height: '100%',
+            }}
           >
-            {/* Desktop-Style Metadata Sidebar (Left Corner Alignment) */}
-            <div className={`hidden md:flex flex-col gap-6 mb-10 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
-                <div className="flex items-center gap-4">
-                  <div className="bg-red-600 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.4em] shadow-[0_0_30px_rgba(229,9,20,0.5)] flex items-center gap-2">
-                      <Zap size={14} fill="white" className="animate-pulse" /> {t('trendingNow')}
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-5 py-2.5 rounded-2xl text-xs font-[1000] uppercase tracking-widest flex items-center gap-2">
-                      <Calendar size={14} className="text-red-500" />
-                      {currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div className="bg-yellow-500/10 backdrop-blur-3xl border border-yellow-500/20 text-yellow-500 px-5 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2">
-                      <Star size={14} fill="currentColor" />
-                      {currentItem.vote_average.toFixed(1)} / 10
-                  </div>
-                  {currentItem.media_type && (
-                    <div className="bg-blue-500/10 backdrop-blur-3xl border border-blue-500/20 text-blue-400 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-[0.2em] italic">
-                      {t(currentItem.media_type)}
-                    </div>
-                  )}
-                </div>
-            </div>
-
-            {/* Mobile Metadata */}
-            <div className={`md:hidden flex items-center gap-3 mb-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
-              <div className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-lg flex items-center gap-1.5">
-                <Zap size={10} fill="white" /> {t('trendingNow')}
-              </div>
-              <span className="text-white/60 text-[10px] font-black">{currentItem.release_date?.split('-')[0] || currentItem.first_air_date?.split('-')[0]}</span>
-            </div>
-
-            <div className="mb-8 md:mb-12 w-full">
-              {currentItem.logo ? (
-                <motion.img
-                  src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${currentItem.logo}`}
-                  alt={currentItem.title || currentItem.name}
-                  className={`h-auto max-h-24 md:max-h-56 object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,1)] ${(language === 'ku' || language === 'badini') ? 'mr-auto' : 'ml-0'}`}
-                />
-              ) : (
-                <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-tighter leading-[0.9] text-white drop-shadow-[0_15px_30px_rgba(0,0,0,1)] shimmer-text">
-                  {currentItem.title || currentItem.name}
-                </h1>
-              )}
-            </div>
-
-            <p className={`text-gray-300 font-bold italic text-sm md:text-xl line-clamp-3 mb-10 md:mb-14 max-w-2xl leading-relaxed opacity-90 ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
-              {currentItem.overview}
-            </p>
-
-            <div className={`flex flex-wrap items-center gap-4 md:gap-8 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
-              <LiquidButton
-                variant="default"
-                onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                className="text-white font-[1000] px-10 md:px-24 py-5 md:py-7 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-4 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
-              >
-                <Play fill="currentColor" size={20} className="md:w-9 md:h-9" /> {t('play')}
-              </LiquidButton>
-              
-              <div className="flex items-center gap-4">
-                <LiquidButton
-                    variant="default"
-                    onClick={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
-                    className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] text-white shadow-xl hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] ring-1 ring-white/10"
-                    aria-label="View content details"
-                >
-                    <Info size={20} className="md:w-9 md:h-9" />
-                </LiquidButton>
-
-                {isAdmin && (
-                    <LiquidButton
-                        variant="destructive"
-                        onClick={(e) => handleBan(e, currentItem)}
-                        className="p-5 md:p-7 rounded-[1.5rem] md:rounded-[3rem] shadow-xl group"
-                        aria-label="Ban content"
-                    >
-                        <Trash2 size={20} className="md:w-9 md:h-9 group-hover:scale-110 transition-transform" />
-                    </LiquidButton>
-                )}
-              </div>
-            </div>
+            <TopCard
+              item={currentItem}
+              cardHeight={cardHeight}
+              roundedSize={settings.roundedSize}
+              gradientOpacity={gradientOpacity}
+              isRTL={isRTL}
+              onSwipeLeft={isRTL ? goPrev : goNext}
+              onSwipeRight={isRTL ? goNext : goPrev}
+              onInfo={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
+              onPlay={() => navigate(`/details/${currentItem.media_type || 'movie'}/${currentItem.id}`, { state: { customData: currentItem } })}
+              getGenreName={getGenreName}
+              t={t}
+            />
           </motion.div>
         </AnimatePresence>
-      </div>
 
-      <div className={`hidden lg:flex absolute bottom-12 ${(language === 'ku' || language === 'badini') ? 'left-32' : 'right-32'} z-40 items-center gap-6`}>
-        <button onClick={handlePrev} aria-label="Previous slide" className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
-          <ChevronLeft size={32} />
-        </button>
-        <button onClick={handleNext} aria-label="Next slide" className="p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-white hover:bg-red-600 transition-all shadow-2xl">
-          <ChevronRight size={32} />
-        </button>
-      </div>
-
-      <div className="absolute bottom-8 left-0 right-0 z-40 px-6 md:px-32 flex justify-center gap-4 pointer-events-none">
-        {items.map((item, idx) => (
-          <div
-            key={`indicator-${item.id}`}
-            className="flex-1 max-w-[60px] md:max-w-[120px] pointer-events-auto cursor-pointer"
-            onClick={() => setCurrentIndex(idx)}
-          >
-            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden relative">
-              {idx === currentIndex && (
+        {/* Liquid Glass Pagination Dots */}
+        <div
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-[7px]
+            bg-white/10 backdrop-blur-2xl px-5 py-3 rounded-full
+            border border-white/20
+            shadow-[0_4px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.18)]"
+        >
+          {items.map((_, idx) => {
+            const isActive = idx === currentIndex;
+            return (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className="relative focus:outline-none flex items-center justify-center cursor-pointer"
+                aria-label={`Go to slide ${idx + 1}`}
+              >
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 10, ease: "linear" }}
-                  className="absolute inset-0 bg-red-600"
+                  animate={{
+                    width: isActive ? 20 : 7,
+                    height: 7,
+                    backgroundColor: isActive ? 'rgba(239, 68, 68, 1)' : 'rgba(255, 255, 255, 0.35)',
+                  }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  className="rounded-full"
+                  style={isActive ? { boxShadow: '0 0 8px rgba(239,68,68,0.7)' } : {}}
                 />
-              )}
-            </div>
-          </div>
-        ))}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

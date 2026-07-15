@@ -652,8 +652,8 @@ const DetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-[9999]" dir="ltr">
-            <div className="w-full h-full relative bg-black overflow-hidden">
+          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[9999]" dir="ltr">
+            <div className="w-full h-full relative bg-transparent overflow-hidden">
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
                   key={`premium-${playerKey}`}
@@ -901,34 +901,15 @@ const DetailPage: React.FC = () => {
       <div className="relative w-full h-[75vh] md:h-[95vh] overflow-hidden z-10 group" dir="ltr">
         <div className="absolute inset-0 overflow-hidden">
           <motion.img 
-            initial={{ scale: 1.2 }} 
+            initial={{ scale: 1.15 }} 
             animate={{ scale: 1 }} 
-            transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
-            src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
+            transition={{ duration: 15, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
+            src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path}`} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover opacity-70" 
+            className="absolute inset-0 w-full h-full object-cover opacity-85" 
           />
-          {trailerKey && (
-            <div className="absolute inset-0 scale-[1.5] pointer-events-none z-[1]">
-              <iframe
-                ref={backdropIframeRef}
-                src={`https://www.youtube.com/embed/${trailerKey}?autoplay=1&mute=1&playsinline=1&loop=1&playlist=${trailerKey}&controls=0&modestbranding=1&rel=0&showinfo=0&enablejsapi=1${origin ? `&origin=${origin}` : ''}`}
-                className="w-full h-full opacity-60"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              />
-            </div>
-          )}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/20 to-transparent dark-gradient-mask z-[2]"></div>
         </div>
-
-        {trailerKey && (
-          <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'left-6 md:left-20' : 'right-6 md:right-20'} z-20`}>
-            <button onClick={() => setIsMuted(!isMuted)} aria-label={isMuted ? "Unmute backdrop video" : "Mute backdrop video"} className="bg-black/40 backdrop-blur-xl border border-white/10 p-3 rounded-full text-white hover:bg-[var(--brand-red)] transition-all shadow-2xl">
-              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-            </button>
-          </div>
-        )}
 
         {!isPlayerModalOpen && (
           <Portal id="detail-nav-portal">
@@ -973,11 +954,11 @@ const DetailPage: React.FC = () => {
               <Star size={14} className="text-yellow-500 fill-current" />
               <span className="text-xs font-black text-yellow-500">{content.vote_average?.toFixed(1) || '0.0'}</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-xl">
+            <div className="flex items-center gap-1.5 bg-box-bg px-3 py-1.5 rounded-xl border border-border-color shadow-lg backdrop-blur-xl">
               <Timer size={14} className="text-[var(--text-secondary)]" />
               <span className="text-xs font-black text-[var(--text-secondary)]">{content.runtime}m</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 shadow-lg backdrop-blur-xl">
+            <div className="flex items-center gap-1.5 bg-box-bg px-3 py-1.5 rounded-xl border border-border-color shadow-lg backdrop-blur-xl">
               <Calendar size={14} className="text-[var(--text-secondary)]" />
               <span className="text-xs font-black text-[var(--text-secondary)]">{content.release_date?.split('-')[0]}</span>
             </div>
@@ -1073,7 +1054,7 @@ const DetailPage: React.FC = () => {
               variant="default"
               onClick={handleCreateWatchParty}
               disabled={isCreatingParty}
-              className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl border border-orange-500/20 hover:border-orange-500/40 text-orange-500 hover:text-white"
+              className="flex items-center gap-3 font-[1000] py-4 px-10 md:py-5 md:px-16 rounded-xl md:rounded-[1.5rem] shadow-2xl border border-orange-500/20 hover:border-orange-500/40 text-orange-500 hover:bg-orange-500 hover:text-white transition-all duration-300"
             >
               <Tv size={20} />
               <span className="text-sm md:text-xl uppercase italic tracking-tighter">
@@ -1098,7 +1079,7 @@ const DetailPage: React.FC = () => {
 
             {cast.length > 0 && (
               <div className="mb-24">
-                <div className="flex items-center gap-4 mb-12"><h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{(language === 'ku' || language === 'badini') ? 'ئەکتەرەکان' : 'ACTORS'}</h2><div className="h-[2px] flex-grow bg-white/5 rounded-full"></div></div>
+                <div className="flex items-center gap-4 mb-12"><h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{(language === 'ku' || language === 'badini') ? 'ئەکتەرەکان' : 'ACTORS'}</h2><div className="h-[2px] flex-grow bg-border-color rounded-full"></div></div>
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8">
                   {cast.map(person => (
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
@@ -1141,20 +1122,24 @@ const DetailPage: React.FC = () => {
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.9, y: 20, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full max-w-4xl bg-[#0a0a0a]/90 border border-white/10 rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
+              className="relative w-full max-w-4xl bg-card-bg border border-border-color rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
               dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
               style={{
-                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
+                background: theme === 'light'
+                  ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 85%), rgba(255, 255, 255, 0.85)`
+                  : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
                 backdropFilter: 'blur(30px) saturate(130%)',
                 WebkitBackdropFilter: 'blur(30px) saturate(130%)',
-                boxShadow: '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)'
+                boxShadow: theme === 'light'
+                  ? '0 50px 100px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
+                  : '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)'
               }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
               <button 
                 onClick={() => setSelectedActorId(null)}
-                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-white/5 hover:bg-red-600 rounded-2xl text-white transition-all z-50 group hover:rotate-90`}
+                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-box-bg border border-border-color hover:bg-red-600 rounded-2xl text-main-text hover:text-white transition-all z-50 group hover:rotate-90`}
               >
                 <X size={20} />
               </button>

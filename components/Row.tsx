@@ -206,7 +206,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   if (hasError || !content || content.length === 0) return null;
 
   return (
-    <div className="mb-10 md:mb-20 px-4 md:px-20 relative z-20 overflow-visible">
+    <div className="mb-10 md:mb-20 px-4 md:px-20 relative z-20 overflow-visible movie-row-container">
       {title && (
         <div className="flex items-center justify-between mb-8">
             <h2 className={`text-xl md:text-4xl font-[1000] flex items-center uppercase text-main-text ${language !== 'ku' ? 'italic tracking-tighter' : ''}`}>

@@ -61,7 +61,7 @@ const getLanguageFlag = (langCode: string) => {
     const defaultFlag = <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_the_United_Nations.svg" alt="UN" className="w-4 h-3 object-cover rounded-[2px] shadow-sm" />;
 
     if (!code) return defaultFlag;
-    if (code === 'ku' || code === 'ckb') {
+    if (code === 'ku' || code === 'ckb' || code === 'badini' || code === 'kur') {
         return <img src="https://upload.wikimedia.org/wikipedia/commons/3/35/Flag_of_Kurdistan.svg" alt="Kurdistan" className="w-4 h-3 object-cover rounded-[2px] shadow-sm border border-white/10" />;
     }
 
@@ -929,22 +929,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     .select('*')
                     .eq('tmdb_id', String(idToQuery))
                     .eq('media_type', contentType || 'movie')
-                    .eq('language', activeLanguageCode)
+                    .in('language', ['ku', 'badini', 'ckb', 'kur'])
                     .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
                     .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
-                const { data } = await query.maybeSingle();
+                const { data: dbSubs } = await query;
 
-                if (data && data.subtitle_url) {
-                    let subUrl = data.subtitle_url;
+                if (dbSubs && dbSubs.length > 0) {
+                    const sortedDbSubs = [...dbSubs].sort((a, b) => {
+                        const score = (lang: string) => {
+                            if (lang === activeLanguageCode) return 10;
+                            if (lang === 'ku') return 5;
+                            if (lang === 'badini') return 3;
+                            if (lang === 'ckb') return 2;
+                            return 1;
+                        };
+                        return score(b.language) - score(a.language);
+                    });
+                    const bestSub = sortedDbSubs[0];
+                    let subUrl = bestSub.subtitle_url;
                     if (subUrl.startsWith('//')) {
                         subUrl = `https:${subUrl}`;
                     }
                     customSub = {
-                        id: `custom-db-${data.id}`,
+                        id: `custom-db-${bestSub.id}`,
                         attributes: {
-                            language: data.language || 'ku',
-                            display_name: data.file_name ? data.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
+                            language: bestSub.language || 'ku',
+                            display_name: bestSub.file_name ? bestSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
                             url: subUrl,
                             file_id: 0
                         }
@@ -1067,12 +1078,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         if (isImdb && m.imdb_id === cleanId) return true;
                         if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
 
-                        if (targetTitleClean) {
+                        if (targetTitleClean && targetTitleClean.length > 0) {
                             const dbTitleClean = cleanString(m.title);
                             const dbKurdishClean = cleanString(m.kurdishTitle);
 
-                            if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
-                            if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+                            if (dbTitleClean && dbTitleClean.length > 0 && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+                            if (dbKurdishClean && dbKurdishClean.length > 0 && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
                         }
                         return false;
                     });
@@ -1116,12 +1127,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         if (isImdb && m.imdb_id === cleanId) return true;
                         if (!isImdb && m.tmdb_id === parseInt(cleanId)) return true;
 
-                        if (targetTitleClean) {
+                        if (targetTitleClean && targetTitleClean.length > 0) {
                             const dbTitleClean = cleanString(m.title);
                             const dbKurdishClean = cleanString(m.kurdishTitle);
 
-                            if (dbTitleClean && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
-                            if (dbKurdishClean && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
+                            if (dbTitleClean && dbTitleClean.length > 0 && (dbTitleClean.includes(targetTitleClean) || targetTitleClean.includes(dbTitleClean))) return true;
+                            if (dbKurdishClean && dbKurdishClean.length > 0 && (dbKurdishClean.includes(targetTitleClean) || targetTitleClean.includes(dbKurdishClean))) return true;
                         }
                         return false;
                     });
@@ -2091,21 +2102,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         enableWorker: true,
                         autoStartLoad: true,
                         startLevel: -1,
-                        capLevelToPlayerSize: true,
+                        capLevelToPlayerSize: false,
                         debug: false,
                         maxBufferLength: 30,
                         maxMaxBufferLength: 60,
-                        maxBufferSize: 60 * 1024 * 1024,
-                        backBufferLength: 60,
+                        maxBufferSize: 120 * 1024 * 1024,
+                        backBufferLength: 30,
                         manifestLoadingMaxRetry: 10,
                         manifestLoadingRetryDelay: 1000,
                         levelLoadingMaxRetry: 10,
                         levelLoadingRetryDelay: 1000,
                         fragLoadingMaxRetry: 10,
                         fragLoadingRetryDelay: 1000,
-                        lowLatencyMode: true,
+                        lowLatencyMode: false,
                         enableAdaptiveMaxBufferLength: true,
-                        abrEwmaDefaultEstimate: 500000,
+                        abrEwmaDefaultEstimate: 12000000,
                     });
                     if (videoRef.current) {
                         hls.loadSource(activeSrc);
@@ -2214,7 +2225,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div
             ref={containerRef}
-            className={`bg-black flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
+            className={`bg-transparent flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
                     ? 'fixed inset-0 w-screen h-screen z-[9999] overflow-hidden'
                     : 'w-full h-full relative z-20'
                 }`}

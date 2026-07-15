@@ -18,6 +18,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import MovieCard from '../components/MovieCard';
 import { bannedService } from '../services/bannedService';
+import { featuredBannerService, FeaturedBannerItem } from '../services/featuredBannerService';
 import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
 import { db, initDB } from '../utils/db';
@@ -267,7 +268,38 @@ const DubbedMoviesPage: React.FC = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadStep, setUploadStep] = useState('');
-    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers' | 'glass' | 'mobilenav' | 'oneboard' | 'player'>('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState<'upload' | 'archive' | 'banned' | 'servers' | 'glass' | 'mobilenav' | 'oneboard' | 'player' | 'carousel'>('upload');
+    const [carouselBanners, setCarouselBanners] = useState<FeaturedBannerItem[]>([]);
+    const [isLoadingBanners, setIsLoadingBanners] = useState(false);
+    const [isSavingBanner, setIsSavingBanner] = useState(false);
+    const [bannerForm, setBannerForm] = useState<Partial<FeaturedBannerItem>>({
+        content_id: '',
+        media_type: 'movie',
+        title: '',
+        kurdish_title: '',
+        overview: '',
+        kurdish_overview: '',
+        backdrop_path: '',
+        poster_path: '',
+        logo_path: '',
+        video_url: '',
+        rating: 7.5,
+        year: '',
+        sort_order: 0
+    });
+    const [editingBannerId, setEditingBannerId] = useState<number | null>(null);
+    const DEFAULT_CAROUSEL_SETTINGS = {
+        autoplayInterval: 10000, cardCount: 10, cardHeightVh: 65,
+        deckOffset: 8, deckScale: 0.07, gradientStrength: 85, glowOpacity: 35, roundedSize: '3rem',
+        visibleCards: 3,
+    };
+    const [carouselSettings, setCarouselSettings] = useState(() => {
+        try {
+            const stored = localStorage.getItem('carouselSettings');
+            return stored ? { ...DEFAULT_CAROUSEL_SETTINGS, ...JSON.parse(stored) } : DEFAULT_CAROUSEL_SETTINGS;
+        } catch { return DEFAULT_CAROUSEL_SETTINGS; }
+    });
+    const [carouselPreviewIdx, setCarouselPreviewIdx] = useState(0);
     const [serversList, setServersList] = useState<{ id: number; server_name: string; priority: number }[]>([]);
     const [isLoadingServers, setIsLoadingServers] = useState(false);
     const [isSavingServers, setIsSavingServers] = useState(false);
@@ -311,7 +343,7 @@ const DubbedMoviesPage: React.FC = () => {
         }
     };
 
-    const handleSelectTmdbMovie = async (movie: any, target: 'upload' | 'edit') => {
+    const handleSelectTmdbMovie = async (movie: any, target: 'upload' | 'edit' | 'banner') => {
         try {
             addNotification({ type: 'info', title: 'Fetching Data', message: 'Pulling details and IDs from TMDB...' });
 
@@ -337,7 +369,7 @@ const DubbedMoviesPage: React.FC = () => {
                     imdb_id: imdbId,
                     tmdb_id: tmdbId
                 }));
-            } else {
+            } else if (target === 'edit') {
                 setEditData(prev => ({
                     ...prev,
                     title: `فیلمی دۆبلاژکراوی کوردی ${title}`,
@@ -346,6 +378,20 @@ const DubbedMoviesPage: React.FC = () => {
                     bannerBase64: horizontalBanner,
                     imdb_id: imdbId,
                     tmdb_id: tmdbId
+                }));
+            } else if (target === 'banner') {
+                setBannerForm(prev => ({
+                    ...prev,
+                    content_id: tmdbId,
+                    media_type: 'movie',
+                    title: title,
+                    kurdish_title: title,
+                    overview: description,
+                    kurdish_overview: description,
+                    backdrop_path: details.backdrop_path || '',
+                    poster_path: details.poster_path || '',
+                    rating: details.vote_average || 7.5,
+                    year: details.release_date ? details.release_date.split('-')[0] : '',
                 }));
             }
 
@@ -780,6 +826,26 @@ const DubbedMoviesPage: React.FC = () => {
     const handlePrevHero = () => {
         setCurrentHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
     };
+
+    const handleDragEnd = (event: any, info: any) => {
+        const swipeThreshold = 50;
+        const isRTL = language === 'ku' || language === 'badini';
+        const swipeOffset = info.offset.x;
+        
+        if (isRTL) {
+            if (swipeOffset > swipeThreshold) {
+                setCurrentHeroIndex((prev) => (prev + 1) % heroMovies.length);
+            } else if (swipeOffset < -swipeThreshold) {
+                setCurrentHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
+            }
+        } else {
+            if (swipeOffset < -swipeThreshold) {
+                setCurrentHeroIndex((prev) => (prev + 1) % heroMovies.length);
+            } else if (swipeOffset > swipeThreshold) {
+                setCurrentHeroIndex((prev) => (prev - 1 + heroMovies.length) % heroMovies.length);
+            }
+        }
+    };
     useEffect(() => {
         if (heroMovies.length <= 1) return;
         const timer = setInterval(() => {
@@ -802,8 +868,98 @@ const DubbedMoviesPage: React.FC = () => {
             fetchBannedItems();
         } else if (activeAdminTab === 'servers') {
             fetchServersList();
+        } else if (activeAdminTab === 'carousel') {
+            fetchCarouselBanners();
         }
     }, [activeAdminTab]);
+
+    const fetchCarouselBanners = async () => {
+        setIsLoadingBanners(true);
+        try {
+            const items = await featuredBannerService.fetchFeaturedItems();
+            setCarouselBanners(items);
+        } catch (e) {
+            console.error("Failed to fetch banners", e);
+        } finally {
+            setIsLoadingBanners(false);
+        }
+    };
+
+    const handleSaveBanner = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bannerForm.content_id) {
+            alert("TMDb ID or Custom ID is required!");
+            return;
+        }
+        setIsSavingBanner(true);
+        try {
+            let success = false;
+            if (editingBannerId !== null) {
+                success = await featuredBannerService.updateFeaturedItem(editingBannerId, bannerForm);
+            } else {
+                success = await featuredBannerService.addFeaturedItem(bannerForm);
+            }
+
+            if (success) {
+                setBannerForm({
+                    content_id: '',
+                    media_type: 'movie',
+                    title: '',
+                    kurdish_title: '',
+                    overview: '',
+                    kurdish_overview: '',
+                    backdrop_path: '',
+                    poster_path: '',
+                    logo_path: '',
+                    video_url: '',
+                    rating: 7.5,
+                    year: '',
+                    sort_order: 0
+                });
+                setEditingBannerId(null);
+                fetchCarouselBanners();
+            } else {
+                alert("Failed to save banner!");
+            }
+        } catch (err) {
+            console.error("Save banner error:", err);
+        } finally {
+            setIsSavingBanner(false);
+        }
+    };
+
+    const handleDeleteBanner = async (id: number) => {
+        if (!window.confirm("Are you sure you want to remove this banner?")) return;
+        try {
+            const success = await featuredBannerService.deleteFeaturedItem(id);
+            if (success) {
+                fetchCarouselBanners();
+            } else {
+                alert("Failed to delete banner!");
+            }
+        } catch (e) {
+            console.error("Delete banner error:", e);
+        }
+    };
+
+    const handleEditBanner = (item: FeaturedBannerItem) => {
+        setEditingBannerId(item.id || null);
+        setBannerForm({
+            content_id: item.content_id,
+            media_type: item.media_type,
+            title: item.title || '',
+            kurdish_title: item.kurdish_title || '',
+            overview: item.overview || '',
+            kurdish_overview: item.kurdish_overview || '',
+            backdrop_path: item.backdrop_path || '',
+            poster_path: item.poster_path || '',
+            logo_path: item.logo_path || '',
+            video_url: item.video_url || '',
+            rating: item.rating || 7.5,
+            year: item.year || '',
+            sort_order: item.sort_order || 0
+        });
+    };
 
     const fetchServersList = async () => {
         setIsLoadingServers(true);
@@ -1248,7 +1404,7 @@ const DubbedMoviesPage: React.FC = () => {
     const featuredMovie = dubbedContent[0];
 
     return (
-        <div className="min-h-screen bg-transparent text-white selection:bg-brand selection:text-white pb-40 overflow-x-hidden">
+        <div className="min-h-screen bg-transparent text-[var(--text-primary)] selection:bg-brand selection:text-white pb-40 overflow-x-hidden">
             <AnimatePresence>
                 {loading && <CinematicLoader progress={loadingProgress} status={loadingStatus} performanceMode={isPerformanceMode} />}
             </AnimatePresence>
@@ -1257,165 +1413,165 @@ const DubbedMoviesPage: React.FC = () => {
             <div className="fixed top-0 left-0 right-0 z-[100] pointer-events-none" />
 
             {/* iOS 26 Cinematic Hero Carousel */}
-            <div className="relative h-[85vh] md:h-[95vh] w-full overflow-hidden">
-                <AnimatePresence mode="wait">
-                    {heroMovies.length > 0 && (
-                        <motion.div
-                            key={heroMovies[currentHeroIndex]?.id || currentHeroIndex}
-                            initial={{ opacity: 0, scale: 1.05, filter: 'blur(20px)' }}
-                            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                            exit={{ opacity: 0, scale: 0.95, filter: 'blur(20px)' }}
-                            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute inset-0"
-                        >
-                            <motion.img
-                                style={{ y: scrollPosition * 0.4 }}
-                                src={
-                                    heroMovies[currentHeroIndex]?.bannerBase64 || heroMovies[currentHeroIndex]?.backdrop_path
-                                        ? (
-                                            (heroMovies[currentHeroIndex]?.bannerBase64 && heroMovies[currentHeroIndex]?.bannerBase64.startsWith('data:'))
-                                                ? heroMovies[currentHeroIndex]?.bannerBase64
-                                                : (heroMovies[currentHeroIndex]?.backdrop_path?.startsWith('data:') || heroMovies[currentHeroIndex]?.backdrop_path?.startsWith('http')
-                                                    ? heroMovies[currentHeroIndex]?.backdrop_path
-                                                    : `${IMAGE_BASE_URL}${heroMovies[currentHeroIndex]?.backdrop_path}`)
-                                        )
-                                        : (heroMovies[currentHeroIndex]?.imageBase64 || heroMovies[currentHeroIndex]?.poster_path?.startsWith('data:') || heroMovies[currentHeroIndex]?.poster_path?.startsWith('http')
-                                            ? (heroMovies[currentHeroIndex]?.imageBase64 || heroMovies[currentHeroIndex]?.poster_path)
-                                            : `${IMAGE_BASE_URL}${heroMovies[currentHeroIndex]?.poster_path}`)
-                                }
-                                className="w-full h-[120%] object-cover opacity-60"
-                                alt=""
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent hidden lg:block" />
-
-                            {/* The Asymmetric Spatial Mask - Professional PC Version */}
-                            <div className="absolute bottom-0 left-0 w-full h-32 md:h-64 bg-transparent" style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0, 0 100%)', background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.8))' }} />
-
-                            <div className={`absolute bottom-0 left-0 right-0 px-8 md:px-24 pb-24 md:pb-32 w-full flex flex-col items-start z-10`}>
-                                <motion.div
-                                    initial={{ y: 50, opacity: 0 }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    transition={{ duration: 1, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                                    className="flex flex-col items-start gap-8 max-w-3xl p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border backdrop-blur-2xl transition-all duration-500 hover:border-brand/30"
-                                    style={{
-                                        background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95})`,
-                                        backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                        WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                        borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                        boxShadow: `
-                                            inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                                            inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
-                                            inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
-                                            0 35px 70px rgba(0, 0, 0, 0.85)
-                                        `,
-                                        transform: 'translate3d(0, 0, 0)',
-                                        willChange: 'transform, border-color'
-                                    }}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        {heroMovies[currentHeroIndex]?.level === 'KING' ? (
-                                            <div className="flex items-center gap-2 px-5 py-2.5 bg-yellow-500 rounded-full text-[10px] font-black uppercase tracking-widest text-black shadow-[0_10px_40px_rgba(234,179,8,0.5)] border border-yellow-400/50">
-                                                <Star size={14} fill="currentColor" /> KING SELECTION
-                                            </div>
-                                        ) : (
-                                            <div className="flex items-center gap-2 px-5 py-2.5 bg-brand rounded-full text-[10px] font-black uppercase tracking-widest text-white shadow-[0_10px_40px_rgba(var(--brand-red-rgb),0.5)] border border-brand/50">
-                                                <Zap size={14} fill="currentColor" /> LATEST RELEASE
-                                            </div>
-                                        )}
-                                        <div className="px-5 py-2.5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-white/60">
-                                            PREMIUM SOURCE
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2">
-                                        {(language === 'ku' || language === 'badini') && heroMovies[currentHeroIndex]?.title && (
-                                            <motion.span
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: 0.6, duration: 0.8 }}
-                                                className="text-brand font-black text-xs md:text-sm tracking-[0.4em] uppercase italic opacity-80"
-                                            >
-                                                {heroMovies[currentHeroIndex]?.title}
-                                            </motion.span>
-                                        )}
-                                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[5rem] font-[1000] uppercase italic tracking-tighter leading-[0.9] drop-shadow-[0_15px_40px_rgba(0,0,0,0.8)] text-white max-w-4xl selection:bg-white selection:text-black">
-                                            {(language === 'ku' || language === 'badini') ? heroMovies[currentHeroIndex]?.kurdishTitle : heroMovies[currentHeroIndex]?.title}
-                                        </h1>
-                                    </div>
-
-                                    <div className="flex items-center gap-6 mt-1">
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
-                                            <Activity size={12} className="text-brand" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-brand">ULTRA HD 4K</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
-                                            <Mic2 size={12} className="text-gray-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">DUBBED KURDISH</span>
-                                        </div>
-                                        {heroMovies[currentHeroIndex]?.rating && (
-                                            <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-lg backdrop-blur-xl">
-                                                <Star size={12} fill="gold" className="text-yellow-500" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{heroMovies[currentHeroIndex]?.rating}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <p className="text-gray-300 text-sm md:text-lg font-medium italic line-clamp-3 max-w-2xl drop-shadow-xl leading-relaxed mt-1 bg-black/40 p-6 rounded-3xl backdrop-blur-[30px] border border-white/10 shadow-2xl">
-                                        {(language === 'ku' || language === 'badini') ? heroMovies[currentHeroIndex]?.kurdishOverview : heroMovies[currentHeroIndex]?.overview}
-                                    </p>
-
-                                    <div className="flex flex-wrap items-center gap-4 mt-2 pb-20">
-                                        <motion.button
-                                            whileHover={{ scale: 1.05, x: 10 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={() => handlePlay(heroMovies[currentHeroIndex])}
-                                            className="bg-white text-black font-[1000] px-10 py-5 rounded-2xl flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.15)] transition-all hover:bg-brand hover:text-white"
-                                        >
-                                            <Play size={24} fill="currentColor" /> {t('play')}
-                                        </motion.button>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1, rotate: 5 }}
-                                            onClick={(e) => handleShare(e, heroMovies[currentHeroIndex])}
-                                            className="bg-white/5 backdrop-blur-3xl border border-white/10 p-5 rounded-2xl text-white transition-all hover:bg-white/10 shadow-2xl group"
-                                        >
-                                            <Share2 size={24} className="group-hover:text-brand transition-colors" />
-                                        </motion.button>
-                                    </div>
-                                </motion.div>
-                            </div>
-
-                            {/* Manual Controls - Carousel Interaction */}
-                            <div className="absolute inset-y-0 left-0 right-0 z-50 flex items-center justify-between px-6 pointer-events-none mb-20 lg:mb-32">
-                                <motion.button
-                                    whileHover={{ scale: 1.1, x: -10, filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.4))' }}
-                                    whileTap={{ scale: 0.8 }}
-                                    onClick={handlePrevHero}
-                                    className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-black/30 backdrop-blur-3xl border border-white/20 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-                                >
-                                    <ChevronRight size={36} className="rotate-180 opacity-60" />
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.1, x: 10, filter: 'drop-shadow(0 0 15px rgba(255,255,255,0.4))' }}
-                                    whileTap={{ scale: 0.8 }}
-                                    onClick={handleNextHero}
-                                    className="w-14 h-14 md:w-20 md:h-20 rounded-full bg-black/30 backdrop-blur-3xl border border-white/20 flex items-center justify-center text-white pointer-events-auto hover:bg-white/10 transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-                                >
-                                    <ChevronRight size={36} className="opacity-60" />
-                                </motion.button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Hero Pagination Indicators */}
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 z-50">
-                    {heroMovies.map((_, index) => (
-                        <div
-                            key={index}
-                            className={`h-[4px] rounded-full transition-all duration-700 ease-in-out ${index === currentHeroIndex ? 'w-12 bg-white drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]' : 'w-3 bg-white/20'}`}
+            <div className="w-full relative px-4 md:px-12 pt-24 md:pt-32 pb-4 bg-transparent">
+                {/* Immersive blurred backdrop glow behind the deck */}
+                {heroMovies[currentHeroIndex] && (
+                    <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none transition-all duration-1000">
+                        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F8F9FA]/40 dark:to-black/40 z-10" />
+                        <img
+                            src={
+                                heroMovies[currentHeroIndex].bannerBase64 || heroMovies[currentHeroIndex].backdrop_path
+                                    ? (
+                                        (heroMovies[currentHeroIndex].bannerBase64 && heroMovies[currentHeroIndex].bannerBase64.startsWith('data:'))
+                                            ? heroMovies[currentHeroIndex].bannerBase64
+                                            : (heroMovies[currentHeroIndex].backdrop_path?.startsWith('data:') || heroMovies[currentHeroIndex].backdrop_path?.startsWith('http')
+                                                ? heroMovies[currentHeroIndex].backdrop_path
+                                                : `${IMAGE_BASE_URL.replace('w1280', 'original')}${heroMovies[currentHeroIndex].backdrop_path}`)
+                                    )
+                                    : (heroMovies[currentHeroIndex].imageBase64 || heroMovies[currentHeroIndex].poster_path?.startsWith('data:') || heroMovies[currentHeroIndex].poster_path?.startsWith('http')
+                                        ? (heroMovies[currentHeroIndex].imageBase64 || heroMovies[currentHeroIndex].poster_path)
+                                        : `${IMAGE_BASE_URL.replace('w1280', 'original')}${heroMovies[currentHeroIndex].poster_path}`)
+                            }
+                            className="w-full h-full object-cover scale-125 opacity-35 dark:opacity-20 blur-[100px]"
+                            alt=""
                         />
-                    ))}
+                    </div>
+                )}
+
+                <div className="relative w-full h-[50vh] md:h-[65vh] overflow-visible">
+                    <AnimatePresence initial={false}>
+                        {heroMovies.length > 0 && heroMovies.map((movie, idx) => {
+                            const d = (idx - currentHeroIndex + heroMovies.length) % heroMovies.length;
+                            if (d >= 3) return null; // Only render front 3 cards in the deck
+                            
+                            const isRTL = language === 'ku' || language === 'badini';
+                            const rtlMultiplier = isRTL ? -1 : 1;
+                            
+                            return (
+                                <motion.div
+                                    key={movie.id}
+                                    style={{
+                                        transformOrigin: isRTL ? 'right center' : 'left center'
+                                    }}
+                                    initial={{
+                                        x: (d + 1) * 8 * rtlMultiplier + "%",
+                                        scale: 1 - (d + 1) * 0.07,
+                                        zIndex: 30 - (d + 1) * 10,
+                                        opacity: 0
+                                    }}
+                                    animate={{
+                                        x: d * 8 * rtlMultiplier + "%",
+                                        scale: 1 - d * 0.07,
+                                        zIndex: 30 - d * 10,
+                                        opacity: d === 0 ? 1 : d === 1 ? 0.9 : d === 2 ? 0.65 : 0
+                                    }}
+                                    exit={{
+                                        x: -100 * rtlMultiplier + "%",
+                                        scale: 0.9,
+                                        zIndex: 0,
+                                        opacity: 0
+                                    }}
+                                    transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                                    drag={d === 0 ? "x" : false}
+                                    dragConstraints={{ left: 0, right: 0 }}
+                                    dragElastic={0.2}
+                                    onDragEnd={handleDragEnd}
+                                    onClick={() => d > 0 && setCurrentHeroIndex(idx)}
+                                    className={`absolute top-0 ${(language === 'ku' || language === 'badini') ? 'right-0' : 'left-0'} w-[84%] md:w-[82%] h-full rounded-[2rem] md:rounded-[3rem] overflow-hidden border border-border-color bg-card-bg shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_40px_80px_rgba(0,0,0,0.5)] transition-all duration-500 ${d > 0 ? 'cursor-pointer select-none' : ''}`}
+                                >
+                                    <img
+                                        src={
+                                            movie.bannerBase64 || movie.backdrop_path
+                                                ? (
+                                                    (movie.bannerBase64 && movie.bannerBase64.startsWith('data:'))
+                                                        ? movie.bannerBase64
+                                                        : (movie.backdrop_path?.startsWith('data:') || movie.backdrop_path?.startsWith('http')
+                                                            ? movie.backdrop_path
+                                                            : `${IMAGE_BASE_URL.replace('w1280', 'original')}${movie.backdrop_path}`)
+                                                )
+                                                : (movie.imageBase64 || movie.poster_path?.startsWith('data:') || movie.poster_path?.startsWith('http')
+                                                    ? (movie.imageBase64 || movie.poster_path)
+                                                    : `${IMAGE_BASE_URL.replace('w1280', 'original')}${movie.poster_path}`)
+                                        }
+                                        className="w-full h-full object-cover opacity-100 absolute inset-0 z-0"
+                                        alt=""
+                                    />
+                                    
+                                    {/* Soft ground gradient only for active card */}
+                                    {d === 0 && (
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10 pointer-events-none" />
+                                    )}
+
+                                    {/* Card content - only visible on active card */}
+                                    {d === 0 && (
+                                        <>
+                                            {/* Top Left Metadata Tags */}
+                                            <div className={`absolute top-6 ${(language === 'ku' || language === 'badini') ? 'right-6 flex-row-reverse' : 'left-6'} z-20 flex flex-wrap gap-2`}>
+                                                {movie.level === 'KING' ? (
+                                                    <span className="bg-yellow-500 text-black text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                                        KING SELECTION
+                                                    </span>
+                                                ) : (
+                                                    <span className="bg-brand text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                                        LATEST RELEASE
+                                                    </span>
+                                                )}
+                                                <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                                    ULTRA HD 4K
+                                                </span>
+                                                <span className="bg-white/15 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-xs font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                                    DUBBED KURDISH
+                                                </span>
+                                            </div>
+
+                                            {/* Bottom Content Row */}
+                                            <div className={`absolute bottom-6 left-6 right-6 z-20 flex items-center justify-between gap-4 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
+                                                <div className={`flex items-center gap-4 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse text-right' : 'text-left'}`}>
+                                                    {/* Translucent Play Circle Button */}
+                                                    <div
+                                                        onClick={() => handlePlay(movie)}
+                                                        className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center text-white hover:bg-white hover:text-black transition-all hover:scale-105 shadow-lg cursor-pointer pointer-events-auto"
+                                                    >
+                                                        <Play fill="currentColor" size={20} className="ml-0.5" />
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-col">
+                                                        <h2 className="text-xl md:text-3xl font-[1000] text-white tracking-tight drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+                                                            {(language === 'ku' || language === 'badini') ? movie.kurdishTitle : movie.title}
+                                                        </h2>
+                                                        <span className="text-white/60 text-[10px] md:text-xs font-bold mt-0.5">
+                                                            {t('play')}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Details / Share Button on the right */}
+                                                <button
+                                                    onClick={(e) => handleShare(e, movie)}
+                                                    className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all hover:scale-105 shadow-lg cursor-pointer pointer-events-auto"
+                                                    aria-label="Share movie"
+                                                >
+                                                    <Share2 size={20} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </motion.div>
+                            );
+                        })}
+                    </AnimatePresence>
+
+                    {/* Floating Pagination Dots at the top right */}
+                    <div className="absolute top-4 right-4 z-40 flex items-center gap-1.5 bg-black/25 backdrop-blur-md px-3.5 py-2 rounded-full border border-white/10">
+                        {heroMovies.map((_, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setCurrentHeroIndex(idx)}
+                                className={`rounded-full transition-all duration-300 ${idx === currentHeroIndex ? 'w-4 h-2 bg-white' : 'w-2 h-2 bg-white/30'}`}
+                                aria-label={`Go to slide ${idx + 1}`}
+                            />
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -1450,10 +1606,10 @@ const DubbedMoviesPage: React.FC = () => {
             </AnimatePresence>
 
             {/* Content Sector Grid */}
-            <div className="container mx-auto px-6 md:px-12 relative z-10 -mt-20">
+            <div className="container mx-auto px-6 md:px-12 relative z-10 mt-12 md:mt-20">
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-8">
                     <div>
-                        <h2 className="text-5xl md:text-8xl font-[1000] uppercase italic tracking-tighter text-white shimmer-text">
+                        <h2 className="text-5xl md:text-8xl font-[1000] uppercase italic tracking-tighter text-main-text shimmer-text">
                             {t('dubbedMovies')}
                         </h2>
                         <div className="h-1 w-24 bg-brand mt-4 rounded-full opacity-50" />
@@ -1462,7 +1618,7 @@ const DubbedMoviesPage: React.FC = () => {
                     {/* --- Standalone System Utility --- */}
                     <div className="flex items-center gap-6 mb-4 md:mb-0">
                         <div
-                            className={`p-5 rounded-[2rem] border border-white/10 bg-white/5 text-gray-500 transition-all hover:bg-white/10 hover:text-white cursor-pointer ${isForceSyncing ? 'animate-pulse' : ''}`}
+                            className={`p-5 rounded-[2rem] border border-border-color bg-box-bg text-sec-text transition-all hover:bg-box-bg/85 hover:text-main-text cursor-pointer ${isForceSyncing ? 'animate-pulse' : ''}`}
                             onClick={forceSync}
                         >
                             <RefreshCw size={22} className={`${isForceSyncing ? 'animate-spin' : ''}`} />
@@ -1470,7 +1626,7 @@ const DubbedMoviesPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="h-[1px] w-full bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-20" />
+                <div className="h-[1px] w-full bg-border-color mb-20" />
 
                 {/* --- Hidden Admin Floating Button --- */}
                 <button
@@ -1656,6 +1812,9 @@ const DubbedMoviesPage: React.FC = () => {
                                     <div className="flex gap-2 p-1 bg-white/5 rounded-xl mb-6 shrink-0 overflow-x-auto scrollbar-hide">
                                         <button onClick={() => setActiveAdminTab('upload')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'upload' ? 'bg-brand text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <PlusCircle size={16} /> Upload Movie
+                                        </button>
+                                        <button onClick={() => setActiveAdminTab('carousel')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'carousel' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+                                            <Tv size={16} /> Banner Carousel
                                         </button>
                                         <button onClick={() => setActiveAdminTab('archive')} className={`flex-shrink-0 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider transition-colors ${activeAdminTab === 'archive' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}>
                                             <ListVideo size={16} /> Movies List
@@ -1883,6 +2042,393 @@ const DubbedMoviesPage: React.FC = () => {
                                                 )}
                                             </form>
                                         )}
+
+                                        {activeAdminTab === 'carousel' && (() => {
+                                            const PREVIEW_MOVIES = heroMovies.slice(0, 5);
+                                            const ROUNDED_OPTIONS = ['1rem', '1.5rem', '2rem', '3rem', '4rem'];
+                                            const INTERVAL_OPTIONS = [{ label: '5s', val: 5000 }, { label: '8s', val: 8000 }, { label: '10s', val: 10000 }, { label: '15s', val: 15000 }, { label: '20s', val: 20000 }];
+
+                                            const updateSetting = (key: string, value: any) => {
+                                                const next = { ...carouselSettings, [key]: value };
+                                                setCarouselSettings(next);
+                                                localStorage.setItem('carouselSettings', JSON.stringify(next));
+                                                window.dispatchEvent(new Event('carousel-settings-updated'));
+                                            };
+
+                                            const resetSettings = () => {
+                                                const def = { autoplayInterval: 10000, cardCount: 10, cardHeightVh: 65, deckOffset: 8, deckScale: 0.07, gradientStrength: 85, glowOpacity: 35, roundedSize: '3rem', visibleCards: 3 };
+                                                setCarouselSettings(def);
+                                                localStorage.setItem('carouselSettings', JSON.stringify(def));
+                                                window.dispatchEvent(new Event('carousel-settings-updated'));
+                                            };
+
+                                            const previewMovie = PREVIEW_MOVIES[carouselPreviewIdx] || PREVIEW_MOVIES[0];
+                                            const previewBg = previewMovie?.backdrop_path?.startsWith('http') ? previewMovie.backdrop_path : `https://image.tmdb.org/t/p/w780${previewMovie?.backdrop_path}`;
+
+                                            return (
+                                                <div className="space-y-5 pb-4">
+
+                                                    {/* Header */}
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <h3 className="text-sm font-black uppercase text-white tracking-widest">رێکخستنی کرۆشال</h3>
+                                                            <p className="text-[10px] text-gray-500 font-bold mt-0.5">دەکرێت بۆ هەموو بینەران جێبەجێ دەبێت</p>
+                                                        </div>
+                                                        <button
+                                                            onClick={resetSettings}
+                                                            className="px-4 py-2 text-[10px] font-black uppercase tracking-widest border border-white/10 text-gray-400 rounded-xl hover:border-brand hover:text-white transition-all"
+                                                        >
+                                                            ↺ Reset
+                                                        </button>
+                                                    </div>
+
+                                                    {/* LIVE PREVIEW CARD */}
+                                                    {PREVIEW_MOVIES.length > 0 && (
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-brand">پیشاندانی زیندووی کارتی کرۆشال</span>
+                                                                <div className="flex gap-1.5">
+                                                                    {PREVIEW_MOVIES.slice(0, carouselSettings.cardCount || 10).map((_, i) => (
+                                                                        <button
+                                                                            key={i}
+                                                                            onClick={() => setCarouselPreviewIdx(i % PREVIEW_MOVIES.length)}
+                                                                            className={`rounded-full transition-all duration-300 ${i === carouselPreviewIdx ? 'w-5 h-2 bg-brand' : 'w-2 h-2 bg-white/20 hover:bg-white/40'}`}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Preview card stack */}
+                                                            <div
+                                                                className="relative w-full overflow-hidden bg-black/30 rounded-2xl border border-white/5"
+                                                                style={{ height: `${Math.round(carouselSettings.cardHeightVh * 0.45)}vh` }}
+                                                            >
+                                                                {/* Stacked cards behind */}
+                                                                {PREVIEW_MOVIES.slice(0, carouselSettings.visibleCards || 3).map((m, di) => {
+                                                                    const d = (di - carouselPreviewIdx + PREVIEW_MOVIES.length) % PREVIEW_MOVIES.length;
+                                                                    if (d >= (carouselSettings.visibleCards || 3)) return null;
+                                                                    const bg = m.backdrop_path?.startsWith('http') ? m.backdrop_path : `https://image.tmdb.org/t/p/w780${m.backdrop_path}`;
+                                                                    return (
+                                                                        <div
+                                                                            key={m.id}
+                                                                            onClick={() => setCarouselPreviewIdx(di)}
+                                                                            className={`absolute top-0 left-0 h-full overflow-hidden border border-white/10 shadow-xl transition-all duration-500 ${d > 0 ? 'cursor-pointer' : ''}`}
+                                                                            style={{
+                                                                                width: '84%',
+                                                                                borderRadius: carouselSettings.roundedSize,
+                                                                                transform: `translateX(${d * carouselSettings.deckOffset}%) scale(${1 - d * carouselSettings.deckScale})`,
+                                                                                zIndex: 30 - d * 10,
+                                                                                opacity: d === 0 ? 1 : Math.max(0.15, 0.9 - d * (0.6 / (carouselSettings.visibleCards || 3))),
+                                                                                transformOrigin: 'left center',
+                                                                            }}
+                                                                        >
+                                                                            <img src={bg} alt="" className="w-full h-full object-cover absolute inset-0" />
+                                                                            {d === 0 && (
+                                                                                <div
+                                                                                    className="absolute inset-0"
+                                                                                    style={{ background: `linear-gradient(to top, rgba(0,0,0,${carouselSettings.gradientStrength / 100}) 0%, rgba(0,0,0,0.3) 40%, transparent 100%)` }}
+                                                                                />
+                                                                            )}
+                                                                            {d === 0 && (
+                                                                                <div className="absolute bottom-4 left-4 right-4 z-10 flex items-end justify-between">
+                                                                                    <div>
+                                                                                        <p className="text-white font-black text-sm drop-shadow-lg truncate max-w-[120px]">{m.kurdishTitle || m.title}</p>
+                                                                                        <p className="text-white/50 text-[10px] font-bold mt-0.5">▶ Play Now</p>
+                                                                                    </div>
+                                                                                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white">
+                                                                                        <svg width="10" height="10" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/></svg>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+
+                                                                {/* Glow preview */}
+                                                                <img
+                                                                    src={previewBg}
+                                                                    alt=""
+                                                                    className="absolute inset-0 w-full h-full object-cover scale-125 blur-[60px] pointer-events-none -z-10"
+                                                                    style={{ opacity: carouselSettings.glowOpacity / 100 }}
+                                                                />
+
+                                                                {/* Pagination dots preview */}
+                                                                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 bg-black/45 backdrop-blur-2xl px-3 py-1.5 rounded-full border border-white/10 scale-75">
+                                                                    {PREVIEW_MOVIES.slice(0, 3).map((_, i) => (
+                                                                        <div
+                                                                            key={i}
+                                                                            className="rounded-full transition-all duration-300 h-1.5"
+                                                                            style={{
+                                                                                width: i === carouselPreviewIdx % 3 ? 12 : 6,
+                                                                                backgroundColor: i === carouselPreviewIdx % 3 ? 'rgba(239, 68, 68, 1)' : 'rgba(255, 255, 255, 0.3)'
+                                                                            }}
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-center text-[9px] text-gray-600 font-bold uppercase tracking-widest">کلیک لەسەر کارتەکانی دواوە بکە بۆ گۆڕین</p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* ── BANNER BAN LIST ─────────────────────────────── */}
+                                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <p className="text-xs font-black uppercase tracking-widest text-white">بانیکردنی فیلمی بانەر</p>
+                                                                <p className="text-[10px] text-gray-500 mt-0.5">Ban movies from appearing in the carousel</p>
+                                                            </div>
+                                                            <span className="text-[9px] font-black uppercase text-brand bg-brand/10 px-2 py-1 rounded-full border border-brand/20">
+                                                                {PREVIEW_MOVIES.length} فیلم
+                                                            </span>
+                                                        </div>
+                                                        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                                            {PREVIEW_MOVIES.slice(0, carouselSettings.cardCount || 10).map((m) => {
+                                                                const poster = m.backdrop_path?.startsWith('http')
+                                                                    ? m.backdrop_path
+                                                                    : `https://image.tmdb.org/t/p/w300${m.backdrop_path}`;
+                                                                const title = m.kurdishTitle || (m as any).title || (m as any).name || 'Unknown';
+                                                                return (
+                                                                    <div
+                                                                        key={m.id}
+                                                                        className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-xl px-3 py-2 hover:border-white/10 transition-all"
+                                                                    >
+                                                                        {/* Thumbnail */}
+                                                                        <div className="w-14 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                                                                            <img src={poster} alt="" className="w-full h-full object-cover" />
+                                                                        </div>
+                                                                        {/* Title */}
+                                                                        <p className="flex-1 text-[11px] font-bold text-gray-300 truncate">{title}</p>
+                                                                        {/* Ban Button */}
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                const id = String(m.id).replace('custom_', '');
+                                                                                if (!window.confirm(`بانیکردنی "${title}"؟\nئەم فیلمە لە کرۆشال دەردەخرێت.`)) return;
+                                                                                try {
+                                                                                    const ok = await bannedService.banContent(id, (m as any).media_type || 'movie');
+                                                                                    if (ok) {
+                                                                                        window.dispatchEvent(new CustomEvent('banned-list-updated'));
+                                                                                        addNotification({ type: 'success', title: 'بانیکرا ✓', message: `"${title}" لە کرۆشال دەردەخرێت` });
+                                                                                    } else {
+                                                                                        addNotification({ type: 'error', title: 'هەڵە', message: 'بانیکردن سەرکەوتوو نەبوو' });
+                                                                                    }
+                                                                                } catch {
+                                                                                    addNotification({ type: 'error', title: 'هەڵە', message: 'کێشەی سەرڤەر' });
+                                                                                }
+                                                                            }}
+                                                                            className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                                                                        >
+                                                                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                                                            بان
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {PREVIEW_MOVIES.length === 0 && (
+                                                                <p className="text-center text-[10px] text-gray-600 py-4">فیلمی بانەر نەدۆزرایەوە</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* SETTINGS GRID */}
+
+                                                    <div className="grid grid-cols-1 gap-4">
+
+                                                        {/* Card Height */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-xs font-black uppercase tracking-widest text-white">بەرزی کارت</p>
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Card Height</p>
+                                                                </div>
+                                                                <span className="text-brand font-black text-sm tabular-nums">{carouselSettings.cardHeightVh}vh</span>
+                                                            </div>
+                                                            <input
+                                                                type="range" min={40} max={90} step={5}
+                                                                value={carouselSettings.cardHeightVh}
+                                                                onChange={(e) => updateSetting('cardHeightVh', parseInt(e.target.value))}
+                                                                className="w-full accent-red-500 h-1.5 rounded-full cursor-pointer"
+                                                            />
+                                                            <div className="flex justify-between text-[9px] text-gray-600 font-bold uppercase">
+                                                                <span>Compact 40vh</span><span>Full 90vh</span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Card Count */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-xs font-black uppercase tracking-widest text-white">ژمارەی فیلمەکان</p>
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Number of Slides</p>
+                                                                </div>
+                                                                <span className="text-brand font-black text-sm tabular-nums">{carouselSettings.cardCount}</span>
+                                                            </div>
+                                                            <div className="flex gap-2 flex-wrap">
+                                                                {[5, 8, 10, 12, 15, 20].map(n => (
+                                                                    <button
+                                                                        key={n}
+                                                                        onClick={() => updateSetting('cardCount', n)}
+                                                                        className={`flex-1 min-w-[48px] py-2 rounded-xl text-xs font-black uppercase transition-all ${carouselSettings.cardCount === n ? 'bg-brand text-white' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                                                                    >
+                                                                        {n}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Visible Stack Cards */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-xs font-black uppercase tracking-widest text-white">کارتەکانی دواوە (Stack)</p>
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Visible Stack Cards</p>
+                                                                </div>
+                                                                <span className="text-brand font-black text-sm tabular-nums">{carouselSettings.visibleCards || 3}</span>
+                                                            </div>
+                                                            <div className="flex gap-2 flex-wrap">
+                                                                {[2, 3, 4, 5].map(n => (
+                                                                    <button
+                                                                        key={n}
+                                                                        onClick={() => updateSetting('visibleCards', n)}
+                                                                        className={`flex-1 min-w-[48px] py-2 rounded-xl text-xs font-black uppercase transition-all ${(carouselSettings.visibleCards || 3) === n ? 'bg-brand text-white' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                                                                    >
+                                                                        {n}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Autoplay Speed */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-xs font-black uppercase tracking-widest text-white">خێرایی ئۆتۆماتیکی</p>
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Autoplay Interval</p>
+                                                                </div>
+                                                                <span className="text-brand font-black text-sm">{carouselSettings.autoplayInterval / 1000}s</span>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                {INTERVAL_OPTIONS.map(({ label, val }) => (
+                                                                    <button
+                                                                        key={val}
+                                                                        onClick={() => updateSetting('autoplayInterval', val)}
+                                                                        className={`flex-1 py-2 rounded-xl text-xs font-black uppercase transition-all ${carouselSettings.autoplayInterval === val ? 'bg-brand text-white' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                                                                    >
+                                                                        {label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Deck Peek Settings */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-5">
+                                                            <p className="text-xs font-black uppercase tracking-widest text-white">ڕێکخستنی دێک</p>
+
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center justify-between text-[10px]">
+                                                                    <span className="text-gray-400 font-bold uppercase">پڕسازی کارتی دواوە (Peek)</span>
+                                                                    <span className="text-brand font-black tabular-nums">{carouselSettings.deckOffset}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range" min={3} max={20} step={1}
+                                                                    value={carouselSettings.deckOffset}
+                                                                    onChange={(e) => updateSetting('deckOffset', parseInt(e.target.value))}
+                                                                    className="w-full accent-red-500 h-1.5 rounded-full cursor-pointer"
+                                                                />
+                                                            </div>
+
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center justify-between text-[10px]">
+                                                                    <span className="text-gray-400 font-bold uppercase">بچووکبوونەوەی کارت (Scale)</span>
+                                                                    <span className="text-brand font-black tabular-nums">{Math.round(carouselSettings.deckScale * 100)}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range" min={2} max={15} step={1}
+                                                                    value={Math.round(carouselSettings.deckScale * 100)}
+                                                                    onChange={(e) => updateSetting('deckScale', parseInt(e.target.value) / 100)}
+                                                                    className="w-full accent-red-500 h-1.5 rounded-full cursor-pointer"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Gradient & Glow */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-5">
+                                                            <p className="text-xs font-black uppercase tracking-widest text-white">گریدیەنت و گلۆ</p>
+
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center justify-between text-[10px]">
+                                                                    <span className="text-gray-400 font-bold uppercase">تاریکی خوارەوە (Gradient)</span>
+                                                                    <span className="text-brand font-black tabular-nums">{carouselSettings.gradientStrength}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range" min={20} max={100} step={5}
+                                                                    value={carouselSettings.gradientStrength}
+                                                                    onChange={(e) => updateSetting('gradientStrength', parseInt(e.target.value))}
+                                                                    className="w-full accent-red-500 h-1.5 rounded-full cursor-pointer"
+                                                                />
+                                                                <div className="flex justify-between text-[9px] text-gray-600 font-bold uppercase">
+                                                                    <span>Transparent</span><span>Full Black</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="space-y-3">
+                                                                <div className="flex items-center justify-between text-[10px]">
+                                                                    <span className="text-gray-400 font-bold uppercase">درەوشانی شوێنەکە (Glow)</span>
+                                                                    <span className="text-brand font-black tabular-nums">{carouselSettings.glowOpacity}%</span>
+                                                                </div>
+                                                                <input
+                                                                    type="range" min={0} max={80} step={5}
+                                                                    value={carouselSettings.glowOpacity}
+                                                                    onChange={(e) => updateSetting('glowOpacity', parseInt(e.target.value))}
+                                                                    className="w-full accent-red-500 h-1.5 rounded-full cursor-pointer"
+                                                                />
+                                                                <div className="flex justify-between text-[9px] text-gray-600 font-bold uppercase">
+                                                                    <span>Off</span><span>Intense</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Border Radius */}
+                                                        <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-4">
+                                                            <div>
+                                                                <p className="text-xs font-black uppercase tracking-widest text-white">گۆشەی تەقوایی</p>
+                                                                <p className="text-[10px] text-gray-500 mt-0.5">Corner Rounding</p>
+                                                            </div>
+                                                            <div className="flex gap-2 flex-wrap">
+                                                                {ROUNDED_OPTIONS.map(r => (
+                                                                    <button
+                                                                        key={r}
+                                                                        onClick={() => updateSetting('roundedSize', r)}
+                                                                        className={`flex-1 min-w-[52px] py-3 text-xs font-black uppercase transition-all border ${carouselSettings.roundedSize === r ? 'bg-brand border-brand text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:border-white/20'}`}
+                                                                        style={{ borderRadius: r }}
+                                                                    >
+                                                                        {r.replace('rem', 'r')}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Status Banner */}
+                                                        <div className="flex items-center gap-4 bg-green-500/5 border border-green-500/20 rounded-2xl px-5 py-4">
+                                                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+                                                            <div>
+                                                                <p className="text-xs font-black uppercase text-green-400 tracking-widest">دەستکاریەکان بەکارهێنرا</p>
+                                                                <p className="text-[10px] text-gray-500 font-bold mt-0.5">
+                                                                    کرۆشال بە{' '}
+                                                                    <span className="text-white">{carouselSettings.cardCount} فیلمی نوێ</span>
+                                                                    {' '}بە{' '}
+                                                                    <span className="text-white">{carouselSettings.autoplayInterval / 1000} چرکە</span>
+                                                                    {' '}خۆکارانە دەگۆڕدرێت
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+
+
 
                                         {activeAdminTab === 'archive' && (
                                             <div className="space-y-4 pb-4">

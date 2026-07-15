@@ -314,7 +314,7 @@ const HomePage: React.FC = () => {
     <div className="pb-40 relative">
       <HeroBanner />
 
-      <div className="relative z-20 mt-6 md:-mt-12">
+      <div className="relative z-20 mt-8 md:mt-12">
         <AnimatePresence>
           {continueWatchingItems.length > 0 && (
             <motion.div

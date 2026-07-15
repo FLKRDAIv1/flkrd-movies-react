@@ -94,7 +94,7 @@ interface SubtitleManagerPanelProps {
   onSelectSub?: (sub: SubtitleTrack) => void;
   onStartTranslation?: (sub: SubtitleTrack, targetLang: 'ku' | 'badini') => void;
   onRetrySearch?: () => void;
-  getLanguageFlag?: (lang: string) => string;
+  getLanguageFlag?: (lang: string) => any;
 
   // Translation progress
   isTranslating?: boolean;
@@ -744,9 +744,18 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                 (sub.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())
                               )
                               .sort((a, b) => {
-                                const aK = ['ku','ckb','kur'].includes((a.attributes?.language || '').toLowerCase());
-                                const bK = ['ku','ckb','kur'].includes((b.attributes?.language || '').toLowerCase());
-                                return aK === bK ? 0 : aK ? -1 : 1;
+                                const langA = (a.attributes?.language || '').toLowerCase();
+                                const langB = (b.attributes?.language || '').toLowerCase();
+                                const aK = ['ku', 'ckb', 'kur', 'badini'].includes(langA);
+                                const bK = ['ku', 'ckb', 'kur', 'badini'].includes(langB);
+                                
+                                if (aK !== bK) return aK ? -1 : 1;
+                                
+                                const aV = String(a.id).startsWith('custom-db-');
+                                const bV = String(b.id).startsWith('custom-db-');
+                                if (aV !== bV) return aV ? -1 : 1;
+                                
+                                return 0;
                               })
                               .map((sub, idx) => {
                                 const sLang = (sub.attributes?.language || '').toLowerCase();
@@ -852,9 +861,18 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                 (sub.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())
                               )
                               .sort((a, b) => {
-                                const aK = ['ku','ckb','kur'].includes((a.attributes?.language || '').toLowerCase());
-                                const bK = ['ku','ckb','kur'].includes((b.attributes?.language || '').toLowerCase());
-                                return aK === bK ? 0 : aK ? -1 : 1;
+                                const langA = (a.attributes?.language || '').toLowerCase();
+                                const langB = (b.attributes?.language || '').toLowerCase();
+                                const aK = ['ku', 'ckb', 'kur', 'badini'].includes(langA);
+                                const bK = ['ku', 'ckb', 'kur', 'badini'].includes(langB);
+                                
+                                if (aK !== bK) return aK ? -1 : 1;
+                                
+                                const aV = String(a.id).startsWith('custom-db-');
+                                const bV = String(b.id).startsWith('custom-db-');
+                                if (aV !== bV) return aV ? -1 : 1;
+                                
+                                return 0;
                               })
                               .map((sub, idx) => {
                                 const sLang = (sub.attributes?.language || '').toLowerCase();

@@ -45,13 +45,13 @@ textarea,
 
 
 .light-mode {
-  --brand-red: #e50914;
-  --brand-red-rgb: 229, 9, 20;
-  --bg-primary-rgb: 248, 250, 252;
-  --text-primary-rgb: 15, 23, 42;
-  --text-secondary-rgb: 100, 116, 139;
+  --brand-red: #ef4444;
+  --brand-red-rgb: 239, 68, 68;
+  --bg-primary-rgb: 248, 249, 250;
+  --text-primary-rgb: 17, 24, 39;
+  --text-secondary-rgb: 75, 85, 99;
   --card-bg-rgb: 255, 255, 255;
-  --box-bg-rgb: 241, 245, 249;
+  --box-bg-rgb: 255, 255, 255;
   --border-color-rgb: 226, 232, 240;
 }
 
@@ -148,6 +148,11 @@ img {
 .lazy-section {
   content-visibility: auto;
   contain-intrinsic-size: 0 500px;
+}
+
+.movie-row-container {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 380px;
 }
 
 /* ════════════════════════════════════════════════
@@ -330,15 +335,10 @@ html.console-mode-active .web-only {
   cursor: default;
 }
 
-/* ── iOS Native Player Hijack Prevention ── */
-video {
-  -webkit-playsinline: true !important;
-  playsinline: true !important;
-}
-
 /* ── Global Safari Backdrop Filter Support (iPhone XR / older iOS) ── */
 /* Tailwind v3 uses --tw-backdrop-blur via @apply, so we mirror it with -webkit- prefix */
 [class*="backdrop-blur"] {
+  backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-saturate, ) var(--tw-backdrop-brightness, ) !important;
   -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-saturate, ) var(--tw-backdrop-brightness, ) !important;
 }
 
@@ -348,10 +348,22 @@ video {
 }
 
 /* Common blur classes: explicit -webkit- mirror for iPhone XR Safari */
-.backdrop-blur-xl { -webkit-backdrop-filter: blur(24px) !important; }
-.backdrop-blur-2xl { -webkit-backdrop-filter: blur(40px) !important; }
-.backdrop-blur-md { -webkit-backdrop-filter: blur(12px) !important; }
-.backdrop-blur-sm { -webkit-backdrop-filter: blur(4px) !important; }
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+}
+.backdrop-blur-2xl {
+  backdrop-filter: blur(40px) !important;
+  -webkit-backdrop-filter: blur(40px) !important;
+}
+.backdrop-blur-md {
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
 
 /* ── Professional Scrolling for Safari ── */
 .scrollbar-hide, [class*="overflow-y-auto"] {
@@ -390,7 +402,7 @@ html, body {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  background-color: #000000;
+  background-color: var(--bg-primary);
   overflow-x: hidden;
 }
 

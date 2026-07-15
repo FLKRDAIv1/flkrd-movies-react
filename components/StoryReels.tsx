@@ -16,12 +16,20 @@ interface StoryReelsProps {
   size?: "sm" | "md";
 }
 
+// Cache resolved user stories in memory per language to avoid redundant calls on page switches
+const cachedUserStories: { [key: string]: UserStory[] } = {};
+
 const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
   const [users, setUsers] = useState<UserStory[]>([]);
   const { language } = useTranslation();
   const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
   useEffect(() => {
+    if (cachedUserStories[langCode] && cachedUserStories[langCode].length > 0) {
+      setUsers(cachedUserStories[langCode]);
+      return;
+    }
+
     const loadStories = async () => {
       // 1. Fetch trending movies
       const moviesData = await fetchData(requests.fetchTrendingMoviesDay(langCode), language);
@@ -33,8 +41,19 @@ const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
       // 2. Fetch trailers for these movies concurrently
       const storiesPromises = topMovies.map(async (movie) => {
         try {
-          const videoRes = await fetch(`${API_BASE_URL}/movie/${movie.id}/videos?api_key=${API_KEY}`);
-          if (!videoRes.ok) return null;
+          let videoRes;
+          try {
+            videoRes = await fetch(`${API_BASE_URL}/movie/${movie.id}/videos?api_key=${API_KEY}`);
+            if (!videoRes.ok) {
+              // Direct TMDB fallback if local dev proxy reports 502/500/timeout
+              videoRes = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}/videos?api_key=${API_KEY}`);
+            }
+          } catch (e) {
+            // Direct TMDB fallback if local proxy has a network connection failure
+            videoRes = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}/videos?api_key=${API_KEY}`);
+          }
+
+          if (!videoRes || !videoRes.ok) return null;
           const videoData = await videoRes.json();
           const trailers = videoData.results?.filter((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
           const trailer = trailers?.[0] || videoData.results?.[0]; // Fallback to any video if no trailer
@@ -61,12 +80,13 @@ const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
             ]
           } as UserStory;
         } catch (error) {
-          console.error("Failed to load trailer for story", error);
+          console.warn(`Failed to load trailer for movie ${movie.id} in story`, error);
           return null;
         }
       });
 
       const resolvedStories = (await Promise.all(storiesPromises)).filter(Boolean) as UserStory[];
+      cachedUserStories[langCode] = resolvedStories;
       setUsers(resolvedStories);
     };
 
