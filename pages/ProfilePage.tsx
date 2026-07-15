@@ -181,12 +181,17 @@ const ProfilePage: React.FC = () => {
     if (!user) {
         const isRTL = language === 'ku' || language === 'badini';
 
+        const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';
+        const AUTH_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4';
+        const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
+
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
-                {/* Cinematic Video Background */}
-                <div className="absolute inset-0 bg-black overflow-hidden">
+                {/* Cinematic Video Background — fixed z-index so it shows above transparent body */}
+                <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                     <video
-                        src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4"
+                        key={authVideo}
+                        src={authVideo}
                         autoPlay
                         muted
                         loop
@@ -194,22 +199,24 @@ const ProfilePage: React.FC = () => {
                         className="absolute inset-0 w-full h-full object-cover"
                         style={{
                             opacity: 0.9,
-                            filter: 'brightness(0.60) saturate(1.15)',
+                            filter: theme === 'dark'
+                                ? 'brightness(0.60) saturate(1.15)'
+                                : 'brightness(0.72) saturate(1.0)',
                             transform: 'scale(1.0)',
                         }}
                     />
-                    {/* Subtle dark vignette — edges darker, centre more visible */}
+                    {/* Vignette — edges darker, centre more visible */}
                     <div className="absolute inset-0" style={{
-                        background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.65) 100%)'
+                        background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.60) 100%)'
                     }} />
-                    {/* Bottom gradient so glass card reads cleanly */}
+                    {/* Bottom gradient */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/60" />
                 </div>
 
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[430px] bg-black/25 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_80px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] relative overflow-hidden flex flex-col min-h-[560px]"
+                    className="w-full max-w-[430px] bg-black/25 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_80px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
                 >
                     {/* Back Button Pill */}
                     <button
