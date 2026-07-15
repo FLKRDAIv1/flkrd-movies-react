@@ -102,7 +102,8 @@ body {
   font-family: 'Zain', sans-serif;
   margin: 0;
   padding: 0;
-  @apply bg-main-bg text-main-text;
+  background-color: transparent !important;
+  @apply text-main-text;
   /* Force GPU composite layer for buttery scrolling */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -402,8 +403,14 @@ html, body {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  background-color: var(--bg-primary);
+  background-color: transparent !important;
   overflow-x: hidden;
+}
+
+/* App root carries the page background — video pages override via fixed z-index */
+#root {
+  @apply bg-main-bg;
+  min-height: 100vh;
 }
 
 /* Ensure images render with high visual fidelity without straining memory */
