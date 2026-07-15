@@ -66,6 +66,16 @@ const ProfilePage: React.FC = () => {
         loadBackdrop();
     }, []);
 
+    // Override body background so the profile video background is actually visible
+    useEffect(() => {
+        const prev = document.body.style.backgroundColor;
+        document.body.style.backgroundColor = 'transparent';
+        document.documentElement.style.backgroundColor = 'transparent';
+        return () => {
+            document.body.style.backgroundColor = prev;
+            document.documentElement.style.backgroundColor = '';
+        };
+    }, []);
 
     const [notifEnabled, setNotifEnabled] = useState(() => Notification.permission === 'granted');
 
@@ -484,9 +494,9 @@ const ProfilePage: React.FC = () => {
     const profileVideo = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
 
     return (
-        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden">
-            {/* Cinematic Video Background */}
-            <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden" style={{ background: 'transparent' }}>
+            {/* Cinematic Video Background — fixed so it covers body background */}
+            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
                 <video
                     key={profileVideo}
                     src={profileVideo}
