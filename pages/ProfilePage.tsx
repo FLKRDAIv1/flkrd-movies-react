@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, Shield, Zap, Bell, Moon, Sun, Languages,
     Save, Edit3, Camera, Clock, Activity, Award,
     ChevronRight, ArrowLeft, Check, Sparkles, Monitor, Smartphone, Download,
-    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound
+    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -16,6 +16,7 @@ import AnimatedThemeToggler from '../components/ui/animated-theme-toggler';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
+import { supabase } from '../utils/supabaseClient';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
@@ -23,6 +24,7 @@ const ProfilePage: React.FC = () => {
     const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading } = useAuth();
+    const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Local states
     const [authScreen, setAuthScreen] = useState<'login' | 'signup' | 'reset'>('login');
@@ -36,15 +38,30 @@ const ProfilePage: React.FC = () => {
     const [formSubmitting, setFormSubmitting] = useState(false);
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempUserName, setTempUserName] = useState('');
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [avatarUploading, setAvatarUploading] = useState(false);
 
     // Known TMDB backdrop paths — displayed immediately, no API wait
     const STATIC_BACKDROPS = [
-        'https://image.tmdb.org/t/p/w1280/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg',  // Dune 2
-        'https://image.tmdb.org/t/p/w1280/f1AQhx6ZfGhPkFzvgARFNoeavvg.jpg',  // Oppenheimer
-        'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',  // Avengers Endgame
-        'https://image.tmdb.org/t/p/w1280/drulhSX7P5TQlEMQZ3JoXKSDEfz.jpg',  // Interstellar
-        'https://image.tmdb.org/t/p/w1280/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',  // The Dark Knight
+        'https://image.tmdb.org/t/p/w1280/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg',
+        'https://image.tmdb.org/t/p/w1280/f1AQhx6ZfGhPkFzvgARFNoeavvg.jpg',
+        'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',
+        'https://image.tmdb.org/t/p/w1280/drulhSX7P5TQlEMQZ3JoXKSDEfz.jpg',
+        'https://image.tmdb.org/t/p/w1280/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
     ];
+
+    // Load avatar from user metadata on mount / user change
+    useEffect(() => {
+        if (user?.user_metadata?.avatar_url) {
+            setAvatarUrl(user.user_metadata.avatar_url);
+        }
+        if (user?.user_metadata?.user_name) {
+            setTempUserName(user.user_metadata.user_name);
+        } else if (user?.email) {
+            setTempUserName(user.email.split('@')[0]);
+        }
+    }, [user]);
+
     const [backdropUrl, setBackdropUrl] = useState(
         () => STATIC_BACKDROPS[Math.floor(Math.random() * STATIC_BACKDROPS.length)]
     );
@@ -168,6 +185,40 @@ const ProfilePage: React.FC = () => {
         } else {
             addNotification({ type: 'success', title: 'Email Sent', message: 'Check your email for the reset link.' });
             setAuthScreen('login');
+        }
+    };
+
+    // Upload avatar to Supabase Storage and save URL to user metadata
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !user) return;
+        if (file.size > 5 * 1024 * 1024) {
+            addNotification({ type: 'error', title: 'File too large', message: 'Max 5MB allowed.' });
+            return;
+        }
+        setAvatarUploading(true);
+        try {
+            const ext = file.name.split('.').pop();
+            const filePath = `${user.id}/avatar.${ext}`;
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true, contentType: file.type });
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            const publicUrl = `${data.publicUrl}?t=${Date.now()}`; // cache-bust
+
+            const { error: updateError } = await supabase.auth.updateUser({
+                data: { avatar_url: publicUrl }
+            });
+            if (updateError) throw updateError;
+
+            setAvatarUrl(publicUrl);
+            addNotification({ type: 'success', title: 'Avatar Updated', message: 'Your profile photo has been updated!' });
+        } catch (err: any) {
+            addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
+        } finally {
+            setAvatarUploading(false);
         }
     };
 
@@ -542,12 +593,30 @@ const ProfilePage: React.FC = () => {
                             <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-red)]" />
 
                             <div className="relative inline-block mb-6">
+                                {/* Hidden file input */}
+                                <input
+                                    ref={avatarInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleAvatarUpload}
+                                />
                                 <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[var(--brand-red)] p-1 bg-black">
                                     <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--brand-red)] to-black flex items-center justify-center overflow-hidden">
-                                        <User size={64} className="text-white opacity-40" />
+                                        {avatarUploading ? (
+                                            <Loader2 size={40} className="text-white animate-spin" />
+                                        ) : avatarUrl ? (
+                                            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-full" />
+                                        ) : (
+                                            <User size={64} className="text-white opacity-40" />
+                                        )}
                                     </div>
                                 </div>
-                                <button className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-[var(--card-bg)] hover:scale-110 transition-all">
+                                <button
+                                    onClick={() => avatarInputRef.current?.click()}
+                                    className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-black hover:scale-110 transition-all"
+                                    title="Upload photo"
+                                >
                                     <Camera size={18} />
                                 </button>
                             </div>

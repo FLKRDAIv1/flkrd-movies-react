@@ -25,6 +25,23 @@ interface CommentSectionProps {
   mediaType: 'movie' | 'tv' | 'dubbed';
 }
 
+// ── Avatar bubble: shows photo if available, otherwise initials ──────────────
+const Avatar: React.FC<{ url?: string | null; name: string; size?: number }> = ({ url, name, size = 36 }) => {
+  const initials = name?.[0]?.toUpperCase() || '?';
+  return (
+    <div
+      className="rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 bg-gradient-to-br from-red-900/60 to-black font-bold text-white uppercase"
+      style={{ width: size, height: size, fontSize: size * 0.35 }}
+    >
+      {url ? (
+        <img src={url} alt={name} className="w-full h-full object-cover rounded-full" />
+      ) : (
+        initials
+      )}
+    </div>
+  );
+};
+
 const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) => {
   const cleanId = String(movieId).replace('custom_', '');
   const { user } = useAuth();
@@ -39,6 +56,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Current user's avatar from Supabase Auth metadata
+  const myAvatarUrl = user?.user_metadata?.avatar_url || null;
+  const myName = user?.user_metadata?.user_name || user?.email?.split('@')[0] || 'Anonymous';
+
   // Fetch comments
   const fetchComments = async () => {
     try {
@@ -48,11 +69,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
         .eq('movie_id', cleanId)
         .eq('media_type', mediaType)
         .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setComments(data || []);
-    } catch (err) {
-      console.error('[COMMENTS] Fetch error:', err);
+      if (!error && data) setComments(data as Comment[]);
+    } catch (e) {
+      // silent
     } finally {
       setLoading(false);
     }
@@ -61,42 +80,33 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   useEffect(() => {
     fetchComments();
 
-    // Subscribe to changes
     const channel = supabase
       .channel(`comments_sync_${cleanId}_${mediaType}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${cleanId}` },
-        () => {
-          fetchComments();
-        }
+        () => { fetchComments(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [cleanId, mediaType]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newComment.trim()) return;
-
     setSubmitting(true);
-    const uName = user.user_metadata?.user_name || user.email?.split('@')[0] || 'Anonymous';
     try {
-      const { error } = await supabase.from('comments').insert([
-        {
-          movie_id: cleanId,
-          media_type: mediaType,
-          user_id: user.id,
-          user_name: uName,
-          user_email: user.email,
-          content: newComment.trim(),
-          parent_id: null
-        }
-      ]);
-
+      const { error } = await supabase.from('comments').insert([{
+        movie_id: cleanId,
+        media_type: mediaType,
+        user_id: user.id,
+        user_name: myName,
+        user_email: user.email,
+        avatar_url: myAvatarUrl,
+        content: newComment.trim(),
+        parent_id: null,
+      }]);
       if (error) throw error;
       setNewComment('');
       addNotification({ type: 'success', title: 'کۆمێنت نێردرا', message: 'کۆمێنتەکەت بە سەرکەوتوویی زیاد کرا.' });
@@ -110,22 +120,18 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
 
   const handleSendReply = async (parentId: string) => {
     if (!user || !replyContent.trim()) return;
-
     setSubmitting(true);
-    const uName = user.user_metadata?.user_name || user.email?.split('@')[0] || 'Anonymous';
     try {
-      const { error } = await supabase.from('comments').insert([
-        {
-          movie_id: cleanId,
-          media_type: mediaType,
-          user_id: user.id,
-          user_name: uName,
-          user_email: user.email,
-          content: replyContent.trim(),
-          parent_id: parentId
-        }
-      ]);
-
+      const { error } = await supabase.from('comments').insert([{
+        movie_id: cleanId,
+        media_type: mediaType,
+        user_id: user.id,
+        user_name: myName,
+        user_email: user.email,
+        avatar_url: myAvatarUrl,
+        content: replyContent.trim(),
+        parent_id: parentId,
+      }]);
       if (error) throw error;
       setReplyContent('');
       setReplyToId(null);
@@ -139,8 +145,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   };
 
   const handleDeleteComment = async (id: string) => {
-    if (!window.confirm(language === 'ku' || language === 'badini' ? 'دڵنیای لە سڕینەوەی ئەم کۆمێنتە؟' : 'Are you sure you want to delete this comment?')) return;
-
+    if (!window.confirm(language === 'ku' || language === 'badini' ? 'دڵنیای لە سڕینەوەی ئەم کۆمێنتە؟' : 'Delete this comment?')) return;
     try {
       const { error } = await supabase.from('comments').delete().eq('id', id);
       if (error) throw error;
@@ -175,9 +180,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
       {/* ── Add Comment Input Box ── */}
       {user ? (
         <form onSubmit={handleSubmitComment} className="flex gap-3 items-end">
-          <div className="w-9 h-9 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand font-bold text-xs uppercase flex-shrink-0">
-            {user.user_metadata?.user_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || <User size={14} />}
-          </div>
+          {/* Current user avatar */}
+          <Avatar url={myAvatarUrl} name={myName} size={38} />
           <div className="flex-1 relative flex items-center">
             <textarea
               rows={2}
@@ -196,7 +200,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
           </div>
         </form>
       ) : (
-        <div className="flex flex-col items-center justify-center p-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2.5xl space-y-3">
+        <div className="flex flex-col items-center justify-center p-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl space-y-3">
           <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-gray-400">
             <Lock size={16} />
           </div>
@@ -225,9 +229,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
             <div key={c.id} className="space-y-4">
               {/* Parent Comment */}
               <div className="flex gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-300 font-bold text-xs uppercase flex-shrink-0">
-                  {c.user_name[0].toUpperCase()}
-                </div>
+                <Avatar url={c.avatar_url} name={c.user_name} size={36} />
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <div>
@@ -246,7 +248,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                     )}
                   </div>
                   <p className="text-[11px] font-bold text-gray-300 leading-relaxed">{c.content}</p>
-                  
+
                   {/* Actions */}
                   {user && (
                     <div className="flex items-center gap-4 pt-1">
@@ -273,6 +275,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                         className="overflow-hidden mt-3"
                       >
                         <div className="flex gap-2 items-center">
+                          <Avatar url={myAvatarUrl} name={myName} size={28} />
                           <input
                             type="text"
                             value={replyContent}
@@ -283,9 +286,9 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                           <button
                             onClick={() => handleSendReply(c.id)}
                             disabled={submitting || !replyContent.trim()}
-                            className="px-4 py-2 bg-brand text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-red-600 transition-all cursor-pointer"
+                            className="px-4 py-2 bg-brand text-white text-[9px] font-black uppercase tracking-widest rounded-xl hover:bg-red-600 transition-all cursor-pointer disabled:opacity-50"
                           >
-                            Reply
+                            {isRTL ? 'نێردن' : 'Reply'}
                           </button>
                         </div>
                       </motion.div>
@@ -299,9 +302,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                 <div className={`space-y-4 ${isRTL ? 'mr-10 border-r-2' : 'ml-10 border-l-2'} border-white/5 pr-4 pl-4`}>
                   {replies.map(r => (
                     <div key={r.id} className="flex gap-3">
-                      <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 font-bold text-xs uppercase flex-shrink-0">
-                        {r.user_name[0].toUpperCase()}
-                      </div>
+                      <Avatar url={r.avatar_url} name={r.user_name} size={30} />
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
                           <div>
