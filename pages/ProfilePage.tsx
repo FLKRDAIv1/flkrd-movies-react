@@ -23,7 +23,7 @@ const ProfilePage: React.FC = () => {
     const { t, language, setLanguage } = useTranslation();
     const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
     const { addNotification } = useNotification();
-    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading } = useAuth();
+    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Local states
@@ -40,6 +40,8 @@ const ProfilePage: React.FC = () => {
     const [tempUserName, setTempUserName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
 
     // Known TMDB backdrop paths — displayed immediately, no API wait
     const STATIC_BACKDROPS = [
@@ -189,6 +191,28 @@ const ProfilePage: React.FC = () => {
     };
 
     // Upload avatar to Supabase Storage and save URL to user metadata
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newPassword || newPassword.length < 6) {
+            addNotification({ type: 'error', title: 'Too short', message: 'Password must be at least 6 characters.' });
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            addNotification({ type: 'error', title: 'Mismatch', message: 'Passwords do not match.' });
+            return;
+        }
+        setFormSubmitting(true);
+        const { error } = await updatePassword(newPassword);
+        setFormSubmitting(false);
+        if (error) {
+            addNotification({ type: 'error', title: 'Update Failed', message: error.message });
+        } else {
+            addNotification({ type: 'success', title: 'Password Updated!', message: 'You can now sign in with your new password.' });
+            setNewPassword('');
+            setNewPasswordConfirm('');
+        }
+    };
+
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
@@ -227,6 +251,77 @@ const ProfilePage: React.FC = () => {
     };
 
     if (loading || authLoading) return <SkeletonProfile />;
+
+    // ─── PASSWORD RECOVERY SCREEN — shown when user clicks the reset link in email ─────
+    if (isPasswordRecovery) {
+        const isRTL = language === 'ku' || language === 'badini';
+        const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';
+        const AUTH_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4';
+        const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
+        return (
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
+                <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+                    <video key={authVideo} src={authVideo} autoPlay muted loop playsInline
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ opacity: 0.9, filter: theme === 'dark' ? 'brightness(0.55)' : 'brightness(0.7)' }}
+                    />
+                    <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
+                </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 30, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="w-full max-w-[420px] bg-black/25 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_80px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] relative z-10"
+                >
+                    {/* Top brand accent */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
+                    <div className="text-center mb-8">
+                        <div className="w-16 h-16 bg-gradient-to-br from-[var(--brand-red)] to-red-900 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-900/40">
+                            <KeyRound size={28} className="text-white" />
+                        </div>
+                        <h2 className="text-2xl font-[1000] uppercase italic tracking-tighter text-white mb-1">
+                            {isRTL ? 'پاسوۆردی نوێ' : 'New Password'}
+                        </h2>
+                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                            {isRTL ? 'پاسوۆردی نوێت دیاری بکە' : 'Choose a strong new password'}
+                        </p>
+                    </div>
+                    <form onSubmit={handleUpdatePassword} className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                {isRTL ? 'پاسوۆردی نوێ' : 'New Password'}
+                            </label>
+                            <input
+                                type="password" required minLength={6}
+                                value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                                placeholder={isRTL ? 'پاسوۆردی نوێ بنووسە' : 'Enter new password (min 6 chars)'}
+                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                {isRTL ? 'پشتڕاستکردنەوە' : 'Confirm Password'}
+                            </label>
+                            <input
+                                type="password" required
+                                value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)}
+                                placeholder={isRTL ? 'پاسوۆرد دووبارە بنووسە' : 'Confirm your new password'}
+                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
+                            />
+                        </div>
+                        <button
+                            type="submit" disabled={formSubmitting}
+                            className="w-full mt-2 py-4 bg-gradient-to-r from-[var(--brand-red)] to-red-700 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 hover:opacity-90 active:scale-98"
+                        >
+                            {formSubmitting
+                                ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                : <><Check size={14} />{isRTL ? 'تازەکردنەوەی پاسوۆرد' : 'Update Password'}</>
+                            }
+                        </button>
+                    </form>
+                </motion.div>
+            </div>
+        );
+    }
 
     // ─── UNAUTHENTICATED GUEST AUTHENTICATION VIEW (LIQUID GLASS) ──────────────────────
     if (!user) {
