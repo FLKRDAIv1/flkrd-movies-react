@@ -41,13 +41,11 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
       <div
         ref={ref}
         className={cn(
-          "w-full h-full min-h-[400px] grid place-items-center overflow-hidden relative group",
+          "w-full h-full min-h-[420px] grid place-items-center relative group py-8 px-4",
           className
         )}
         style={{
-          perspective: "1000px",
-          maskImage: "linear-gradient(90deg, transparent, #000 15% 85%, transparent)",
-          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 15% 85%, transparent)",
+          perspective: "1200px",
         }}
         {...props}
       >
@@ -77,8 +75,11 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
                 src={img.src}
                 alt={img.alt || `Carousel image ${i}`}
                 onClick={() => onItemClick?.(img)}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://image.tmdb.org/t/p/w500/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg';
+                }}
                 className={cn(
-                  "[grid-area:1/1] object-cover rounded-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.8)] border border-white/10 hover:border-red-500/50 hover:shadow-[0_0_30px_rgba(229,9,20,0.5)]",
+                  "[grid-area:1/1] object-cover rounded-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.85)] border border-white/15 hover:border-red-500/60 hover:shadow-[0_0_35px_rgba(229,9,20,0.6)] z-10",
                   cardClassName
                 )}
                 style={{

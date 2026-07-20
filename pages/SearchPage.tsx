@@ -520,7 +520,7 @@ const SearchPage: React.FC = () => {
         ) : (
           <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center pt-4 relative flex flex-col items-center">
             {topRatedMovies.length > 0 && (
-              <div className="w-full max-w-5xl h-[450px] relative z-10 flex items-center justify-center">
+              <div className="w-full max-w-6xl h-[480px] relative z-10 flex items-center justify-center overflow-visible">
                 <CylinderCarousel
                   images={topRatedMovies.map(item => ({
                     src: `${IMAGE_BASE_URL_POSTER}${item.poster_path}`,
