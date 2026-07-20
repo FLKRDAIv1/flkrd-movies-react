@@ -7,6 +7,8 @@ import { MessageSquare, CornerDownLeft, Trash2, Send, Lock, User } from 'lucide-
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 
+import UserProfileModal, { AvatarEffectContainer, AvatarEffectType } from './UserProfileModal';
+
 interface Comment {
   id: string;
   created_at: string;
@@ -25,23 +27,6 @@ interface CommentSectionProps {
   mediaType: 'movie' | 'tv' | 'dubbed';
 }
 
-// ── Avatar bubble: shows photo if available, otherwise initials ──────────────
-const Avatar: React.FC<{ url?: string | null; name: string; size?: number }> = ({ url, name, size = 36 }) => {
-  const initials = name?.[0]?.toUpperCase() || '?';
-  return (
-    <div
-      className="rounded-full border-2 border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 bg-gradient-to-br from-red-900/60 to-black font-bold text-white uppercase"
-      style={{ width: size, height: size, fontSize: size * 0.35 }}
-    >
-      {url ? (
-        <img src={url} alt={name} className="w-full h-full object-cover rounded-full" />
-      ) : (
-        initials
-      )}
-    </div>
-  );
-};
-
 const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) => {
   const cleanId = String(movieId).replace('custom_', '');
   const { user } = useAuth();
@@ -55,6 +40,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   const [replyContent, setReplyContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Profile Modal State
+  const [selectedUserModal, setSelectedUserModal] = useState<{
+    name: string;
+    email?: string;
+    avatarUrl?: string | null;
+    avatarEffect?: AvatarEffectType;
+  } | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   // Current user's avatar from Supabase Auth metadata
   const myAvatarUrl = user?.user_metadata?.avatar_url || null;
@@ -228,12 +222,39 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
           return (
             <div key={c.id} className="space-y-4">
               {/* Parent Comment */}
-              <div className="flex gap-3">
-                <Avatar url={c.avatar_url} name={c.user_name} size={36} />
+              <div className="flex gap-3 items-start">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedUserModal({
+                      name: c.user_name,
+                      email: c.user_email,
+                      avatarUrl: c.avatar_url
+                    });
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="cursor-pointer transition-transform hover:scale-105 active:scale-95 text-left"
+                >
+                  <AvatarEffectContainer url={c.avatar_url} name={c.user_name} email={c.user_email} size={38} />
+                </button>
+
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-black text-white">{c.user_name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedUserModal({
+                            name: c.user_name,
+                            email: c.user_email,
+                            avatarUrl: c.avatar_url
+                          });
+                          setIsProfileModalOpen(true);
+                        }}
+                        className="text-xs font-black text-white hover:text-red-400 transition-colors uppercase tracking-tight"
+                      >
+                        {c.user_name}
+                      </button>
                       <span className="text-[9px] text-gray-500 font-bold ml-2 uppercase">
                         {new Date(c.created_at).toLocaleDateString()}
                       </span>
@@ -275,7 +296,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                         className="overflow-hidden mt-3"
                       >
                         <div className="flex gap-2 items-center">
-                          <Avatar url={myAvatarUrl} name={myName} size={28} />
+                          <AvatarEffectContainer url={myAvatarUrl} name={myName} email={user.email} size={30} />
                           <input
                             type="text"
                             value={replyContent}
@@ -301,12 +322,38 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
               {replies.length > 0 && (
                 <div className={`space-y-4 ${isRTL ? 'mr-10 border-r-2' : 'ml-10 border-l-2'} border-white/5 pr-4 pl-4`}>
                   {replies.map(r => (
-                    <div key={r.id} className="flex gap-3">
-                      <Avatar url={r.avatar_url} name={r.user_name} size={30} />
+                    <div key={r.id} className="flex gap-3 items-start">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedUserModal({
+                            name: r.user_name,
+                            email: r.user_email,
+                            avatarUrl: r.avatar_url
+                          });
+                          setIsProfileModalOpen(true);
+                        }}
+                        className="cursor-pointer transition-transform hover:scale-105 active:scale-95 text-left"
+                      >
+                        <AvatarEffectContainer url={r.avatar_url} name={r.user_name} email={r.user_email} size={32} />
+                      </button>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
                           <div>
-                            <span className="text-xs font-black text-white">{r.user_name}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedUserModal({
+                                  name: r.user_name,
+                                  email: r.user_email,
+                                  avatarUrl: r.avatar_url
+                                });
+                                setIsProfileModalOpen(true);
+                              }}
+                              className="text-xs font-black text-white hover:text-red-400 transition-colors uppercase tracking-tight"
+                            >
+                              {r.user_name}
+                            </button>
                             <span className="text-[9px] text-gray-500 font-bold ml-2 uppercase">
                               {new Date(r.created_at).toLocaleDateString()}
                             </span>
@@ -336,6 +383,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
           </p>
         )}
       </div>
+
+      {/* Nitro Style User Profile Modal */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={selectedUserModal}
+      />
     </div>
   );
 };

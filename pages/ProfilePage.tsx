@@ -20,6 +20,7 @@ import { supabase } from '../utils/supabaseClient';
 import ElasticStack from '../components/ui/elastic-stack';
 import MovieBentoGrid from '../components/ui/movie-bento-grid';
 import Portal from '../components/Portal';
+import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfileModal';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
@@ -255,44 +256,33 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const compressImage = (file: File): Promise<string> => {
+    const [avatarEffect, setAvatarEffect] = useState<AvatarEffectType>(() => {
+        if (typeof window !== 'undefined') {
+            return (localStorage.getItem('flkrd_avatar_effect') as AvatarEffectType) || 'none';
+        }
+        return 'none';
+    });
+
+    const handleSelectAvatarEffect = async (eff: AvatarEffectType) => {
+        setAvatarEffect(eff);
+        localStorage.setItem('flkrd_avatar_effect', eff);
+        if (user) {
+            try {
+                await supabase.auth.updateUser({
+                    data: { avatar_effect: eff }
+                });
+            } catch (e) {}
+        }
+        addNotification({ type: 'success', title: 'Effect Applied', message: `Avatar animation effect updated!` });
+    };
+
+    const readFullQualityImage = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.readAsDataURL(file);
             reader.onload = (event) => {
-                const img = new Image();
-                img.src = event.target?.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 120;
-                    const MAX_HEIGHT = 120;
-                    let width = img.width;
-                    let height = img.height;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        reject(new Error('Canvas context is null'));
-                        return;
-                    }
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                    resolve(dataUrl);
-                };
-                img.onerror = (err) => reject(err);
+                const result = event.target?.result as string;
+                resolve(result);
             };
             reader.onerror = (err) => reject(err);
         });
@@ -303,19 +293,19 @@ const ProfilePage: React.FC = () => {
         if (!file || !user) return;
         setAvatarUploading(true);
         try {
-            const base64Image = await compressImage(file);
+            const fullQualityDataUrl = await readFullQualityImage(file);
             try {
                 const { error: updateError } = await supabase.auth.updateUser({
-                    data: { avatar_url: base64Image }
+                    data: { avatar_url: fullQualityDataUrl }
                 });
                 if (updateError) throw updateError;
             } catch (supabaseErr) {
-                console.warn("Supabase auth updateUser failed (likely CORS preflight/network error). Falling back to LocalStorage.", supabaseErr);
+                console.warn("Supabase auth updateUser failed. Falling back to LocalStorage.", supabaseErr);
             }
 
-            localStorage.setItem('flkrd_avatar_url', base64Image);
-            setAvatarUrl(base64Image);
-            addNotification({ type: 'success', title: 'Avatar Updated', message: 'Your profile photo has been updated!' });
+            localStorage.setItem('flkrd_avatar_url', fullQualityDataUrl);
+            setAvatarUrl(fullQualityDataUrl);
+            addNotification({ type: 'success', title: 'Avatar Updated', message: 'Your full quality profile photo / GIF has been updated!' });
         } catch (err: any) {
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
         } finally {
@@ -717,28 +707,87 @@ const ProfilePage: React.FC = () => {
                                 <input
                                     ref={avatarInputRef}
                                     type="file"
-                                    accept="image/*"
+                                    accept="image/*,.gif"
                                     className="hidden"
                                     onChange={handleAvatarUpload}
                                 />
-                                <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[var(--brand-red)] p-1 bg-black">
-                                    <div className="w-full h-full rounded-full bg-gradient-to-br from-[var(--brand-red)] to-black flex items-center justify-center overflow-hidden">
-                                        {avatarUploading ? (
-                                            <Loader2 size={40} className="text-white animate-spin" />
-                                        ) : avatarUrl ? (
-                                            <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-full" />
-                                        ) : (
-                                            <User size={64} className="text-white opacity-40" />
-                                        )}
-                                    </div>
-                                </div>
+                                <AvatarEffectContainer
+                                    url={avatarUrl}
+                                    name={tempUserName}
+                                    effect={avatarEffect}
+                                    email={user?.email}
+                                    size={140}
+                                />
                                 <button
                                     onClick={() => avatarInputRef.current?.click()}
-                                    className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-black hover:scale-110 transition-all"
-                                    title="Upload photo"
+                                    className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-black hover:scale-110 transition-all z-30 shadow-xl"
+                                    title="Upload photo or animated GIF"
                                 >
                                     <Camera size={18} />
                                 </button>
+                            </div>
+
+                            {/* Animated Avatar Effects Selector Grid */}
+                            <div className="w-full mb-6 p-4 bg-white/[0.02] border border-white/10 rounded-2xl flex flex-col gap-2.5">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 text-left flex items-center gap-1.5">
+                                    <Sparkles size={11} className="text-amber-400" />
+                                    {language === 'ku' || language === 'badini' ? 'کاریگەرییە وێنەییەکان (Avatar Effects)' : 'Nitro Animated Avatar Rings'}
+                                </span>
+
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' || tempUserName.toLowerCase().includes('zana faroq') || tempUserName.toLowerCase().includes('zana barzani')) && (
+                                        <button
+                                            onClick={() => handleSelectAvatarEffect('creator-ceo-aura')}
+                                            className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all ${
+                                                avatarEffect === 'creator-ceo-aura' 
+                                                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(234,179,8,0.3)]' 
+                                                    : 'bg-white/5 border-white/10 text-zinc-300 hover:border-amber-400/40'
+                                            }`}
+                                        >
+                                            👑 CREATOR CEO
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => handleSelectAvatarEffect('cosmic-pulsar')}
+                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
+                                            avatarEffect === 'cosmic-pulsar' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
+                                        }`}
+                                    >
+                                        🌀 Pulsar
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelectAvatarEffect('cyber-glitch')}
+                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
+                                            avatarEffect === 'cyber-glitch' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
+                                        }`}
+                                    >
+                                        ⚡ Cyber
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelectAvatarEffect('ruby-phoenix')}
+                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
+                                            avatarEffect === 'ruby-phoenix' ? 'bg-red-500/20 border-red-400 text-red-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
+                                        }`}
+                                    >
+                                        🔥 Phoenix
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelectAvatarEffect('quantum-vortex')}
+                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
+                                            avatarEffect === 'quantum-vortex' ? 'bg-purple-500/20 border-purple-400 text-purple-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
+                                        }`}
+                                    >
+                                        🌌 Vortex
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelectAvatarEffect('emerald-shield')}
+                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
+                                            avatarEffect === 'emerald-shield' ? 'bg-lime-500/20 border-lime-400 text-lime-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
+                                        }`}
+                                    >
+                                        🛡️ Shield
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="flex flex-col items-center">
