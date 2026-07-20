@@ -751,11 +751,11 @@ const DetailPage: React.FC = () => {
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
         <img 
           src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
-          className="w-full h-full object-cover scale-110" 
-          style={{ filter: 'blur(30px) brightness(0.35) saturate(1.5)' }} 
+          className="w-full h-full object-cover scale-110 opacity-70" 
+          style={{ filter: 'blur(36px) saturate(1.4)' }} 
           alt="" 
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/40 to-[var(--bg-primary)]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/30 to-[var(--bg-primary)]"></div>
       </div>
 
       <AnimatePresence>
@@ -1027,17 +1027,18 @@ const DetailPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="relative w-full h-[75vh] md:h-[95vh] overflow-hidden z-10 group" dir="ltr">
+      <div className="relative w-full h-[70vh] md:h-[90vh] overflow-hidden z-10 group" dir="ltr">
         <div className="absolute inset-0 overflow-hidden">
           <motion.img 
-            initial={{ scale: 1.15 }} 
+            initial={{ scale: 1.12 }} 
             animate={{ scale: 1 }} 
             transition={{ duration: 15, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
             src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path}`} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover opacity-85" 
+            className="absolute inset-0 w-full h-full object-cover opacity-95" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/20 to-transparent dark-gradient-mask z-[2]"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)]/60 via-transparent to-transparent z-[2]" />
         </div>
 
         {!isPlayerModalOpen && (

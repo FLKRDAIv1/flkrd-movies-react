@@ -731,11 +731,11 @@ const TVDetailPage: React.FC = () => {
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
         <img 
           src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
-          className="w-full h-full object-cover scale-110" 
-          style={{ filter: 'blur(30px) brightness(0.35) saturate(1.5)' }} 
+          className="w-full h-full object-cover scale-110 opacity-70" 
+          style={{ filter: 'blur(36px) saturate(1.4)' }} 
           alt="" 
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/40 to-[var(--bg-primary)]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/30 to-[var(--bg-primary)]"></div>
       </div>
 
       <AnimatePresence>
@@ -977,9 +977,10 @@ const TVDetailPage: React.FC = () => {
           <img 
             src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover opacity-85" 
+            className="absolute inset-0 w-full h-full object-cover opacity-95" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent z-[2]"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)]/60 via-transparent to-transparent z-[2]" />
         </div>
 
         <div className={`absolute bottom-12 md:bottom-28 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right' : 'left-0 text-left'} right-0 px-6 md:px-8 lg:px-20 z-10 flex flex-col items-start max-w-6xl`}>
