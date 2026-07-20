@@ -591,8 +591,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     try {
       const { data, error } = await supabase
         .from('custom_subtitles')
-        .select('tmdb_id')
-        .eq('language', 'ku');
+        .select('tmdb_id');
       
       if (error) throw error;
       

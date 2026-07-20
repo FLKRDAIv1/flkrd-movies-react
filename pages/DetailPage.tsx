@@ -565,20 +565,24 @@ const DetailPage: React.FC = () => {
               console.warn("[DETAIL] Failed to fetch external IDs:", extErr);
             }
 
-            // Check Supabase custom_subtitles first
+            // Check Supabase custom_subtitles first (ranking by preferred language)
             let supabaseSubUrl = null;
             try {
               const { data } = await supabase
                 .from('custom_subtitles')
-                .select('subtitle_url')
+                .select('subtitle_url, language')
                 .eq('tmdb_id', String(id))
                 .eq('media_type', 'movie')
-                .eq('language', language === 'badini' ? 'badini' : 'ku')
                 .eq('season', 0)
-                .eq('episode', 0)
-                .maybeSingle();
-              if (data && data.subtitle_url) {
-                supabaseSubUrl = data.subtitle_url;
+                .eq('episode', 0);
+
+              if (data && data.length > 0) {
+                const activeLang = language === 'badini' ? 'badini' : 'ku';
+                const sorted = [...data].sort((a, b) => {
+                  const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
+                  return score(b.language) - score(a.language);
+                });
+                supabaseSubUrl = sorted[0].subtitle_url;
                 if (supabaseSubUrl.startsWith('//')) {
                   supabaseSubUrl = `https:${supabaseSubUrl}`;
                 }
@@ -645,15 +649,19 @@ const DetailPage: React.FC = () => {
     try {
       const { data } = await supabase
         .from('custom_subtitles')
-        .select('subtitle_url')
+        .select('subtitle_url, language')
         .eq('tmdb_id', String(id))
         .eq('media_type', 'movie')
-        .eq('language', language === 'badini' ? 'badini' : 'ku')
         .eq('season', 0)
-        .eq('episode', 0)
-        .maybeSingle();
-      if (data && data.subtitle_url) {
-        activeSubUrl = data.subtitle_url;
+        .eq('episode', 0);
+
+      if (data && data.length > 0) {
+        const activeLang = language === 'badini' ? 'badini' : 'ku';
+        const sorted = [...data].sort((a, b) => {
+          const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
+          return score(b.language) - score(a.language);
+        });
+        activeSubUrl = sorted[0].subtitle_url;
         if (activeSubUrl.startsWith('//')) {
           activeSubUrl = `https:${activeSubUrl}`;
         }

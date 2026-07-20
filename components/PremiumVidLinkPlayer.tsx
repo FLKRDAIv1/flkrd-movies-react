@@ -760,7 +760,6 @@ export default function PremiumVidLinkPlayer({
             .select('*')
             .eq('tmdb_id', String(activeId))
             .eq('media_type', type || 'movie')
-            .in('language', ['ku', 'badini', 'ckb', 'kur'])
             .eq('season', type === 'tv' ? (season ?? 0) : 0)
             .eq('episode', type === 'tv' ? (episode ?? 0) : 0);
 
@@ -950,7 +949,6 @@ export default function PremiumVidLinkPlayer({
           .select('*')
           .eq('tmdb_id', String(activeId))
           .eq('media_type', type || 'movie')
-          .in('language', ['ku', 'badini', 'ckb', 'kur'])
           .eq('season', type === 'tv' ? (season ?? 0) : 0)
           .eq('episode', type === 'tv' ? (episode ?? 0) : 0);
 

@@ -997,7 +997,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     .select('*')
                     .eq('tmdb_id', String(idToQuery))
                     .eq('media_type', contentType || 'movie')
-                    .in('language', ['ku', 'badini', 'ckb', 'kur'])
                     .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
                     .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 

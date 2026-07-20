@@ -273,15 +273,19 @@ const TVDetailPage: React.FC = () => {
       try {
         const { data } = await supabase
           .from('custom_subtitles')
-          .select('subtitle_url')
+          .select('subtitle_url, language')
           .eq('tmdb_id', String(id))
           .eq('media_type', 'tv')
-          .eq('language', language === 'badini' ? 'badini' : 'ku')
           .eq('season', selectedSeason)
-          .eq('episode', selectedEpisode)
-          .maybeSingle();
-        if (data && data.subtitle_url) {
-          let url = data.subtitle_url;
+          .eq('episode', selectedEpisode);
+
+        if (data && data.length > 0) {
+          const activeLang = language === 'badini' ? 'badini' : 'ku';
+          const sorted = [...data].sort((a, b) => {
+            const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
+            return score(b.language) - score(a.language);
+          });
+          let url = sorted[0].subtitle_url;
           if (url.startsWith('//')) url = `https:${url}`;
           setSubtitleUrl(url);
           const ranked = getRankedSources(true);
@@ -620,15 +624,19 @@ const TVDetailPage: React.FC = () => {
     try {
       const { data } = await supabase
         .from('custom_subtitles')
-        .select('subtitle_url')
+        .select('subtitle_url, language')
         .eq('tmdb_id', String(id))
         .eq('media_type', 'tv')
-        .eq('language', language === 'badini' ? 'badini' : 'ku')
         .eq('season', targetSeason)
-        .eq('episode', targetEpisode)
-        .maybeSingle();
-      if (data && data.subtitle_url) {
-        activeSubUrl = data.subtitle_url;
+        .eq('episode', targetEpisode);
+
+      if (data && data.length > 0) {
+        const activeLang = language === 'badini' ? 'badini' : 'ku';
+        const sorted = [...data].sort((a, b) => {
+          const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
+          return score(b.language) - score(a.language);
+        });
+        activeSubUrl = sorted[0].subtitle_url;
         if (activeSubUrl.startsWith('//')) {
           activeSubUrl = `https:${activeSubUrl}`;
         }
