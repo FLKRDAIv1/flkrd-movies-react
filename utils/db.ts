@@ -5,13 +5,14 @@
  */
 
 const DB_NAME = 'FLKRD_QUANTUM_CORE';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'dubbed_movies';
 
 // Fallback In-Memory and LocalStorage Cache
 const fallbackStore: Record<string, Record<string, any>> = {
     [STORE_NAME]: {},
-    tmdb_cache: {}
+    tmdb_cache: {},
+    user_avatars: {}
 };
 
 // Try to pre-populate fallback store from localStorage for maximum persistence
@@ -54,6 +55,9 @@ export const initDB = (): Promise<IDBDatabase | null> => {
                 }
                 if (!dbInstance.objectStoreNames.contains('tmdb_cache')) {
                     dbInstance.createObjectStore('tmdb_cache', { keyPath: 'key' });
+                }
+                if (!dbInstance.objectStoreNames.contains('user_avatars')) {
+                    dbInstance.createObjectStore('user_avatars', { keyPath: 'key' });
                 }
             };
 
@@ -226,6 +230,48 @@ export const db = {
             else store.clear();
             transaction.oncomplete = () => resolve();
             transaction.onerror = (err: any) => reject(err);
+        });
+    },
+
+    async saveAvatar(key: string, dataUrl: string): Promise<void> {
+        const database = await initDB();
+        if (useFallback || !database) {
+            fallbackStore.user_avatars[key] = { key, dataUrl };
+            return;
+        }
+
+        return new Promise((resolve) => {
+            try {
+                const transaction = database.transaction('user_avatars', 'readwrite');
+                const store = transaction.objectStore('user_avatars');
+                store.put({ key, dataUrl });
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => resolve();
+            } catch (e) {
+                resolve();
+            }
+        });
+    },
+
+    async getAvatar(key: string): Promise<string | null> {
+        const database = await initDB();
+        if (useFallback || !database) {
+            return fallbackStore.user_avatars[key] ? fallbackStore.user_avatars[key].dataUrl : null;
+        }
+
+        return new Promise((resolve) => {
+            try {
+                const transaction = database.transaction('user_avatars', 'readonly');
+                const store = transaction.objectStore('user_avatars');
+                const request = store.get(key);
+                request.onsuccess = () => {
+                    const result = request.result;
+                    resolve(result ? result.dataUrl : null);
+                };
+                request.onerror = () => resolve(null);
+            } catch (e) {
+                resolve(null);
+            }
         });
     }
 };

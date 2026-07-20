@@ -17,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
 import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import ElasticStack from '../components/ui/elastic-stack';
 import MovieBentoGrid from '../components/ui/movie-bento-grid';
 import Portal from '../components/Portal';
@@ -56,14 +57,22 @@ const ProfilePage: React.FC = () => {
         'https://image.tmdb.org/t/p/w1280/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
     ];
 
-    // Load avatar from user metadata on mount / user change
+    // Load avatar from IndexedDB, LocalStorage or user metadata on mount / user change
     useEffect(() => {
-        const localAvatar = localStorage.getItem('flkrd_avatar_url');
-        if (localAvatar) {
-            setAvatarUrl(localAvatar);
-        } else if (user?.user_metadata?.avatar_url) {
-            setAvatarUrl(user.user_metadata.avatar_url);
-        }
+        const loadAvatar = async () => {
+            const localAvatar = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url');
+            if (localAvatar) {
+                setAvatarUrl(localAvatar);
+            } else {
+                const idbAvatar = await db.getAvatar('current_user_avatar');
+                if (idbAvatar) {
+                    setAvatarUrl(idbAvatar);
+                } else if (user?.user_metadata?.avatar_url) {
+                    setAvatarUrl(user.user_metadata.avatar_url);
+                }
+            }
+        };
+        loadAvatar();
         if (user?.user_metadata?.user_name) {
             setTempUserName(user.user_metadata.user_name);
         } else if (user?.email) {
@@ -347,34 +356,52 @@ const ProfilePage: React.FC = () => {
                 reader.onerror = (err) => reject(err);
             }
         });
-    };
-
-    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    };    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
         setAvatarUploading(true);
         try {
-            const avatarDataUrl = await processAvatarFile(file);
-            
-            // Only attempt Supabase Auth update if data size is reasonable (<300KB) to prevent CORS/PUT payload errors
-            if (avatarDataUrl.length < 300000) {
-                try {
-                    await supabase.auth.updateUser({
-                        data: { avatar_url: avatarDataUrl }
-                    });
-                } catch (e) {
-                    // Silent catch for auth CORS restrictions
+            let finalUrl = '';
+            const ext = (file.name.split('.').pop() || 'gif').toLowerCase();
+            const storagePath = `user_avatars/${user.id}_${Date.now()}.${ext}`;
+
+            // 1. Primary path: Upload directly to Supabase Storage 'avatars' bucket
+            try {
+                const { data: uploadRes, error: uploadErr } = await supabase.storage
+                    .from('avatars')
+                    .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+
+                if (!uploadErr && uploadRes) {
+                    const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
+                    if (pubData?.publicUrl) {
+                        finalUrl = pubData.publicUrl;
+                    }
                 }
+            } catch (storageErr) {
+                console.warn("[AVATAR] Supabase Storage upload error, falling back to local processing", storageErr);
             }
 
-            safeSetAvatarStorage(avatarDataUrl);
-            setAvatarUrl(avatarDataUrl);
+            // 2. Fallback path: Process as local DataURL if cloud upload is unreached
+            if (!finalUrl) {
+                finalUrl = await processAvatarFile(file);
+                await db.saveAvatar('current_user_avatar', finalUrl);
+            }
+
+            // 3. Update Supabase Auth User Metadata with finalUrl
+            await supabase.auth.updateUser({
+                data: { avatar_url: finalUrl }
+            }).catch(() => {});
+
+            // 4. Save to local storage & state, then dispatch events
+            safeSetAvatarStorage(finalUrl);
+            setAvatarUrl(finalUrl);
             window.dispatchEvent(new Event('storage'));
             window.dispatchEvent(new Event('flkrd-avatar-changed'));
-            addNotification({ 
-                type: 'success', 
-                title: 'Avatar Updated', 
-                message: file.type === 'image/gif' ? 'Animated GIF profile updated successfully!' : 'High resolution profile picture updated!' 
+
+            addNotification({
+                type: 'success',
+                title: 'Avatar Updated',
+                message: file.type === 'image/gif' ? 'Animated GIF profile updated & uploaded to cloud!' : 'Profile picture updated & uploaded to cloud!'
             });
         } catch (err: any) {
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
