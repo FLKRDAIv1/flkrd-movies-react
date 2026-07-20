@@ -40,7 +40,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
   const renderAvatar = () => {
     if (user) {
-      const localAvatar = localStorage.getItem('flkrd_avatar_url');
+      const localAvatar = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url');
       const avatarUrl = localAvatar || user.user_metadata?.avatar_url;
       if (avatarUrl) {
         return (

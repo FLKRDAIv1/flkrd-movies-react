@@ -276,6 +276,28 @@ const ProfilePage: React.FC = () => {
         addNotification({ type: 'success', title: 'Effect Applied', message: `Avatar animation effect updated!` });
     };
 
+    const safeSetAvatarStorage = (avatarDataUrl: string) => {
+        try {
+            localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
+        } catch (err) {
+            console.warn("[AVATAR] LocalStorage quota exceeded, clearing old caches...");
+            try {
+                // Clear non-essential cached items in localStorage to free up space
+                localStorage.removeItem('flkrd_fallback_movies');
+                localStorage.removeItem('flkrd_fallback_tmdb');
+                localStorage.removeItem('tmdb_cache');
+                localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
+            } catch (retryErr) {
+                console.warn("[AVATAR] LocalStorage still full. Using sessionStorage fallback.");
+                try {
+                    sessionStorage.setItem('flkrd_avatar_url', avatarDataUrl);
+                } catch (sErr) {
+                    console.warn("[AVATAR] SessionStorage fallback error", sErr);
+                }
+            }
+        }
+    };
+
     const processAvatarFile = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
@@ -287,13 +309,13 @@ const ProfilePage: React.FC = () => {
                 reader.onload = (event) => resolve(event.target?.result as string);
                 reader.onerror = (err) => reject(err);
             } else {
-                // Auto-resize static images (PNG, JPG, WEBP) to high quality 500x500 for fast loading
+                // Auto-resize static images (PNG, JPG, WEBP, SVG) to crisp 400x400 HD WebP for zero quota strain
                 reader.readAsDataURL(file);
                 reader.onload = (event) => {
                     const img = new Image();
                     img.src = event.target?.result as string;
                     img.onload = () => {
-                        const maxDim = 500;
+                        const maxDim = 400;
                         let width = img.width;
                         let height = img.height;
                         if (width > height) {
@@ -315,7 +337,7 @@ const ProfilePage: React.FC = () => {
                             ctx.imageSmoothingEnabled = true;
                             ctx.imageSmoothingQuality = 'high';
                             ctx.drawImage(img, 0, 0, width, height);
-                            resolve(canvas.toDataURL('image/webp', 0.92));
+                            resolve(canvas.toDataURL('image/webp', 0.85));
                         } else {
                             resolve(event.target?.result as string);
                         }
@@ -334,8 +356,8 @@ const ProfilePage: React.FC = () => {
         try {
             const avatarDataUrl = await processAvatarFile(file);
             
-            // Only attempt Supabase Auth update if data size is reasonable (<400KB) to prevent CORS/PUT payload errors
-            if (avatarDataUrl.length < 400000) {
+            // Only attempt Supabase Auth update if data size is reasonable (<300KB) to prevent CORS/PUT payload errors
+            if (avatarDataUrl.length < 300000) {
                 try {
                     await supabase.auth.updateUser({
                         data: { avatar_url: avatarDataUrl }
@@ -345,7 +367,7 @@ const ProfilePage: React.FC = () => {
                 }
             }
 
-            localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
+            safeSetAvatarStorage(avatarDataUrl);
             setAvatarUrl(avatarDataUrl);
             addNotification({ 
                 type: 'success', 
