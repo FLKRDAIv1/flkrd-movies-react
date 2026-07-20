@@ -934,12 +934,7 @@ const TVDetailPage: React.FC = () => {
                               </div>
                             )}
 
-                            {isActive && (
-                              <motion.div 
-                                layoutId="active-accent-line-detail-tv"
-                                className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
-                              />
-                            )}
+
 
                             <div className="flex items-center justify-between w-full relative z-10">
                               <div className="flex items-center gap-3">
@@ -972,15 +967,16 @@ const TVDetailPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="relative w-full h-[70vh] md:h-[90vh] overflow-hidden z-10" dir="ltr">
-        <div className="absolute inset-0 overflow-hidden">
+      {/* ── 3D Shaped Header Hero Card (Matching Home Banner Carousel Aesthetics) ── */}
+      <div className="w-full relative px-4 md:px-12 pt-24 md:pt-28 pb-6 bg-transparent overflow-hidden isolate" dir="ltr">
+        <div className="relative w-full h-[65vh] md:h-[80vh] rounded-[32px] md:rounded-[40px] overflow-hidden border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] bg-zinc-950/60 backdrop-blur-md group">
           <img 
             src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover opacity-95" 
+            className="absolute inset-0 w-full h-full object-cover opacity-100" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[var(--bg-primary)]/60 via-transparent to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent z-[2]" />
         </div>
 
         <div className={`absolute bottom-12 md:bottom-28 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right' : 'left-0 text-left'} right-0 px-6 md:px-8 lg:px-20 z-10 flex flex-col items-start max-w-6xl`}>
