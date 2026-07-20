@@ -174,24 +174,26 @@ const Carousel_003 = ({
               onClick={() => onItemClick && onItemClick(image)}
             >
               <img
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-108 brightness-105 contrast-105"
                 src={image.src}
                 alt={image.alt}
-                loading="lazy"
+                loading="eager"
                 decoding="async"
               />
-              {/* Bottom text overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent opacity-90 flex flex-col justify-end p-6">
+              {/* Bottom text overlay — Ultra crisp and translucent */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
                 {image.logo ? (
-                  <img src={image.logo} alt={image.title} className="h-10 w-auto object-contain self-start mb-2" />
+                  <img src={image.logo} alt={image.title} className="h-12 md:h-16 w-auto max-w-[85%] object-contain self-start mb-3 drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)]" />
                 ) : (
-                  <h3 className="text-xl md:text-2xl font-black text-white uppercase italic tracking-tighter mb-2">
+                  <h3 className="text-2xl md:text-3xl font-[1000] text-white uppercase italic tracking-tighter mb-2 drop-shadow-2xl">
                     {image.title}
                   </h3>
                 )}
-                <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
-                  {image.alt}
-                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-zinc-200 backdrop-blur-md shadow-md">
+                    {image.alt}
+                  </span>
+                </div>
               </div>
             </SwiperSlide>
           ))}

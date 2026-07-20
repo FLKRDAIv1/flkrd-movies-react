@@ -146,10 +146,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
 
     const backdropSrc = (item.backdrop_path?.startsWith('http') || item.backdrop_path?.startsWith('data:'))
       ? item.backdrop_path
-      : `${IMAGE_BASE_URL}${item.backdrop_path || ''}`;
+      : `${IMAGE_BASE_URL.replace('w1280', 'original')}${item.backdrop_path || ''}`;
 
     const logoSrc = item.logo
-      ? ((item.logo.startsWith('http') || item.logo.startsWith('data:')) ? item.logo : `${IMAGE_BASE_URL.replace('w1280', 'w300')}${item.logo}`)
+      ? ((item.logo.startsWith('http') || item.logo.startsWith('data:')) ? item.logo : `${IMAGE_BASE_URL.replace('w1280', 'w500')}${item.logo}`)
       : undefined;
 
     return {
@@ -169,11 +169,11 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
     const label = [year, genreName, item.vote_average ? `${item.vote_average.toFixed(1)} ★` : ''].filter(Boolean).join(' | ');
 
     const posterSrc = item.poster_path
-      ? ((item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL.replace('w1280', 'w500')}${item.poster_path}`)
-      : ((item.backdrop_path?.startsWith('http') || item.backdrop_path?.startsWith('data:')) ? item.backdrop_path : `${IMAGE_BASE_URL}${item.backdrop_path || ''}`);
+      ? ((item.poster_path.startsWith('http') || item.poster_path.startsWith('data:')) ? item.poster_path : `${IMAGE_BASE_URL.replace('w1280', 'w780')}${item.poster_path}`)
+      : ((item.backdrop_path?.startsWith('http') || item.backdrop_path?.startsWith('data:')) ? item.backdrop_path : `${IMAGE_BASE_URL.replace('w1280', 'original')}${item.backdrop_path || ''}`);
 
     const logoSrc = item.logo
-      ? ((item.logo.startsWith('http') || item.logo.startsWith('data:')) ? item.logo : `${IMAGE_BASE_URL.replace('w1280', 'w300')}${item.logo}`)
+      ? ((item.logo.startsWith('http') || item.logo.startsWith('data:')) ? item.logo : `${IMAGE_BASE_URL.replace('w1280', 'w500')}${item.logo}`)
       : undefined;
 
     return {

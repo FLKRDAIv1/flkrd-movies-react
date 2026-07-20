@@ -326,8 +326,8 @@ const HomePage: React.FC = () => {
             }}
           />
           <img
-            src={`${IMAGE_BASE_URL}${activeItem.backdrop_path}`}
-            className="w-full h-full object-cover scale-110 blur-[50px] transition-all duration-1000 opacity-60"
+            src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${activeItem.backdrop_path}`}
+            className="w-full h-full object-cover scale-110 blur-[40px] saturate-[1.3] transition-all duration-1000 opacity-75"
             alt=""
           />
         </div>
