@@ -384,8 +384,8 @@ const ProfilePage: React.FC = () => {
             // 2. Fallback path: Process as local DataURL if cloud upload is unreached
             if (!finalUrl) {
                 finalUrl = await processAvatarFile(file);
-                await db.saveAvatar('current_user_avatar', finalUrl);
             }
+            await db.saveAvatar('current_user_avatar', finalUrl);
 
             // 3. Update Supabase Auth User Metadata with finalUrl
             await supabase.auth.updateUser({
@@ -804,7 +804,7 @@ const ProfilePage: React.FC = () => {
                                 <input
                                     ref={avatarInputRef}
                                     type="file"
-                                    accept="image/*,.gif"
+                                    accept="image/gif,image/png,image/jpeg,image/webp,image/apng,image/*,.gif"
                                     className="hidden"
                                     onChange={handleAvatarUpload}
                                 />
