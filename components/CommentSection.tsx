@@ -175,7 +175,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
       {user ? (
         <form onSubmit={handleSubmitComment} className="flex gap-3 items-end">
           {/* Current user avatar */}
-          <Avatar url={myAvatarUrl} name={myName} size={38} />
+          <AvatarEffectContainer url={myAvatarUrl} name={myName} email={user?.email} size={38} />
           <div className="flex-1 relative flex items-center">
             <textarea
               rows={2}
