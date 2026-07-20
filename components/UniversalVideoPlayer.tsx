@@ -14,6 +14,7 @@ import { API_KEY } from '../constants';
 import { useNavigate } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
 import { usePlayer } from '../contexts/PlayerContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { Season, SeasonDetails } from '../types';
 import {
     fetchSubtitleEdits,
@@ -218,6 +219,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 }) => {
     const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
     const { isPaused } = usePlayer();
+    const { addNotification } = useNotification();
     const navigate = useNavigate();
     const isIOSDevice = typeof window !== 'undefined' && (
         /iPad|iPhone|iPod/.test(navigator.userAgent) ||

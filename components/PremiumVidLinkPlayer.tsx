@@ -10,6 +10,7 @@ import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 import { useUI } from '../contexts/UIContext';
 import { usePlayer } from '../contexts/PlayerContext';
+import { useNotification } from '../contexts/NotificationContext';
 import { fetchSubtitleEdits, saveSubtitleLineEdit, deleteSubtitleLineEdit, subscribeSubtitleEdits, type SubtitleEditKey } from '../services/subtitleEditService';
 
 import { Season, SeasonDetails } from '../types';
@@ -101,6 +102,7 @@ export default function PremiumVidLinkPlayer({
   );
   const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
   const { isPaused } = usePlayer();
+  const { addNotification } = useNotification();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
