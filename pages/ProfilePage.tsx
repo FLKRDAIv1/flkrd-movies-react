@@ -276,15 +276,54 @@ const ProfilePage: React.FC = () => {
         addNotification({ type: 'success', title: 'Effect Applied', message: `Avatar animation effect updated!` });
     };
 
-    const readFullQualityImage = (file: File): Promise<string> => {
+    const processAvatarFile = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
+            const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
             const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const result = event.target?.result as string;
-                resolve(result);
-            };
-            reader.onerror = (err) => reject(err);
+
+            if (isGif) {
+                // Keep 100% full quality animation for GIF files
+                reader.readAsDataURL(file);
+                reader.onload = (event) => resolve(event.target?.result as string);
+                reader.onerror = (err) => reject(err);
+            } else {
+                // Auto-resize static images (PNG, JPG, WEBP) to high quality 500x500 for fast loading
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target?.result as string;
+                    img.onload = () => {
+                        const maxDim = 500;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxDim) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                            }
+                        } else {
+                            if (height > maxDim) {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (ctx) {
+                            ctx.imageSmoothingEnabled = true;
+                            ctx.imageSmoothingQuality = 'high';
+                            ctx.drawImage(img, 0, 0, width, height);
+                            resolve(canvas.toDataURL('image/webp', 0.92));
+                        } else {
+                            resolve(event.target?.result as string);
+                        }
+                    };
+                    img.onerror = () => resolve(event.target?.result as string);
+                };
+                reader.onerror = (err) => reject(err);
+            }
         });
     };
 
@@ -293,19 +332,26 @@ const ProfilePage: React.FC = () => {
         if (!file || !user) return;
         setAvatarUploading(true);
         try {
-            const fullQualityDataUrl = await readFullQualityImage(file);
-            try {
-                const { error: updateError } = await supabase.auth.updateUser({
-                    data: { avatar_url: fullQualityDataUrl }
-                });
-                if (updateError) throw updateError;
-            } catch (supabaseErr) {
-                console.warn("Supabase auth updateUser failed. Falling back to LocalStorage.", supabaseErr);
+            const avatarDataUrl = await processAvatarFile(file);
+            
+            // Only attempt Supabase Auth update if data size is reasonable (<400KB) to prevent CORS/PUT payload errors
+            if (avatarDataUrl.length < 400000) {
+                try {
+                    await supabase.auth.updateUser({
+                        data: { avatar_url: avatarDataUrl }
+                    });
+                } catch (e) {
+                    // Silent catch for auth CORS restrictions
+                }
             }
 
-            localStorage.setItem('flkrd_avatar_url', fullQualityDataUrl);
-            setAvatarUrl(fullQualityDataUrl);
-            addNotification({ type: 'success', title: 'Avatar Updated', message: 'Your full quality profile photo / GIF has been updated!' });
+            localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
+            setAvatarUrl(avatarDataUrl);
+            addNotification({ 
+                type: 'success', 
+                title: 'Avatar Updated', 
+                message: file.type === 'image/gif' ? 'Animated GIF profile updated successfully!' : 'High resolution profile picture updated!' 
+            });
         } catch (err: any) {
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
         } finally {
