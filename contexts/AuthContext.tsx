@@ -12,6 +12,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (newPassword: string) => Promise<{ error: any }>;
+  signInWithGoogle: () => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +24,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(false);
 
   useEffect(() => {
+    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('recovery')) {
+      setIsPasswordRecovery(true);
+    }
+
     // 1. Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -39,10 +44,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(session?.user ?? null);
 
       if (event === 'PASSWORD_RECOVERY') {
-        // User clicked the reset link — show the new password form
         setIsPasswordRecovery(true);
       } else if (event === 'SIGNED_IN' && isPasswordRecovery) {
-        // They've updated the password — clear recovery mode
         setIsPasswordRecovery(false);
       }
 
@@ -60,19 +63,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
 
   const signUp = async (email: string, password: string, userName: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          user_name: userName,
-        }
-      }
+      options: { data: { user_name: userName } }
     });
     return { error };
   };
@@ -84,23 +83,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const resetPassword = async (email: string) => {
-    const redirectTo = `${window.location.origin}/profile`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
+      redirectTo: `${window.location.origin}/profile`,
     });
     return { error };
   };
 
   const updatePassword = async (newPassword: string) => {
-    const { data, error } = await supabase.auth.updateUser({ password: newPassword });
-    if (!error) {
-      setIsPasswordRecovery(false);
-    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!error) setIsPasswordRecovery(false);
+    return { error };
+  };
+
+  // ── Google OAuth ─────────────────────────────────────────────────────────
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/profile`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
+    });
     return { error };
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isPasswordRecovery, signIn, signUp, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{
+      user, session, loading, isPasswordRecovery,
+      signIn, signUp, signOut, resetPassword, updatePassword, signInWithGoogle
+    }}>
       {children}
     </AuthContext.Provider>
   );

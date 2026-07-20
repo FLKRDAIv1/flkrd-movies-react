@@ -9,6 +9,7 @@ import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { fetchTranslations, fetchTmdbIdFromImdb } from '../services/tmdbService';
 import { useUI } from '../contexts/UIContext';
+import { usePlayer } from '../contexts/PlayerContext';
 import { fetchSubtitleEdits, saveSubtitleLineEdit, deleteSubtitleLineEdit, subscribeSubtitleEdits, type SubtitleEditKey } from '../services/subtitleEditService';
 
 import { Season, SeasonDetails } from '../types';
@@ -39,6 +40,7 @@ interface PremiumVidLinkPlayerProps {
   setActiveSource?: (source: string) => void;
   sources?: any[];
   key?: React.Key;
+  isPip?: boolean;
 }
 
 const containerVariants = {
@@ -89,7 +91,8 @@ export default function PremiumVidLinkPlayer({
   onLoad: onLoadProp,
   activeSource,
   setActiveSource,
-  sources = []
+  sources = [],
+  isPip = false
 }: PremiumVidLinkPlayerProps) {
   const { language } = useTranslation();
   const isIOSDevice = typeof window !== 'undefined' && (
@@ -97,6 +100,7 @@ export default function PremiumVidLinkPlayer({
     (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
   );
   const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
+  const { isPaused } = usePlayer();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
   const [showSubtitles, setShowSubtitles] = useState(true);
@@ -382,6 +386,20 @@ export default function PremiumVidLinkPlayer({
     }
   }, [resolvedTmdbId, tmdbId, imdbId, season, episode]);
 
+  // Sync Play/Pause in PiP mode
+  useEffect(() => {
+    if (isPip && iframeRef.current && iframeRef.current.contentWindow) {
+      const target = iframeRef.current.contentWindow;
+      if (isPaused) {
+        target.postMessage({ event: 'pause' }, '*');
+        target.postMessage(JSON.stringify({ event: 'pause' }), '*');
+      } else {
+        target.postMessage({ event: 'play' }, '*');
+        target.postMessage(JSON.stringify({ event: 'play' }), '*');
+      }
+    }
+  }, [isPaused, isPip]);
+
   // Fetch translations dynamically from TMDB
   useEffect(() => {
     const fetchAllTranslations = async () => {
@@ -513,10 +531,23 @@ export default function PremiumVidLinkPlayer({
           resolvedPublicUrl = `https:${resolvedPublicUrl}`;
         }
 
-        // Save reference in custom_subtitles database table
+        // Save reference in custom_subtitles database table (Failsafe delete-then-insert)
+        try {
+          await supabase
+            .from('custom_subtitles')
+            .delete()
+            .eq('tmdb_id', String(targetId))
+            .eq('media_type', type || 'movie')
+            .eq('language', 'ku')
+            .eq('season', fileSeason)
+            .eq('episode', fileEpisode);
+        } catch (delErr) {
+          console.warn("[VIP-PLAYER] Failsafe delete failed:", delErr);
+        }
+
         const { error: dbErr } = await supabase
           .from('custom_subtitles')
-          .upsert({
+          .insert({
             tmdb_id: String(targetId),
             media_type: type || 'movie',
             language: 'ku',
@@ -524,8 +555,6 @@ export default function PremiumVidLinkPlayer({
             file_name: file.name,
             season: fileSeason,
             episode: fileEpisode
-          }, {
-            onConflict: 'tmdb_id,media_type,language,season,episode'
           });
 
         if (dbErr) throw dbErr;
@@ -712,9 +741,58 @@ export default function PremiumVidLinkPlayer({
         }
       }
       
-      // Use resolved IMDB ID if available, it's MUCH more reliable for OpenSubtitles
-      const results = await subtitleService.searchSubtitles(resolvedImdbId || tmdbId, type, season, episode);
-      setAvailableSubsWithVirtual(results || []);
+      const openSubResults = await subtitleService.searchSubtitles(resolvedImdbId || tmdbId, type, season, episode, 'all', true);
+      const safeResults = openSubResults || [];
+
+      let activeId = resolvedImdbId || tmdbId;
+      if (activeId && activeId.startsWith('tt')) {
+        try {
+          const resolved = await fetchTmdbIdFromImdb(activeId, type);
+          if (resolved) activeId = String(resolved);
+        } catch (e) {}
+      }
+
+      const customSubsList: any[] = [];
+      if (activeId) {
+        try {
+          const { data: dbSubs } = await supabase
+            .from('custom_subtitles')
+            .select('*')
+            .eq('tmdb_id', String(activeId))
+            .eq('media_type', type || 'movie')
+            .in('language', ['ku', 'badini', 'ckb', 'kur'])
+            .eq('season', type === 'tv' ? (season ?? 0) : 0)
+            .eq('episode', type === 'tv' ? (episode ?? 0) : 0);
+
+          if (dbSubs && dbSubs.length > 0) {
+            dbSubs.forEach(dbSub => {
+              let subUrl = dbSub.subtitle_url;
+              if (subUrl.startsWith('//')) {
+                subUrl = `https:${subUrl}`;
+              }
+              const isBadini = dbSub.language === 'badini';
+              const isSorani = dbSub.language === 'ku' || dbSub.language === 'ckb';
+              const labelSuffix = isBadini ? 'Badini' : (isSorani ? 'Sorani' : dbSub.language?.toUpperCase());
+              
+              customSubsList.push({
+                id: `custom-db-${dbSub.id}`,
+                attributes: {
+                  language: dbSub.language || 'ku',
+                  display_name: dbSub.file_name 
+                    ? dbSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') 
+                    : `Kurdish ${labelSuffix} (Verified)`,
+                  url: subUrl,
+                  file_id: 0
+                }
+              });
+            });
+          }
+        } catch (dbErr) {
+          console.warn("[VIP-PLAYER] Failed to query custom subtitles on search:", dbErr);
+        }
+      }
+
+      setAvailableSubsWithVirtual([...customSubsList, ...safeResults]);
       setHasSearchedCloud(true);
     } catch (e) {
       console.warn("[VIP-PLAYER] Sub Search Error:", e);
@@ -739,10 +817,7 @@ export default function PremiumVidLinkPlayer({
             const text = await res.text();
             setVttContent(text);
           } else {
-            // It's a Data URI
-            const base64 = result.split(',')[1];
-            const text = decodeURIComponent(escape(atob(base64)));
-            setVttContent(text);
+            setVttContent(result);
           }
           setCurrentSubId(sub.id);
           setShowSubtitles(true);
@@ -756,10 +831,10 @@ export default function PremiumVidLinkPlayer({
     }
   };
 
-  const handleStartTranslation = async (sub: any) => {
+  const handleStartTranslation = async (sub: any, targetLang: 'ku' | 'badini' = 'ku') => {
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
-    startGlobalTranslation(sub, targetId, type || 'movie', season || 0, episode || 0);
+    startGlobalTranslation(sub, targetId, type || 'movie', season || 0, episode || 0, targetLang);
   };
 
   // Sync with global background subtitle translator
@@ -1550,13 +1625,58 @@ export default function PremiumVidLinkPlayer({
   }, [isPlaying, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
 
   // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
+  useEffect(() => {
+    if (isSimulatedFullscreen) {
+      document.body.classList.add('movie-player-active');
+      document.documentElement.classList.add('movie-player-active');
+    } else {
+      if (!onClose) {
+        document.body.classList.remove('movie-player-active');
+        document.documentElement.classList.remove('movie-player-active');
+      }
+    }
+    return () => {
+      if (!onClose) {
+        document.body.classList.remove('movie-player-active');
+        document.documentElement.classList.remove('movie-player-active');
+      }
+    };
+  }, [isSimulatedFullscreen, onClose]);
+
+  useEffect(() => {
+    const preventTouch = (e: TouchEvent) => {
+      if (isSimulatedFullscreen) {
+        e.preventDefault();
+      }
+    };
+    if (isSimulatedFullscreen) {
+      window.addEventListener('touchmove', preventTouch, { passive: false });
+    }
+    return () => {
+      window.removeEventListener('touchmove', preventTouch);
+    };
+  }, [isSimulatedFullscreen]);
+
+  if (isPip) {
+    return (
+      <div className="w-full h-full relative bg-black select-none overflow-hidden">
+        <iframe
+          ref={iframeRef}
+          src={overrideSrc || videoUrl}
+          className="absolute inset-0 w-full h-full border-0"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          scrolling="no"
+        />
+      </div>
+    );
+  }
 
   return (
     <div 
       ref={containerRef} 
       className={`bg-transparent relative flex flex-col overflow-hidden transition-all duration-300 ${
         isSimulatedFullscreen 
-          ? 'fixed inset-0 w-screen h-screen z-[9999]' 
+          ? 'fixed inset-0 w-screen h-dvh z-[9999] overflow-hidden' 
           : 'w-full h-full'
       }`}
     >

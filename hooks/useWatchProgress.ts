@@ -24,6 +24,7 @@ export const useWatchProgress = ({
   const stringId = String(movieId).replace('custom_', '');
   const userIdRef = useRef<string | null>(null);
   const lastSavedTimeRef = useRef<number>(0);
+  const lastLocalSyncRef = useRef<number>(0); // Throttle localStorage writes to max 1x per 2s
   const progressRef = useRef<{ currentTime: number; duration: number }>({ currentTime: 0, duration: 0 });
   const isLoadedRef = useRef<boolean>(false);
 
@@ -32,6 +33,7 @@ export const useWatchProgress = ({
     progressRef.current = { currentTime: 0, duration: 0 };
     isLoadedRef.current = false;
     lastSavedTimeRef.current = 0;
+    lastLocalSyncRef.current = 0;
 
     // Asynchronously resolve user session once on mount/id change
     const resolveUser = async () => {
@@ -179,10 +181,14 @@ export const useWatchProgress = ({
 
     progressRef.current = { currentTime: time, duration: totalDuration };
 
-    // Always synchronize client-side local cache instantly for smooth active UI updates
-    syncToLocalStorage(time, totalDuration);
-
+    // Throttle localStorage sync: max once every 2s (timeupdate fires ~4x/sec)
     const now = Date.now();
+    const timeSinceLastLocal = now - lastLocalSyncRef.current;
+    if (forceSave || timeSinceLastLocal >= 2000) {
+      lastLocalSyncRef.current = now;
+      syncToLocalStorage(time, totalDuration);
+    }
+
     const timeSinceLastSave = now - lastSavedTimeRef.current;
 
     // Supabase throttle rule: every 10s (10000ms), OR when forced (e.g. pause,ended)

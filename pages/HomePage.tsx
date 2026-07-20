@@ -125,6 +125,8 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
 
 const HomePage: React.FC = () => {
   const { language, t } = useTranslation();
+  const { theme } = useUI();
+  const [activeItem, setActiveItem] = useState<any>(null);
   const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
   const [continueWatchingItems, setContinueWatchingItems] = useState<WatchProgress[]>([]);
   const [recentlyViewedItems, setRecentlyViewedItems] = useState<WatchProgress[]>([]);
@@ -312,7 +314,25 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="pb-40 relative">
-      <HeroBanner />
+      {/* Immersive full-screen ambient backdrop glow synced with active carousel item */}
+      {activeItem && activeItem.backdrop_path && (
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-1000">
+          <div 
+            className="absolute inset-0 z-10 transition-all duration-1000" 
+            style={{
+              background: theme === 'dark' 
+                ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.65) 50%, rgba(7,7,8,0.98) 100%)'
+                : 'linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.65) 50%, rgba(248,249,250,0.98) 100%)'
+            }}
+          />
+          <img
+            src={`${IMAGE_BASE_URL}${activeItem.backdrop_path}`}
+            className="w-full h-full object-cover scale-110 blur-[50px] transition-all duration-1000 opacity-60"
+            alt=""
+          />
+        </div>
+      )}
+      <HeroBanner onActiveItemChange={setActiveItem} />
 
       <div className="relative z-20 mt-8 md:mt-12">
         <AnimatePresence>

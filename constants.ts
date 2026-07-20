@@ -15,9 +15,10 @@ const isLocal = typeof window !== 'undefined' &&
     window.location.hostname.startsWith('192.168.') ||
     window.location.hostname.endsWith('.local'));
 
-export const API_BASE_URL = isLocal ? "/api/tmdb" : "https://api.themoviedb.org/3";
+export const API_BASE_URL = isLocal ? "/api/tmdb" : "https://api.tmdb.org/3";
 export const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 export const IMAGE_BASE_URL_POSTER = "https://image.tmdb.org/t/p/w500";
+export const IMAGE_BASE_URL_THUMB = "https://image.tmdb.org/t/p/w342"; // For card thumbnails — saves ~40% bandwidth vs w500
 export const IMAGE_BASE_URL_LOGO = "https://image.tmdb.org/t/p/w300";
 export const APP_VERSION = "1.8.1";
 

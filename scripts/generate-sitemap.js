@@ -1,5 +1,8 @@
 import fs from 'fs';
 import path from 'path';
+import dns from 'dns';
+
+dns.setDefaultResultOrder('ipv4first');
 
 // Load environment variables locally if not already set (e.g. on Vercel)
 if (!process.env.VITE_TMDB_API_KEY) {
@@ -30,7 +33,7 @@ if (!process.env.VITE_TMDB_API_KEY) {
 }
 
 const API_KEY = process.env.VITE_TMDB_API_KEY || "";
-const BASE_URL = "https://api.themoviedb.org/3";
+const BASE_URL = "https://api.tmdb.org/3";
 const SITEMAP_PATH = path.resolve('public/sitemap.xml');
 
 // Helper to wait to prevent rate limit triggers on TMDB (though they removed the 40reqs/10s limit, good practice)

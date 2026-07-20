@@ -195,7 +195,9 @@ export default async function handler(req, res) {
         };
 
         // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
-        const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || "";
+        const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
+                       process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
+                       "https://script.google.com/macros/s/AKfycbxde4VzWWNB5_X_3U4e_7604PkI-02xFurowcP0fAqLpyZVzGpBbZN_PSIatZTj6f49nQ/exec";
         if (gasUrl) {
             try {
                 const response = await fetch(gasUrl, {
@@ -203,7 +205,8 @@ export default async function handler(req, res) {
                     headers: {
                         'Content-Type': 'text/plain;charset=utf-8'
                     },
-                    body: JSON.stringify({ text, source, target: actualTarget })
+                    body: JSON.stringify({ text, source, target: actualTarget }),
+                    redirect: 'follow'
                 });
 
                 if (response.ok) {

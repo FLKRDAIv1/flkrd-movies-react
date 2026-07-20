@@ -7,10 +7,12 @@ import SettingsModal from './SettingsModal';
 import NotificationInbox from './NotificationInbox';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WatchProgress } from '../types';
-import { IMAGE_BASE_URL_POSTER } from '../constants';
+import { IMAGE_BASE_URL_POSTER, API_KEY } from '../constants';
 import AnimatedThemeToggler from './ui/animated-theme-toggler';
-import StoryReels from './StoryReels';
 import { useAuth } from '../contexts/AuthContext';
+import { cn } from '../lib/utils';
+import { fetchData } from '../services/tmdbService';
+import GooeySearch from './ui/gooey-search';
 
 
 const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
@@ -38,6 +40,17 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
   const renderAvatar = () => {
     if (user) {
+      const localAvatar = localStorage.getItem('flkrd_avatar_url');
+      const avatarUrl = localAvatar || user.user_metadata?.avatar_url;
+      if (avatarUrl) {
+        return (
+          <img 
+            src={avatarUrl} 
+            alt="User Avatar" 
+            className="w-full h-full object-cover rounded-full" 
+          />
+        );
+      }
       const initial = user.user_metadata?.user_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U';
       return (
         <div className="w-full h-full bg-red-600 text-white flex items-center justify-center font-black text-xs">
@@ -173,316 +186,329 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     { path: '/dubbed', labelKey: 'dubbedMovies' },
   ];
 
+  const isDarkNavbar = theme === 'light';
+  
+  const notchBgClass = isDarkNavbar
+    ? "bg-black"
+    : "bg-white";
+
+  const notchStrokeClass = isDarkNavbar 
+    ? "text-zinc-800" 
+    : "text-zinc-200";
+
+  // Dynamic status bar/notch theme-color syncing for PWAs
+  useEffect(() => {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      const headerColor = isDarkNavbar ? '#000000' : '#ffffff';
+      themeColorMeta.setAttribute('content', headerColor);
+    }
+  }, [isDarkNavbar]);
+
   return (
     <>
-      {/* 1. Global Base Styling (Glassmorphism & Fixed Top) */}
+      {/* NotchNavbar Style Header (Outer wrapper always LTR for correct notch shape clip-paths) */}
       <header 
-        className={`global-header fixed top-0 w-full z-50 transition-all duration-500 ${
-          localScrolled 
-            ? (theme === 'light' ? 'shadow-[0_4px_30px_rgba(0,0,0,0.03)]' : 'shadow-[0_4px_30px_rgba(0,0,0,0.4)]')
-            : ''
-        }`}
+        className={cn(
+          "global-header fixed top-0 inset-x-0 z-50 h-16 flex px-0 transition-all duration-300 w-full select-none",
+          localScrolled ? (isDarkNavbar ? 'shadow-[0_4px_30px_rgba(255,255,255,0.03)]' : 'shadow-[0_4px_30px_rgba(0,0,0,0.15)]') : ''
+        )}
+        dir="ltr"
       >
+        {/* Top safe-area status bar background filler */}
         <div 
-          className="absolute inset-0 z-0 transition-all duration-300 overflow-hidden"
-          style={{
-            background: localScrolled 
-              ? (theme === 'light' 
-                  ? `linear-gradient(to bottom, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.75))`
-                  : `linear-gradient(to bottom, rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15}), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95}))`)
-              : 'transparent',
-            backdropFilter: localScrolled ? `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)` : 'none',
-            WebkitBackdropFilter: localScrolled ? `blur(${glassConfig.blurAmount * 0.8}px) saturate(${glassConfig.saturation}%)` : 'none',
-            borderBottomStyle: localScrolled ? 'solid' : 'none',
-            borderBottomColor: localScrolled 
-              ? (theme === 'light' ? `rgba(0, 0, 0, 0.06)` : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity * 0.5})`) 
-              : 'transparent',
-            boxShadow: localScrolled 
-              ? (theme === 'light' 
-                  ? `0 4px 30px rgba(0,0,0,0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)` 
-                  : `
-                      inset 0 1px 0 0 rgba(255, 255, 255, ${0.08 + glassConfig.borderOpacity * 0.25}),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.3)
-                    `) 
-              : 'none'
-          }}
-        >
-          {/* Dynamic GPU-accelerated water sheen overlay */}
-          <div 
-            className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-            style={{
-              background: localScrolled ? `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.1}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)` : 'transparent',
-              opacity: localScrolled ? (glassConfig.displacementScale / 120) * 0.6 : 0,
-              animationDuration: `${40 * (0.35 / elasticity)}s`
-            }}
-          />
+          className={cn("absolute top-0 inset-x-0 z-0 transition-all duration-300 pointer-events-none", notchBgClass)} 
+          style={{ height: 'env(safe-area-inset-top, 0px)' }}
+        />
+        
+        {/* Left Side Bar - Flexible width */}
+        <div className={cn("flex-grow h-10 transition-all duration-300 relative min-w-0", notchBgClass)}>
+          <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+            <line x1="0" y1="39.5" x2="100%" y2="39.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+            <line x1="0" y1="36.5" x2="100%" y2="36.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+          </svg>
         </div>
-        <div className="relative z-10 flex items-center justify-between px-4 md:px-8 py-3 w-full max-w-7xl mx-auto h-14 md:h-18 min-w-0 gap-4" dir="rtl">
+
+        {/* Responsive Notch Container - 3 Slices */}
+        <div className="flex h-16 relative z-10 shrink-0 -ml-px">
           
-          {/* Right (Start) - App Logo & Nav Menu (Desktop/PC View Only) */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8 flex-shrink-0">
-            <Link 
-              to="/" 
-              className="flex items-center gap-2.5 active:scale-95 transition-all select-none focus:outline-none"
-              aria-label="FLKRD Home"
-            >
-              <img 
-                src="/flkrd-logo.png" 
-                alt="FLKRD" 
-                className="h-8 md:h-10 w-auto object-contain" 
+          {/* Left Slice (Corner) */}
+          <div className="w-[50px] h-full relative shrink-0">
+            {/* SVG containing both the background fill and outlines for perfect subpixel anti-aliasing */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
+              <path 
+                d="M -1 0 H 51 V 64 C 25 64 25 40 -1 40 Z" 
+                className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
               />
-              <span className={`text-lg md:text-xl font-[1000] uppercase italic tracking-tighter hidden sm:block ${
-                theme === 'light'
-                  ? 'bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-500 bg-clip-text text-transparent'
-                  : 'bg-gradient-to-r from-white via-white to-gray-500 bg-clip-text text-transparent'
-              }`}>
-                FLKRD
-              </span>
-            </Link>
-
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1.5 font-bold text-sm tracking-wide flex-shrink-0">
-              {navLinks.map((link) => (
-                <NavLink
-                  key={link.path}
-                  to={link.path}
-                  className={({ isActive }) => 
-                    `transition-all duration-300 relative px-3.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest border flex items-center justify-center ${
-                      isActive 
-                        ? 'text-red-500 bg-red-500/10 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]' 
-                        : 'text-sec-text hover:text-main-text border-transparent hover:bg-box-bg'
-                    }`
-                  }
-                >
-                  {t(link.labelKey as any)}
-                </NavLink>
-              ))}
-            </nav>
+              <path d="M0 39.5 C25 39.5 25 63.5 50 63.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+              <path d="M0 36.5 C25 36.5 25 60.5 50 60.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+            </svg>
           </div>
 
-          {/* Mobile Layout (Hidden on Desktop) */}
-          <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-3">
-            {/* Logo */}
-            <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
-              <img 
-                src="/flkrd-logo.png" 
-                alt="FLKRD" 
-                className="h-7 w-auto object-contain" 
-              />
-            </Link>
+          {/* Center Slice (Flexible Content Area) */}
+          <div className="flex h-full relative min-w-[200px] sm:min-w-[260px] md:min-w-[700px] lg:min-w-[900px] -ml-px">
+             {/* Background & Lines Layer */}
+             <div className={cn("absolute inset-0 transition-all duration-300", notchBgClass)}>
+                 <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                   <line x1="0" y1="63.5" x2="100%" y2="63.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+                   <line x1="0" y1="60.5" x2="100%" y2="60.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+                 </svg>
+             </div>
 
-            {/* Search Input with glass border */}
-            <div className="relative flex-1 max-w-[140px] sm:max-w-[180px] flex items-center group">
-              <input
-                type="text"
-                placeholder="گەڕان..."
-                value={headerSearchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setHeaderSearchQuery(val);
-                  if (val.trim()) {
-                    navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
-                  } else {
-                    navigate('/search', { replace: true });
-                  }
-                }}
-                className="w-full h-9 pr-3 pl-8 text-[10px] font-bold text-main-text placeholder-zinc-500 bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 border border-border-color focus:border-brand/30 rounded-full focus:outline-none focus:ring-1 focus:ring-brand/20 transition-all duration-300 backdrop-blur-md text-right"
-              />
-              <Search size={11} className="absolute left-2.5 text-sec-text group-focus-within:text-brand transition-colors pointer-events-none" />
-              {headerSearchQuery && (
-                <button
-                  onClick={() => {
-                    setHeaderSearchQuery('');
-                    if (pathname.startsWith('/search')) {
-                      navigate('/search', { replace: true });
-                    }
-                  }}
-                  className="absolute left-6 text-sec-text hover:text-main-text"
-                >
-                  <X size={10} />
-                </button>
-              )}
-            </div>
+             {/* Content Layer (Inner container has dir="rtl" to preserve Kurdish text flows) */}
+             <div className="relative w-full h-full flex items-end justify-between pb-2 px-4 md:px-6" dir="rtl">
+               
+               {/* 1. Desktop Nav & Logo (Right aligned in RTL) */}
+               <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+                 {/* Logo */}
+                 <Link 
+                   to="/" 
+                   className="flex items-center gap-2 active:scale-95 transition-all select-none focus:outline-none"
+                   aria-label="FLKRD Home"
+                 >
+                   <img 
+                     src="/flkrd-logo.png" 
+                     alt="FLKRD" 
+                     className="h-8 w-auto object-contain" 
+                   />
+                   <span className={cn(
+                     "text-base font-black uppercase italic tracking-tighter hidden lg:block",
+                     isDarkNavbar 
+                       ? "bg-gradient-to-r from-white via-white to-gray-500 bg-clip-text text-transparent"
+                       : "bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-500 bg-clip-text text-transparent"
+                   )}>
+                     FLKRD
+                   </span>
+                 </Link>
 
-            {/* Mobile Actions Container */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Continue button text-only */}
-              <button
-                onClick={() => navigate('/continue-watching')}
-                className="flex items-center justify-center bg-box-bg border border-border-color text-main-text px-3 h-9 rounded-full text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all"
-              >
-                بەردەوامبە
-              </button>
+                 {/* Desktop Navigation Links */}
+                 <nav className="flex items-center gap-1 font-bold text-xs tracking-wide">
+                   {navLinks.map((link) => (
+                     <NavLink
+                       key={link.path}
+                       to={link.path}
+                       className={({ isActive }) => 
+                         cn(
+                           "transition-all duration-300 relative px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border flex items-center justify-center",
+                           isActive 
+                             ? 'text-red-500 bg-red-500/10 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]' 
+                             : (isDarkNavbar 
+                                 ? 'text-zinc-400 hover:text-white border-transparent hover:bg-zinc-900/60' 
+                                 : 'text-zinc-600 hover:text-black border-transparent hover:bg-zinc-100')
+                         )
+                       }
+                     >
+                       {t(link.labelKey as any)}
+                     </NavLink>
+                   ))}
+                 </nav>
+               </div>
 
-              {/* Avatar with halo */}
-              <div 
-                onClick={() => navigate('/profile')}
-                className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color cursor-pointer active:scale-95 flex items-center justify-center"
-              >
-                {renderAvatar()}
-              </div>
-
-              {/* Play icon button */}
-              <button
-                onClick={() => navigate('/continue-watching')}
-                className="w-9 h-9 rounded-full bg-box-bg border border-border-color text-main-text flex items-center justify-center active:scale-95 transition-all hover:bg-zinc-200/50 dark:hover:bg-white/10"
-              >
-                <PlayCircle size={16} className="text-main-text" />
-              </button>
-
-              {/* Hamburger drawer trigger (moved to leftmost position) */}
-              <button
-                onClick={() => setIsDrawerOpen(true)}
-                className="w-9 h-9 flex items-center justify-center text-main-text focus:outline-none active:scale-90"
-                aria-label="Open Menu"
-              >
-                <Menu size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Desktop Left (End) - Utility & Profile Capsule (Hidden on Mobile) */}
-          <div className="hidden md:flex items-center gap-3.5 flex-shrink-0">
-            
-            {/* Continue Watching Pill CTA with Conic Border Spin */}
-            {!isDubPage && (
-              <button
-                onClick={() => navigate('/continue-watching')}
-                className="relative overflow-hidden flex items-center gap-2.5 bg-red-600 hover:bg-red-500 text-white px-5.5 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-[0_0_20px_rgba(220,38,38,0.35)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] active:scale-95 border border-red-500/30"
-                aria-label={t('continueWatching')}
-              >
-                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-full opacity-50">
-                  <div 
-                    className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center animate-[neon-border-spin_3s_linear_infinite]"
-                    style={{
-                      background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
+               {/* 2. Desktop Left (End) - Utility & Profile Capsule (Left aligned in RTL) */}
+               <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+                 
+                  {/* Real-time Search Input Capsule using GooeySearch */}
+                  <GooeySearch
+                    value={headerSearchQuery}
+                    onChange={(val) => {
+                      setHeaderSearchQuery(val);
+                      if (val.trim()) {
+                        navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
+                      } else {
+                        navigate('/search', { replace: true });
+                      }
                     }}
+                    onSearch={async (query) => {
+                      if (!query.trim()) return [];
+                      try {
+                        const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
+                        const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+                        const data = await fetchData(endpoint, language);
+                        if (data && Array.isArray(data)) {
+                          return data
+                            .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.title || item.name))
+                            .map((item: any) => item.title || item.name);
+                        }
+                      } catch (e) {
+                        console.error(e);
+                      }
+                      return [];
+                    }}
+                    onSelect={(item) => {
+                      setHeaderSearchQuery(item);
+                      navigate(`/search?query=${encodeURIComponent(item)}`, { replace: true });
+                    }}
+                    placeholder={language === 'ku' || language === 'badini' ? 'گەڕان...' : 'Search...'}
+                    buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
                   />
-                  <div className="absolute inset-[1px] rounded-full bg-red-600 z-1" />
-                </div>
 
-                <span className="relative z-10 flex items-center gap-2">
-                  <span className="italic">{t('continueWatching')}</span>
-                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_8px_white]" />
-                </span>
-              </button>
-            )}
+                 {/* Consolidated User Profile Capsule with Dropdown Menu */}
+                 <div className="relative" ref={profileMenuRef}>
+                   <div 
+                     onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                     className={cn(
+                       "flex items-center gap-2 p-0.5 border rounded-full cursor-pointer transition-all select-none",
+                       isDarkNavbar 
+                         ? "bg-zinc-900 border-zinc-800 hover:bg-zinc-800" 
+                         : "bg-zinc-100 border-zinc-200 hover:bg-zinc-200"
+                     )}
+                   >
+                     <div className={cn(
+                       "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center",
+                       isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
+                     )}>
+                       {renderAvatar()}
+                     </div>
+                   </div>
 
-            {/* Real-time Search Input Capsule */}
-            <div className="relative flex items-center group">
-              <input
-                type="text"
-                placeholder="گەڕان..."
-                value={headerSearchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setHeaderSearchQuery(val);
-                  if (val.trim()) {
-                    navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
-                  } else {
-                    navigate('/search', { replace: true });
-                  }
-                }}
-                className="w-48 lg:w-60 h-10 pr-4 pl-10 text-xs font-bold text-main-text placeholder-zinc-500 bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 border border-border-color focus:border-brand/30 rounded-full focus:outline-none focus:ring-1 focus:ring-brand/20 transition-all duration-300 backdrop-blur-md text-right"
-              />
-              <Search size={14} className="absolute left-3.5 text-sec-text group-focus-within:text-brand transition-colors pointer-events-none" />
-              {headerSearchQuery && (
-                <button
-                  onClick={() => {
-                    setHeaderSearchQuery('');
-                    if (pathname.startsWith('/search')) {
-                      navigate('/search', { replace: true });
-                    }
-                  }}
-                  className="absolute left-9 text-sec-text hover:text-main-text"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+                   {/* Profile Dropdown Menu */}
+                   <AnimatePresence>
+                     {isProfileDropdownOpen && (
+                       <motion.div
+                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                         animate={{ opacity: 1, y: 0, scale: 1 }}
+                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                         className="absolute left-0 mt-2 w-40 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
+                       >
+                         <button
+                           onClick={() => {
+                             setIsProfileDropdownOpen(false);
+                             navigate('/profile');
+                           }}
+                           className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                         >
+                           <User size={14} className="text-sec-text" />
+                           <span>{t('profile') || 'Profile'}</span>
+                         </button>
 
-            {/* Consolidated User Profile Capsule with Dropdown Menu */}
-            <div className="relative" ref={profileMenuRef}>
-              <div 
-                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="flex items-center gap-2 p-1 bg-box-bg border border-border-color rounded-full cursor-pointer hover:bg-zinc-200/50 dark:hover:bg-white/10 transition-all select-none"
-              >
-                {/* Avatar Image with white Halo */}
-                <div className="relative w-8 h-8 rounded-full overflow-hidden border border-border-color shadow-md ring-1 ring-border-color flex items-center justify-center">
-                  {renderAvatar()}
-                </div>
-                {/* Minimalist stacked quick icons inside the capsule */}
-                <div className="hidden lg:flex items-center gap-1.5 px-2 text-sec-text">
-                  <Cog size={12} className="hover:text-main-text" />
-                  <Moon size={12} className="hover:text-main-text" />
-                  <History size={12} className="hover:text-main-text" />
-                </div>
-              </div>
+                         <button
+                           onClick={() => {
+                             setIsProfileDropdownOpen(false);
+                             setIsSettingsOpen(true);
+                           }}
+                           className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                         >
+                           <Cog size={14} className="text-sec-text" />
+                           <span>Settings</span>
+                         </button>
 
-              {/* Profile Dropdown Menu */}
-              <AnimatePresence>
-                {isProfileDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute left-0 mt-3 w-40 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
-                  >
-                    <button
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        navigate('/profile');
-                      }}
-                      className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                    >
-                      <User size={14} className="text-sec-text" />
-                      <span>{t('profile') || 'Profile'}</span>
-                    </button>
+                         <button
+                           onClick={() => {
+                             setIsProfileDropdownOpen(false);
+                             navigate('/dubbed');
+                           }}
+                           className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                         >
+                           <Sparkles size={14} className="text-sec-text" />
+                           <span>Dashboard</span>
+                         </button>
+                       </motion.div>
+                     )}
+                   </AnimatePresence>
+                 </div>
+               </div>
 
-                    <button
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        setIsSettingsOpen(true);
-                      }}
-                      className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                    >
-                      <Cog size={14} className="text-sec-text" />
-                      <span>Settings</span>
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        navigate('/dubbed');
-                      }}
-                      className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
-                    >
-                      <Sparkles size={14} className="text-sec-text" />
-                      <span>Dashboard</span>
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+               {/* 3. Mobile Layout (Hidden on Desktop) */}
+               <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-3">
+                 {/* Logo */}
+                 <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
+                   <img 
+                     src="/flkrd-logo.png" 
+                     alt="FLKRD" 
+                     className="h-7 w-auto object-contain" 
+                   />
+                 </Link>
+
+                 {/* Mobile Search Input using GooeySearch */}
+                 <GooeySearch
+                    value={headerSearchQuery}
+                    onChange={(val) => {
+                      setHeaderSearchQuery(val);
+                      if (val.trim()) {
+                        navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
+                      } else {
+                        navigate('/search', { replace: true });
+                      }
+                    }}
+                    onSearch={async (query) => {
+                      if (!query.trim()) return [];
+                      try {
+                        const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
+                        const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+                        const data = await fetchData(endpoint, language);
+                        if (data && Array.isArray(data)) {
+                          return data
+                            .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.title || item.name))
+                            .map((item: any) => item.title || item.name);
+                        }
+                      } catch (e) {
+                        console.error(e);
+                      }
+                      return [];
+                    }}
+                    onSelect={(item) => {
+                      setHeaderSearchQuery(item);
+                      navigate(`/search?query=${encodeURIComponent(item)}`, { replace: true });
+                    }}
+                    placeholder={language === 'ku' || language === 'badini' ? 'گەڕان...' : 'Search...'}
+                    buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
+                  />
+
+                 {/* Mobile Menu Action Triggers */}
+                 <div className="flex items-center gap-2 flex-shrink-0">
+                   {/* Avatar Link */}
+                   <div 
+                     onClick={() => navigate('/profile')}
+                     className={cn(
+                       "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer",
+                       isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
+                     )}
+                   >
+                     {renderAvatar()}
+                   </div>
+
+                   {/* Hamburger Menu Icon */}
+                   <button
+                     onClick={() => setIsDrawerOpen(true)}
+                     className={cn(
+                       "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90",
+                       isDarkNavbar ? "text-white" : "text-black"
+                     )}
+                     aria-label="Open Menu"
+                   >
+                     <Menu size={16} />
+                   </button>
+                 </div>
+               </div>
+
+             </div>
           </div>
 
-      </div>
+          {/* Right Slice (Corner) */}
+          <div className="w-[50px] h-full relative shrink-0 -ml-px">
+            {/* SVG containing both the background fill and outlines for perfect subpixel anti-aliasing */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
+              <path 
+                d="M -1 0 H 51 V 40 C 25 40 25 64 -1 64 Z" 
+                className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
+              />
+              <path d="M0 63.5 C25 63.5 25 39.5 50 39.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+              <path d="M0 60.5 C25 60.5 25 36.5 50 36.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+            </svg>
+          </div>
 
-        {/* Stories Sub-Row (Only on HomePage, at the top of the page) */}
-        <AnimatePresence>
-          {isHomePage && !localScrolled && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="bg-transparent"
-            >
-              <StoryReels size="sm" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
+
+        {/* Right Side Bar - Flexible width */}
+        <div className={cn("flex-grow h-10 transition-all duration-300 relative min-w-0 -ml-px", notchBgClass)}>
+          <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+            <line x1="0" y1="39.5" x2="100%" y2="39.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+            <line x1="0" y1="36.5" x2="100%" y2="36.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+          </svg>
+        </div>
       </header>
+
+
 
       {/* Mobile Slide-Over Menu Drawer */}
       <AnimatePresence>
@@ -588,26 +614,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
               {/* Drawer Quick Controls */}
               <div className="mt-6 space-y-3">
-                {isPerformanceMode && (
-                  <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-2.5xl shadow-[0_0_15px_rgba(52,199,89,0.1)]">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-green-500/20 flex items-center justify-center text-green-400">
-                        <Zap className="w-4 h-4 fill-current animate-pulse" />
-                      </div>
-                      <div className="text-left">
-                        <span className="block text-[10px] font-black uppercase tracking-wider text-green-400">
-                          {(language === 'ku' || language === 'badini') ? '٦٠ FPS چالاکە' : '60 FPS Turbo'}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setIsPerformanceMode(false)}
-                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-md focus:outline-none"
-                    >
-                      {(language === 'ku' || language === 'badini') ? 'کوزاندنەوە' : 'Turn OFF'}
-                    </button>
-                  </div>
-                )}
+
                 {/* Theme Toggler row */}
                 <div className="flex items-center justify-between p-3.5 bg-box-bg border border-border-color rounded-2.5xl">
                   <div className="flex items-center gap-3">

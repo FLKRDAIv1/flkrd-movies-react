@@ -21,6 +21,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
+import { usePlayer } from '../contexts/PlayerContext';
 import { subtitleService } from '../services/subtitleService';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { useLocalUser } from '../hooks/useLocalUser';
@@ -73,6 +74,8 @@ const DetailPage: React.FC = () => {
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const { activeVideo, setActiveVideo, isPipActive, setIsPipActive, pipTime, setPipTime, setIsPaused } = usePlayer();
+  const isPlayingRef = useRef(false);
   const playerModalRef = useRef<HTMLDivElement>(null);
 
   const [isUpcomingUnlocked, setIsUpcomingUnlocked] = useState(false);
@@ -393,14 +396,25 @@ const DetailPage: React.FC = () => {
     }
     const duration = lastResolvedDurationRef.current || data.duration || (content?.runtime ? content.runtime * 60 : 0) || 7200;
 
+    // Sync global PiP state
+    setPipTime(time);
+    if (data.paused !== undefined) {
+      setIsPaused(data.paused);
+      isPlayingRef.current = !data.paused;
+    }
+
     if (time > 0) {
       updateProgress(time, duration);
     } else if (data.event === 'pause' || data.event === 'ended') {
       // Force save on pause/end even without duration
       const t = data.currentTime || data.time || 0;
       if (t > 0) updateProgress(t, duration);
+      if (data.event === 'pause') {
+        setIsPaused(true);
+        isPlayingRef.current = false;
+      }
     }
-  }, [updateProgress, content]);
+  }, [updateProgress, content, setPipTime, setIsPaused]);
 
   useEffect(() => {
     try {
@@ -419,6 +433,55 @@ const DetailPage: React.FC = () => {
     window.addEventListener('banned-list-updated', handleBanUpdate);
     return () => window.removeEventListener('banned-list-updated', handleBanUpdate);
   }, [id, navigate, addNotification]);
+
+  // ── Picture-in-Picture Sync Effects ──
+  useEffect(() => {
+    return () => {
+      // Trigger PiP only if currently playing when page unmounts
+      if (isPlayingRef.current) {
+        setIsPipActive(true);
+      }
+    };
+  }, [setIsPipActive]);
+
+  useEffect(() => {
+    if (isPlayingRef.current && content) {
+      setActiveVideo(prev => prev ? {
+        ...prev,
+        activeSource: activeSource,
+        src: getSourceUrl(activeSource, id!, 'movie', undefined, undefined, pipTime, accentColor, subtitleUrl || undefined)
+      } : null);
+    }
+  }, [activeSource, content, id, accentColor, subtitleUrl, pipTime, setActiveVideo]);
+
+  useEffect(() => {
+    if (location.state?.initialProgress !== undefined && content) {
+      const progress = Number(location.state.initialProgress);
+      setInitialProgress(progress);
+      setIsPlayerLoading(true);
+      setIsPlayerModalOpen(true);
+      isPlayingRef.current = true;
+
+      setActiveVideo({
+        tmdbId: id!,
+        type: 'movie',
+        title: content.title,
+        activeSource: activeSource,
+        subtitleUrl: subtitleUrl || undefined,
+        imdbId: imdbId || content?.imdb_id || undefined,
+        sources: sources,
+        backdropPath: content.backdrop_path,
+        accentColor: accentColor,
+        src: getSourceUrl(activeSource, id!, 'movie', undefined, undefined, progress, accentColor, subtitleUrl || undefined)
+      });
+      setPipTime(progress);
+      setIsPaused(false);
+      setIsPipActive(false);
+
+      // Clear state so refreshing doesn't auto-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, content, id, activeSource, subtitleUrl, imdbId, sources, accentColor, navigate, setActiveVideo, setIsPipActive, setPipTime]);
 
   useEffect(() => {
     const fetchContentDetails = async () => {
@@ -510,7 +573,7 @@ const DetailPage: React.FC = () => {
                 .select('subtitle_url')
                 .eq('tmdb_id', String(id))
                 .eq('media_type', 'movie')
-                .eq('language', 'ku')
+                .eq('language', language === 'badini' ? 'badini' : 'ku')
                 .eq('season', 0)
                 .eq('episode', 0)
                 .maybeSingle();
@@ -568,10 +631,56 @@ const DetailPage: React.FC = () => {
     };
   }, [isPlayerModalOpen]);
 
-  const handlePlayClick = () => {
+  const handlePlayClick = async () => {
     const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
     const saved = progressData.find((p: any) => p.id === content?.id && p.type === 'movie');
-    setInitialProgress(saved ? saved.progress : 0);
+    const startProgress = saved ? saved.progress : 0;
+    setInitialProgress(startProgress);
+
+    setIsPlayerLoading(true);
+    setIsPlayerModalOpen(true);
+
+    // Fetch Kurdish Subtitle first from Supabase to prevent asynchronous state lag
+    let activeSubUrl = null;
+    try {
+      const { data } = await supabase
+        .from('custom_subtitles')
+        .select('subtitle_url')
+        .eq('tmdb_id', String(id))
+        .eq('media_type', 'movie')
+        .eq('language', language === 'badini' ? 'badini' : 'ku')
+        .eq('season', 0)
+        .eq('episode', 0)
+        .maybeSingle();
+      if (data && data.subtitle_url) {
+        activeSubUrl = data.subtitle_url;
+        if (activeSubUrl.startsWith('//')) {
+          activeSubUrl = `https:${activeSubUrl}`;
+        }
+      }
+    } catch (dbErr) {
+      console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);
+    }
+
+    setSubtitleUrl(activeSubUrl);
+
+    // Setup active video globally for PiP tracking
+    setActiveVideo({
+      tmdbId: id!,
+      type: 'movie',
+      title: content.title,
+      activeSource: activeSource,
+      subtitleUrl: activeSubUrl || undefined,
+      imdbId: imdbId || content?.imdb_id || undefined,
+      sources: sources,
+      backdropPath: content.backdrop_path,
+      accentColor: accentColor,
+      src: getSourceUrl(activeSource, id!, 'movie', undefined, undefined, startProgress, accentColor, activeSubUrl || undefined)
+    });
+    setPipTime(startProgress);
+    setIsPaused(false);
+    setIsPipActive(false);
+    isPlayingRef.current = true;
 
     // Attempt immediate native fullscreen request on user gesture
     try {
@@ -595,6 +704,9 @@ const DetailPage: React.FC = () => {
 
   const handleClosePlayer = () => {
     setIsPlayerModalOpen(false);
+    isPlayingRef.current = false;
+    setActiveVideo(null);
+    setIsPipActive(false);
     if (document.fullscreenElement) {
       const exit = document.exitFullscreen || 
                    (document as any).webkitExitFullscreen || 
@@ -628,9 +740,14 @@ const DetailPage: React.FC = () => {
 
   return (
     <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
-      <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
-        <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} className="w-full h-full object-cover blur-[140px] scale-150" alt="" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
+      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
+        <img 
+          src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
+          className="w-full h-full object-cover scale-110" 
+          style={{ filter: 'blur(30px) brightness(0.35) saturate(1.5)' }} 
+          alt="" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/40 to-[var(--bg-primary)]"></div>
       </div>
 
       <AnimatePresence>
@@ -654,7 +771,8 @@ const DetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[9999]" dir="ltr">
+          <Portal id="movie-player-portal">
+            <motion.div ref={playerModalRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[9999]" dir="ltr">
             <div className="w-full h-full relative bg-transparent overflow-hidden">
               {activeSource === 'FLKRD SERVER 2' ? (
                 <PremiumVidLinkPlayer
@@ -897,6 +1015,7 @@ const DetailPage: React.FC = () => {
               </AnimatePresence>
             </div>
           </motion.div>
+          </Portal>
         )}
       </AnimatePresence>
 

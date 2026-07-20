@@ -14,10 +14,12 @@ import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } f
 import { SkeletonDetailPage } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
+import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
+import { usePlayer } from '../contexts/PlayerContext';
 import Spinner from '../components/Spinner';
 import { subtitleService } from '../services/subtitleService';
 import { bannedService } from '../services/bannedService';
@@ -76,6 +78,9 @@ const TVDetailPage: React.FC = () => {
   const [content, setContent] = useState<any>(location.state?.customData || null);
   const [loading, setLoading] = useState(!location.state?.customData);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
+  const { activeVideo, setActiveVideo, isPipActive, setIsPipActive, pipTime, setPipTime, setIsPaused } = usePlayer();
+  const isPlayingRef = useRef(false);
+  const playerModalRef = useRef<HTMLDivElement>(null);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
   const [actorDetails, setActorDetails] = useState<any | null>(null);
@@ -261,53 +266,35 @@ const TVDetailPage: React.FC = () => {
   }, [subtitleUrl]);
 
 
-  // [SUBTITLE SYNC] Fetch episode-specific subtitles
+  // [SUBTITLE SYNC] Pre-fetch Kurdish subtitle for current selected episode to update sources lists
   useEffect(() => {
-    const fetchEpisodeSubtitles = async () => {
-      if (!id || !isPlayerModalOpen) return;
-      setSubtitleUrl(null); // Reset for new episode
+    const preFetchSubtitle = async () => {
+      if (!id) return;
       try {
-        // Check Supabase custom_subtitles first
-        let supabaseSubUrl = null;
-        try {
-          const { data } = await supabase
-            .from('custom_subtitles')
-            .select('subtitle_url')
-            .eq('tmdb_id', String(id))
-            .eq('media_type', 'tv')
-            .eq('language', 'ku')
-            .eq('season', selectedSeason)
-            .eq('episode', selectedEpisode)
-            .maybeSingle();
-          if (data && data.subtitle_url) {
-            supabaseSubUrl = data.subtitle_url;
-            if (supabaseSubUrl.startsWith('//')) {
-              supabaseSubUrl = `https:${supabaseSubUrl}`;
-            }
-          }
-        } catch (dbErr) {
-          console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);
-        }
-
-        if (supabaseSubUrl) {
-          console.log(`[SUBTITLE SYNC] S${selectedSeason}E${selectedEpisode} Custom Kurdish Track from Supabase:`, supabaseSubUrl);
-          setSubtitleUrl(supabaseSubUrl);
+        const { data } = await supabase
+          .from('custom_subtitles')
+          .select('subtitle_url')
+          .eq('tmdb_id', String(id))
+          .eq('media_type', 'tv')
+          .eq('language', language === 'badini' ? 'badini' : 'ku')
+          .eq('season', selectedSeason)
+          .eq('episode', selectedEpisode)
+          .maybeSingle();
+        if (data && data.subtitle_url) {
+          let url = data.subtitle_url;
+          if (url.startsWith('//')) url = `https:${url}`;
+          setSubtitleUrl(url);
           const ranked = getRankedSources(true);
           setSources(ranked);
-        } else {
-          // Fetch IMDb ID for player use if needed, but do not set default subtitleUrl prop in parent
-          fetchExternalIds(id, 'tv').then(externalIds => {
-            if (externalIds && externalIds.imdb_id) {
-              setImdbId(externalIds.imdb_id);
-            }
-          }).catch(() => {});
+          return;
         }
-      } catch (e) {
-        console.warn("[SUBTITLE SYNC] Error fetching TV tracks:", e);
+      } catch (err) {
+        console.warn("[TV-DETAIL] Pre-fetch sub error:", err);
       }
+      setSubtitleUrl(null);
     };
-    fetchEpisodeSubtitles();
-  }, [id, selectedSeason, selectedEpisode, isPlayerModalOpen]);
+    preFetchSubtitle();
+  }, [id, selectedSeason, selectedEpisode, language]);
 
   const toggleBingeMode = () => {
     const newState = !isBingeEnabled;
@@ -369,11 +356,14 @@ const TVDetailPage: React.FC = () => {
   useEffect(() => {
     if (isPlayerModalOpen) {
       document.body.classList.add('movie-player-active');
+      document.documentElement.classList.add('movie-player-active');
     } else {
       document.body.classList.remove('movie-player-active');
+      document.documentElement.classList.remove('movie-player-active');
     }
     return () => {
       document.body.classList.remove('movie-player-active');
+      document.documentElement.classList.remove('movie-player-active');
     };
   }, [isPlayerModalOpen]);
 
@@ -427,12 +417,24 @@ const TVDetailPage: React.FC = () => {
   const handlePlayerProgress = useCallback((data: any) => {
     // Accept any event with a valid currentTime — covers VidKing, Videasy, VidLink, etc.
     const time = data.currentTime || data.time || 0;
+
+    // Sync global PiP state
+    setPipTime(time);
+    if (data.paused !== undefined) {
+      setIsPaused(data.paused);
+      isPlayingRef.current = !data.paused;
+    }
+
     if (time > 0) {
       updateProgress(data);
     } else if (data.event === 'pause' || data.event === 'ended') {
       updateProgress(data);
+      if (data.event === 'pause') {
+        setIsPaused(true);
+        isPlayingRef.current = false;
+      }
     }
-  }, [updateProgress]);
+  }, [updateProgress, setPipTime, setIsPaused]);
 
   const fetchSeasonDetails = useCallback(async (seasonNum: number) => {
     setSeasonDetails(null);
@@ -452,6 +454,62 @@ const TVDetailPage: React.FC = () => {
     window.addEventListener('banned-list-updated', handleBanUpdate);
     return () => window.removeEventListener('banned-list-updated', handleBanUpdate);
   }, [id, navigate, addNotification]);
+
+  // ── Picture-in-Picture Sync Effects ──
+  useEffect(() => {
+    return () => {
+      // Trigger PiP only if currently playing when page unmounts
+      if (isPlayingRef.current) {
+        setIsPipActive(true);
+      }
+    };
+  }, [setIsPipActive]);
+
+  useEffect(() => {
+    if (isPlayingRef.current && content) {
+      setActiveVideo(prev => prev ? {
+        ...prev,
+        activeSource: activeSource,
+        src: getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, pipTime, accentColor, subtitleUrl || undefined)
+      } : null);
+    }
+  }, [activeSource, content, id, selectedSeason, selectedEpisode, accentColor, subtitleUrl, pipTime, setActiveVideo]);
+
+  useEffect(() => {
+    if (location.state?.initialProgress !== undefined && content) {
+      const progress = Number(location.state.initialProgress);
+      const restoredSeason = activeVideo?.season || selectedSeason;
+      const restoredEpisode = activeVideo?.episode || selectedEpisode;
+
+      setSelectedSeason(restoredSeason);
+      setSelectedEpisode(restoredEpisode);
+      setInitialProgress(progress);
+      setIsPlayerLoading(true);
+      setIsPlayerModalOpen(true);
+      isPlayingRef.current = true;
+
+      setActiveVideo({
+        tmdbId: id!,
+        type: 'tv',
+        title: content.name,
+        activeSource: activeSource,
+        subtitleUrl: subtitleUrl || undefined,
+        imdbId: imdbId || content?.imdb_id || undefined,
+        sources: sources,
+        backdropPath: content.backdrop_path,
+        accentColor: accentColor,
+        season: restoredSeason,
+        episode: restoredEpisode,
+        src: getSourceUrl(activeSource, id!, 'tv', restoredSeason, restoredEpisode, progress, accentColor, subtitleUrl || undefined)
+      });
+      setPipTime(progress);
+      setIsPaused(false);
+      setIsPipActive(false);
+
+      // Clear state so refreshing doesn't auto-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, content, id, activeSource, subtitleUrl, imdbId, sources, accentColor, navigate, setActiveVideo, setIsPipActive, setPipTime, activeVideo, selectedSeason, selectedEpisode]);
 
   useEffect(() => {
     setContent(null);
@@ -541,18 +599,72 @@ const TVDetailPage: React.FC = () => {
     }
   }, [id, language, fetchSeasonDetails]);
 
-  const handlePlayClick = (s?: number, e?: number) => {
+  const handlePlayClick = async (s?: number, e?: number) => {
+    const targetSeason = s || selectedSeason;
+    const targetEpisode = e || selectedEpisode;
     if (s) setSelectedSeason(s);
     if (e) setSelectedEpisode(e);
 
     const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-    const saved = progressData.find((p: any) => p.id === content.id && p.season === (s || selectedSeason) && p.episode === (e || selectedEpisode));
-    setInitialProgress(saved ? saved.progress : 0);
+    const saved = progressData.find((p: any) => p.id === content.id && p.season === targetSeason && p.episode === targetEpisode);
+    const startProgress = saved ? saved.progress : 0;
+    setInitialProgress(startProgress);
 
     setIsPlayerLoading(true);
     setIsPlayerModalOpen(true);
     setShowBingeCountdown(false);
     if (s && s !== selectedSeason) fetchSeasonDetails(s);
+
+    // Fetch Kurdish Subtitle first from Supabase to prevent asynchronous state lag
+    let activeSubUrl = null;
+    try {
+      const { data } = await supabase
+        .from('custom_subtitles')
+        .select('subtitle_url')
+        .eq('tmdb_id', String(id))
+        .eq('media_type', 'tv')
+        .eq('language', language === 'badini' ? 'badini' : 'ku')
+        .eq('season', targetSeason)
+        .eq('episode', targetEpisode)
+        .maybeSingle();
+      if (data && data.subtitle_url) {
+        activeSubUrl = data.subtitle_url;
+        if (activeSubUrl.startsWith('//')) {
+          activeSubUrl = `https:${activeSubUrl}`;
+        }
+      }
+    } catch (dbErr) {
+      console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);
+    }
+
+    setSubtitleUrl(activeSubUrl);
+
+    // Setup active video globally for PiP tracking
+    setActiveVideo({
+      tmdbId: id!,
+      type: 'tv',
+      title: content.name,
+      activeSource: activeSource,
+      subtitleUrl: activeSubUrl || undefined,
+      imdbId: imdbId || content?.imdb_id || undefined,
+      sources: sources,
+      backdropPath: content.backdrop_path,
+      accentColor: accentColor,
+      season: targetSeason,
+      episode: targetEpisode,
+      src: getSourceUrl(activeSource, id!, 'tv', targetSeason, targetEpisode, startProgress, accentColor, activeSubUrl || undefined)
+    });
+    setPipTime(startProgress);
+    setIsPaused(false);
+    setIsPipActive(false);
+    isPlayingRef.current = true;
+  };
+
+  const handleClosePlayer = () => {
+    setIsPlayerModalOpen(false);
+    isPlayingRef.current = false;
+    setActiveVideo(null);
+    setIsPipActive(false);
   };
 
   const handleCreateWatchParty = async () => {
@@ -608,9 +720,14 @@ const TVDetailPage: React.FC = () => {
 
   return (
     <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
-      <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.id?.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
-        <img src={`${IMAGE_BASE_URL}${content.backdrop_path}`} className="w-full h-full object-cover blur-[120px]" alt="" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
+      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
+        <img 
+          src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
+          className="w-full h-full object-cover scale-110" 
+          style={{ filter: 'blur(30px) brightness(0.35) saturate(1.5)' }} 
+          alt="" 
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/40 to-[var(--bg-primary)]"></div>
       </div>
 
       <AnimatePresence>
@@ -634,8 +751,9 @@ const TVDetailPage: React.FC = () => {
 
       <AnimatePresence>
         {isPlayerModalOpen && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[9999]" dir="ltr">
-            <div className="w-full h-full relative bg-transparent overflow-hidden">
+          <Portal id="movie-player-portal">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-2xl z-[9999]" dir="ltr">
+              <div className="w-full h-full relative bg-transparent overflow-hidden">
               <AnimatePresence>
                 {showBingeCountdown && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
@@ -686,7 +804,7 @@ const TVDetailPage: React.FC = () => {
                     fetchSeasonDetails(s);
                   }}
                   startFullscreen={true}
-                  onClose={() => setIsPlayerModalOpen(false)}
+                  onClose={handleClosePlayer}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
                   sources={sources}
@@ -715,7 +833,7 @@ const TVDetailPage: React.FC = () => {
                     fetchSeasonDetails(s);
                   }}
                   startFullscreen={true}
-                  onClose={() => setIsPlayerModalOpen(false)}
+                  onClose={handleClosePlayer}
                   activeSource={activeSource}
                   setActiveSource={setActiveSource}
                   sources={sources}
@@ -842,20 +960,18 @@ const TVDetailPage: React.FC = () => {
               </AnimatePresence>
             </div>
           </motion.div>
+          </Portal>
         )}
       </AnimatePresence>
 
       <div className="relative w-full h-[70vh] md:h-[90vh] overflow-hidden z-10" dir="ltr">
         <div className="absolute inset-0 overflow-hidden">
-          <motion.img 
-            initial={{ scale: 1.15 }} 
-            animate={{ scale: 1 }} 
-            transition={{ duration: 15, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
-            src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path}`} 
+          <img 
+            src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
             alt="" 
             className="absolute inset-0 w-full h-full object-cover opacity-85" 
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-[2]"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-primary)] via-[var(--bg-primary)]/40 to-transparent z-[2]"></div>
         </div>
 
         <div className={`absolute bottom-12 md:bottom-28 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right' : 'left-0 text-left'} right-0 px-6 md:px-8 lg:px-20 z-10 flex flex-col items-start max-w-6xl`}>

@@ -2063,7 +2063,7 @@ const DubbedMoviesPage: React.FC = () => {
                                             };
 
                                             const previewMovie = PREVIEW_MOVIES[carouselPreviewIdx] || PREVIEW_MOVIES[0];
-                                            const previewBg = previewMovie?.backdrop_path?.startsWith('http') ? previewMovie.backdrop_path : `https://image.tmdb.org/t/p/w780${previewMovie?.backdrop_path}`;
+                                            const previewBg = (previewMovie?.backdrop_path?.startsWith('http') || previewMovie?.backdrop_path?.startsWith('data:')) ? previewMovie.backdrop_path : `https://image.tmdb.org/t/p/w780${previewMovie?.backdrop_path || ''}`;
 
                                             return (
                                                 <div className="space-y-5 pb-4">
@@ -2107,7 +2107,7 @@ const DubbedMoviesPage: React.FC = () => {
                                                                 {PREVIEW_MOVIES.slice(0, carouselSettings.visibleCards || 3).map((m, di) => {
                                                                     const d = (di - carouselPreviewIdx + PREVIEW_MOVIES.length) % PREVIEW_MOVIES.length;
                                                                     if (d >= (carouselSettings.visibleCards || 3)) return null;
-                                                                    const bg = m.backdrop_path?.startsWith('http') ? m.backdrop_path : `https://image.tmdb.org/t/p/w780${m.backdrop_path}`;
+                                                                    const bg = (m.backdrop_path?.startsWith('http') || m.backdrop_path?.startsWith('data:')) ? m.backdrop_path : `https://image.tmdb.org/t/p/w780${m.backdrop_path || ''}`;
                                                                     return (
                                                                         <div
                                                                             key={m.id}
@@ -2183,9 +2183,9 @@ const DubbedMoviesPage: React.FC = () => {
                                                         </div>
                                                         <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                                                             {PREVIEW_MOVIES.slice(0, carouselSettings.cardCount || 10).map((m) => {
-                                                                const poster = m.backdrop_path?.startsWith('http')
+                                                                const poster = (m.backdrop_path?.startsWith('http') || m.backdrop_path?.startsWith('data:'))
                                                                     ? m.backdrop_path
-                                                                    : `https://image.tmdb.org/t/p/w300${m.backdrop_path}`;
+                                                                    : `https://image.tmdb.org/t/p/w300${m.backdrop_path || ''}`;
                                                                 const title = m.kurdishTitle || (m as any).title || (m as any).name || 'Unknown';
                                                                 return (
                                                                     <div

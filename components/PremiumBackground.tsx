@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { useUI } from '../contexts/UIContext';
 
 export const PremiumBackground: React.FC = () => {
-    const { theme, accentColor } = useUI();
+    const { theme, accentColor, isPerformanceMode } = useUI();
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
-        if (!theme.includes('particle')) return;
+        if (!theme.includes('particle') || isPerformanceMode) return;
 
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -14,8 +14,8 @@ export const PremiumBackground: React.FC = () => {
         if (!ctx) return;
 
         let particles: any[] = [];
-        let animationFrameId: number;
-        let nebulaGradient: CanvasGradient;
+        let animationFrameId: number = 0;
+        let isRunning = true;
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -25,7 +25,10 @@ export const PremiumBackground: React.FC = () => {
 
         const init = () => {
             particles = [];
-            const count = theme === 'premium-particles-galaxy' ? 350 : 200;
+            const isMobile = window.innerWidth < 768;
+            const count = isMobile
+                ? (theme === 'premium-particles-galaxy' ? 60 : 40)
+                : (theme === 'premium-particles-galaxy' ? 350 : 200);
             
             for (let i = 0; i < count; i++) {
                 if (theme === 'premium-particles-galaxy') {
@@ -72,6 +75,14 @@ export const PremiumBackground: React.FC = () => {
         window.addEventListener('resize', resize);
 
         const draw = () => {
+            if (!isRunning) return;
+            
+            // If tab is in background, pause computations
+            if (document.visibilityState !== 'visible') {
+                animationFrameId = requestAnimationFrame(draw);
+                return;
+            }
+
             // Draw Background Base
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -206,11 +217,26 @@ export const PremiumBackground: React.FC = () => {
 
         draw();
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                if (!animationFrameId) {
+                    draw();
+                }
+            } else {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = 0;
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
+            isRunning = false;
             window.removeEventListener('resize', resize);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             cancelAnimationFrame(animationFrameId);
         };
-    }, [theme, accentColor]);
+    }, [theme, accentColor, isPerformanceMode]);
 
     if (theme === 'dark' || theme === 'light') return null;
 
@@ -218,19 +244,19 @@ export const PremiumBackground: React.FC = () => {
         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-black">
             {theme === 'premium-gradient-1' && (
                 <div className="absolute inset-0 transition-opacity duration-1000">
-                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_20%,#312e81_0%,transparent_50%),radial-gradient(circle_at_80%_80%,#581c87_0%,transparent_50%),radial-gradient(circle_at_50%_50%,#0f172a_0%,transparent_100%)] animate-[mesh_20s_ease-in-out_infinite]" />
+                    <div className={`absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_20%,#312e81_0%,transparent_50%),radial-gradient(circle_at_80%_80%,#581c87_0%,transparent_50%),radial-gradient(circle_at_50%_50%,#0f172a_0%,transparent_100%)] ${isPerformanceMode ? '' : 'animate-[mesh_20s_ease-in-out_infinite]'}`} />
                     <div className="absolute inset-0 bg-black/40" />
                 </div>
             )}
 
             {theme === 'premium-gradient-2' && (
                 <div className="absolute inset-0 transition-opacity duration-1000">
-                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_10%_90%,#7f1d1d_0%,transparent_50%),radial-gradient(circle_at_90%_10%,#450a0a_0%,transparent_50%),radial-gradient(circle_at_50%_50%,#1a0505_0%,transparent_100%)] animate-[mesh_20s_ease-in-out_infinite]" />
+                    <div className={`absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_10%_90%,#7f1d1d_0%,transparent_50%),radial-gradient(circle_at_90%_10%,#450a0a_0%,transparent_50%),radial-gradient(circle_at_50%_50%,#1a0505_0%,transparent_100%)] ${isPerformanceMode ? '' : 'animate-[mesh_20s_ease-in-out_infinite]'}`} />
                     <div className="absolute inset-0 bg-black/40" />
                 </div>
             )}
 
-            {theme.includes('particle') && (
+            {theme.includes('particle') && !isPerformanceMode && (
                 <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
             )}
 

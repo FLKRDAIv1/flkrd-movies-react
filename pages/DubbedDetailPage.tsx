@@ -442,7 +442,7 @@ return (
     <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
-                {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-110" alt="" />}
+                {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-150" alt="" />}
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
             </div>
 

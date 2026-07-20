@@ -4,9 +4,9 @@ import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
 
 import HomePage from './pages/HomePage';
-import DetailPage from './pages/DetailPage';
-import TVDetailPage from './pages/TVDetailPage';
-import DubbedDetailPage from './pages/DubbedDetailPage';
+const DetailPage = lazy(() => import('./pages/DetailPage'));
+const TVDetailPage = lazy(() => import('./pages/TVDetailPage'));
+const DubbedDetailPage = lazy(() => import('./pages/DubbedDetailPage'));
 const SearchPage = lazy(() => import('./pages/SearchPage'));
 const TVShowsPage = lazy(() => import('./pages/TVShowsPage'));
 const StudioPage = lazy(() => import('./pages/StudioPage'));
@@ -30,6 +30,7 @@ import { SkeletonGrid } from './components/Skeleton';
 import { useTranslation } from './contexts/LanguageContext';
 import { useUI } from './contexts/UIContext';
 import { useNotification } from './contexts/NotificationContext';
+import { useAuth } from './contexts/AuthContext';
 import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
 import OnboardingTour from './components/OnboardingTour';
@@ -42,6 +43,8 @@ import { requests } from './constants';
 import GamepadHints from './components/GamepadHints';
 import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
+import { usePlayer } from './contexts/PlayerContext';
+import FloatingPipPlayer from './components/FloatingPipPlayer';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
@@ -212,21 +215,21 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 const pageVariants = {
     initial: {
         opacity: 0,
-        y: 8
+        y: 6
     },
     animate: {
         opacity: 1,
         y: 0,
         transition: {
-            duration: 0.25,
+            duration: 0.2,
             ease: "easeOut"
         }
     },
     exit: {
         opacity: 0,
-        y: -6,
+        y: -4,
         transition: {
-            duration: 0.18,
+            duration: 0.14,
             ease: "easeIn"
         }
     }
@@ -246,6 +249,7 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             initial="initial"
             animate="animate"
             exit="exit"
+            style={{ willChange: "transform, opacity" }}
             className="flex-1 w-full h-full flex flex-col"
         >
             {children}
@@ -437,12 +441,67 @@ const logVisit = async (path: string) => {
     }
 };
 
+const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
+    const { user, isPasswordRecovery } = useAuth();
+
+    // Video URLs
+    const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';
+    const AUTH_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4';
+    const PROFILE_VIDEO_DARK = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260506_031045_0e1165dd-ab48-46e3-ad3d-5fe77f217647.mp4';
+    const PROFILE_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_171521_25968ba2-b594-4b32-aab7-f6b69398a6fa.mp4';
+
+    let videoSrc = '';
+    let opacity = 0.9;
+    let filter = '';
+
+    if (isPasswordRecovery) {
+        videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
+        opacity = 0.9;
+        filter = theme === 'dark' ? 'brightness(0.55)' : 'brightness(0.7)';
+    } else if (!user) {
+        videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
+        opacity = 0.9;
+        filter = theme === 'dark' ? 'brightness(0.60) saturate(1.15)' : 'brightness(0.72) saturate(1.0)';
+    } else {
+        videoSrc = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
+        opacity = theme === 'dark' ? 0.85 : 0.70;
+        filter = theme === 'dark' ? 'brightness(0.45) saturate(1.1)' : 'brightness(0.65) saturate(0.9)';
+    }
+
+    return (
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none w-screen h-screen">
+            <video
+                key={videoSrc}
+                src={videoSrc}
+                autoPlay
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                style={{ opacity, filter }}
+            />
+            {isPasswordRecovery && (
+                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
+            )}
+            {!isPasswordRecovery && !user && (
+                <>
+                    <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.60) 100%)' }} />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/60" />
+                </>
+            )}
+            {!isPasswordRecovery && user && (
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
+            )}
+        </div>
+    );
+};
+
 const AppContent: React.FC<{
     scrolled: boolean;
     mainRef: React.RefObject<HTMLElement | null>;
 }> = ({ scrolled, mainRef }) => {
     const { language, t } = useTranslation();
-    const { isSettingsOpen, setIsSettingsOpen, glassConfig } = useUI();
+    const { isSettingsOpen, setIsSettingsOpen, glassConfig, theme } = useUI();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
     const location = useLocation();
 
@@ -555,13 +614,11 @@ const AppContent: React.FC<{
         };
 
         destroyTranslateUI();
-        const interval = setInterval(destroyTranslateUI, 100);
 
         const observer = new MutationObserver(destroyTranslateUI);
         observer.observe(document.body, { childList: true, subtree: true });
 
         return () => {
-            clearInterval(interval);
             observer.disconnect();
         };
     }, []);
@@ -603,8 +660,11 @@ const AppContent: React.FC<{
         }
     }, []);
 
+    const isProfilePage = location.pathname === '/profile';
+
     return (
         <>
+            {isProfilePage && <ProfileBackgroundVideo theme={theme} />}
             <svg className="hidden pointer-events-none absolute w-0 h-0" aria-hidden="true">
                 <defs>
                     <filter id="container-glass">
@@ -656,6 +716,7 @@ const AppContent: React.FC<{
             <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
             <GamepadHints />
+            <FloatingPipPlayer />
             {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
             {!isTauri() && import.meta.env.PROD && <Analytics />}
         </>
@@ -730,11 +791,18 @@ const App: React.FC = () => {
                         const title = t('newMovieTitle', { movieTitle: latestMovie.title });
                         const body = t('newMovieBody', { movieTitle: latestMovie.title });
                         
-                        // 1. In-App Native-like Professional Notification (Always fires)
+                        const movieImg = latestMovie.backdrop_path 
+                          ? `https://image.tmdb.org/t/p/w300${latestMovie.backdrop_path}`
+                          : (latestMovie.poster_path ? `https://image.tmdb.org/t/p/w185${latestMovie.poster_path}` : undefined);
+
+                        // 1. In-App Professional Shadcn Notification (4-second duration)
                         addNotification({
                             type: 'success',
                             title: title,
                             message: body,
+                            duration: 4000,
+                            image: movieImg,
+                            actionUrl: `/#/details/movie/${latestMovie.id}`
                         });
 
                         // 2. System/Browser Push Notifications

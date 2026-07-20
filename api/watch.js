@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         if (rawMovieId.startsWith('tv_')) {
             const cleanId = rawMovieId.replace('tv_', '');
             try {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/tv/${cleanId}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/tv/${cleanId}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.first_air_date ? data.first_air_date.split('-')[0] : '';
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
                         image = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         } else if (rawMovieId.startsWith('custom_')) {
             const cleanId = rawMovieId.replace('custom_', '');
             try {
@@ -73,10 +73,10 @@ export default async function handler(req, res) {
                         image = dubData.bannerBase64 || dubData.imageBase64 || dubData.poster_path;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         } else {
             try {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/${rawMovieId}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/movie/${rawMovieId}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.release_date ? data.release_date.split('-')[0] : '';
@@ -88,7 +88,7 @@ export default async function handler(req, res) {
                         image = `https://image.tmdb.org/t/p/w500${data.poster_path}`;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         // Point social media open graph previews to the dynamic Watch Party Ticket image generator

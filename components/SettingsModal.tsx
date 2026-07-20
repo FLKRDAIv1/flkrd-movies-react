@@ -6,12 +6,13 @@ import {
   ChevronRight, Activity, Cpu, RefreshCw, Download,
   Smartphone, Laptop, ArrowUpRight, Apple,
   BookOpen, Layers, HelpCircle, FileText, ShieldCheck, Copy,
-  Tablet, Users, Eye, Globe, TrendingUp, Search, ArrowLeft, Calendar
+  Tablet, Users, Eye, Globe, TrendingUp, Search, ArrowLeft, Calendar, Radio
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import EnableNotificationsModal from './EnableNotificationsModal';
+import { AdminBroadcastModal } from './AdminBroadcastModal';
 import Portal from './Portal';
 import { LiquidButton } from './ui/liquid-glass-button';
 import { updateService, UpdateCheckResult } from '../services/updateService';
@@ -247,6 +248,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { addNotification } = useNotification();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isEnableNotificationsModalOpen, setIsEnableNotificationsModalOpen] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
 
   // Visitor Analytics Dashboard States
@@ -541,17 +543,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     });
   };
 
-  const togglePerformance = () => {
-    const next = !isPerformanceMode;
-    setIsPerformanceMode(next);
-    addNotification({
-      type: next ? 'success' : 'info',
-      title: next ? '⚡ 60 FPS Turbo ON' : '🎨 High Quality ON',
-      message: next 
-        ? ((language === 'ku' || language === 'badini') ? 'دۆخی خێرا چالاک کرا' : 'Visual suppression active for maximum performance.')
-        : ((language === 'ku' || language === 'badini') ? 'دۆخی ئاسایی گەڕێندرایەوە' : 'Full visual fidelity restored.')
-    });
-  };
+
 
   const scalePercent = Math.round((scale || 1) * 100);
 
@@ -689,52 +681,81 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </Card>
               </Section>
 
-              {/* Real-time Visitor Analytics Launcher Card (Admin Only) */}
+              {/* Admin Tools: Visitor Analytics & Live Broadcast Notifier */}
               {isAdmin && (
                 <Section delay={0.15}>
                   <SectionLabel icon={<TrendingUp size={14} />} label={t('visitorAnalytics') + " • ADMIN"} />
-                  <Card 
-                    className="p-6 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group" 
-                    glow={accentColor}
-                  >
-                    <div 
-                      onClick={() => setShowAnalyticsPanel(true)}
-                      className="flex items-center justify-between"
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Card 
+                      className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group" 
+                      glow={accentColor}
                     >
-                      <div className="flex items-center gap-4">
-                        <div 
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 group-hover:scale-105"
-                          style={{ 
-                            backgroundColor: `${accentColor}15`, 
-                            borderColor: `${accentColor}30`,
-                            color: accentColor 
-                          }}
-                        >
-                          <TrendingUp size={22} className="animate-pulse" />
+                      <div 
+                        onClick={() => setShowAnalyticsPanel(true)}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div 
+                            className="w-11 h-11 rounded-2xl flex items-center justify-center border transition-all duration-300 group-hover:scale-105"
+                            style={{ 
+                              backgroundColor: `${accentColor}15`, 
+                              borderColor: `${accentColor}30`,
+                              color: accentColor 
+                            }}
+                          >
+                            <TrendingUp size={20} className="animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="text-[11px] font-black text-white uppercase tracking-widest">
+                              {t('visitorAnalytics')}
+                            </h3>
+                            <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">
+                              {t('openDashboard')}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">
-                            {t('visitorAnalytics')}
-                          </h3>
-                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">
-                            {t('openDashboard')}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          {analytics && analytics.live_users > 0 && (
+                            <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 text-green-500 text-[8px] font-black uppercase px-2.5 py-1 rounded-full">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+                              </span>
+                              {analytics.live_users} Live
+                            </span>
+                          )}
+                          <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors transform group-hover:translate-x-1 duration-300" />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {analytics && analytics.live_users > 0 && (
-                          <span className="flex items-center gap-1.5 bg-green-500/10 border border-green-500/20 text-green-500 text-[8px] font-black uppercase px-2.5 py-1 rounded-full">
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-                            </span>
-                            {analytics.live_users} Live
-                          </span>
-                        )}
+                    </Card>
+
+                    <Card 
+                      className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group" 
+                      glow="#10b981"
+                    >
+                      <div 
+                        onClick={() => setShowBroadcastModal(true)}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div 
+                            className="w-11 h-11 rounded-2xl flex items-center justify-center border bg-emerald-500/15 border-emerald-500/30 text-emerald-400 transition-all duration-300 group-hover:scale-105"
+                          >
+                            <Radio size={20} className="animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                              Admin Broadcaster
+                            </h3>
+                            <p className="text-[9px] text-emerald-400/80 font-bold uppercase mt-1">
+                              Send Live Notification Toasts
+                            </p>
+                          </div>
+                        </div>
                         <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors transform group-hover:translate-x-1 duration-300" />
                       </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </div>
                 </Section>
               )}
 
@@ -771,43 +792,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
               </Section>
 
-              {/* Performance / 60 FPS */}
-              <Section delay={0.3}>
-                <SectionLabel icon={<Zap size={14} />} label="Hardware Acceleration" />
-                <Card className="p-6" glow={isPerformanceMode ? '#34c759' : undefined}>
-                   <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${isPerformanceMode ? 'bg-green-500/20 text-green-500' : 'bg-white/5 text-gray-500'}`}>
-                           <Zap size={22} fill={isPerformanceMode ? 'currentColor' : 'none'} />
-                        </div>
-                        <div>
-                          <h3 className="text-[11px] font-black text-white uppercase tracking-widest">{(language === 'ku' || language === 'badini') ? 'مۆدی ٦٠ FPS' : '60 FPS Turbo Mode'}</h3>
-                          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">Suppress Blurs & Effects</p>
-                        </div>
-                      </div>
-                      <AnimatedToggle 
-                        checked={isPerformanceMode} 
-                        onChange={togglePerformance} 
-                        color="#34c759"
-                        language={language}
-                      />
-                   </div>
-                   {isPerformanceMode && (
-                     <motion.div 
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-3"
-                     >
-                        {['Blurs Disabled', 'Shadows Removed', 'Particles Limited', 'GPU Optimized'].map(feat => (
-                          <div key={feat} className="flex items-center gap-2">
-                             <div className="w-1 h-1 rounded-full bg-green-500" />
-                             <span className="text-[8px] font-bold text-gray-500 uppercase">{feat}</span>
-                          </div>
-                        ))}
-                     </motion.div>
-                   )}
-                </Card>
-              </Section>
+                             
 
               {/* System Updates Section */}
               <Section delay={0.35}>
@@ -2703,6 +2688,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <EnableNotificationsModal 
       isOpen={isEnableNotificationsModalOpen} 
       onClose={() => setIsEnableNotificationsModalOpen(false)} 
+    />
+    <AdminBroadcastModal
+      isOpen={showBroadcastModal}
+      onClose={() => setShowBroadcastModal(false)}
     />
     </div>
     </Portal>

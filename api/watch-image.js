@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         if (movie_id.startsWith('tv_')) {
             const cleanId = movie_id.replace('tv_', '');
             try {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/tv/${cleanId}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/tv/${cleanId}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     movieTitle = data.name || data.original_name || movieTitle;
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
             } catch (e) {}
         } else {
             try {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/${movie_id}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/movie/${movie_id}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     movieTitle = data.title || data.original_title || movieTitle;

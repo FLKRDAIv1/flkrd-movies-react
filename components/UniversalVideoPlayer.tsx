@@ -13,6 +13,7 @@ import { fetchTranslations, fetchTmdbIdFromImdb, fetchData } from '../services/t
 import { API_KEY } from '../constants';
 import { useNavigate } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
+import { usePlayer } from '../contexts/PlayerContext';
 import { Season, SeasonDetails } from '../types';
 import {
     fetchSubtitleEdits,
@@ -48,6 +49,7 @@ interface UniversalVideoPlayerProps {
     activeSource?: string;
     setActiveSource?: (source: string) => void;
     sources?: any[];
+    isPip?: boolean;
 }
 
 declare global {
@@ -211,9 +213,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     toggleFullscreen: toggleFullscreenProp,
     activeSource,
     setActiveSource,
-    sources = []
+    sources = [],
+    isPip = false
 }) => {
     const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
+    const { isPaused } = usePlayer();
     const navigate = useNavigate();
     const isIOSDevice = typeof window !== 'undefined' && (
         /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -238,6 +242,29 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             fetchRecs();
         }
     }, [tmdbId, contentType, language]);
+
+    // Sync Play/Pause in PiP mode
+    useEffect(() => {
+        if (isPip) {
+            const video = videoRef.current;
+            if (video) {
+                if (isPaused && !video.paused) {
+                    video.pause();
+                } else if (!isPaused && video.paused) {
+                    video.play().catch(() => {});
+                }
+            } else if (iframeRef.current && iframeRef.current.contentWindow) {
+                const target = iframeRef.current.contentWindow;
+                if (isPaused) {
+                    target.postMessage(JSON.stringify({ event: 'pause' }), '*');
+                    target.postMessage({ event: 'pause' }, '*');
+                } else {
+                    target.postMessage(JSON.stringify({ event: 'play' }), '*');
+                    target.postMessage({ event: 'play' }, '*');
+                }
+            }
+        }
+    }, [isPaused, isPip]);
     const videoRef = useRef<HTMLVideoElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -296,6 +323,44 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const lastMessageTimeRef = useRef<number>(performance.now());
     const lastReceivedTimeRef = useRef<number>(0);
     const [subtitleCues, setSubtitleCues] = useState<{ start: number, end: number, text: string }[]>([]);
+    const [vttBlobUrl, setVttBlobUrl] = useState<string>('');
+
+    useEffect(() => {
+        if (!subtitleCues || subtitleCues.length === 0) {
+            setVttBlobUrl('');
+            return;
+        }
+
+        const formatVttTime = (seconds: number) => {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds - (hrs * 3600)) / 60);
+            const secs = Math.floor(seconds - (hrs * 3600) - (mins * 60));
+            const ms = Math.floor((seconds % 1) * 1000);
+
+            const hh = hrs.toString().padStart(2, '0');
+            const mm = mins.toString().padStart(2, '0');
+            const ss = secs.toString().padStart(2, '0');
+            const mmm = ms.toString().padStart(3, '0');
+
+            return `${hh}:${mm}:${ss}.${mmm}`;
+        };
+
+        let vttText = "WEBVTT\n\n";
+        subtitleCues.forEach((cue, index) => {
+            vttText += `${index + 1}\n`;
+            vttText += `${formatVttTime(cue.start)} --> ${formatVttTime(cue.end)}\n`;
+            vttText += `${cue.text}\n\n`;
+        });
+
+        const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        setVttBlobUrl(url);
+
+        return () => {
+            URL.revokeObjectURL(url);
+        };
+    }, [subtitleCues]);
+
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
     const [subBlur, setSubBlur] = useState(true);
@@ -551,10 +616,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     resolvedPublicUrl = `https:${resolvedPublicUrl}`;
                 }
 
-                // Save reference in custom_subtitles database table
+                // Save reference in custom_subtitles database table (Failsafe delete-then-insert)
+                try {
+                    await supabase
+                        .from('custom_subtitles')
+                        .delete()
+                        .eq('tmdb_id', String(targetId))
+                        .eq('media_type', contentType || 'movie')
+                        .eq('language', 'ku')
+                        .eq('season', fileSeason)
+                        .eq('episode', fileEpisode);
+                } catch (delErr) {
+                    console.warn("[PLAYER] Failsafe delete failed:", delErr);
+                }
+
                 const { error: dbErr } = await supabase
                     .from('custom_subtitles')
-                    .upsert({
+                    .insert({
                         tmdb_id: String(targetId),
                         media_type: contentType || 'movie',
                         language: 'ku',
@@ -562,8 +640,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         file_name: file.name,
                         season: fileSeason,
                         episode: fileEpisode
-                    }, {
-                        onConflict: 'tmdb_id,media_type,language,season,episode'
                     });
 
                 if (dbErr) throw dbErr;
@@ -847,14 +923,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         setIsSearchingSubs(true);
         try {
             console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for imdbId:", imdbId);
-            const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
+            const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'all', true);
             const list = Array.isArray(results) ? results : [];
-            const filtered = list.filter(s => {
-                if (!s || !s.attributes) return false;
-                const lang = (s.attributes.language || '').toLowerCase();
-                return lang === 'en' || lang === 'eng';
-            });
-            setAvailableSubsWithVirtual(filtered);
+            const safeList = list.filter(s => s && s.attributes);
+            setAvailableSubsWithVirtual(safeList);
         } catch (e) {
             console.error("Manual search error:", e);
         } finally {
@@ -910,19 +982,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 let safeResults: SubtitleResult[] = [];
                 if (imdbId) {
                     try {
-                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'en', true);
-                        const list = Array.isArray(results) ? results : [];
-                        safeResults = list.filter(s => {
-                            if (!s || !s.attributes) return false;
-                            const lang = (s.attributes.language || '').toLowerCase();
-                            return lang === 'en' || lang === 'eng';
-                        });
+                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'all', true);
+                        safeResults = Array.isArray(results) ? results.filter(s => s && s.attributes) : [];
                     } catch (openSubErr) {
                         console.warn("[UNIVERSAL-PLAYER] OpenSubtitles search failed:", openSubErr);
                     }
                 }
 
                 let customSub: SubtitleResult | null = null;
+                const customSubsList: SubtitleResult[] = [];
                 const activeLanguageCode = (language === 'badini') ? 'badini' : 'ku';
                 let query = supabase
                     .from('custom_subtitles')
@@ -936,6 +1004,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const { data: dbSubs } = await query;
 
                 if (dbSubs && dbSubs.length > 0) {
+                    dbSubs.forEach(dbSub => {
+                        let subUrl = dbSub.subtitle_url;
+                        if (subUrl.startsWith('//')) {
+                            subUrl = `https:${subUrl}`;
+                        }
+                        const isBadini = dbSub.language === 'badini';
+                        const isSorani = dbSub.language === 'ku' || dbSub.language === 'ckb';
+                        const labelSuffix = isBadini ? 'Badini' : (isSorani ? 'Sorani' : dbSub.language?.toUpperCase());
+                        
+                        customSubsList.push({
+                            id: `custom-db-${dbSub.id}`,
+                            attributes: {
+                                language: dbSub.language || 'ku',
+                                display_name: dbSub.file_name 
+                                    ? dbSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') 
+                                    : `Kurdish ${labelSuffix} (Verified)`,
+                                url: subUrl,
+                                file_id: 0
+                            }
+                        });
+                    });
+
                     const sortedDbSubs = [...dbSubs].sort((a, b) => {
                         const score = (lang: string) => {
                             if (lang === activeLanguageCode) return 10;
@@ -946,16 +1036,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         };
                         return score(b.language) - score(a.language);
                     });
-                    const bestSub = sortedDbSubs[0];
-                    let subUrl = bestSub.subtitle_url;
+                    const best = sortedDbSubs[0];
+                    let subUrl = best.subtitle_url;
                     if (subUrl.startsWith('//')) {
                         subUrl = `https:${subUrl}`;
                     }
+                    const isBadini = best.language === 'badini';
+                    const isSorani = best.language === 'ku' || best.language === 'ckb';
+                    const labelSuffix = isBadini ? 'Badini' : (isSorani ? 'Sorani' : best.language?.toUpperCase());
+                    
                     customSub = {
-                        id: `custom-db-${bestSub.id}`,
+                        id: `custom-db-${best.id}`,
                         attributes: {
-                            language: bestSub.language || 'ku',
-                            display_name: bestSub.file_name ? bestSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Verified)',
+                            language: best.language || 'ku',
+                            display_name: best.file_name ? best.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : `Kurdish ${labelSuffix} (Verified)`,
                             url: subUrl,
                             file_id: 0
                         }
@@ -972,13 +1066,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             file_id: 0
                         }
                     };
+                    customSubsList.push(customSub);
                 }
 
                 let finalSubs = safeResults;
-                if (customSub) {
-                    // Combine custom Kurdish subtitle with English ones
-                    finalSubs = [customSub, ...safeResults];
+                if (customSubsList.length > 0) {
+                    finalSubs = [...customSubsList, ...safeResults];
+                }
 
+                if (customSub) {
                     // Auto-select and auto-apply the custom Kurdish subtitle by default
                     if (!localSubtitleUrl) {
                         console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
@@ -989,6 +1085,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 const blob = new Blob([processedText], { type: 'text/vtt' });
                                 setLocalSubtitleUrl(URL.createObjectURL(blob));
                                 setKurdishSub(customSub);
+                                setCurrentSubId(customSub.id);
+                                setShowSubtitles(true);
                                 setKuCCNotificationVisible(false);
                             }
                         } catch (err) {
@@ -996,6 +1094,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         }
                     } else if (kurdishSub === null) {
                         setKurdishSub(customSub);
+                        setCurrentSubId(customSub.id);
+                        setShowSubtitles(true);
                     }
                 } else if (safeResults.length > 0) {
                     const foundEn = safeResults.find(sub => {
@@ -1815,6 +1915,38 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, []);
 
+    useEffect(() => {
+        if (isSimulatedFullscreen) {
+            document.body.classList.add('movie-player-active');
+            document.documentElement.classList.add('movie-player-active');
+        } else {
+            if (!onClose) {
+                document.body.classList.remove('movie-player-active');
+                document.documentElement.classList.remove('movie-player-active');
+            }
+        }
+        return () => {
+            if (!onClose) {
+                document.body.classList.remove('movie-player-active');
+                document.documentElement.classList.remove('movie-player-active');
+            }
+        };
+    }, [isSimulatedFullscreen, onClose]);
+
+    useEffect(() => {
+        const preventTouch = (e: TouchEvent) => {
+            if (isSimulatedFullscreen) {
+                e.preventDefault();
+            }
+        };
+        if (isSimulatedFullscreen) {
+            window.addEventListener('touchmove', preventTouch, { passive: false });
+        }
+        return () => {
+            window.removeEventListener('touchmove', preventTouch);
+        };
+    }, [isSimulatedFullscreen]);
+
     // Screen Wake Lock API integration to prevent display sleep mode
     useEffect(() => {
         let wakeLock: any = null;
@@ -1963,7 +2095,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             const scrapeStream = async () => {
                 try {
-                    const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+                    const { fetch: tauriFetch } = await import(/* @vite-ignore */ '@tauri-apps/plugin-http');
                     console.log("[TAURI SCRAPER] Initiating Tauri HTTP bypass fetch for:", activeSrc);
 
                     const response = await tauriFetch(activeSrc, {
@@ -2222,11 +2354,47 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [iframeSrc]);
 
+    if (isPip) {
+        return (
+            <div className="w-full h-full relative bg-black select-none overflow-hidden">
+                {isHls && (
+                    <video
+                        id="vidking-player-pip"
+                        ref={videoRef}
+                        className="w-full h-full object-contain pointer-events-auto"
+                        controls={false}
+                        autoPlay
+                        playsInline
+                        playsinline={true}
+                        preload="auto"
+                        crossOrigin="anonymous"
+                        onTimeUpdate={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            setCurrentTime(time);
+                            onProgress?.({ currentTime: time, paused: e.currentTarget.paused, duration: e.currentTarget.duration });
+                        }}
+                    />
+                )}
+                {isIframe && iframeSrc && (
+                    <iframe
+                        ref={iframeRef}
+                        key={stableKey}
+                        src={iframeSrc}
+                        className="absolute inset-0 w-full h-full border-none"
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                        scrolling="no"
+                        title="FLKRD Universal Player PiP"
+                    />
+                )}
+            </div>
+        );
+    }
+
     return (
         <div
             ref={containerRef}
             className={`bg-transparent flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
-                    ? 'fixed inset-0 w-screen h-screen z-[9999] overflow-hidden'
+                    ? 'fixed inset-0 w-screen h-dvh z-[9999] overflow-hidden'
                     : 'w-full h-full relative z-20'
                 }`}
         >
@@ -2303,13 +2471,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             duration: e.currentTarget.duration
                         })}
                     >
-                        {showSubtitles && (localSubtitleUrl || subtitleUrl) && (
+                        {showSubtitles && (vttBlobUrl || localSubtitleUrl || subtitleUrl) && (
                             <track
-                                key={localSubtitleUrl || subtitleUrl}
-                                src={localSubtitleUrl || subtitleUrl}
+                                key={vttBlobUrl || localSubtitleUrl || subtitleUrl}
+                                src={vttBlobUrl || localSubtitleUrl || subtitleUrl}
                                 kind="subtitles"
                                 srcLang="ku"
-                                label="Kurdish"
+                                label="Kurdish Sorani (Verified)"
                                 default
                             />
                         )}

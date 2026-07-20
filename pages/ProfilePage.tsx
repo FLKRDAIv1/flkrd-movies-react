@@ -17,13 +17,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
 import { supabase } from '../utils/supabaseClient';
+import ElasticStack from '../components/ui/elastic-stack';
+import MovieBentoGrid from '../components/ui/movie-bento-grid';
+import Portal from '../components/Portal';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
     const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
     const { addNotification } = useNotification();
-    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword } = useAuth();
+    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Local states
@@ -54,7 +57,10 @@ const ProfilePage: React.FC = () => {
 
     // Load avatar from user metadata on mount / user change
     useEffect(() => {
-        if (user?.user_metadata?.avatar_url) {
+        const localAvatar = localStorage.getItem('flkrd_avatar_url');
+        if (localAvatar) {
+            setAvatarUrl(localAvatar);
+        } else if (user?.user_metadata?.avatar_url) {
             setAvatarUrl(user.user_metadata.avatar_url);
         }
         if (user?.user_metadata?.user_name) {
@@ -107,6 +113,41 @@ const ProfilePage: React.FC = () => {
         memberSince: user?.created_at ? new Date(user.created_at).getFullYear().toString() : '2026',
         watchedCount: JSON.parse(localStorage.getItem('watchProgress') || '[]').length,
         rank: t('userRank')
+    };
+
+    const watchedHistory = React.useMemo(() => {
+        try {
+            const raw = localStorage.getItem('watchProgress');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }, []);
+
+    const elasticStackItems = React.useMemo(() => {
+        return watchedHistory
+            .filter((item: any) => item && item.poster_path)
+            .map((item: any) => ({
+                id: `${item.id}-${item.type}`,
+                image: item.poster_path?.startsWith('http') 
+                    ? item.poster_path 
+                    : `https://image.tmdb.org/t/p/w200${item.poster_path}`,
+                name: item.title || item.name || 'Movie',
+                raw: item
+            }))
+            .slice(0, 7);
+    }, [watchedHistory]);
+
+    const handleElasticItemClick = (item: any) => {
+        const raw = item.raw;
+        if (!raw) return;
+        if (String(raw.type) === 'dubbed') {
+            navigate(`/dubbed-details/${raw.id}`);
+        } else {
+            navigate(`/details/${raw.type}/${raw.id}`);
+        }
     };
 
     useEffect(() => {
@@ -210,34 +251,70 @@ const ProfilePage: React.FC = () => {
             addNotification({ type: 'success', title: 'Password Updated!', message: 'You can now sign in with your new password.' });
             setNewPassword('');
             setNewPasswordConfirm('');
+            navigate('/profile', { replace: true });
         }
+    };
+
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 120;
+                    const MAX_HEIGHT = 120;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('Canvas context is null'));
+                        return;
+                    }
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    resolve(dataUrl);
+                };
+                img.onerror = (err) => reject(err);
+            };
+            reader.onerror = (err) => reject(err);
+        });
     };
 
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
-        if (file.size > 5 * 1024 * 1024) {
-            addNotification({ type: 'error', title: 'File too large', message: 'Max 5MB allowed.' });
-            return;
-        }
         setAvatarUploading(true);
         try {
-            const ext = file.name.split('.').pop();
-            const filePath = `${user.id}/avatar.${ext}`;
-            const { error: uploadError } = await supabase.storage
-                .from('avatars')
-                .upload(filePath, file, { upsert: true, contentType: file.type });
-            if (uploadError) throw uploadError;
+            const base64Image = await compressImage(file);
+            try {
+                const { error: updateError } = await supabase.auth.updateUser({
+                    data: { avatar_url: base64Image }
+                });
+                if (updateError) throw updateError;
+            } catch (supabaseErr) {
+                console.warn("Supabase auth updateUser failed (likely CORS preflight/network error). Falling back to LocalStorage.", supabaseErr);
+            }
 
-            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            const publicUrl = `${data.publicUrl}?t=${Date.now()}`; // cache-bust
-
-            const { error: updateError } = await supabase.auth.updateUser({
-                data: { avatar_url: publicUrl }
-            });
-            if (updateError) throw updateError;
-
-            setAvatarUrl(publicUrl);
+            localStorage.setItem('flkrd_avatar_url', base64Image);
+            setAvatarUrl(base64Image);
             addNotification({ type: 'success', title: 'Avatar Updated', message: 'Your profile photo has been updated!' });
         } catch (err: any) {
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
@@ -246,8 +323,16 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const handleOAuth = (provider: 'google' | 'apple') => {
-        addNotification({ type: 'info', title: `${provider} Auth`, message: `Initializing safe authentication tunnel via ${provider}...` });
+    const handleOAuth = async (provider: 'google' | 'apple') => {
+        if (provider === 'google') {
+            addNotification({ type: 'info', title: 'Google Auth', message: 'Redirecting to Google sign-in...' });
+            const { error } = await signInWithGoogle();
+            if (error) {
+                addNotification({ type: 'error', title: 'Google Auth Failed', message: error.message || 'Could not sign in with Google.' });
+            }
+        } else {
+            addNotification({ type: 'info', title: 'Apple Auth', message: 'Apple sign-in coming soon.' });
+        }
     };
 
     if (loading || authLoading) return <SkeletonProfile />;
@@ -260,13 +345,6 @@ const ProfilePage: React.FC = () => {
         const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
-                <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                    <video key={authVideo} src={authVideo} autoPlay muted loop playsInline
-                        className="absolute inset-0 w-full h-full object-cover"
-                        style={{ opacity: 0.9, filter: theme === 'dark' ? 'brightness(0.55)' : 'brightness(0.7)' }}
-                    />
-                    <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
-                </div>
                 <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -333,31 +411,6 @@ const ProfilePage: React.FC = () => {
 
         return (
             <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
-                {/* Cinematic Video Background — fixed z-index so it shows above transparent body */}
-                <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                    <video
-                        key={authVideo}
-                        src={authVideo}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        className="absolute inset-0 w-full h-full object-cover"
-                        style={{
-                            opacity: 0.9,
-                            filter: theme === 'dark'
-                                ? 'brightness(0.60) saturate(1.15)'
-                                : 'brightness(0.72) saturate(1.0)',
-                            transform: 'scale(1.0)',
-                        }}
-                    />
-                    {/* Vignette — edges darker, centre more visible */}
-                    <div className="absolute inset-0" style={{
-                        background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.60) 100%)'
-                    }} />
-                    {/* Bottom gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/60" />
-                </div>
 
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
@@ -563,22 +616,14 @@ const ProfilePage: React.FC = () => {
                                 <div className="h-px bg-white/10 flex-1" />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="w-full">
                                 <button 
                                     type="button"
                                     onClick={() => handleOAuth('google')}
-                                    className="flex items-center justify-center gap-2.5 py-3.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-white active:scale-95"
+                                    className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-white active:scale-95 shadow-md"
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                                     Google
-                                </button>
-                                <button 
-                                    type="button"
-                                    onClick={() => handleOAuth('apple')}
-                                    className="flex items-center justify-center gap-2.5 py-3.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-white active:scale-95"
-                                >
-                                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.7-1.13 1.84-.99 2.94.97.08 2.15-.52 2.82-1.33z"/></svg>
-                                    Apple
                                 </button>
                             </div>
                         </div>
@@ -648,26 +693,6 @@ const ProfilePage: React.FC = () => {
 
     return (
         <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden" style={{ background: 'transparent' }}>
-            {/* Cinematic Video Background — fixed so it covers body background */}
-            <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-                <video
-                    key={profileVideo}
-                    src={profileVideo}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{
-                        opacity: theme === 'dark' ? 0.85 : 0.70,
-                        filter: theme === 'dark'
-                            ? 'brightness(0.45) saturate(1.1)'
-                            : 'brightness(0.65) saturate(0.9)',
-                    }}
-                />
-                {/* Bottom fade */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
-            </div>
 
             <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
                 <button
@@ -744,6 +769,32 @@ const ProfilePage: React.FC = () => {
                             <StatCard icon={<Clock size={16} />} label={t('memberSince')} value={stats.memberSince} />
                             <StatCard icon={<Activity size={16} />} label={t('totalWatched')} value={stats.watchedCount} />
                         </div>
+
+                        {elasticStackItems.length > 0 && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden"
+                            >
+                                <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Activity size={16} className="text-[var(--brand-red)]" />
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                            {language === 'ku' || language === 'badini' ? 'سەیرکراوەکانی کۆتایی' : 'Recently Watched'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <ElasticStack 
+                                    items={elasticStackItems} 
+                                    itemSize={64} 
+                                    overlap={28} 
+                                    pushForce={12}
+                                    onItemClick={handleElasticItemClick}
+                                    className="py-4 justify-start"
+                                />
+                            </motion.div>
+                        )}
                     </div>
 
                     <div className="lg:col-span-8 space-y-8">
@@ -825,6 +876,18 @@ const ProfilePage: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="bg-black/10 border border-white/5 rounded-[3rem] p-6 shadow-2xl relative"
+                        >
+                            <h3 className="text-xl font-black uppercase italic tracking-wider text-white mb-6 border-b border-white/5 pb-3">
+                                {language === 'ku' || language === 'badini' ? 'ئامارەکانی سەیرکردن' : 'WATCHING ANALYTICS'}
+                            </h3>
+                            <MovieBentoGrid />
                         </motion.div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

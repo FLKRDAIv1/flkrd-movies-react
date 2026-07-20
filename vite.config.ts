@@ -1,5 +1,6 @@
 import path from 'path';
 import dns from 'dns';
+import { Agent } from 'https';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression';
@@ -14,9 +15,10 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         proxy: {
           '/api/tmdb': {
-            target: 'https://api.themoviedb.org/3',
+            target: 'https://api.tmdb.org/3',
             rewrite: (path) => path.replace(/^\/api\/tmdb/, ''),
             changeOrigin: true,
+            agent: new Agent({ family: 4 }),
             configure: (proxy, _options) => {
               proxy.on('error', (err, _req, res) => {
                 console.warn('[Vite Proxy Error] Failed to reach TMDB API:', err.message);
@@ -152,6 +154,17 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         rollupOptions: {
+          // These Tauri plugins are uninstalled from node_modules — they are only
+          // provided at runtime inside the native Tauri app shell (not in web builds).
+          // Marking them external prevents Rollup from trying to bundle them.
+          external: [
+            '@tauri-apps/plugin-notification',
+            '@tauri-apps/plugin-dialog',
+            '@tauri-apps/plugin-shell',
+            '@tauri-apps/plugin-os',
+            '@tauri-apps/plugin-http',
+            '@tauri-apps/plugin-process',
+          ],
           output: {
             manualChunks(id) {
               if (id.includes('node_modules')) {
@@ -172,6 +185,15 @@ export default defineConfig(({ mode }) => {
                 }
                 return 'vendor-utils';
               }
+              // Group heavy detail/content pages into a single chunk (loaded on-demand)
+              if (
+                id.includes('pages/DetailPage') ||
+                id.includes('pages/TVDetailPage') ||
+                id.includes('pages/DubbedDetailPage') ||
+                id.includes('pages/DubbedMoviesPage')
+              ) {
+                return 'pages-detail';
+              }
               if (id.includes('index.css')) {
                 return 'vendor-styles';
               }
@@ -180,5 +202,6 @@ export default defineConfig(({ mode }) => {
         },
         chunkSizeWarningLimit: 1000
       }
+
     };
 });

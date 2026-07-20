@@ -1,29 +1,36 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
-  PlayCircle, 
+  Globe, 
   Tv, 
   Mic2, 
-  Globe, 
+  MoreHorizontal, 
   Bookmark, 
-  Search, 
   Film, 
-  Sparkles 
+  PlayCircle, 
+  Search, 
+  Cog, 
+  History, 
+  X 
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
+import Portal from './Portal';
+import { cn } from '../lib/utils';
 
 const MobileNav: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const location = useLocation();
-  const { glassConfig, mobileNavConfig } = useUI();
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const [continueWatchingCount, setContinueWatchingCount] = React.useState(0);
+  const navigate = useNavigate();
+  const { theme, setIsSettingsOpen, glassConfig, mobileNavConfig } = useUI();
+  
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [continueWatchingCount, setContinueWatchingCount] = useState(0);
 
   // Monitor localStorage to count continue watching items
-  React.useEffect(() => {
+  useEffect(() => {
     const updateCount = () => {
       try {
         const progressData = localStorage.getItem('watchProgress');
@@ -45,250 +52,297 @@ const MobileNav: React.FC = () => {
     updateCount();
     window.addEventListener('storage', updateCount);
     window.addEventListener('watchProgressUpdated', updateCount);
-    
-    const interval = setInterval(updateCount, 1500);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') updateCount();
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       window.removeEventListener('storage', updateCount);
       window.removeEventListener('watchProgressUpdated', updateCount);
-      clearInterval(interval);
+      window.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
-  // Smooth scroll active element into center view
-  React.useEffect(() => {
-    const activeEl = scrollContainerRef.current?.querySelector('.active-nav-link');
-    if (activeEl) {
-      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  }, [location.pathname]);
-
   if (!mobileNavConfig) return null;
 
-  // Custom colors helper
-  const r = mobileNavConfig.colorR ?? 220;
-  const g = mobileNavConfig.colorG ?? 38;
-  const b = mobileNavConfig.colorB ?? 38;
+  const isRtl = language === 'ku' || language === 'badini';
 
-  // Dynamically map items based on server_config visibilities
-  const items = [
-    ...(mobileNavConfig.showHome === 1 ? [{ id: 0, icon: <Home size={mobileNavConfig.iconSize} />, labelKey: "home" as const, to: "/" }] : []),
-    ...(mobileNavConfig.showTrending === 1 ? [{ id: 1, icon: <PlayCircle size={mobileNavConfig.iconSize} />, labelKey: "trendingToday" as const, to: "/shorts" }] : []),
-    ...(mobileNavConfig.showTv === 1 ? [{ id: 2, icon: <Tv size={mobileNavConfig.iconSize} />, labelKey: "tvShows" as const, to: "/tv" }] : []),
-    ...(mobileNavConfig.showDubbed === 1 ? [{ id: 3, icon: <Mic2 size={mobileNavConfig.iconSize} />, labelKey: "dubbedMovies" as const, to: "/dubbed" }] : []),
-    ...(mobileNavConfig.showStudios === 1 ? [{ id: 4, icon: <Film size={mobileNavConfig.iconSize} />, labelKey: "studios" as const, to: "/studios" }] : []),
-    ...(mobileNavConfig.showDiscover === 1 ? [{ id: 5, icon: <Globe size={mobileNavConfig.iconSize} />, labelKey: "discover" as const, to: "/discover" }] : []),
-    ...(mobileNavConfig.showList === 1 ? [{ id: 6, icon: <Bookmark size={mobileNavConfig.iconSize} />, labelKey: "myList" as const, to: "/my-list" }] : []),
-    ...(mobileNavConfig.showSearch === 1 ? [{ id: 7, icon: <Search size={mobileNavConfig.iconSize} />, labelKey: "search" as const, to: "/search" }] : []),
+  // Kurdish Localization for bottom bar items
+  const getKurdishLabel = (key: string) => {
+    if (isRtl) {
+      if (key === 'home') return 'سەرەکی';
+      if (key === 'discover') return 'دۆزینەوە';
+      if (key === 'tvShows') return 'زنجیرە';
+      if (key === 'dubbed') return 'دۆبلاژ';
+      if (key === 'more') return 'زیاتر';
+    }
+    if (key === 'home') return 'Home';
+    if (key === 'discover') return 'Discover';
+    if (key === 'tvShows') return 'TV';
+    if (key === 'dubbed') return 'Dubbed';
+    if (key === 'more') return 'More';
+    return key;
+  };
+
+  const isDarkNavbar = theme === 'light';
+  
+  const notchBgClass = isDarkNavbar
+    ? "bg-black"
+    : "bg-white";
+
+  const notchStrokeClass = isDarkNavbar 
+    ? "text-zinc-800" 
+    : "text-zinc-200";
+
+  // Center notch buttons
+  const mainItems = [
+    { id: 'home', icon: <Home size={18} />, labelKey: 'home', to: '/' },
+    { id: 'discover', icon: <Globe size={18} />, labelKey: 'discover', to: '/discover' },
+    { id: 'tvShows', icon: <Tv size={18} />, labelKey: 'tvShows', to: '/tv' },
+    { id: 'dubbed', icon: <Mic2 size={18} />, labelKey: 'dubbed', to: '/dubbed' },
   ];
 
-  // ── BACKGROUND STYLE GENERATORS ──
-  const getBgStyle = () => {
-    switch (mobileNavConfig.bgType) {
-      case 1: // Pure Glassmorphism
-        return {
-          background: `rgba(10, 10, 10, ${mobileNavConfig.darkOpacity / 100})`,
-        };
-      case 2: // Solid Matte Black
-        return {
-          background: '#070708',
-        };
-      case 3: // Burgundy Wine Glass / Custom Colored Tinted Glass
-        return {
-          background: `linear-gradient(135deg, rgba(${Math.max(10, r - 100)}, ${Math.max(5, g - 100)}, ${Math.max(5, b - 100)}, 0.94) 0%, rgba(10, 3, 3, 0.96) 100%)`,
-        };
-      case 0: // Liquid Glass (Gradient)
-      default:
-        return {
-          background: `linear-gradient(135deg, rgba(${Math.max(10, r - 150)}, ${Math.max(5, g - 150)}, ${Math.max(5, b - 150)}, 0.92) 0%, rgba(8, 3, 3, 0.96) 100%)`,
-        };
+  // Drawer items triggered by "More" button
+  const drawerItems = [
+    {
+      label: isRtl ? 'ترێندینگ' : 'Trending',
+      icon: <PlayCircle size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/shorts');
+      }
+    },
+    {
+      label: isRtl ? 'ستۆدیۆکان' : 'Studios',
+      icon: <Film size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/studios');
+      }
+    },
+    {
+      label: isRtl ? 'لیستی من' : 'My List',
+      icon: <Bookmark size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/my-list');
+      }
+    },
+    {
+      label: isRtl ? 'گەڕان' : 'Search',
+      icon: <Search size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/search');
+      }
+    },
+    {
+      label: isRtl ? 'سەیرکردن' : 'History',
+      icon: <History size={20} />,
+      count: continueWatchingCount,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/continue-watching');
+      }
+    },
+    {
+      label: isRtl ? 'ڕێکخستن' : 'Settings',
+      icon: <Cog size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        setIsSettingsOpen(true);
+      }
     }
-  };
-
-  // ── ACTIVE PILL STYLE GENERATORS ──
-  const getActivePillStyle = () => {
-    const radius = mobileNavConfig.borderRadius === 9999 ? 9999 : mobileNavConfig.borderRadius - 4;
-    switch (mobileNavConfig.pillType) {
-      case 1: // Custom Color Border Outline
-        return {
-          background: `rgba(${r}, ${g}, ${b}, 0.08)`,
-          borderColor: `rgba(${r}, ${g}, ${b}, 0.45)`,
-          borderWidth: '1px',
-          boxShadow: `0 0 10px rgba(${r}, ${g}, ${b}, 0.15)`,
-          borderRadius: `${radius}px`
-        };
-      case 2: // Ice White Glass
-        return {
-          background: 'rgba(255, 255, 255, 0.08)',
-          borderColor: 'rgba(255, 255, 255, 0.15)',
-          borderWidth: '1px',
-          boxShadow: '0 0 12px rgba(255, 255, 255, 0.1)',
-          borderRadius: `${radius}px`
-        };
-      case 0: // Solid Custom Color Gradient
-      default:
-        return {
-          background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)`,
-          borderColor: `rgba(${r}, ${g}, ${b}, 0.3)`,
-          borderWidth: '1px',
-          boxShadow: `0 3px 10px rgba(${r}, ${g}, ${b}, 0.4)`,
-          borderRadius: `${radius}px`
-        };
-    }
-  };
+  ];
 
   return (
-    <div 
-      className="global-mobilenav fixed left-0 right-0 mx-auto z-[9999] md:hidden pointer-events-auto overflow-visible flex items-center justify-between gap-2.5"
-      style={{ 
-        width: `${mobileNavConfig.capsuleWidth}%`,
-        bottom: `calc(${mobileNavConfig.bottomOffset}px + env(safe-area-inset-bottom, 0px))`
-      }}
-    >
-      
-      {/* 1. Main Scrollable Capsule */}
+    <>
+      {/* Bottom NotchNavbar for Mobile (Flipped shape of the Header Notch) */}
       <div 
-        className="flex-1 border transition-all duration-300 relative overflow-hidden flex items-center"
-        style={{
-          height: `${mobileNavConfig.height}px`,
-          borderRadius: `${mobileNavConfig.borderRadius}px`,
-          ...getBgStyle(),
-          backdropFilter: mobileNavConfig.bgType === 2 ? 'none' : `blur(${mobileNavConfig.blurAmount}px) saturate(140%)`,
-          WebkitBackdropFilter: mobileNavConfig.bgType === 2 ? 'none' : `blur(${mobileNavConfig.blurAmount}px) saturate(140%)`,
-          borderStyle: 'solid',
-          borderColor: `rgba(${r}, ${g}, ${b}, ${mobileNavConfig.borderOpacity / 100})`,
-          boxShadow: `
-            inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-            inset 0 0 15px rgba(${r}, ${g}, ${b}, ${mobileNavConfig.bgType === 2 ? '0' : '0.1'}),
-            0 15px 30px rgba(0,0,0,0.8)
-          `
-        }}
+        className="global-mobilenav fixed bottom-0 inset-x-0 z-[999] md:hidden flex flex-col transition-all duration-300 w-full select-none pointer-events-auto"
+        style={{ height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+        dir="ltr"
       >
-        {/* Edge gradient masks for scroll indication */}
-        <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/20 to-transparent pointer-events-none z-20" />
-        <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/20 to-transparent pointer-events-none z-20" />
+        {/* Curved Notch Navigation Bar Content (64px height) */}
+        <div className="h-16 w-full flex relative z-10">
+          
+          {/* Left Side Bar - Flexible width */}
+          <div className={cn("flex-grow h-10 self-end transition-all duration-300 relative min-w-0", notchBgClass)}>
+            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+              <line x1="0" y1="24.5" x2="100%" y2="24.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+              <line x1="0" y1="27.5" x2="100%" y2="27.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+            </svg>
+          </div>
 
-        {/* Dynamic Liquid Shine Overlay for bgType = 0 */}
-        {mobileNavConfig.bgType === 0 && (
-          <div 
-            className="absolute inset-0 pointer-events-none mix-blend-color-dodge opacity-50 z-0"
-            style={{
-              background: `radial-gradient(circle at 50% 0%, rgba(${r}, ${g}, ${b}, ${mobileNavConfig.redOpacity / 100}) 0%, transparent 60%)`,
-            }}
-          />
-        )}
+          {/* Responsive Bottom Notch Container */}
+          <div className="flex h-16 relative z-10 shrink-0 -ml-px">
+            
+            {/* Left Slice (Corner Curve Flipped) */}
+            <div className="w-[40px] h-full relative shrink-0">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
+                <path 
+                  d="M -1 64 H 51 V 0 C 25 0 25 24 -1 24 Z" 
+                  className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
+                />
+                <path d="M0 24.5 C25 24.5 25 0.5 50 0.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+                <path d="M0 27.5 C25 27.5 25 3.5 50 3.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+              </svg>
+            </div>
 
-        {/* Scrollable Container */}
-        <div 
-          ref={scrollContainerRef}
-          className="w-full h-full flex items-center overflow-x-auto scrollbar-none scroll-smooth px-3 py-1 select-none"
-          style={{
-            gap: `${mobileNavConfig.itemsGap}px`,
-            maskImage: 'linear-gradient(to right, transparent, white 8px, white calc(100% - 8px), transparent)',
-            WebkitMaskImage: 'linear-gradient(to right, transparent, white 8px, white calc(100% - 8px), transparent)'
-          }}
-        >
-          {items.map((item) => {
-            const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-            const pillRadius = mobileNavConfig.borderRadius === 9999 ? 9999 : mobileNavConfig.borderRadius - 4;
+            {/* Center Slice (Content Area - Fits 5 items) */}
+            <div className={cn("flex h-full relative transition-all duration-300 w-[230px] min-[375px]:w-[270px] min-[414px]:w-[310px] -ml-px", notchBgClass)}>
+               <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                 <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+                 <line x1="0" y1="3.5" x2="100%" y2="3.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+               </svg>
 
-            return (
-              <NavLink
-                key={item.id}
-                to={item.to}
-                aria-label={t(item.labelKey)}
-                className={({ isActive }) => 
-                  `flex-shrink-0 flex justify-center focus:outline-none ${isActive ? 'active-nav-link' : ''}`
-                }
-              >
-                <motion.div
-                  whileTap={{ scale: 0.9 }}
-                  style={{
-                    width: `${Math.max(24, (mobileNavConfig.height || 48) - 12)}px`,
-                    height: `${Math.max(24, (mobileNavConfig.height || 48) - 12)}px`,
-                    borderRadius: `${pillRadius}px`
-                  }}
-                  className="flex items-center justify-center transition-colors duration-200 relative text-red-200/50 hover:text-white hover:bg-white/5"
-                >
-                  {isActive && (
-                    <motion.div
-                      layoutId="mobile-nav-active-pill"
-                      className="absolute inset-0 z-0"
-                      style={getActivePillStyle()}
-                      transition={{ 
-                        type: "spring", 
-                        stiffness: 420 * ((glassConfig.elasticity || 0.35) / 0.35), 
-                        damping: 32 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35)) 
-                      }}
-                    />
-                  )}
-                  <span className={`relative z-10 transition-transform duration-300 ${isActive ? 'scale-105 text-white font-black' : 'text-red-300/55'}`}>
-                    {item.icon}
-                  </span>
-                </motion.div>
-              </NavLink>
-            );
-          })}
+               {/* Bottom Navigation Buttons (RTL for text, LTR flex layout) */}
+               <div className="relative w-full h-full flex items-center justify-around pb-1 px-1.5" dir={isRtl ? 'rtl' : 'ltr'}>
+                 {mainItems.map((item) => {
+                   const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+
+                   return (
+                     <NavLink
+                       key={item.id}
+                       to={item.to}
+                       className="flex flex-col items-center justify-center w-10 h-10 min-[375px]:w-12 min-[375px]:h-12 flex-1 relative select-none focus:outline-none"
+                     >
+                       <div className={cn(
+                         "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all duration-300",
+                         isActive 
+                           ? 'text-red-500 bg-red-500/10 border border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]' 
+                           : (isDarkNavbar ? 'text-zinc-400 hover:text-white border-transparent' : 'text-zinc-600 hover:text-black border-transparent')
+                       )}>
+                         {item.icon}
+                         <span className="text-[7px] font-black uppercase tracking-widest leading-none">
+                           {getKurdishLabel(item.labelKey)}
+                         </span>
+                       </div>
+                     </NavLink>
+                   );
+                 })}
+
+                 {/* More Button */}
+                 <button
+                   onClick={() => setIsMoreMenuOpen(true)}
+                   className="flex flex-col items-center justify-center w-10 h-10 min-[375px]:w-12 min-[375px]:h-12 flex-1 relative select-none focus:outline-none"
+                 >
+                   <div className={cn(
+                     "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all duration-300",
+                     isMoreMenuOpen 
+                       ? 'text-red-500 bg-red-500/10 border border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]' 
+                       : (isDarkNavbar ? 'text-zinc-400 hover:text-white border-transparent' : 'text-zinc-600 hover:text-black border-transparent')
+                   )}>
+                     <MoreHorizontal size={18} />
+                     <span className="text-[7px] font-black uppercase tracking-widest leading-none">
+                       {getKurdishLabel('more')}
+                     </span>
+                   </div>
+                 </button>
+               </div>
+            </div>
+
+            {/* Right Slice (Corner Curve Flipped) */}
+            <div className="w-[40px] h-full relative shrink-0 -ml-px">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
+                <path 
+                  d="M -1 64 H 51 V 24 C 25 24 25 0 -1 0 Z" 
+                  className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
+                />
+                <path d="M0 0.5 C25 0.5 25 24.5 50 24.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+                <path d="M0 3.5 C25 3.5 25 27.5 50 27.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
+              </svg>
+            </div>
+
+          </div>
+
+          {/* Right Side Bar - Flexible width */}
+          <div className={cn("flex-grow h-10 self-end transition-all duration-300 relative min-w-0 -ml-px", notchBgClass)}>
+            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+              <line x1="0" y1="24.5" x2="100%" y2="24.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+              <line x1="0" y1="27.5" x2="100%" y2="27.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
+            </svg>
+          </div>
+
         </div>
+
+        {/* Bottom safe-area home-indicator background filler */}
+        <div 
+          className={cn("w-full transition-all duration-300 relative z-0", notchBgClass)} 
+          style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
+        />
       </div>
 
-      {/* 2. Floating Circular Sparkles Button */}
-      {mobileNavConfig.showSparkles === 1 && (
-        <button
-          onClick={() => {
-            window.dispatchEvent(new CustomEvent('flkrd_toggle_continue_watching'));
-          }}
-          aria-label="Continue Watching Portal"
-          className="focus:outline-none flex-shrink-0 relative overflow-visible animate-fadeIn"
-        >
-          <motion.div
-            whileHover={{ scale: 1.08, y: -1 }}
-            whileTap={{ scale: 0.92 }}
-            className="rounded-full flex items-center justify-center border transition-all duration-300 relative cursor-pointer group"
-            style={{
-              width: `${mobileNavConfig.height}px`,
-              height: `${mobileNavConfig.height}px`,
-              background: `radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.4) 0%, transparent 60%), linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${Math.max(10, r - 50)}, ${Math.max(5, g - 50)}, ${Math.max(5, b - 50)}, 0.95) 100%)`,
-              borderColor: `rgba(${r}, ${g}, ${b}, 0.45)`,
-              boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.35), 0 0 15px rgba(${r}, ${g}, ${b}, 0.35)`,
-              borderRadius: `${mobileNavConfig.borderRadius}px`
-            }}
-          >
-            {/* Pulsing Glow Ring */}
-            <div 
-              className="absolute inset-0 rounded-full border animate-ping opacity-15 pointer-events-none" 
-              style={{ 
-                borderColor: `rgb(${r}, ${g}, ${b})`,
-                borderRadius: `${mobileNavConfig.borderRadius}px`
-              }}
-            />
-            
-            {/* Liquid Glass Shine Reflection Overlay */}
-            <div 
-              className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-0" 
-              style={{ borderRadius: `${mobileNavConfig.borderRadius}px` }}
-            />
-            
-            <Sparkles size={mobileNavConfig.iconSize + 2} className="text-white relative z-10 transition-transform duration-500 group-hover:rotate-12 animate-pulse" />
-            
-            {/* Badge Count */}
-            <AnimatePresence>
-              {continueWatchingCount > 0 && (
-                <motion.div 
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className="absolute -top-1 -right-1 bg-white text-black text-[9px] font-black rounded-full w-5 h-5 flex items-center justify-center z-20 border shadow-md"
-                  style={{ borderColor: `rgb(${r}, ${g}, ${b})` }}
-                >
-                  {continueWatchingCount}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </button>
-      )}
-    </div>
+      {/* Floating Bottom sheet menu drawer for More */}
+      <Portal id="mobile-more-menu-portal">
+        <AnimatePresence>
+          {isMoreMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMoreMenuOpen(false)}
+                className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99998]"
+              />
+
+              {/* Bottom Sheet content container */}
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                className="fixed bottom-0 inset-x-0 bg-[#080809]/95 border-t border-white/10 rounded-t-[32px] p-6 pb-10 z-[99999] flex flex-col gap-4 shadow-[0_-15px_40px_rgba(0,0,0,0.8)]"
+                dir={isRtl ? 'rtl' : 'ltr'}
+              >
+                {/* Header line slider handle indicator */}
+                <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-2" />
+
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                    {getKurdishLabel('more')}
+                  </h3>
+                  <button 
+                    onClick={() => setIsMoreMenuOpen(false)}
+                    className="p-2 bg-white/5 border border-white/10 hover:bg-red-600 rounded-xl transition-all"
+                  >
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3.5 py-2">
+                  {drawerItems.map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={item.onClick}
+                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 active:scale-95 relative"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                        {item.icon}
+                      </div>
+                      
+                      <span className="text-[9px] font-black uppercase tracking-wider text-zinc-300">
+                        {item.label}
+                      </span>
+
+                      {/* Optional item badge count */}
+                      {item.count !== undefined && item.count > 0 && (
+                        <span className="absolute top-2 right-2 bg-red-600 text-white text-[7px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-black shadow">
+                          {item.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </Portal>
+    </>
   );
 };
 

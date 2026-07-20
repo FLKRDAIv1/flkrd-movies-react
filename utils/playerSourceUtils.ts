@@ -95,16 +95,18 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         : `https://vidlink.pro/movie/${id}${vlParams}`;
 
     case 'FLKRD SERVER 3': // VidSrc (TOP 4)
+      const vsParams = subtitleUrl ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}&sub.ku=${encodeURIComponent(subtitleUrl)}&sub.ckb=${encodeURIComponent(subtitleUrl)}&sub_file=${encodeURIComponent(subtitleUrl)}` : '';
       return isTv
-        ? `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}`
-        : `https://vidsrcme.ru/embed/movie?tmdb=${id}`;
+        ? `https://vidsrcme.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}${vsParams}`
+        : `https://vidsrcme.ru/embed/movie?tmdb=${id}${vsParams}`;
 
     case 'FLKRD SERVER 4': // SuperEmbed (TOP 5)
       const isImdb = id.startsWith('tt');
       const tmdbParam = isImdb ? '' : '&tmdb=1';
+      const seParams = subtitleUrl ? `&subtitle=${encodeURIComponent(subtitleUrl)}&sub=${encodeURIComponent(subtitleUrl)}` : '';
       return isTv
-        ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${season}&e=${episode}`
-        : `https://multiembed.mov/?video_id=${id}${tmdbParam}`;
+        ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${season}&e=${episode}${seParams}`
+        : `https://multiembed.mov/?video_id=${id}${tmdbParam}${seParams}`;
 
     case 'FLKRD SERVER 5': // CinePro (TOP 6)
       const cpSubParams = subtitleUrl 

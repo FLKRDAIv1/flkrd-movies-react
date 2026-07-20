@@ -11,7 +11,7 @@ import { useUI } from '../contexts/UIContext';
 import KurdishCCBadge from './KurdishCCBadge';
 import { LiquidButton } from './ui/liquid-glass-button';
 import { fetchData } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER } from '../constants';
+import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_THUMB } from '../constants';
 
 interface MovieCardProps {
   item: any; // Can be Content, WatchProgress, or MyListItem
@@ -149,10 +149,7 @@ export const MovieCard = React.memo(
       ref={ref}
       onClick={navigateToDetail}
       onMouseEnter={handlePrefetch}
-      className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible ${className || 'w-44 md:w-72'}`}
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+      className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance ${className || 'w-44 md:w-72'}`}
       whileHover={{ scale: 1.04, y: -6 }}
       whileTap={{ scale: 0.96 }}
       transition={{
@@ -171,20 +168,32 @@ export const MovieCard = React.memo(
           `
         }}
       >
-        {/* Holographic shimmer sheen sweep overlay */}
+        {/* Holographic shimmer sheen sweep overlay — GPU-composited via transform, not background-position */}
         <div 
-          className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none z-20 mix-blend-overlay"
-          style={{
-            background: 'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0) 30%, rgba(255,255,255,0.1) 40%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.1) 60%, rgba(255,255,255,0) 70%, transparent 100%)',
-            backgroundSize: '250% 250%',
-            animation: 'holographic-sweep 3s linear infinite'
-          }}
-        />
+          className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none z-20 mix-blend-overlay overflow-hidden"
+        >
+          <div
+            className="holographic-sheen"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.25) 50%, transparent 80%)',
+              transform: 'translateX(-100%)',
+              willChange: 'transform',
+            }}
+          />
+        </div>
         <style>
           {`
             @keyframes holographic-sweep {
-              0% { background-position: -100% -100%; }
-              100% { background-position: 200% 200%; }
+              0%   { transform: translateX(-100%); }
+              100% { transform: translateX(200%); }
+            }
+            .holographic-sheen {
+              animation: none;
+            }
+            .group\\/card:hover .holographic-sheen {
+              animation: holographic-sweep 3s linear infinite;
             }
           `}
         </style>
@@ -192,12 +201,25 @@ export const MovieCard = React.memo(
         {/* Poster artwork window with inner border */}
         <div className="relative flex-1 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">
           <img
-            src={(imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:'))) ? imageSrc : (imageSrc ? `${IMAGE_BASE_URL_POSTER}${imageSrc}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp')}
+            src={
+              (imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:')))
+                ? imageSrc
+                : (imageSrc
+                    ? `${IMAGE_BASE_URL_THUMB}${imageSrc}`
+                    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp')
+            }
+            srcSet={
+              (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('data:'))
+                ? `${IMAGE_BASE_URL_THUMB}${imageSrc} 342w, ${IMAGE_BASE_URL_POSTER}${imageSrc} 500w`
+                : undefined
+            }
+            sizes="(max-width: 768px) 176px, 288px"
             alt={title}
             width={342}
             height={513}
             className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
             loading="lazy"
+            decoding="async"
           />
 
           {/* IMDb Rating Badge */}

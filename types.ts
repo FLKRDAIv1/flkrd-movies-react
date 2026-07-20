@@ -117,6 +117,8 @@ export interface Notification {
   title: string;
   message: string;
   duration?: number;
+  image?: string;
+  actionUrl?: string;
 }
 
 export interface PlayerSource {

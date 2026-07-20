@@ -19,7 +19,7 @@ async function getMovieTitle(imdbId, tmdbId, type) {
     try {
         if (imdbId) {
             const cleanImdb = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
-            const res = await fetch(`https://api.themoviedb.org/3/find/${cleanImdb}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
+            const res = await fetch(`https://api.tmdb.org/3/find/${cleanImdb}?api_key=${TMDB_API_KEY}&external_source=imdb_id`);
             if (res.ok) {
                 const data = await res.json();
                 const item = (data.movie_results && data.movie_results[0]) || (data.tv_results && data.tv_results[0]);
@@ -29,7 +29,7 @@ async function getMovieTitle(imdbId, tmdbId, type) {
             }
         }
         if (tmdbId) {
-            const res = await fetch(`https://api.themoviedb.org/3/${type === 'tv' ? 'tv' : 'movie'}/${tmdbId}?api_key=${TMDB_API_KEY}`);
+            const res = await fetch(`https://api.tmdb.org/3/${type === 'tv' ? 'tv' : 'movie'}/${tmdbId}?api_key=${TMDB_API_KEY}`);
             if (res.ok) {
                 const data = await res.json();
                 return data.title || data.name || data.original_title || data.original_name;
@@ -42,7 +42,7 @@ async function getMovieTitle(imdbId, tmdbId, type) {
 }
 
 /**
- * Scrape free Kurdish subtitles from kurdsubtitle.live WordPress REST API
+ * Scrape free Kurdish subtitles from kurdsubtitle.net WordPress REST API
  */
 async function scrapeKurdishSubtitles(title) {
     if (!title) return [];
@@ -52,18 +52,22 @@ async function scrapeKurdishSubtitles(title) {
         const cleanQuery = title.replace(/[^a-zA-Z0-9\s]/g, '').trim();
         if (!cleanQuery) return [];
 
-        const wpUrl = `https://kurdsubtitle.live/wp-json/wp/v2/posts?search=${encodeURIComponent(cleanQuery)}&_fields=id,title,content`;
+        const wpUrl = `https://kurdsubtitle.net/wp-json/wp/v2/posts?search=${encodeURIComponent(cleanQuery)}&_fields=id,title,content`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
         const response = await fetch(wpUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
-            }
+            },
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
         
         if (!response.ok) return [];
-
+ 
         const posts = await response.json();
         if (!Array.isArray(posts)) return [];
-
+ 
         for (const post of posts) {
             const content = post.content?.rendered || '';
             const postTitle = post.title?.rendered || 'Kurdish Subtitle';
@@ -156,7 +160,7 @@ export default async function handler(req, res) {
                 for (const key of OPENSUBTITLES_KEYS) {
                     try {
                         let url = `https://api.opensubtitles.com/api/v1/subtitles?`;
-                        if (languages) url += `languages=${languages}&`;
+                        if (languages && languages !== 'all') url += `languages=${languages}&`;
                         if (order_by) url += `order_by=${order_by}&`;
                         if (order_direction) url += `order_direction=${order_direction}&`;
                         if (tmdb_id) url += `tmdb_id=${tmdb_id}&`;

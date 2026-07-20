@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     try {
         if (id) {
             if (type === 'movie' && TMDB_API_KEY) {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.release_date ? ` (${data.release_date.split('-')[0]})` : '';
@@ -105,7 +105,7 @@ export default async function handler(req, res) {
                     };
                 }
             } else if (type === 'tv' && TMDB_API_KEY) {
-                const tmdbRes = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&language=en-US`);
+                const tmdbRes = await fetch(`https://api.tmdb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&language=en-US`);
                 if (tmdbRes.ok) {
                     const data = await tmdbRes.json();
                     const year = data.first_air_date ? ` (${data.first_air_date.split('-')[0]})` : '';

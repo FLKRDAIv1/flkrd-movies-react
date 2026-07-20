@@ -98,7 +98,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onComplete }) => {
       <div className="absolute inset-0 w-full h-full pointer-events-none z-10 flex items-center justify-center overflow-hidden bg-black">
         <iframe
           src={`https://player.vimeo.com/video/${videoId}?badge=0&autopause=0&player_id=0&app_id=58479&autoplay=1&loop=1&muted=1&controls=0&background=1&quality=1080p`}
-          className="w-[100vw] h-[56.25vw] min-h-[100vh] min-w-[177.77vh] object-cover scale-110"
+          className="w-[100vw] h-[56.25vw] min-h-[100dvh] min-w-[177.77dvh] object-cover scale-110"
           frameBorder="0"
           allow="autoplay; fullscreen"
           title="Splash Video"

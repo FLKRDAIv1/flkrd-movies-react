@@ -42,8 +42,6 @@ textarea,
   perspective: 1000px;
 }
 
-
-
 .light-mode {
   --brand-red: #ef4444;
   --brand-red-rgb: 239, 68, 68;
@@ -92,10 +90,7 @@ html {
   /* GPU-accelerate the root scroll container */
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
-  /* iOS 11.0 (older): constant() fallback — deprecated but needed for iPhone XR on iOS 11 */
-  padding: constant(safe-area-inset-top) constant(safe-area-inset-right) constant(safe-area-inset-bottom) constant(safe-area-inset-left);
-  /* iOS 11.2+ (modern): env() — overrides constant() on newer systems */
-  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  touch-action: manipulation;
 }
 
 body {
@@ -109,6 +104,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeSpeed;
   overscroll-behavior: none;
+  touch-action: manipulation;
   font-size: calc(1rem * var(--global-scale));
 }
 
@@ -284,7 +280,6 @@ html.console-mode-active .console-perspective-container {
   perspective: 1000px;
 }
 
-
 /* Ensure posters/cards have safe focus areas */
 html.console-mode-active [class*="Poster"], 
 html.console-mode-active [class*="Card"],
@@ -381,12 +376,109 @@ html.console-mode-active .web-only {
   min-height: 100dvh;
 }
 
+/* ── Modern Dynamic Viewport (dvh) mappings for all custom vh classes ── */
+.h-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+.min-h-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.max-h-dvh {
+  max-height: 100vh;
+  max-height: 100dvh;
+}
+
+.max-h-\[90vh\] {
+  max-height: 90vh !important;
+  max-height: 90dvh !important;
+}
+.max-h-\[85vh\] {
+  max-height: 85vh !important;
+  max-height: 85dvh !important;
+}
+.max-h-\[60vh\] {
+  max-height: 60vh !important;
+  max-height: 60dvh !important;
+}
+.max-h-\[48vh\] {
+  max-height: 48vh !important;
+  max-height: 48dvh !important;
+}
+
+.h-\[50vh\] {
+  height: 50vh !important;
+  height: 50dvh !important;
+}
+.h-\[70vh\] {
+  height: 70vh !important;
+  height: 70dvh !important;
+}
+.h-\[75vh\] {
+  height: 75vh !important;
+  height: 75dvh !important;
+}
+.h-\[85vh\] {
+  height: 85vh !important;
+  height: 85dvh !important;
+}
+.h-\[95vh\] {
+  height: 95vh !important;
+  height: 95dvh !important;
+}
+.h-\[90vh\] {
+  height: 90vh !important;
+  height: 90dvh !important;
+}
+.h-\[86vh\] {
+  height: 86vh !important;
+  height: 86dvh !important;
+}
+.min-h-\[85vh\] {
+  min-height: 85vh !important;
+  min-height: 85dvh !important;
+}
+.min-h-\[100vh\] {
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+}
+
 /* ── Hide navigation & header during movie playback ── */
+html.movie-player-active,
+body.movie-player-active {
+  overflow: hidden !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Prevent viewport scrolls, rubber-banding, and gesture shifting inside player overlays */
+body.movie-player-active,
+body.movie-player-active #root,
+body.movie-player-active .fixed.inset-0.bg-black\/90,
+body.movie-player-active video,
+body.movie-player-active iframe {
+  touch-action: none !important;
+  overflow: hidden !important;
+  -webkit-overflow-scrolling: auto !important;
+}
+
+/* Re-enable scrolling only for local menus that actually need it (e.g. season switcher, settings lists) */
+body.movie-player-active .overflow-y-auto,
+body.movie-player-active [class*="overflow-y-"],
+body.movie-player-active .scrollbar-hide {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+}
 body.movie-player-active .global-sidebar,
 body.movie-player-active .global-header,
 body.movie-player-active .global-mobilenav,
 body.movie-player-active #detail-nav-portal,
-body.movie-player-active [id*="nav-portal"] {
+body.movie-player-active [id*="nav-portal"],
+body.movie-player-active .flkrd-hub-portal {
   display: none !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -399,18 +491,24 @@ body.movie-player-active [id*="nav-portal"] {
 }
 
 /* Eradicate delayed tap response & lock layout bounds */
-html, body {
+html, body, #root {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
   background-color: transparent !important;
-  overflow-x: hidden;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  width: 100vw !important;
+  overflow: hidden !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 /* App root carries the page background — video pages override via fixed z-index */
 #root {
   @apply bg-main-bg;
-  min-height: 100vh;
 }
 
 /* Ensure images render with high visual fidelity without straining memory */
@@ -423,6 +521,7 @@ img {
 .global-sidebar {
   padding-top: 0px !important;
   height: calc(100vh - 6.5rem) !important;
+  height: calc(100dvh - 6.5rem) !important;
   margin-top: 5.5rem !important;
   margin-bottom: 1rem !important;
   margin-left: 1.25rem !important;
@@ -433,6 +532,7 @@ img {
   padding-top: 0px !important;
   margin-top: 7.5rem !important;
   height: calc(100vh - 8.5rem) !important;
+  height: calc(100dvh - 8.5rem) !important;
 }
 
 /* ── Disable WebKit media controls and play overlays completely ── */
@@ -486,7 +586,6 @@ video::-webkit-media-controls-panel {
   }
 }
 
-
 /* ── iOS Native Liquid Glass Sheen Animation (smooth pan, no jelly rotate) ── */
 @keyframes ios-glass-shine {
   0% {
@@ -522,7 +621,6 @@ video::-webkit-media-controls-panel {
     opacity: 0;
   }
 }
-
 
 /* ── Premium Neon Border Spin Animation ── */
 @keyframes neon-border-spin {
@@ -572,11 +670,11 @@ html {
   transition: none !important;
   transition-duration: 0s !important;
   transition-property: none !important;
-  
+
   /* Disable blurs and backdrops (extremely heavy on rendering) */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  
+
   /* Remove heavy box shadows and text shadows */
   box-shadow: none !important;
   text-shadow: none !important;
@@ -698,7 +796,7 @@ a,
   .global-header {
     padding-top: env(safe-area-inset-top, 0px) !important;
   }
-  
+
   /* Push main scroll content down to match the pushed header */
   main:not(.overflow-hidden) {
     padding-top: env(safe-area-inset-top, 0px) !important;
@@ -709,8 +807,110 @@ a,
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  /* Bottom navigation: stay above home indicator */
-  .global-mobilenav {
-    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+
+}
+
+/* ── High-Performance Card Entrance Animation (Bypasses JS/Framer-Motion main thread overhead) ── */
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) translateZ(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+.card-entrance {
+  animation: card-fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* Staggered card animation delay to avoid CPU paint spikes on grid mount */
+.card-entrance:nth-child(1)  { animation-delay: 15ms; }
+.card-entrance:nth-child(2)  { animation-delay: 30ms; }
+.card-entrance:nth-child(3)  { animation-delay: 45ms; }
+.card-entrance:nth-child(4)  { animation-delay: 60ms; }
+.card-entrance:nth-child(5)  { animation-delay: 75ms; }
+.card-entrance:nth-child(6)  { animation-delay: 90ms; }
+.card-entrance:nth-child(7)  { animation-delay: 105ms; }
+.card-entrance:nth-child(8)  { animation-delay: 120ms; }
+.card-entrance:nth-child(9)  { animation-delay: 135ms; }
+.card-entrance:nth-child(10) { animation-delay: 150ms; }
+.card-entrance:nth-child(n+11) { animation-delay: 180ms; }
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+  }
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
   }
 }

@@ -286,20 +286,30 @@ export async function translateAndSavePipeline(
       resolvedPublicUrl = `https:${resolvedPublicUrl}`;
     }
 
-    if (onProgress) onProgress(97, "Registering subtitle in Supabase Postgres registry...");
+    // Registering subtitle in Supabase Postgres registry (Failsafe delete-then-insert)
+    try {
+      await supabase
+        .from('custom_subtitles')
+        .delete()
+        .eq('tmdb_id', String(tmdbId))
+        .eq('media_type', mediaType || 'movie')
+        .eq('language', targetLang)
+        .eq('season', season || 0)
+        .eq('episode', episode || 0);
+    } catch (delErr) {
+      console.warn("[SUBTITLE-PIPELINE] Delete before insert failed:", delErr);
+    }
 
     const { error: dbErr } = await supabase
       .from('custom_subtitles')
-      .upsert({
+      .insert({
         tmdb_id: String(tmdbId),
         media_type: mediaType || 'movie',
         language: targetLang,
         subtitle_url: resolvedPublicUrl,
         file_name: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`,
-        season,
-        episode
-      }, {
-        onConflict: 'tmdb_id,media_type,language,season,episode'
+        season: season || 0,
+        episode: episode || 0
       });
 
     if (dbErr) throw dbErr;

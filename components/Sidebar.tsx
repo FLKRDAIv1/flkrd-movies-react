@@ -161,7 +161,7 @@ const Sidebar: React.FC = () => {
       </AnimatePresence>
 
       <motion.div
-        className="global-sidebar hidden md:flex flex-col flex-shrink-0 h-[calc(100vh-2.5rem)] my-5 ml-4 mr-0 text-sec-text z-50 overflow-visible relative"
+        className="global-sidebar hidden md:flex flex-col flex-shrink-0 h-[calc(100dvh-2.5rem)] my-5 ml-4 mr-0 text-sec-text z-50 overflow-visible relative"
         variants={sidebarVariants}
         initial="closed"
         animate={isCollapsed ? "closed" : "open"}

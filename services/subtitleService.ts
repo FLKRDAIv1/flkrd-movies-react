@@ -71,7 +71,7 @@ export const subtitleService = {
             // Check if we are in Tauri
             // @ts-ignore
             if (window.__TAURI_INTERNALS__) {
-                const { fetch: tauriFetch } = await import('@tauri-apps/plugin-http');
+                const { fetch: tauriFetch } = await import(/* @vite-ignore */ '@tauri-apps/plugin-http');
                 console.log("[SUBTITLE SERVICE] Using Tauri Native Fetch for:", url);
                 const response = await tauriFetch(url, {
                     method: options.method || 'GET',
@@ -189,7 +189,7 @@ export const subtitleService = {
                          return data.subtitles
                              .filter((s: any) => {
                                  const lang = (s.lang || '').toLowerCase();
-                                 return ['ku', 'ckb', 'ara', 'eng', 'per', 'fa', 'ar', 'en'].includes(lang);
+                                 return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
                              })
                              .map((s: any) => ({
                                  id: s.id || `stremio-${Math.random()}`,
@@ -213,7 +213,7 @@ export const subtitleService = {
          if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
              const fetchSubDL = async (): Promise<SubtitleResult[]> => {
                  try {
-                     const queryLangs = allLanguages ? 'ku,en,fa,ar' : 'ku';
+                     const queryLangs = 'all';
                      const results = await this.searchSubDL(imdbId, type, season, episode, queryLangs);
                      return results;
                  } catch (e) {
@@ -228,7 +228,7 @@ export const subtitleService = {
          const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
              try {
                  let query = `?imdb_id=${encodeURIComponent(cleanImdbId)}`;
-                 const langCodes = 'ku,ckb,fa,ar,en';
+                 const langCodes = 'all';
                  query += `&languages=${encodeURIComponent(langCodes)}`;
                  if (type === 'tv' && season && episode) {
                      query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
@@ -242,7 +242,7 @@ export const subtitleService = {
                 if (response.ok) {
                     const data = await response.json();
                     const rawList = data.data || [];
-                    return rawList.map((item: any) => {
+                    const mappedList = rawList.map((item: any) => {
                         if (item.attributes && typeof item.attributes.file_id !== 'undefined' && item.attributes.display_name) {
                             return item as SubtitleResult;
                         }
@@ -261,6 +261,11 @@ export const subtitleService = {
                                 file_id: fileId
                             }
                         } as SubtitleResult;
+                    });
+
+                    return mappedList.filter((item: SubtitleResult) => {
+                        const lang = (item.attributes?.language || '').toLowerCase();
+                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
                     });
                 }
             } catch (error: any) {

@@ -6,7 +6,7 @@ export const tauriService = {
     if (!isTauri()) return;
     
     try {
-      const { sendNotification, requestPermission } = await import('@tauri-apps/plugin-notification');
+      const { sendNotification, requestPermission } = await import(/* @vite-ignore */ '@tauri-apps/plugin-notification');
       let permissionGranted = await requestPermission();
       if (permissionGranted === 'granted') {
         sendNotification({ 
@@ -25,7 +25,7 @@ export const tauriService = {
   async alert(text: string, title: string = 'FLKRD') {
     if (isTauri()) {
       try {
-        const { message } = await import('@tauri-apps/plugin-dialog');
+        const { message } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog');
         await message(text, { title, kind: 'info' });
       } catch (e) {
         console.error('Failed to show Tauri alert:', e);
@@ -39,7 +39,7 @@ export const tauriService = {
   async confirm(text: string, title: string = 'FLKRD'): Promise<boolean> {
     if (isTauri()) {
       try {
-        const { confirm } = await import('@tauri-apps/plugin-dialog');
+        const { confirm } = await import(/* @vite-ignore */ '@tauri-apps/plugin-dialog');
         return await confirm(text, { title, kind: 'warning' });
       } catch (e) {
         console.error('Failed to show Tauri confirm:', e);
@@ -53,7 +53,7 @@ export const tauriService = {
   async openExternal(url: string) {
     if (isTauri()) {
       try {
-        const { open } = await import('@tauri-apps/plugin-shell');
+        const { open } = await import(/* @vite-ignore */ '@tauri-apps/plugin-shell');
         await open(url);
       } catch (e) {
         console.error('Failed to open external Tauri URL:', e);
@@ -67,7 +67,7 @@ export const tauriService = {
   async getOS() {
     if (isTauri()) {
       try {
-        const { type: osType } = await import('@tauri-apps/plugin-os');
+        const { type: osType } = await import(/* @vite-ignore */ '@tauri-apps/plugin-os');
         return await osType();
       } catch (e) {
         console.error('Failed to get Tauri OS type:', e);

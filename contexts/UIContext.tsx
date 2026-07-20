@@ -105,32 +105,21 @@ interface UIContextType {
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<Theme>(() =>
-    (localStorage.getItem('flkrd_theme') as Theme) || 'dark'
-  );
+  const [theme, setThemeState] = useState<Theme>(() => {
+    const saved = localStorage.getItem('flkrd_theme') as Theme;
+    if (saved) return saved;
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return 'dark';
+  });
   const [accentColor, setAccentColorState] = useState(() =>
     localStorage.getItem('flkrd_accent_color') || '#e50914'
   );
   const [scale, setScaleState] = useState(() =>
     Number(localStorage.getItem('flkrd_scale')) || 1
   );
-  const [isPerformanceMode, setIsPerformanceModeState] = useState(() => {
-    const saved = localStorage.getItem('flkrd_performance_turbo');
-    if (saved !== null) {
-      return saved === 'true';
-    }
-    // Auto-detect mobile or low-end hardware to default to smooth mode
-    if (typeof window !== 'undefined' && window.navigator) {
-      const userAgent = window.navigator.userAgent || '';
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-      
-      const isLowMemory = (window.navigator as any).deviceMemory && (window.navigator as any).deviceMemory < 4;
-      const isLowCpu = window.navigator.hardwareConcurrency && window.navigator.hardwareConcurrency < 6;
-      
-      return isMobile || isLowMemory || isLowCpu;
-    }
-    return false;
-  });
+  const [isPerformanceMode, setIsPerformanceModeState] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
     try {
@@ -345,6 +334,19 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      const newTheme: Theme = e.matches ? 'dark' : 'light';
+      setThemeState(newTheme);
+      localStorage.setItem('flkrd_theme', newTheme);
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('flkrd_theme', theme);
@@ -765,7 +767,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
   const setScale = (s: number) => setScaleState(s);
-  const setIsPerformanceMode = (p: boolean) => setIsPerformanceModeState(p);
+  const setIsPerformanceMode = (p: boolean) => {};
   const setIsAdmin = (a: boolean) => {
     setIsAdminState(a);
     localStorage.setItem('isFlkrdAdmin', a.toString());

@@ -85,7 +85,41 @@ const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
         }
       });
 
-      const resolvedStories = (await Promise.all(storiesPromises)).filter(Boolean) as UserStory[];
+      let resolvedStories = (await Promise.all(storiesPromises)).filter(Boolean) as UserStory[];
+      if (resolvedStories.length === 0) {
+        resolvedStories = [
+          {
+            username: "Moana 2",
+            avatar: "https://image.tmdb.org/t/p/w200/hSu87w3LOq2m4Z6gOSnOA4q5JcR.jpg",
+            timestamp: new Date().toISOString(),
+            stories: [{ id: "moana-2-trailer", type: 'youtube', src: "hSu87w3LOq2m" }]
+          },
+          {
+            username: "Oppenheimer",
+            avatar: "https://image.tmdb.org/t/p/w200/8Gxv2wY4n0k3rkjQ45jK2jK2jK2.jpg",
+            timestamp: new Date().toISOString(),
+            stories: [{ id: "oppenheimer-trailer", type: 'youtube', src: "uYPbbESgTOg" }]
+          },
+          {
+            username: "Wednesday",
+            avatar: "https://image.tmdb.org/t/p/w200/9PF4gdNx448nLV4eyoZ7jPGcm4l.jpg",
+            timestamp: new Date().toISOString(),
+            stories: [{ id: "wednesday-trailer", type: 'youtube', src: "Di310WS8zLk" }]
+          },
+          {
+            username: "Avatar: Way of Water",
+            avatar: "https://image.tmdb.org/t/p/w200/t6z8hp702rmre6t748C4X9tZ14.jpg",
+            timestamp: new Date().toISOString(),
+            stories: [{ id: "avatar-trailer", type: 'youtube', src: "d9MyW72HcF0" }]
+          },
+          {
+            username: "Dune: Part Two",
+            avatar: "https://image.tmdb.org/t/p/w200/czemb6f1a8S6jQjZaVAsHGzHlQI.jpg",
+            timestamp: new Date().toISOString(),
+            stories: [{ id: "dune-trailer", type: 'youtube', src: "Way9Dexny3w" }]
+          }
+        ] as any[];
+      }
       cachedUserStories[langCode] = resolvedStories;
       setUsers(resolvedStories);
     };

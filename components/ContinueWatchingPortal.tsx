@@ -75,16 +75,23 @@ const ContinueWatchingPortal: React.FC = () => {
     window.addEventListener('storage', syncHandler);
     window.addEventListener('watchProgressUpdated', syncHandler);
     window.addEventListener('flkrd_toggle_continue_watching', toggleHandler);
-    window.addEventListener('visibilitychange', () => {
+    const handleVisibility = () => {
         if (document.visibilityState === 'visible') loadProgressHistory();
-    });
+    };
 
-    const interval = setInterval(loadProgressHistory, 1500);
+    window.addEventListener('visibilitychange', handleVisibility);
+
+    const interval = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+            loadProgressHistory();
+        }
+    }, 20000);
+
     return () => {
       window.removeEventListener('storage', syncHandler);
       window.removeEventListener('watchProgressUpdated', syncHandler);
       window.removeEventListener('flkrd_toggle_continue_watching', toggleHandler);
-      window.removeEventListener('visibilitychange', syncHandler);
+      window.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(interval);
     };
   }, [loadProgressHistory]);
@@ -306,7 +313,7 @@ const ContinueWatchingPortal: React.FC = () => {
       </AnimatePresence>
 
       {/* 2. Floating Circular Desktop Trigger Button (Hidden on Mobile) */}
-      <div className="fixed bottom-24 right-4 md:bottom-10 md:right-10 z-[100] pointer-events-none hidden md:block">
+      <div className="flkrd-hub-portal fixed bottom-24 right-4 md:bottom-10 md:right-10 z-[100] pointer-events-none hidden md:block">
         <div className="relative flex flex-col items-end pointer-events-auto">
           {activeItem && !isExpanded && (
             <motion.button 

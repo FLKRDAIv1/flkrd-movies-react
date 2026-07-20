@@ -2,18 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Content } from '../types';
-import { IMAGE_BASE_URL_POSTER, GENRES_T } from '../constants';
+import { IMAGE_BASE_URL_POSTER, GENRES_T, requests } from '../constants';
 import { SkeletonGrid } from '../components/Skeleton';
 import Portal from '../components/Portal';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { clearTMDBCache } from '../services/tmdbService';
+import { clearTMDBCache, fetchData } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import MovieCard from '../components/MovieCard';
+import { CylinderCarousel } from '../components/ui/cylinder-carousel';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
 const SearchVisualEffect = () => {
@@ -139,6 +140,31 @@ const SearchPage: React.FC = () => {
   } } = useUI();
   const { addNotification } = useNotification();
   const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
+  const [topRatedMovies, setTopRatedMovies] = useState<Content[]>([]);
+
+  useEffect(() => {
+    const fetchTopRated = async () => {
+      try {
+        const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
+        const url = requests.fetchTopRatedMovies(langCode);
+        const data = await fetchData(url, language);
+        if (data && data.length > 0) {
+          const bannedSet = await bannedService.fetchBannedList();
+          const filtered = data.filter(item => !bannedSet.has(String(item.id)));
+          // Map to make sure we always have media_type set to movie
+          const mapped = filtered.map(item => ({ ...item, media_type: item.media_type || 'movie' }));
+          setTopRatedMovies(mapped.slice(0, 12));
+        }
+      } catch (err) {
+        console.error("Error fetching top rated movies:", err);
+      }
+    };
+    fetchTopRated();
+  }, [language]);
+
+  const handleCarouselItemClick = (img: any) => {
+    navigate(`/details/${img.media_type}/${img.id}`);
+  };
 
   useEffect(() => {
     const handleBannedUpdate = () => {
@@ -472,7 +498,6 @@ const SearchPage: React.FC = () => {
           </motion.div>
         ) : inputValue && !loading ? (
           <motion.div key="no-results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full py-20 text-center">
-            <SearchVisualEffect />
             <div className="relative z-10">
               <AlertCircle size={64} className="mx-auto text-brand/50 mb-6 animate-bounce" />
               <h2 className="text-2xl md:text-5xl font-[1000] text-main-text uppercase italic tracking-tighter mb-4">
@@ -482,13 +507,29 @@ const SearchPage: React.FC = () => {
             </div>
           </motion.div>
         ) : (
-          <motion.div key="empty" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center pt-10 relative">
-            <SearchVisualEffect />
-            <div className="relative -mt-12">
-              <h2 className="text-4xl md:text-7xl font-[1000] uppercase tracking-tighter text-main-text italic drop-shadow-[0_0_20px_rgba(229,9,20,0.3)]">{t('search')}</h2>
-              <div className="mt-10 flex flex-col items-center gap-4">
+          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center pt-4 relative flex flex-col items-center">
+            {topRatedMovies.length > 0 && (
+              <div className="w-full max-w-5xl h-[450px] relative z-10 flex items-center justify-center">
+                <CylinderCarousel
+                  images={topRatedMovies.map(item => ({
+                    src: `${IMAGE_BASE_URL_POSTER}${item.poster_path}`,
+                    id: item.id,
+                    media_type: item.media_type || 'movie',
+                    alt: item.title || item.name
+                  }))}
+                  onItemClick={handleCarouselItemClick}
+                  cardWidth={160}
+                  animationDuration={24}
+                  className="min-h-[400px]"
+                />
+              </div>
+            )}
+            
+            <div className="relative z-20 mt-6">
+              <h2 className="text-3xl md:text-6xl font-[1000] uppercase tracking-tighter text-main-text italic drop-shadow-[0_0_20px_rgba(229,9,20,0.3)]">{t('search')}</h2>
+              <div className="mt-4 flex flex-col items-center gap-3">
                 <div className="h-1 w-24 bg-brand rounded-full shadow-[0_0_15px_brand] animate-pulse"></div>
-                <p className="text-sec-text font-black uppercase tracking-[0.4em] text-[10px] md:text-xs">Deep Neural Sequence Engine Active</p>
+                <p className="text-sec-text font-black uppercase tracking-[0.4em] text-[9px] md:text-xs">Deep Neural Sequence Engine Active</p>
               </div>
             </div>
           </motion.div>
