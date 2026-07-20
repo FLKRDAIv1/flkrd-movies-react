@@ -38,9 +38,30 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
   const isHomePage = pathname === '/';
 
+  const [headerAvatarUrl, setHeaderAvatarUrl] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url') || null;
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const updated = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url') || null;
+      setHeaderAvatarUrl(updated);
+    };
+
+    window.addEventListener('storage', handleAvatarUpdate);
+    window.addEventListener('flkrd-avatar-changed', handleAvatarUpdate);
+    return () => {
+      window.removeEventListener('storage', handleAvatarUpdate);
+      window.removeEventListener('flkrd-avatar-changed', handleAvatarUpdate);
+    };
+  }, []);
+
   const renderAvatar = () => {
     if (user) {
-      const localAvatar = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url');
+      const localAvatar = headerAvatarUrl || localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url');
       const avatarUrl = localAvatar || user.user_metadata?.avatar_url;
       if (avatarUrl) {
         return (

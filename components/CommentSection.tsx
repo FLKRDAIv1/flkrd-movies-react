@@ -162,11 +162,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   const handleDeleteComment = async (id: string) => {
     if (!window.confirm(language === 'ku' || language === 'badini' ? 'دڵنیای لە سڕینەوەی ئەم کۆمێنتە؟' : 'Delete this comment?')) return;
     try {
+      setComments(prev => prev.filter(c => c.id !== id && c.parent_id !== id));
       const { error } = await supabase.from('comments').delete().eq('id', id);
       if (error) throw error;
       addNotification({ type: 'success', title: 'سڕایەوە', message: 'کۆمێنتەکە سڕایەوە.' });
       fetchComments();
     } catch (err: any) {
+      fetchComments();
       addNotification({ type: 'error', title: 'هەڵە', message: err.message || 'سڕینەوە سەرکەوتوو نەبوو' });
     }
   };
@@ -344,61 +346,65 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
               {/* Replies (Nested 1-level) */}
               {replies.length > 0 && (
                 <div className={`space-y-4 ${isRTL ? 'mr-10 border-r-2' : 'ml-10 border-l-2'} border-white/5 pr-4 pl-4`}>
-                  {replies.map(r => (
-                    <div key={r.id} className="flex gap-3 items-start">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedUserModal({
-                            name: r.user_name,
-                            email: r.user_email,
-                            avatarUrl: r.avatar_url
-                          });
-                          setIsProfileModalOpen(true);
-                        }}
-                        className="cursor-pointer transition-transform hover:scale-105 active:scale-95 text-left"
-                      >
-                        <AvatarEffectContainer url={r.avatar_url} name={r.user_name} email={r.user_email} size={32} />
-                      </button>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedUserModal({
-                                  name: r.user_name,
-                                  email: r.user_email,
-                                  avatarUrl: r.avatar_url
-                                });
-                                setIsProfileModalOpen(true);
-                              }}
-                              className="text-xs font-black text-white hover:text-red-400 transition-colors uppercase tracking-tight"
-                            >
-                              {r.user_name}
-                            </button>
-                            <span className="text-[9px] text-gray-500 font-bold ml-2 uppercase">
-                              {new Date(r.created_at).toLocaleDateString()}
-                            </span>
+                  {replies.map(r => {
+                    const isMyReply = user && (r.user_id === user.id || r.user_email === user.email);
+                    const effectiveReplyAvatarUrl = isMyReply ? (myAvatarUrl || r.avatar_url) : r.avatar_url;
+                    return (
+                      <div key={r.id} className="flex gap-3 items-start">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserModal({
+                              name: r.user_name,
+                              email: r.user_email,
+                              avatarUrl: effectiveReplyAvatarUrl
+                            });
+                            setIsProfileModalOpen(true);
+                          }}
+                          className="cursor-pointer transition-transform hover:scale-105 active:scale-95 text-left"
+                        >
+                          <AvatarEffectContainer url={effectiveReplyAvatarUrl} name={r.user_name} email={r.user_email} size={32} />
+                        </button>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUserModal({
+                                    name: r.user_name,
+                                    email: r.user_email,
+                                    avatarUrl: effectiveReplyAvatarUrl
+                                  });
+                                  setIsProfileModalOpen(true);
+                                }}
+                                className="text-xs font-black text-white hover:text-red-400 transition-colors uppercase tracking-tight"
+                              >
+                                {r.user_name}
+                              </button>
+                              <span className="text-[9px] text-gray-500 font-bold ml-2 uppercase">
+                                {new Date(r.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {user?.id === r.user_id && (
+                              <button
+                                onClick={() => handleDeleteComment(r.id)}
+                                className="text-gray-600 hover:text-brand transition-colors p-1"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
                           </div>
-                          {user?.id === r.user_id && (
-                            <button
-                              onClick={() => handleDeleteComment(r.id)}
-                              className="text-gray-600 hover:text-brand transition-colors p-1"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          )}
+                          <p className="text-[11px] font-bold text-gray-300 leading-relaxed">{r.content}</p>
                         </div>
-                        <p className="text-[11px] font-bold text-gray-300 leading-relaxed">{r.content}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        );
+      })}
 
         {comments.length === 0 && !loading && (
           <p className="text-center text-[10px] text-gray-600 py-6 uppercase tracking-wider font-bold">
