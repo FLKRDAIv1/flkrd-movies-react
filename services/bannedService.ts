@@ -124,23 +124,29 @@ class BannedService {
     }
 
     setupRealtime() {
-        return supabase
-            .channel('banned_content_sync')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'banned_content' },
-                async (payload) => {
-                    console.log("[BANNED SERVICE] Realtime sync received:", payload.eventType);
-                    await this.fetchBannedList(true); // Force refresh
-                    
-                    // Import and clear TMDB cache to ensure the UI removes the banned movie
-                    const { clearTMDBCache } = await import('./tmdbService');
-                    clearTMDBCache();
-                    
-                    this.notify();
+        try {
+            const channel = supabase
+                .channel('banned_content_sync')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'banned_content' },
+                    async (payload) => {
+                        console.log("[BANNED SERVICE] Realtime sync received:", payload.eventType);
+                        await this.fetchBannedList(true); // Force refresh
+                        const { clearTMDBCache } = await import('./tmdbService');
+                        clearTMDBCache();
+                        this.notify();
+                    }
+                );
+            channel.subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    // Silent handling for WebSocket connection issues
                 }
-            )
-            .subscribe();
+            });
+            return channel;
+        } catch (e) {
+            // Silent catch
+        }
     }
 }
 

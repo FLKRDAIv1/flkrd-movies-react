@@ -275,13 +275,6 @@ const ProfilePage: React.FC = () => {
     const handleSelectAvatarEffect = async (eff: AvatarEffectType) => {
         setAvatarEffect(eff);
         localStorage.setItem('flkrd_avatar_effect', eff);
-        if (user) {
-            try {
-                await supabase.auth.updateUser({
-                    data: { avatar_effect: eff }
-                });
-            } catch (e) {}
-        }
         addNotification({ type: 'success', title: 'Effect Applied', message: `Avatar animation effect updated!` });
     };
 
@@ -387,10 +380,16 @@ const ProfilePage: React.FC = () => {
             }
             await db.saveAvatar('current_user_avatar', finalUrl);
 
-            // 3. Update Supabase Auth User Metadata with finalUrl
-            await supabase.auth.updateUser({
-                data: { avatar_url: finalUrl }
-            }).catch(() => {});
+            // 3. Update Supabase Auth User Metadata with finalUrl if it's a valid public HTTP URL
+            if (finalUrl.startsWith('http')) {
+                try {
+                    await supabase.auth.updateUser({
+                        data: { avatar_url: finalUrl }
+                    });
+                } catch (authErr) {
+                    // Silent catch for auth CORS restrictions
+                }
+            }
 
             // 4. Save to local storage & state, then dispatch events
             safeSetAvatarStorage(finalUrl);
