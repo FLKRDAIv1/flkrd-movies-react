@@ -196,7 +196,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
   };
 
   return (
-    <div className="w-full relative px-4 md:px-12 pt-24 md:pt-32 pb-12 md:pb-8 bg-transparent overflow-hidden isolate">
+    <div className="w-full relative px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto pt-24 md:pt-28 pb-8 bg-transparent overflow-hidden isolate">
 
       {/* Desktop Design: Skiper49 3D Coverflow Perspective Carousel */}
       <div className="hidden md:block relative z-10">

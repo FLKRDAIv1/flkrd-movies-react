@@ -17,7 +17,7 @@ interface SkeletonGridProps {
 
 export const SkeletonGrid: React.FC<SkeletonGridProps> = ({ title, count = 12 }) => {
   return (
-    <div className="mb-10 md:mb-20 px-6 md:px-20 relative z-20">
+    <div className="mb-10 md:mb-16 px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto relative z-20">
       {title && (
         <div className="flex items-center mb-8">
           <div className="w-1.5 md:w-2 h-8 md:h-10 bg-zinc-800 rounded-full me-4 md:me-6 animate-pulse" />

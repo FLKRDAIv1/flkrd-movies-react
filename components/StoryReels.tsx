@@ -133,7 +133,7 @@ const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
     <div className={size === "sm" ? "w-full relative z-30 max-w-[100vw]" : "w-full relative z-30 pt-6 pb-2 max-w-[100vw]"}>
       <div className={size === "sm" 
         ? "flex gap-4 overflow-x-auto py-2 px-4 scrollbar-none" 
-        : "flex gap-6 md:gap-8 overflow-x-auto pb-4 px-6 md:px-20 scrollbar-hide snap-x"
+        : "flex gap-4 md:gap-6 overflow-x-auto pb-4 px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto scrollbar-hide snap-x"
       }>
         {users.map((user) => (
           <div key={user.username} className={size === "sm" ? "shrink-0" : "snap-start shrink-0"}>

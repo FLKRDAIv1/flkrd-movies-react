@@ -192,7 +192,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   const isRowLoading = externalLoading !== undefined ? externalLoading : loading;
 
   if (isRowLoading) return (
-    <div className="mb-10 md:mb-20 px-4 md:px-20 relative z-20 overflow-visible">
+    <div className="mb-10 md:mb-16 px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto relative z-20 overflow-visible">
         <div className="flex items-center mb-8">
             <span className="w-1 md:w-2 h-8 md:h-12 bg-main-text/5 rounded-full me-4 md:me-6" />
             <div className="h-8 md:h-12 w-48 md:w-64 bg-main-text/5 rounded-full animate-pulse" />
@@ -206,7 +206,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   if (hasError || !content || content.length === 0) return null;
 
   return (
-    <div className="mb-10 md:mb-20 px-4 md:px-20 relative z-20 overflow-visible movie-row-container">
+    <div className="mb-10 md:mb-16 px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto relative z-20 overflow-visible movie-row-container">
       {title && (
         <div className="flex items-center justify-between mb-8">
             <h2 className={`text-xl md:text-4xl font-[1000] flex items-center uppercase text-main-text ${language !== 'ku' ? 'italic tracking-tighter' : ''}`}>
