@@ -216,6 +216,7 @@ const CinematicLoader: React.FC<{ progress: number, status: string, performanceM
 
 
 const DubbedMoviesPage: React.FC = () => {
+    const { addNotification } = useNotification();
     const [dubbedContent, setDubbedContent] = useState<any[]>([]);
 
     // Quantum Initial Hydration
@@ -416,7 +417,6 @@ const DubbedMoviesPage: React.FC = () => {
 
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { addNotification } = useNotification();
     const [hasNewMovies, setHasNewMovies] = useState(false);
     const [isLive, setIsLive] = useState(false);
     const [page, setPage] = useState(0);

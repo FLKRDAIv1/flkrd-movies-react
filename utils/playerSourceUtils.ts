@@ -114,7 +114,7 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         : '';
       const cpBaseParams = `color=${playerColor}&autoplay=1&playsinline=1${cpSubParams}`;
       
-      let cpBaseUrl = 'http://localhost:3001';
+      let cpBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://fkurd.pro';
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('cinepro_base_url');
         if (stored) {

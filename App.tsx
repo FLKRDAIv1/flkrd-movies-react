@@ -421,21 +421,16 @@ const logVisit = async (path: string) => {
             deviceType = 'Tablet';
         }
 
-        const { data, error } = await supabase.from('site_analytics').insert([{
+        const { error } = await supabase.from('site_analytics').insert([{
             session_id: sessionId,
             country: country,
             device_type: deviceType,
             page_path: path,
             referrer: document.referrer || 'Direct',
             user_agent: navigator.userAgent
-        }]).select('id');
+        }]);
 
         if (error) throw error;
-        
-        const visitId = data?.[0]?.id;
-        if (visitId) {
-            startPerformanceObserver(visitId);
-        }
     } catch (err) {
         console.warn("Analytics registration bypassed:", err);
     }
