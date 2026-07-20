@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Content } from '../types';
-import { IMAGE_BASE_URL_POSTER, GENRES_T, requests } from '../constants';
+import { IMAGE_BASE_URL_POSTER, GENRES_T, requests, API_KEY } from '../constants';
 import { SkeletonGrid } from '../components/Skeleton';
 import Portal from '../components/Portal';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -146,15 +146,26 @@ const SearchPage: React.FC = () => {
     const fetchTopRated = async () => {
       try {
         const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
-        const url = requests.fetchTopRatedMovies(langCode);
-        const data = await fetchData(url, language);
-        if (data && data.length > 0) {
-          const bannedSet = await bannedService.fetchBannedList();
-          const filtered = data.filter(item => !bannedSet.has(String(item.id)));
-          // Map to make sure we always have media_type set to movie
-          const mapped = filtered.map(item => ({ ...item, media_type: item.media_type || 'movie' }));
-          setTopRatedMovies(mapped.slice(0, 12));
-        }
+        const [topData, marvelData] = await Promise.all([
+          fetchData(requests.fetchTopRatedMovies(langCode), language),
+          fetchData(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=Marvel&language=en-US`, language)
+        ]);
+
+        const combined = [...(marvelData || []), ...(topData || [])];
+        const bannedSet = await bannedService.fetchBannedList();
+
+        const uniqueMap = new Map<number, Content>();
+        combined.forEach(item => {
+          if (item && item.id && item.poster_path && !bannedSet.has(String(item.id))) {
+            uniqueMap.set(item.id, {
+              ...item,
+              media_type: item.media_type || 'movie'
+            });
+          }
+        });
+
+        const mappedList = Array.from(uniqueMap.values());
+        setTopRatedMovies(mappedList.slice(0, 16));
       } catch (err) {
         console.error("Error fetching top rated movies:", err);
       }

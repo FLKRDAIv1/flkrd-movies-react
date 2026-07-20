@@ -34,71 +34,61 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
     ref
   ) => {
     const N = images.length;
-    
-    // We compute the CSS variables here instead of polluting the global CSS
-    // --n: number of cards
-    // --w: card width
-    const customStyle = {
-      "--n": N,
-      "--w": `${cardWidth}px`,
-      "--ba": `calc(1turn / var(--n))`,
-      // animation duration
-      "--anim-dur": `${animationDuration}s`,
-    } as React.CSSProperties;
+    // Calculate 3D cylinder radius based on card count and card width
+    const radius = N > 0 ? Math.max(250, Math.round(cardWidth / (2 * Math.tan(Math.PI / N)))) : 300;
 
     return (
       <div
         ref={ref}
         className={cn(
-          "w-full h-full min-h-[400px] grid place-items-center overflow-hidden",
+          "w-full h-full min-h-[400px] grid place-items-center overflow-hidden relative group",
           className
         )}
         style={{
-          perspective: "35em",
-          maskImage: "linear-gradient(90deg, transparent, #000 20% 80%, transparent)",
-          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 20% 80%, transparent)",
+          perspective: "1000px",
+          maskImage: "linear-gradient(90deg, transparent, #000 15% 85%, transparent)",
+          WebkitMaskImage: "linear-gradient(90deg, transparent, #000 15% 85%, transparent)",
         }}
         {...props}
       >
         <div
           className={cn(
-            "grid place-items-center [transform-style:preserve-3d] motion-reduce:!animate-[ry_128s_linear_infinite]",
+            "grid place-items-center [transform-style:preserve-3d] group-hover:[animation-play-state:paused]",
             containerClassName
           )}
           style={{
-            ...customStyle,
-            animation: "ry var(--anim-dur) linear infinite",
+            animation: `flkrd-cylinder-rotate ${animationDuration}s linear infinite`,
           }}
         >
-          {/* We define the keyframes inline via a style block to ensure it works without global CSS config */}
           <style>
             {`
-              @keyframes ry {
-                to { transform: rotateY(1turn); }
+              @keyframes flkrd-cylinder-rotate {
+                from { transform: rotateY(0deg); }
+                to { transform: rotateY(360deg); }
               }
             `}
           </style>
-          
-          {images.map((img, i) => (
-            <img
-              key={i}
-              src={img.src}
-              alt={img.alt || `Carousel image ${i}`}
-              onClick={() => onItemClick?.(img)}
-              className={cn(
-                "[grid-area:1/1] object-cover rounded-2xl [backface-visibility:hidden] cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-200 shadow-xl",
-                cardClassName
-              )}
-              style={{
-                width: "var(--w)",
-                aspectRatio: "7/10",
-                "--i": i,
-                // transform: rotateY(calc(var(--i) * var(--ba))) translateZ(calc(-1 * (0.5 * var(--w) + 0.5em) / tan(0.5 * var(--ba))))
-                // Note: using modern CSS tan() function. Fallback translates are recommended if targeting very old browsers.
-                transform: "rotateY(calc(var(--i) * var(--ba))) translateZ(calc(-1 * (0.5 * var(--w) + 0.5em) / tan(0.5 * var(--ba))))",
-              } as React.CSSProperties}
-            />
-          ))}
+
+          {images.map((img, i) => {
+            const angle = (360 / N) * i;
+            return (
+              <img
+                key={i}
+                src={img.src}
+                alt={img.alt || `Carousel image ${i}`}
+                onClick={() => onItemClick?.(img)}
+                className={cn(
+                  "[grid-area:1/1] object-cover rounded-2xl cursor-pointer hover:scale-110 active:scale-95 transition-all duration-300 shadow-[0_15px_35px_rgba(0,0,0,0.8)] border border-white/10 hover:border-red-500/50 hover:shadow-[0_0_30px_rgba(229,9,20,0.5)]",
+                  cardClassName
+                )}
+                style={{
+                  width: `${cardWidth}px`,
+                  aspectRatio: "7/10",
+                  transform: `rotateY(${angle}deg) translateZ(${radius}px)`,
+                }}
+              />
+            );
+          })}
         </div>
       </div>
     );
