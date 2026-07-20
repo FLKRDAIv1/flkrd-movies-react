@@ -533,23 +533,10 @@ export default function PremiumVidLinkPlayer({
           resolvedPublicUrl = `https:${resolvedPublicUrl}`;
         }
 
-        // Save reference in custom_subtitles database table (Failsafe delete-then-insert)
-        try {
-          await supabase
-            .from('custom_subtitles')
-            .delete()
-            .eq('tmdb_id', String(targetId))
-            .eq('media_type', type || 'movie')
-            .eq('language', 'ku')
-            .eq('season', fileSeason)
-            .eq('episode', fileEpisode);
-        } catch (delErr) {
-          console.warn("[VIP-PLAYER] Failsafe delete failed:", delErr);
-        }
-
+        // Save reference in custom_subtitles database table using upsert to avoid DELETE CORS / 409 Duplicate Key Conflict
         const { error: dbErr } = await supabase
           .from('custom_subtitles')
-          .insert({
+          .upsert({
             tmdb_id: String(targetId),
             media_type: type || 'movie',
             language: 'ku',
@@ -557,6 +544,8 @@ export default function PremiumVidLinkPlayer({
             file_name: file.name,
             season: fileSeason,
             episode: fileEpisode
+          }, {
+            onConflict: 'tmdb_id,media_type,language,season,episode'
           });
 
         if (dbErr) throw dbErr;
