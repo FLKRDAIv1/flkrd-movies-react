@@ -28,6 +28,7 @@ import {
   Keyboard,
   Play,
 } from 'lucide-react';
+import { useUI } from '../contexts/UIContext';
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -245,6 +246,8 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const { theme } = useUI();
+  const isDark = theme === 'dark';
   const isKu = language === 'ku' || language === 'badini';
   const dragControls = useDragControls();
   const [isMobile, setIsMobile] = React.useState(false);
@@ -527,70 +530,95 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       </div>
                     </div>
 
-                    {/* Translation Progress (wow-factor) */}
+                    {/* Translation Progress (High-Aesthetic Light & Dark Mode) */}
                     <AnimatePresence>
                       {isTranslating && (
                         <motion.div
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -15 }}
-                          className="flex flex-col gap-4 p-5 bg-black/60 border border-red-500/20 rounded-[24px] backdrop-blur-xl shadow-2xl relative overflow-hidden"
+                          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.96, y: -15 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 260 }}
+                          className={`flex flex-col gap-4 p-5 rounded-[28px] border backdrop-blur-2xl shadow-2xl relative overflow-hidden transition-all duration-300 ${
+                            isDark 
+                              ? 'bg-zinc-950/90 border-white/10 text-white shadow-[0_25px_60px_rgba(0,0,0,0.8)]' 
+                              : 'bg-white/95 border-zinc-200/80 text-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.12)]'
+                          }`}
                         >
+                          {/* Top Ambient Glow Sheen */}
+                          <div className={`absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 rounded-full blur-3xl pointer-events-none ${
+                            isDark ? 'bg-red-600/20' : 'bg-red-500/15'
+                          }`} />
+
                           {/* Glossy Header row */}
-                          <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                          <div className={`flex items-center justify-between border-b pb-3.5 relative z-10 ${
+                            isDark ? 'border-white/10' : 'border-zinc-200'
+                          }`}>
                             <div className="flex items-center gap-3">
-                              {/* Glowing loader */}
-                              <div className="relative w-8 h-8 flex items-center justify-center shrink-0">
-                                <span className="absolute inset-0 rounded-full border-2 border-red-500/10"></span>
-                                <span className="absolute inset-0 rounded-full border-2 border-t-red-500 animate-spin"></span>
-                                <span className="text-[9px] font-black text-red-500">{translationProgress}%</span>
+                              {/* Glowing Spinner & Percentage */}
+                              <div className="relative w-9 h-9 flex items-center justify-center shrink-0">
+                                <span className={`absolute inset-0 rounded-full border-2 ${isDark ? 'border-red-500/20' : 'border-red-500/15'}`}></span>
+                                <span className="absolute inset-0 rounded-full border-2 border-t-red-600 border-r-transparent border-b-transparent border-l-transparent animate-spin"></span>
+                                <span className="text-[10px] font-black text-red-600 tracking-tighter">{translationProgress}%</span>
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-[12px] font-black text-white uppercase tracking-wider" style={{ fontFamily: isKu ? "'Zain', sans-serif" : "inherit" }}>
-                                  {isKu ? 'وەرگێڕانی ژێرنووس...' : 'Subtitle Engine'}
-                                </span>
-                                <span className="text-[8px] text-zinc-400 font-bold uppercase tracking-[0.06em]">
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-xs font-black uppercase tracking-wider ${isDark ? 'text-white' : 'text-zinc-900'}`} style={{ fontFamily: isKu ? "'Zain', sans-serif" : "inherit" }}>
+                                    {isKu ? 'وەرگێڕانی ئەی ئای فڵکڕد' : 'FLKRD AI Subtitle Engine'}
+                                  </span>
+                                  <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full bg-red-600/10 text-red-600 border border-red-600/20">
+                                    LIVE PRO
+                                  </span>
+                                </div>
+                                <span className={`text-[9px] font-semibold truncate max-w-[180px] ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
                                   {translatingName || 'Selected Track'}
                                 </span>
                               </div>
                             </div>
                             
                             {/* Window controls */}
-                            <div className="flex items-center gap-1.5 bg-white/5 px-2.5 py-1.5 rounded-full border border-white/5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500/70 animate-pulse"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500/70 animate-pulse"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500/70 animate-pulse"></span>
+                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border ${
+                              isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100 border-zinc-200'
+                            }`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500/80 animate-pulse"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80 animate-pulse"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse"></span>
                             </div>
                           </div>
 
                           {/* Visual Glowing Progress Bar */}
-                          <div className="w-full bg-white/5 h-2.5 rounded-full overflow-hidden border border-white/5 relative shadow-inner">
+                          <div className={`w-full h-3 rounded-full overflow-hidden relative shadow-inner border ${
+                            isDark ? 'bg-zinc-900 border-white/5' : 'bg-zinc-100 border-zinc-200'
+                          }`}>
                             <motion.div
                               className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full relative transition-all duration-300"
-                              style={{ width: `${translationProgress}%` }}
+                              style={{ width: `${Math.max(4, translationProgress)}%` }}
                             >
                               <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.4)_50%,transparent_100%)] animate-[pulse_1s_infinite] opacity-60" />
-                              <div className="absolute right-0 top-0 bottom-0 w-2 bg-white blur-[2px] opacity-80" />
+                              <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white blur-[2px] opacity-90" />
                             </motion.div>
                           </div>
 
-                          {/* Terminal Output */}
-                          <div className="w-full font-mono text-[9px] text-red-400 bg-black/40 border border-white/5 p-4 rounded-2xl max-h-[140px] overflow-y-auto custom-scrollbar flex flex-col gap-2 shadow-[inset_0_0_12px_rgba(239,68,68,0.05)]">
+                          {/* Professional Terminal Output */}
+                          <div className={`w-full font-mono text-[9px] p-4 rounded-2xl max-h-[140px] overflow-y-auto custom-scrollbar flex flex-col gap-2 border shadow-inner ${
+                            isDark 
+                              ? 'bg-black/90 border-white/10 text-emerald-400' 
+                              : 'bg-zinc-900 border-zinc-700 text-emerald-400'
+                          }`}>
                             {terminalLogs.map((log, index) => (
                               <div key={index} className="flex gap-2 items-start leading-relaxed">
-                                <span className="text-red-500/40 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                                <span className="text-zinc-500 select-none">&gt;</span>
-                                <span className="text-zinc-300 break-all">{log}</span>
+                                <span className="text-emerald-600/60 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                                <span className="text-emerald-500 select-none">&gt;</span>
+                                <span className="text-zinc-200 break-all">{log}</span>
                               </div>
                             ))}
                             {/* Loading cursor line */}
                             <div className="flex gap-2 items-center leading-relaxed">
-                              <span className="text-red-500/40 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                              <span className="text-red-400 select-none">&gt;</span>
-                              <span className="text-red-400 animate-pulse font-bold">
-                                {isKu ? 'لە پڕۆسەدایە...' : 'Processing pipeline...'}
+                              <span className="text-emerald-600/60 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                              <span className="text-emerald-400 select-none">&gt;</span>
+                              <span className="text-emerald-300 animate-pulse font-bold">
+                                {isKu ? 'لە پڕۆسەدایە...' : 'Executing translation pipeline...'}
                               </span>
-                              <span className="w-1.5 h-3 bg-red-400 animate-pulse shrink-0"></span>
+                              <span className="w-1.5 h-3.5 bg-emerald-400 animate-pulse shrink-0"></span>
                             </div>
                           </div>
                         </motion.div>
@@ -601,26 +629,31 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                     <AnimatePresence>
                       {showCelebration && (
                         <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
+                          initial={{ opacity: 0, scale: 0.92 }}
                           animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.9 }}
-                          className="flex flex-col items-center justify-center text-center p-6 bg-gradient-to-br from-yellow-500/10 via-red-500/5 to-purple-600/10 border border-yellow-500/20 rounded-2xl relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-h-[320px]"
+                          exit={{ opacity: 0, scale: 0.92 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 260 }}
+                          className={`flex flex-col items-center justify-center text-center p-6 rounded-[28px] border relative overflow-hidden min-h-[320px] backdrop-blur-2xl transition-all duration-300 ${
+                            isDark 
+                              ? 'bg-gradient-to-br from-amber-500/15 via-zinc-950 to-purple-950/20 border-amber-500/30 text-white shadow-[0_25px_60px_rgba(0,0,0,0.8)]' 
+                              : 'bg-gradient-to-br from-amber-500/10 via-white to-red-500/5 border-amber-500/30 text-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,0.12)]'
+                          }`}
                         >
                           {/* Confetti Particle Burst Effect */}
                           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                            {[...Array(15)].map((_, i) => (
+                            {[...Array(18)].map((_, i) => (
                               <motion.div
                                 key={i}
-                                className="absolute w-1.5 h-1.5 rounded-full"
+                                className="absolute w-2 h-2 rounded-full"
                                 style={{
                                   background: ['#ef4444', '#eab308', '#a855f7', '#3b82f6', '#10b981'][i % 5],
                                   left: `${15 + Math.random() * 70}%`,
                                   top: `${20 + Math.random() * 60}%`,
                                 }}
                                 animate={{
-                                  y: [0, -100 - Math.random() * 80],
-                                  x: [0, (Math.random() - 0.5) * 120],
-                                  scale: [0, 1, 0],
+                                  y: [0, -120 - Math.random() * 80],
+                                  x: [0, (Math.random() - 0.5) * 140],
+                                  scale: [0, 1.2, 0],
                                   rotate: [0, 360],
                                 }}
                                 transition={{
@@ -633,40 +666,43 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           </div>
 
                           <div className="relative z-10 flex flex-col items-center gap-3.5">
-                            <div className="w-16 h-16 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center shadow-[0_0_35px_rgba(234,179,8,0.25)]">
-                              <Sparkles size={32} className="text-yellow-500 animate-pulse" fill="currentColor" />
+                            <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shadow-[0_0_35px_rgba(234,179,8,0.3)]">
+                              <Sparkles size={32} className="text-amber-500 animate-pulse" fill="currentColor" />
                             </div>
 
-                            <h3 className="text-lg md:text-xl font-[1000] uppercase italic tracking-tighter shimmer-text">
-                              {isKu ? 'دامەزراندن سەرکەوتوو بوو!' : 'INSTALLATION COMPLETE!'}
+                            <h3 className={`text-lg md:text-xl font-[1000] uppercase italic tracking-tighter ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                              {isKu ? 'دامەزراندن سەرکەوتوو بوو!' : 'TRANSLATION COMPLETE!'}
                             </h3>
 
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500">
-                              {isKu ? 'ژێرنووس لای سەرجەم بەکارهێنەران پاشەکەوت کرا' : 'SRT SAVED FOR ALL USERS'}
+                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                              {isKu ? 'ژێرنووس بۆ سەرجەم بەکارهێنەران پاشەکەوت کرا' : 'SAVED TO SUPABASE FOR ALL USERS'}
                             </p>
 
-                            <p className="text-[10px] text-zinc-300 leading-relaxed max-w-xs">
+                            <p className={`text-[11px] leading-relaxed max-w-xs ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                               {isKu 
                                 ? 'سوپاس بۆ وەرگێڕانی ئەم ژێرنووسە! ئێستا بە تەواوی ئامادەیە و لە خزمەتگوزاری Supabase پاشەکەوت کرا بۆ ئەوەی هەر بەکارهێنەرێکی تر سوودی لێ ببێنێت.'
                                 : 'Thank you for translating this subtitle! It has been successfully saved to Supabase so that other users can enjoy it.'}
                             </p>
 
-                            <div className="w-full h-px bg-white/5 my-1" />
+                            <div className={`w-full h-px my-1 ${isDark ? 'bg-white/10' : 'bg-zinc-200'}`} />
 
-                            <p className="text-xs font-black italic text-white leading-relaxed">
+                            <p className={`text-xs font-black italic leading-relaxed ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                               {isKu 
                                 ? 'چێژ لە بینینی فیلمەکە وەربگرە! 🎬🍿' 
                                 : 'Enjoy your movie! 🎬🍿'}
                             </p>
 
                             {onCloseCelebration && (
-                              <button
+                              <motion.button
+                                type="button"
                                 onClick={onCloseCelebration}
-                                className="mt-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-[9px] font-[1000] uppercase tracking-widest rounded-xl transition-all shadow-[0_6px_15px_rgba(220,38,38,0.25)] active:scale-95 flex items-center gap-1.5"
+                                whileHover={{ scale: 1.04 }}
+                                whileTap={{ scale: 0.95 }}
+                                className="mt-2 px-7 py-3 bg-red-600 hover:bg-red-700 text-white text-[10px] font-[1000] uppercase tracking-widest rounded-2xl transition-all shadow-[0_8px_20px_rgba(220,38,38,0.3)] flex items-center gap-2"
                               >
-                                <Play size={8} fill="currentColor" className="translate-x-[0.5px]" />
+                                <Play size={10} fill="currentColor" className="translate-x-[0.5px]" />
                                 {isKu ? 'دەستپێکردنی فیلمەکە' : 'START WATCHING'}
-                              </button>
+                              </motion.button>
                             )}
                           </div>
                         </motion.div>
