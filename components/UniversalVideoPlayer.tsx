@@ -1431,6 +1431,54 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [activeTranslation, tmdbId, imdbId, localSubtitleUrl]);
 
+    // --- Realtime Subtitle Sync Listener: Auto-injects & applies newly translated SRT live for all viewers ---
+    useEffect(() => {
+        const targetId = tmdbId || imdbId;
+        if (!targetId) return;
+
+        const syncChannel = supabase.channel(`subtitle_sync_${targetId}_${contentType || 'movie'}`);
+        syncChannel
+            .on('broadcast', { event: 'new_subtitle_available' }, ({ payload }) => {
+                if (payload && payload.subtitleUrl) {
+                    const subUrl = payload.subtitleUrl;
+                    const trackId = `custom-db-${payload.tmdbId}`;
+
+                    setAvailableSubs(prev => {
+                        if (prev.some(s => s.id === trackId || s.attributes?.url === subUrl)) return prev;
+                        const newTrack: SubtitleResult = {
+                            id: trackId,
+                            attributes: {
+                                language: payload.language || 'ku',
+                                display_name: payload.fileName
+                                    ? payload.fileName.replace(/(_ku\.srt|\.srt)/gi, '')
+                                    : 'Kurdish Subtitle (Live)',
+                                url: subUrl,
+                                file_id: 0
+                            }
+                        };
+                        return [newTrack, ...prev];
+                    });
+
+                    setLocalSubtitleUrl(subUrl);
+                    setCurrentSubId(trackId);
+
+                    addNotification({
+                        type: 'success',
+                        title: (language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی هاوکات کرا' : 'Kurdish Subtitle Synced!',
+                        message: (language === 'ku' || language === 'badini')
+                            ? 'ژێرنووسی نوێی کوردی بە سەرکەوتوویی لەسەر پەخشەکە بەکارخرا.'
+                            : 'A new Kurdish subtitle track was uploaded and applied live.',
+                        duration: 4000
+                    });
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(syncChannel);
+        };
+    }, [tmdbId, imdbId, contentType, language, addNotification]);
+
     // --- Admin: Save subtitle line edit to Supabase (visible to all users via Realtime) ---
     const handleSaveSubtitleEdit = async () => {
         if (!editingCue) return;

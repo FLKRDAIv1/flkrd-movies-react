@@ -314,6 +314,30 @@ export async function translateAndSavePipeline(
 
     if (dbErr) throw dbErr;
 
+    // Realtime Global Broadcast Event: Notify all active clients watching this content
+    try {
+      const syncChannel = supabase.channel(`subtitle_sync_${tmdbId}_${mediaType || 'movie'}`);
+      syncChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await syncChannel.send({
+            type: 'broadcast',
+            event: 'new_subtitle_available',
+            payload: {
+              tmdbId: String(tmdbId),
+              mediaType: mediaType || 'movie',
+              season: season || 0,
+              episode: episode || 0,
+              language: targetLang,
+              subtitleUrl: resolvedPublicUrl,
+              fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
+            }
+          });
+        }
+      });
+    } catch (bErr) {
+      console.warn("[SUBTITLE-PIPELINE] Broadcast sync warning:", bErr);
+    }
+
     if (onProgress) onProgress(100, "Subtitle fully registered and active!");
 
     return { success: true, subtitleUrl: resolvedPublicUrl };
