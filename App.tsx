@@ -421,7 +421,7 @@ const logVisit = async (path: string) => {
             deviceType = 'Tablet';
         }
 
-        const { error } = await supabase.from('site_analytics').insert([{
+        await supabase.from('site_analytics').insert([{
             session_id: sessionId,
             country: country,
             device_type: deviceType,
@@ -429,10 +429,8 @@ const logVisit = async (path: string) => {
             referrer: document.referrer || 'Direct',
             user_agent: navigator.userAgent
         }]);
-
-        if (error) throw error;
     } catch (err) {
-        console.warn("Analytics registration bypassed:", err);
+        // Silent fail for analytics RLS restrictions
     }
 };
 

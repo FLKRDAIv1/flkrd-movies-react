@@ -102,8 +102,8 @@ const Carousel_003 = ({
 `;
   
   let finalImages = images;
-  if (loop && images.length > 0 && images.length < 8) {
-    while (finalImages.length < 8) {
+  if (loop && images.length > 0 && finalImages.length < 16) {
+    while (finalImages.length < 16) {
       finalImages = [...finalImages, ...images];
     }
   }
