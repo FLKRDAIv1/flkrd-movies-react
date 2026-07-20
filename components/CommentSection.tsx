@@ -50,9 +50,30 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   } | null>(null);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  // Current user's avatar from Supabase Auth metadata
-  const myAvatarUrl = user?.user_metadata?.avatar_url || null;
+  // Current user's avatar from localStorage/sessionStorage or Supabase Auth metadata
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url') || user?.user_metadata?.avatar_url || null;
+    }
+    return user?.user_metadata?.avatar_url || null;
+  });
+
+  const myAvatarUrl = currentAvatarUrl || user?.user_metadata?.avatar_url || null;
   const myName = user?.user_metadata?.user_name || user?.email?.split('@')[0] || 'Anonymous';
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const updated = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url') || user?.user_metadata?.avatar_url || null;
+      setCurrentAvatarUrl(updated);
+    };
+
+    window.addEventListener('storage', handleAvatarUpdate);
+    window.addEventListener('flkrd-avatar-changed', handleAvatarUpdate);
+    return () => {
+      window.removeEventListener('storage', handleAvatarUpdate);
+      window.removeEventListener('flkrd-avatar-changed', handleAvatarUpdate);
+    };
+  }, [user]);
 
   // Fetch comments
   const fetchComments = async () => {
@@ -219,6 +240,8 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
       <div className="space-y-6 mt-4">
         {parents.map(c => {
           const replies = repliesGrouped[c.id] || [];
+          const isMyComment = user && (c.user_id === user.id || c.user_email === user.email);
+          const effectiveAvatarUrl = isMyComment ? (myAvatarUrl || c.avatar_url) : c.avatar_url;
           return (
             <div key={c.id} className="space-y-4">
               {/* Parent Comment */}
@@ -229,13 +252,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
                     setSelectedUserModal({
                       name: c.user_name,
                       email: c.user_email,
-                      avatarUrl: c.avatar_url
+                      avatarUrl: effectiveAvatarUrl
                     });
                     setIsProfileModalOpen(true);
                   }}
                   className="cursor-pointer transition-transform hover:scale-105 active:scale-95 text-left"
                 >
-                  <AvatarEffectContainer url={c.avatar_url} name={c.user_name} email={c.user_email} size={38} />
+                  <AvatarEffectContainer url={effectiveAvatarUrl} name={c.user_name} email={c.user_email} size={38} />
                 </button>
 
                 <div className="flex-1 space-y-1">

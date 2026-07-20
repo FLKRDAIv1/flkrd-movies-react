@@ -369,6 +369,8 @@ const ProfilePage: React.FC = () => {
 
             safeSetAvatarStorage(avatarDataUrl);
             setAvatarUrl(avatarDataUrl);
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('flkrd-avatar-changed'));
             addNotification({ 
                 type: 'success', 
                 title: 'Avatar Updated', 
