@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Play } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 export interface CarouselImage {
@@ -28,35 +27,44 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
       className,
       containerClassName,
       cardClassName,
-      animationDuration = 4,
-      cardWidth = 220,
+      animationDuration = 28,
+      cardWidth = 200,
       onItemClick,
       ...props
     },
     ref
   ) => {
-    const [activeIndex, setActiveIndex] = useState(0);
+    const [rotationAngle, setRotationAngle] = useState(0);
     const [isHovered, setIsHovered] = useState(false);
+    const animRef = useRef<number | null>(null);
     const N = images.length;
 
-    const handleNext = useCallback(() => {
-      if (N === 0) return;
-      setActiveIndex((prev) => (prev + 1) % N);
-    }, [N]);
-
-    const handlePrev = useCallback(() => {
-      if (N === 0) return;
-      setActiveIndex((prev) => (prev - 1 + N) % N);
-    }, [N]);
-
-    // Autoplay every 3.5s unless hovered
+    // Smooth continuous 3D circle orbit animation loop
     useEffect(() => {
-      if (isHovered || N === 0) return;
-      const timer = setInterval(handleNext, 3500);
-      return () => clearInterval(timer);
-    }, [isHovered, handleNext, N]);
+      let lastTime = performance.now();
+      const speedDegPerMs = 360 / (animationDuration * 1000);
+
+      const loop = (now: number) => {
+        const delta = now - lastTime;
+        lastTime = now;
+
+        if (!isHovered && N > 0) {
+          setRotationAngle((prev) => (prev + delta * speedDegPerMs) % 360);
+        }
+
+        animRef.current = requestAnimationFrame(loop);
+      };
+
+      animRef.current = requestAnimationFrame(loop);
+      return () => {
+        if (animRef.current) cancelAnimationFrame(animRef.current);
+      };
+    }, [isHovered, animationDuration, N]);
 
     if (N === 0) return null;
+
+    // Radius of 3D orbit circle
+    const radius = Math.max(300, Math.round(cardWidth * 1.75));
 
     return (
       <div
@@ -64,68 +72,52 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
-          "w-full h-full min-h-[460px] relative flex flex-col items-center justify-center overflow-visible select-none",
+          "w-full h-full min-h-[460px] relative flex items-center justify-center overflow-visible select-none py-10",
           className
         )}
+        style={{ perspective: "1200px" }}
         {...props}
       >
-        {/* 3D Viewport */}
-        <div
-          className="w-full max-w-5xl h-[380px] relative flex items-center justify-center"
-          style={{ perspective: "1000px" }}
-        >
+        <div className="w-full max-w-6xl h-[400px] relative flex items-center justify-center [transform-style:preserve-3d]">
           {images.map((img, index) => {
-            // Compute wrapped distance from active index (-N/2 to N/2)
-            let diff = index - activeIndex;
-            diff = ((diff % N) + N) % N;
-            if (diff > N / 2) diff -= N;
+            // Angle of card i on the 3D orbit circle
+            const angleDeg = (rotationAngle + (360 / N) * index) % 360;
+            const angleRad = (angleDeg * Math.PI) / 180;
 
-            const absDiff = Math.abs(diff);
+            // X and Z coordinates on 3D circle
+            const x = radius * Math.sin(angleRad);
+            const z = radius * Math.cos(angleRad);
 
-            // Hide cards beyond distance of 3 to prevent clutter and keep focus
-            if (absDiff > 3) return null;
+            // Normalized Z (-1 to 1) where 1 is front center, -1 is back center
+            const normZ = z / radius;
 
-            // Calculate 3D Coverflow properties (ALL posters face 100% FORWARD)
-            const isCenter = diff === 0;
-            const xOffset = diff * (cardWidth * 0.78);
-            const rotateY = diff > 0 ? -22 : diff < 0 ? 22 : 0;
-            const scale = isCenter ? 1.15 : Math.max(0.65, 1 - absDiff * 0.18);
-            const zIndex = 50 - absDiff * 10;
-            const opacity = Math.max(0.35, 1 - absDiff * 0.22);
+            // Calculate scale, zIndex, opacity, and tilt based on Z position
+            const scale = 0.85 + normZ * 0.3; // 0.55 in back, 1.15 in front
+            const opacity = 0.55 + normZ * 0.45; // 0.10 in back, 1.0 in front
+            const zIndex = Math.round((normZ + 1) * 100);
+            const brightness = 70 + normZ * 30; // 40% back, 100% front
+            const tiltY = (x / radius) * -15; // Subtle 3D tilt inwards towards center
+
+            const isFrontCard = normZ > 0.85;
 
             return (
-              <motion.div
+              <div
                 key={img.id || index}
-                initial={false}
-                animate={{
-                  x: xOffset,
-                  rotateY: rotateY,
-                  scale: scale,
-                  zIndex: zIndex,
-                  opacity: opacity,
-                }}
-                transition={{
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 25,
-                }}
-                onClick={() => {
-                  if (isCenter) {
-                    onItemClick?.(img);
-                  } else {
-                    setActiveIndex(index);
-                  }
-                }}
+                onClick={() => onItemClick?.(img)}
                 className={cn(
-                  "absolute cursor-pointer rounded-2xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 transition-all duration-300",
-                  isCenter
+                  "absolute cursor-pointer rounded-2xl overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.85)] border border-white/15 transition-all duration-300",
+                  isFrontCard
                     ? "border-red-500/80 shadow-[0_0_40px_rgba(229,9,20,0.6)] ring-2 ring-red-500/40"
-                    : "hover:border-white/40",
+                    : "hover:border-white/50",
                   cardClassName
                 )}
                 style={{
                   width: `${cardWidth}px`,
                   aspectRatio: "7/10",
+                  transform: `translate3d(${x}px, 0px, ${z}px) rotateY(${tiltY}deg) scale(${scale})`,
+                  zIndex: zIndex,
+                  opacity: opacity,
+                  filter: `brightness(${brightness}%)`,
                   transformStyle: "preserve-3d",
                 }}
               >
@@ -139,10 +131,10 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
                   className="w-full h-full object-cover rounded-2xl pointer-events-none"
                 />
 
-                {/* Center card glowing play badge overlay */}
-                {isCenter && (
+                {/* Front card title & play badge overlay */}
+                {isFrontCard && (
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col items-center justify-end p-4 text-center opacity-90 group-hover:opacity-100 transition-opacity">
-                    <div className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-900/50 mb-1 scale-90 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-900/50 mb-1 scale-95 group-hover:scale-110 transition-transform">
                       <Play size={18} fill="white" className="ml-0.5" />
                     </div>
                     {img.alt && (
@@ -152,41 +144,9 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
                     )}
                   </div>
                 )}
-              </motion.div>
+              </div>
             );
           })}
-        </div>
-
-        {/* Carousel Navigation Arrow Controls */}
-        <div className="flex items-center justify-center gap-6 mt-4 z-50">
-          <button
-            onClick={handlePrev}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-red-600/80 hover:border-red-500 text-white flex items-center justify-center transition-all shadow-xl active:scale-95"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            {images.slice(0, Math.min(N, 12)).map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setActiveIndex(idx)}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-300",
-                  activeIndex % Math.min(N, 12) === idx
-                    ? "w-6 bg-red-600"
-                    : "w-1.5 bg-white/20 hover:bg-white/40"
-                )}
-              />
-            ))}
-          </div>
-
-          <button
-            onClick={handleNext}
-            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-red-600/80 hover:border-red-500 text-white flex items-center justify-center transition-all shadow-xl active:scale-95"
-          >
-            <ChevronRight size={20} />
-          </button>
         </div>
       </div>
     );
