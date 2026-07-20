@@ -985,10 +985,11 @@ export default function PremiumVidLinkPlayer({
       }
 
       try {
+        const targetIds = Array.from(new Set([String(tmdbId || ''), String(imdbId || ''), String(activeId || ''), String(resolvedTmdbId || '')].filter(Boolean)));
         const { data: dbSubs } = await supabase
           .from('custom_subtitles')
           .select('*')
-          .eq('tmdb_id', String(activeId))
+          .in('tmdb_id', targetIds)
           .eq('media_type', type || 'movie')
           .eq('season', type === 'tv' ? (season ?? 0) : 0)
           .eq('episode', type === 'tv' ? (episode ?? 0) : 0);

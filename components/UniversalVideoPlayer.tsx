@@ -983,10 +983,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 let customSub: SubtitleResult | null = null;
                 const customSubsList: SubtitleResult[] = [];
                 const activeLanguageCode = (language === 'badini') ? 'badini' : 'ku';
+
+                const targetIds = Array.from(new Set([String(tmdbId || ''), String(imdbId || ''), String(idToQuery || '')].filter(Boolean)));
+
                 let query = supabase
                     .from('custom_subtitles')
                     .select('*')
-                    .eq('tmdb_id', String(idToQuery))
+                    .in('tmdb_id', targetIds)
                     .eq('media_type', contentType || 'movie')
                     .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
                     .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
@@ -1001,15 +1004,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         }
                         const isBadini = dbSub.language === 'badini';
                         const isSorani = dbSub.language === 'ku' || dbSub.language === 'ckb';
-                        const labelSuffix = isBadini ? 'Badini' : (isSorani ? 'Sorani' : dbSub.language?.toUpperCase());
+                        const labelSuffix = isBadini ? 'بادینی' : (isSorani ? 'سۆرانی' : dbSub.language?.toUpperCase());
                         
                         customSubsList.push({
                             id: `custom-db-${dbSub.id}`,
                             attributes: {
                                 language: dbSub.language || 'ku',
                                 display_name: dbSub.file_name 
-                                    ? dbSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '') 
-                                    : `Kurdish ${labelSuffix} (Verified)`,
+                                    ? `[ژێرنووسی وەرگێڕدراو] ${dbSub.file_name.replace(/(_ku\.srt|\.srt)/gi, '')}` 
+                                    : `[ژێرنووسی کوردی ${labelSuffix}] (Verified)`,
                                 url: subUrl,
                                 file_id: 0
                             }
@@ -1033,13 +1036,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }
                     const isBadini = best.language === 'badini';
                     const isSorani = best.language === 'ku' || best.language === 'ckb';
-                    const labelSuffix = isBadini ? 'Badini' : (isSorani ? 'Sorani' : best.language?.toUpperCase());
+                    const labelSuffix = isBadini ? 'بادینی' : (isSorani ? 'سۆرانی' : best.language?.toUpperCase());
                     
                     customSub = {
                         id: `custom-db-${best.id}`,
                         attributes: {
                             language: best.language || 'ku',
-                            display_name: best.file_name ? best.file_name.replace(/(_ku\.srt|\.srt)/gi, '') : `Kurdish ${labelSuffix} (Verified)`,
+                            display_name: best.file_name 
+                                ? `[ژێرنووسی وەرگێڕدراو] ${best.file_name.replace(/(_ku\.srt|\.srt)/gi, '')}` 
+                                : `[ژێرنووسی کوردی ${labelSuffix}] (Verified)`,
                             url: subUrl,
                             file_id: 0
                         }
@@ -1051,7 +1056,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         id: `custom-db-prop`,
                         attributes: {
                             language: 'ku',
-                            display_name: 'Kurdish (Verified)',
+                            display_name: '[ژێرنووسی کوردی فەرمی]',
                             url: subtitleUrl,
                             file_id: 0
                         }
@@ -1065,27 +1070,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 }
 
                 if (customSub) {
-                    // Auto-select and auto-apply the custom Kurdish subtitle by default
-                    if (!localSubtitleUrl) {
-                        console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
-                        try {
-                            const text = await subtitleService.downloadSubtitle(customSub);
-                            if (text) {
-                                const processedText = cleanAndFormatVtt(text);
-                                const blob = new Blob([processedText], { type: 'text/vtt' });
-                                setLocalSubtitleUrl(URL.createObjectURL(blob));
-                                setKurdishSub(customSub);
-                                setCurrentSubId(customSub.id);
-                                setShowSubtitles(true);
-                                setKuCCNotificationVisible(false);
-                            }
-                        } catch (err) {
-                            console.warn("Failed to auto-apply custom subtitle:", err);
+                    console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
+                    try {
+                        const text = await subtitleService.downloadSubtitle(customSub);
+                        if (text) {
+                            const processedText = cleanAndFormatVtt(text);
+                            const blob = new Blob([processedText], { type: 'text/vtt' });
+                            setLocalSubtitleUrl(URL.createObjectURL(blob));
+                            setKurdishSub(customSub);
+                            setCurrentSubId(customSub.id);
+                            setShowSubtitles(true);
+                            setKuCCNotificationVisible(false);
                         }
-                    } else if (kurdishSub === null) {
-                        setKurdishSub(customSub);
-                        setCurrentSubId(customSub.id);
-                        setShowSubtitles(true);
+                    } catch (err) {
+                        console.warn("Failed to auto-apply custom subtitle:", err);
                     }
                 } else if (safeResults.length > 0) {
                     const foundEn = safeResults.find(sub => {
