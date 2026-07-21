@@ -407,6 +407,18 @@ export const subtitleService = {
         try {
             let link = sub.attributes.url;
             
+            if (link && link.startsWith('data:')) {
+                const base64Part = link.split(',')[1];
+                if (base64Part) {
+                    try {
+                        const decoded = decodeURIComponent(escape(atob(base64Part)));
+                        return decoded;
+                    } catch (decErr) {
+                        console.warn("[SUBTITLE SERVICE] Failed to decode base64 data url, returning raw link:", decErr);
+                    }
+                }
+            }
+
             const isOpenSub = link && (
                 link.includes('opensubtitles')
             );

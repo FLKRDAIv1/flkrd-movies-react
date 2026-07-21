@@ -127,25 +127,37 @@ export async function translateCuesToKurdish(
   onProgress?: (progress: number, statusText: string) => void
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 50;
-
+  const chunkSize = 80;
+  const chunks: SubtitleCue[][] = [];
+  
   for (let i = 0; i < cues.length; i += chunkSize) {
-    const chunk = cues.slice(i, i + chunkSize);
+    chunks.push(cues.slice(i, i + chunkSize));
+  }
 
-    const translatedTexts = await translateChunkWithFallback(chunk, sourceLang, targetLang);
+  const concurrency = 3;
+  let completedCount = 0;
 
-    for (let j = 0; j < chunk.length; j++) {
-      const translated = translatedTexts[j] ?? chunk[j].text;
-      translatedCues[i + j].text = translated.replace(/\s*\/\s*/g, '\n');
-    }
+  for (let i = 0; i < chunks.length; i += concurrency) {
+    const batch = chunks.slice(i, i + concurrency);
+    const batchPromises = batch.map((chunk, batchIdx) => {
+      const chunkIndex = i + batchIdx;
+      return translateChunkWithFallback(chunk, sourceLang, targetLang).then((translatedTexts) => {
+        const offset = chunkIndex * chunkSize;
+        for (let j = 0; j < chunk.length; j++) {
+          const translated = translatedTexts[j] ?? chunk[j].text;
+          translatedCues[offset + j].text = translated.replace(/\s*\/\s*/g, '\n');
+        }
+        completedCount += chunk.length;
+        if (onProgress) {
+          const progressPct = Math.round((completedCount / cues.length) * 100);
+          const statusText = `Translating dialogue lines (${Math.min(completedCount, cues.length)} / ${cues.length})...`;
+          onProgress(progressPct, statusText);
+        }
+      });
+    });
 
-    if (onProgress) {
-      const progressPct = Math.round(((i + chunk.length) / cues.length) * 100);
-      const statusText = `Translating dialogue lines (${Math.min(i + chunk.length, cues.length)} / ${cues.length})...`;
-      onProgress(progressPct, statusText);
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await Promise.all(batchPromises);
+    await new Promise(resolve => setTimeout(resolve, 60)); // tiny throttle between batches
   }
 
   return translatedCues;
@@ -294,24 +306,32 @@ export async function translateAndSavePipeline(
       ? `custom/${tmdbId}_s${season}_e${episode}_${targetLang}_${timeStamp}.srt`
       : `custom/${tmdbId}_${targetLang}_${timeStamp}.srt`;
 
-    const { error: uploadErr } = await supabase.storage
-      .from('subtitles')
-      .upload(filePath, blob, {
-        contentType: 'text/plain',
-        upsert: true
-      });
+    let resolvedPublicUrl = "";
 
-    if (uploadErr) throw uploadErr;
+    try {
+      const { error: uploadErr } = await supabase.storage
+        .from('subtitles')
+        .upload(filePath, blob, {
+          contentType: 'text/plain',
+          upsert: true
+        });
 
-    if (onProgress) onProgress(94, "Retrieving secure public Vtt URL...");
+      if (uploadErr) throw uploadErr;
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('subtitles')
-      .getPublicUrl(filePath);
+      if (onProgress) onProgress(94, "Retrieving secure public Vtt URL...");
 
-    let resolvedPublicUrl = publicUrl;
-    if (resolvedPublicUrl.startsWith('//')) {
-      resolvedPublicUrl = `https:${resolvedPublicUrl}`;
+      const { data: { publicUrl } } = supabase.storage
+        .from('subtitles')
+        .getPublicUrl(filePath);
+
+      resolvedPublicUrl = publicUrl;
+      if (resolvedPublicUrl.startsWith('//')) {
+        resolvedPublicUrl = `https:${resolvedPublicUrl}`;
+      }
+    } catch (storageErr) {
+      console.warn("[SUBTITLE-PIPELINE] Primary storage upload failed, using high-reliability base64 fallback:", storageErr);
+      const base64Srt = btoa(unescape(encodeURIComponent(srtContent)));
+      resolvedPublicUrl = `data:text/plain;base64,${base64Srt}`;
     }
 
     // Registering subtitle in Supabase Postgres registry using upsert to avoid DELETE CORS / 409 Duplicate Key Conflict
