@@ -220,25 +220,64 @@ export default async function handler(req, res) {
             }
         }
 
-        // 2. Fallback to Google Translate Web API & Lingva / MyMemory / Lingva GET
+        // 1. Try joined high-efficiency translation if parameter is an array
         if (isArray) {
-            // High-efficiency joined translate
-            const joinedText = textArray.join('\n');
-            const translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
-            if (translatedJoined) {
-                const results = translatedJoined.split('\n');
-                if (results.length === textArray.length) {
-                    return res.status(200).json({ translation: applyBadiniTransliteration(results) });
+            const separator = ' [||] ';
+            const joinedText = textArray.map(t => t.replace(/\n/g, ' [n] ')).join(separator);
+            let translatedJoined = null;
+
+            // 1.1 Try GAS first (Google Apps Script Official Translator)
+            if (gasUrl) {
+                try {
+                    const response = await fetch(gasUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'text/plain;charset=utf-8'
+                        },
+                        body: JSON.stringify({ text: joinedText, source, target: actualTarget }),
+                        redirect: 'follow'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && (data.translation || data.success)) {
+                            translatedJoined = data.translation;
+                        }
+                    }
+                } catch (err) {
+                    console.warn(`[SERVER TRANSLATE] Google Apps Script failed:`, err.message);
                 }
             }
 
-            // Fallback: translate one by one
+            // 1.2 Fallback to Google Translate Free API
+            if (!translatedJoined) {
+                translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
+            }
+
+            // 1.3 Fallback to Lingva / MyMemory single translation
+            if (!translatedJoined) {
+                translatedJoined = await translateSingle(joinedText);
+            }
+
+            if (translatedJoined) {
+                // Split back by separator (regex to handle space variations around brackets)
+                const results = translatedJoined.split(/\s*\[\|\|\]\s*/i);
+                if (results.length === textArray.length) {
+                    const decodedResults = results.map(r => r.replace(/\s*\[n\]\s*/gi, '\n'));
+                    return res.status(200).json({ translation: applyBadiniTransliteration(decodedResults) });
+                } else {
+                    console.warn(`[SERVER TRANSLATE] Separator mismatch (in: ${textArray.length}, out: ${results.length}). Falling back to item-by-item.`);
+                }
+            }
+
+            // Fallback item-by-item translation if joined strategy fails
             const results = [];
             for (const item of textArray) {
                 results.push(await translateSingle(item));
             }
             return res.status(200).json({ translation: applyBadiniTransliteration(results) });
         } else {
+            // Single translation
             const singleTranslation = await translateSingle(textArray[0]);
             return res.status(200).json({ translation: applyBadiniTransliteration(singleTranslation) });
         }

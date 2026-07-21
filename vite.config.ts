@@ -28,6 +28,31 @@ export default defineConfig(({ mode }) => {
                 }
               });
             }
+          },
+          '/movie': {
+            target: 'https://api.tmdb.org/3',
+            changeOrigin: true,
+            agent: new Agent({ family: 4 })
+          },
+          '/tv': {
+            target: 'https://api.tmdb.org/3',
+            changeOrigin: true,
+            agent: new Agent({ family: 4 })
+          },
+          '/search': {
+            target: 'https://api.tmdb.org/3',
+            changeOrigin: true,
+            agent: new Agent({ family: 4 })
+          },
+          '/discover': {
+            target: 'https://api.tmdb.org/3',
+            changeOrigin: true,
+            agent: new Agent({ family: 4 })
+          },
+          '/trending': {
+            target: 'https://api.tmdb.org/3',
+            changeOrigin: true,
+            agent: new Agent({ family: 4 })
           }
         },
         headers: {

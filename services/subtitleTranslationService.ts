@@ -90,7 +90,7 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
  * Translates an array of subtitle cues batch recursively if line mismatch occurs.
  */
 async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: string, targetLang: string): Promise<string[]> {
-  const chunkTexts = chunk.map(c => c.text.replace(/\n/g, ' / '));
+  const chunkTexts = chunk.map(c => c.text);
 
   try {
     const translatedTexts = await translateText(chunkTexts, sourceLang, targetLang);
