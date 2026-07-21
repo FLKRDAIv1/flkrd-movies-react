@@ -194,31 +194,33 @@ export default async function handler(req, res) {
             return transliterateHawarToArabic(t);
         };
 
-        // 1. Try Google Apps Script (GAS) Web App if configured (Official Google Translate engine)
+        // Helper: call Google Apps Script with timeout
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
                        "https://script.google.com/macros/s/AKfycbxde4VzWWNB5_X_3U4e_7604PkI-02xFurowcP0fAqLpyZVzGpBbZN_PSIatZTj6f49nQ/exec";
-        if (gasUrl) {
+
+        const callGAS = async (payload) => {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 9000); // 9s max
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain;charset=utf-8'
-                    },
-                    body: JSON.stringify({ text, source, target: actualTarget }),
-                    redirect: 'follow'
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload),
+                    redirect: 'follow',
+                    signal: ctrl.signal
                 });
-
+                clearTimeout(timer);
                 if (response.ok) {
                     const data = await response.json();
-                    if (data && (data.translation || data.success)) {
-                        return res.status(200).json({ translation: applyBadiniTransliteration(data.translation) });
-                    }
+                    return (data && data.translation) ? data.translation : null;
                 }
             } catch (err) {
-                console.warn(`[SERVER TRANSLATE] Google Apps Script failed:`, err.message);
+                clearTimeout(timer);
+                console.warn('[SERVER TRANSLATE] GAS call failed:', err.message);
             }
-        }
+            return null;
+        };
 
         // 1. Try joined high-efficiency translation if parameter is an array
         if (isArray) {
@@ -226,28 +228,8 @@ export default async function handler(req, res) {
             const joinedText = textArray.map(t => t.replace(/\n/g, ' [n] ')).join(separator);
             let translatedJoined = null;
 
-            // 1.1 Try GAS first (Google Apps Script Official Translator)
-            if (gasUrl) {
-                try {
-                    const response = await fetch(gasUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8'
-                        },
-                        body: JSON.stringify({ text: joinedText, source, target: actualTarget }),
-                        redirect: 'follow'
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && (data.translation || data.success)) {
-                            translatedJoined = data.translation;
-                        }
-                    }
-                } catch (err) {
-                    console.warn(`[SERVER TRANSLATE] Google Apps Script failed:`, err.message);
-                }
-            }
+            // 1.1 Try GAS (Google Apps Script - Official Google Translate engine)
+            translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
 
             // 1.2 Fallback to Google Translate Free API
             if (!translatedJoined) {
@@ -277,8 +259,9 @@ export default async function handler(req, res) {
             }
             return res.status(200).json({ translation: applyBadiniTransliteration(results) });
         } else {
-            // Single translation
-            const singleTranslation = await translateSingle(textArray[0]);
+            // Single translation — try GAS first, then fall back
+            const gasResult = await callGAS({ text: textArray[0], source, target: actualTarget });
+            const singleTranslation = gasResult || await translateSingle(textArray[0]);
             return res.status(200).json({ translation: applyBadiniTransliteration(singleTranslation) });
         }
 
