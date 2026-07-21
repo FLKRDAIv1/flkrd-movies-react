@@ -20,8 +20,8 @@ class BannedService {
                     .select('content_id');
                 
                 let timeoutId: any;
-                const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new Error("Supabase request timed out")), 20000);
+                const timeoutPromise = new Promise<{ data: any, error: any }>((resolve) => {
+                    timeoutId = setTimeout(() => resolve({ data: null, error: null }), 8000);
                 });
                 
                 const response = await Promise.race([
@@ -33,14 +33,14 @@ class BannedService {
                 ]);
                 
                 const { data, error } = response;
-                if (error) throw error;
-                
-                this.bannedIds = new Set((data || []).map(item => String(item.content_id)));
-                this.lastFetch = now;
-                console.log("[BANNED SERVICE] Quantum registry updated:", this.bannedIds.size);
+                if (!error && data) {
+                    this.bannedIds = new Set(data.map((item: any) => String(item.content_id)));
+                    this.lastFetch = now;
+                    console.log("[BANNED SERVICE] Quantum registry updated:", this.bannedIds.size);
+                }
                 return this.bannedIds;
             } catch (err) {
-                console.error("[BANNED SERVICE] Signal failure:", err);
+                console.warn("[BANNED SERVICE] Signal degraded, using cached registry:", err);
                 return this.bannedIds;
             } finally {
                 this.initPromise = null;

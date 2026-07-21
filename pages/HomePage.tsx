@@ -180,8 +180,8 @@ const HomePage: React.FC = () => {
         .limit(12);
 
       let timeoutId: any;
-      const timeoutPromise = new Promise<{ data: null, error: any }>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error("Supabase request timed out")), 30000);
+      const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => {
+        timeoutId = setTimeout(() => resolve({ data: null, error: null }), 10000);
       });
 
       const response = await Promise.race([
@@ -198,7 +198,7 @@ const HomePage: React.FC = () => {
         rawItems = data;
         console.log("[HP] Supabase Signal Aligned:", rawItems.length);
       } else if (error) {
-        throw error;
+        console.warn("[HP] Supabase Signal degraded, attempting local recovery:", error);
       }
 
       // 3. Final Fallback to Local Quantum Core (IndexedDB)
