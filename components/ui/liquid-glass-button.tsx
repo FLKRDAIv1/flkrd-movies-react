@@ -57,35 +57,36 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
-export { Button, buttonVariants, liquidbuttonVariants, LiquidButton }
+export { Button, buttonVariants, LiquidButton }
 
-const liquidbuttonVariants = cva(
-  "inline-flex items-center transition-colors justify-center cursor-pointer gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+export const liquidbuttonVariants = cva(
+  "inline-flex items-center transition-colors justify-center cursor-pointer gap-2.5 whitespace-nowrap rounded-xl text-sm font-black transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-5 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-red-500 focus-visible:ring-red-500/50 focus-visible:ring-[3px]",
   {
     variants: {
       variant: {
-        default: "bg-transparent text-primary",
+        default: "bg-white/10 hover:bg-white/20 text-white border border-white/15 hover:border-white/35 backdrop-blur-md shadow-lg shadow-black/20",
+        primary: "bg-gradient-to-r from-red-600 to-rose-600 text-white border border-red-500/30 hover:from-red-500 hover:to-rose-500 hover:shadow-[0_0_35px_rgba(229,9,20,0.55)] shadow-lg shadow-red-900/20",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
+          "bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500/40",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/40 backdrop-blur-sm",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-white text-black hover:bg-white/90 shadow-md",
+        ghost: "hover:bg-white/10 text-white",
+        link: "text-white underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 text-xs gap-1.5 px-4 has-[>svg]:px-4",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        xl: "h-12 rounded-md px-8 has-[>svg]:px-6",
-        xxl: "h-14 rounded-md px-10 has-[>svg]:px-8",
-        icon: "size-9",
+        default: "h-11 px-5 py-2.5 has-[>svg]:px-4",
+        sm: "h-9 text-xs gap-1.5 px-4 has-[>svg]:px-3",
+        lg: "h-12 rounded-xl px-7 has-[>svg]:px-5",
+        xl: "h-14 rounded-2xl px-10 has-[>svg]:px-8",
+        xxl: "h-16 rounded-[1.5rem] px-14 has-[>svg]:px-10",
+        icon: "size-11",
       },
     },
     defaultVariants: {
       variant: "default",
-      size: "xxl",
+      size: "xl",
     },
   }
 )
