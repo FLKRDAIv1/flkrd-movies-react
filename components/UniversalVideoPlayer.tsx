@@ -1769,7 +1769,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => clearInterval(interval);
     }, [isIframe, isPlaying]);
 
-    // Fullscreen change listener to sync state and redirect iframe fullscreen to container
+    // Fullscreen change listener to sync state
     useEffect(() => {
         let active = true;
         const handleFullscreenChange = () => {
@@ -1781,38 +1781,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 (document as any).msFullscreenElement
             );
             setIsFullscreen(isFull);
-
-            // Intercept iframe or video element fullscreen and redirect to container so subtitles stay in Top-Layer
-            const activeFullscreenElement =
-                document.fullscreenElement ||
-                (document as any).webkitFullscreenElement ||
-                (document as any).mozFullScreenElement ||
-                (document as any).msFullscreenElement;
-
-            if (activeFullscreenElement && activeFullscreenElement !== containerRef.current && containerRef.current && (containerRef.current.contains(activeFullscreenElement) || activeFullscreenElement === iframeRef.current || activeFullscreenElement === videoRef.current)) {
-                console.log("[PLAYER] Intercepted inner element fullscreen. Redirecting to container to preserve subtitle overlay...");
-
-                const exit = document.exitFullscreen ||
-                    (document as any).webkitExitFullscreen ||
-                    (document as any).mozCancelFullScreen ||
-                    (document as any).msExitFullscreen;
-
-                const req = containerRef.current.requestFullscreen ||
-                    (containerRef.current as any).webkitRequestFullscreen ||
-                    (containerRef.current as any).mozRequestFullScreen ||
-                    (containerRef.current as any).msRequestFullscreen;
-
-                if (exit && req) {
-                    exit.call(document).then(() => {
-                        req.call(containerRef.current).catch(err => {
-                            console.error("[PLAYER] Failed to redirect fullscreen:", err);
-                        });
-                    }).catch(() => {
-                        req.call(containerRef.current).catch(() => {});
-                    });
-                }
-                return;
-            }
 
             // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
             if (!isFull && startFullscreen && onClose) {
