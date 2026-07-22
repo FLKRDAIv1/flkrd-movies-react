@@ -243,8 +243,24 @@ export default async function handler(req, res) {
                 const results = new Array(chunkItems.length);
                 let matchedCount = 0;
 
+                const normalizeDigits = (str) => {
+                    if (!str) return '';
+                    return str
+                        .replace(/٠/g, '0')
+                        .replace(/١/g, '1')
+                        .replace(/٢/g, '2')
+                        .replace(/٣/g, '3')
+                        .replace(/٤/g, '4')
+                        .replace(/٥/g, '5')
+                        .replace(/٦/g, '6')
+                        .replace(/٧/g, '7')
+                        .replace(/٨/g, '8')
+                        .replace(/٩/g, '9');
+                };
+
                 for (const line of rawLines) {
-                    const match = line.trim().match(/^\[(\d+)\]\s*(.*)$/);
+                    const normLine = normalizeDigits(line.trim());
+                    const match = normLine.match(/^\[(\d+)\]\s*(.*)$/);
                     if (match) {
                         const idx = parseInt(match[1], 10);
                         if (idx >= 0 && idx < chunkItems.length && !results[idx]) {

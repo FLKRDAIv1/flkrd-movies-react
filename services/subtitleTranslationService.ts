@@ -117,6 +117,24 @@ async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: stri
     return [...leftRes, ...rightRes];
   }
 
+  if (chunk.length === 1) {
+    const singleText = chunk[0].text;
+    try {
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(singleText)}`;
+      const res = await fetch(gtxUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0]) {
+          const trans = data[0].map((x: any) => x[0]).join('');
+          if (trans && trans.trim()) {
+            return [trans];
+          }
+        }
+      }
+    } catch (gErr) {}
+    return [singleText];
+  }
+
   return chunkTexts;
 }
 
