@@ -45,6 +45,8 @@ const ProfilePage: React.FC = () => {
     const [tempUserName, setTempUserName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
     const [avatarUploading, setAvatarUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadStatusText, setUploadStatusText] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
 
@@ -354,12 +356,17 @@ const ProfilePage: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
         setAvatarUploading(true);
+        setUploadProgress(10);
+        setUploadStatusText(language === 'ku' || language === 'badini' ? 'دەستپێکردنی بارکردن...' : 'Preparing file...');
         try {
             let finalUrl = '';
             const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
             const ext = (file.name.split('.').pop() || (isGif ? 'gif' : 'jpg')).toLowerCase();
             const mimeType = file.type || (ext === 'gif' ? 'image/gif' : (ext === 'png' ? 'image/png' : 'image/jpeg'));
             const storagePath = `user_avatars/${user.id}_${Date.now()}.${ext}`;
+
+            setUploadProgress(35);
+            setUploadStatusText(language === 'ku' || language === 'badini' ? 'بارکردن بۆ سێرڤەری هەور (Supabase)...' : 'Uploading to cloud storage...');
 
             // 1. Primary path: Upload directly to Supabase Storage 'avatars' bucket with explicit contentType
             try {
@@ -370,6 +377,9 @@ const ProfilePage: React.FC = () => {
                         cacheControl: '3600', 
                         upsert: true 
                     });
+
+                setUploadProgress(65);
+                setUploadStatusText(language === 'ku' || language === 'badini' ? 'وەرگرتنەوەی بەستەری گشتی...' : 'Generating public URL...');
 
                 if (!uploadErr && uploadRes) {
                     const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
@@ -385,9 +395,14 @@ const ProfilePage: React.FC = () => {
 
             // 2. Fallback path: Process as local DataURL if cloud upload failed or bucket missing
             if (!finalUrl) {
+                setUploadProgress(75);
+                setUploadStatusText(language === 'ku' || language === 'badini' ? 'پرۆسێسکردنی لۆکاڵی...' : 'Processing local format...');
                 finalUrl = await processAvatarFile(file);
             }
             await db.saveAvatar('current_user_avatar', finalUrl);
+
+            setUploadProgress(85);
+            setUploadStatusText(language === 'ku' || language === 'badini' ? 'نوێکردنەوە لەسەر داتابەیس و پرۆفایل...' : 'Syncing user metadata...');
 
             // 3. Update Supabase Auth User Metadata with finalUrl so ALL users & sessions see the new avatar
             try {
@@ -400,6 +415,9 @@ const ProfilePage: React.FC = () => {
             } catch (authErr) {
                 console.warn("[AVATAR] Supabase Auth metadata update warning:", authErr);
             }
+
+            setUploadProgress(100);
+            setUploadStatusText(language === 'ku' || language === 'badini' ? 'تەواوبوو!' : 'Upload complete!');
 
             // 4. Save to local storage & state, then dispatch events across app
             safeSetAvatarStorage(finalUrl);
@@ -418,7 +436,11 @@ const ProfilePage: React.FC = () => {
             console.error("[AVATAR] Handler error:", err);
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
         } finally {
-            setAvatarUploading(false);
+            setTimeout(() => {
+                setAvatarUploading(false);
+                setUploadProgress(0);
+                setUploadStatusText('');
+            }, 600);
         }
     };
 
@@ -827,6 +849,24 @@ const ProfilePage: React.FC = () => {
                                     email={user?.email}
                                     size={140}
                                 />
+                                {avatarUploading && (
+                                    <div className="absolute inset-0 rounded-full bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 z-40 border-2 border-red-500/50 shadow-2xl animate-fade-in">
+                                        <div className="relative w-12 h-12 flex items-center justify-center mb-1">
+                                            <span className="absolute inset-0 rounded-full border-2 border-red-500/20"></span>
+                                            <span className="absolute inset-0 rounded-full border-2 border-t-red-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></span>
+                                            <span className="text-[11px] font-black text-red-500">{uploadProgress}%</span>
+                                        </div>
+                                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mb-1 border border-white/10">
+                                            <div 
+                                                className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 transition-all duration-300 rounded-full"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-[8px] font-black text-zinc-300 truncate max-w-[110px]">
+                                            {uploadStatusText || 'بارکردن...'}
+                                        </span>
+                                    </div>
+                                )}
                                 <button
                                     onClick={() => avatarInputRef.current?.click()}
                                     className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-black hover:scale-110 transition-all z-30 shadow-xl"
