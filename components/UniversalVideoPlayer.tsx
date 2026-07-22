@@ -363,6 +363,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, [subtitleCues]);
 
+    // Ensure native video element text track is ALWAYS active and showing for fullscreen rendering
+    useEffect(() => {
+        if (!videoRef.current) return;
+        const syncTracks = () => {
+            const tracks = videoRef.current?.textTracks;
+            if (tracks && tracks.length > 0) {
+                for (let i = 0; i < tracks.length; i++) {
+                    tracks[i].mode = showSubtitles ? 'showing' : 'disabled';
+                }
+            }
+        };
+        syncTracks();
+        const timeout = setTimeout(syncTracks, 500);
+        return () => clearTimeout(timeout);
+    }, [vttBlobUrl, localSubtitleUrl, subtitleUrl, showSubtitles]);
+
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);
     const [subBlur, setSubBlur] = useState(true);
@@ -2472,21 +2488,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* AdGuardOnboarding disabled on play as requested by the user */}
 
-            {/* Force Style & Hide Native Tracks */}
+            {/* Force Style & Ensure Subtitles are 100% Visible in Native & Web Fullscreen */}
             <style>{`
                 video::cue {
-                    visibility: ${showSubtitles && subtitleCues.length === 0 ? 'visible' : 'hidden'} !important;
-                    background: ${subtitleCues.length > 0 ? 'transparent' : 'rgba(0,0,0,0.7)'} !important;
+                    visibility: ${showSubtitles ? 'visible' : 'hidden'} !important;
+                    background: ${showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'rgba(0,0,0,0.75)'} !important;
                     font-family: 'Zain', 'Outfit', sans-serif !important;
+                    font-size: clamp(16px, 2.8vw, 32px) !important;
+                    color: ${subtitleColor || '#ffffff'} !important;
+                    text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.8) !important;
+                    line-height: 1.4 !important;
+                    padding: 4px 12px !important;
+                    border-radius: 8px !important;
                 }
-                /* Hide native track container when custom overlay is active */
-                ${subtitleCues.length > 0 ? `
-                video::-webkit-media-text-track-container { display: none !important; }
-                video::-webkit-media-text-track-display { display: none !important; }
-                ` : ''}
                 
                 .custom-subtitle-text {
-                    text-shadow: 0 4px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.5) !important;
+                    text-shadow: 0 4px 12px rgba(0,0,0,0.95), 0 0 24px rgba(0,0,0,0.8) !important;
                 }
             `}</style>
 
