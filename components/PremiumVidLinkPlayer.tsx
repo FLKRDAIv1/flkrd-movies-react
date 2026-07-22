@@ -863,16 +863,46 @@ export default function PremiumVidLinkPlayer({
       if (resolvedSubUrl !== subUrl) {
         setResolvedSubUrl(subUrl);
 
-        // Convert the newly uploaded .srt file or data URI to local VTT for instant rendering
-        subtitleService.getSubtitleBlob(subUrl).then(blobUrl => {
-          if (blobUrl) {
-            fetch(blobUrl).then(res => res.text()).then(text => setVttContent(text));
-          } else {
-            fetch(subUrl).then(res => res.text()).then(text => setVttContent(text));
+        // Robust text decoding for base64 data URIs, blob URLs, and remote HTTP links
+        const loadVttText = async (url: string) => {
+          if (!url) return;
+          try {
+            let text = '';
+            if (url.startsWith('data:')) {
+              if (url.includes(';base64,')) {
+                const base64Str = url.split(';base64,')[1];
+                const binaryStr = atob(base64Str);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                  bytes[i] = binaryStr.charCodeAt(i);
+                }
+                text = new TextDecoder('utf-8').decode(bytes);
+              } else {
+                text = decodeURIComponent(url.split(',')[1] || url);
+              }
+            } else if (url.startsWith('blob:')) {
+              const res = await fetch(url);
+              if (res.ok) text = await res.text();
+            } else {
+              try {
+                const blobUrl = await subtitleService.getSubtitleBlob(url);
+                if (blobUrl) {
+                  const res = await fetch(blobUrl);
+                  if (res.ok) text = await res.text();
+                }
+              } catch (e) {}
+              if (!text) {
+                const res = await fetch(url);
+                if (res.ok) text = await res.text();
+              }
+            }
+            if (text) setVttContent(text);
+          } catch (err) {
+            console.error("[PLAYER] Error loading VTT text from subUrl:", err);
           }
-        }).catch(err => {
-          fetch(subUrl).then(res => res.text()).then(text => setVttContent(text));
-        });
+        };
+
+        loadVttText(subUrl);
 
         // Add or update the live Kurdish track in available tracks
         const trackId = `custom-db-${activeTranslation.tmdbId}`;

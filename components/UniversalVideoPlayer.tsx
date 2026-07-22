@@ -849,6 +849,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         localStorage.setItem('sub_show_bg', showSubBackground.toString());
     }, [subtitleSize, subtitleColor, subBgOpacity, subBlur, showSubBackground]);
 
+    // Auto sync active translation from UIContext or window event
+    useEffect(() => {
+        if (activeTranslation?.subtitleUrl) {
+            console.log("[UNIVERSAL-PLAYER] Syncing activeTranslation subtitleUrl:", activeTranslation.subtitleUrl);
+            setLocalSubtitleUrl(activeTranslation.subtitleUrl);
+            setShowSubtitles(true);
+        }
+    }, [activeTranslation?.subtitleUrl]);
+
+    useEffect(() => {
+        const handleTranslationEvent = (e: any) => {
+            const url = e.detail?.subtitleUrl || e.detail;
+            if (url) {
+                console.log("[UNIVERSAL-PLAYER] Received flkrd-subtitle-translated event:", url);
+                setLocalSubtitleUrl(url);
+                setShowSubtitles(true);
+            }
+        };
+        window.addEventListener('flkrd-subtitle-translated', handleTranslationEvent);
+        return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationEvent);
+    }, []);
+
     // Fetch and parse VTT whenever localSubtitleUrl changes
     useEffect(() => {
         if (!localSubtitleUrl) {
@@ -861,14 +883,41 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const fetchAndParseVtt = async () => {
             try {
                 let text = '';
-                if (localSubtitleUrl.startsWith('blob:')) {
+                if (localSubtitleUrl.startsWith('data:')) {
+                    try {
+                        if (localSubtitleUrl.includes(';base64,')) {
+                            const base64Str = localSubtitleUrl.split(';base64,')[1];
+                            const binaryStr = atob(base64Str);
+                            const bytes = new Uint8Array(binaryStr.length);
+                            for (let i = 0; i < binaryStr.length; i++) {
+                                bytes[i] = binaryStr.charCodeAt(i);
+                            }
+                            text = new TextDecoder('utf-8').decode(bytes);
+                        } else {
+                            text = decodeURIComponent(localSubtitleUrl.split(',')[1] || localSubtitleUrl);
+                        }
+                    } catch (e) {
+                        console.error("[UNIVERSAL-PLAYER] Error decoding data URI subtitle:", e);
+                        const res = await fetch(localSubtitleUrl);
+                        if (res.ok) text = await res.text();
+                    }
+                } else if (localSubtitleUrl.startsWith('blob:')) {
                     const res = await fetch(localSubtitleUrl);
                     if (res.ok) text = await res.text();
                 } else {
-                    const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
-                    if (blobUrl) {
-                        const res = await fetch(blobUrl);
-                        if (res.ok) text = await res.text();
+                    try {
+                        const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
+                        if (blobUrl) {
+                            const res = await fetch(blobUrl);
+                            if (res.ok) text = await res.text();
+                        }
+                    } catch (e) {}
+
+                    if (!text) {
+                        try {
+                            const res = await fetch(localSubtitleUrl);
+                            if (res.ok) text = await res.text();
+                        } catch (e) {}
                     }
                 }
 
