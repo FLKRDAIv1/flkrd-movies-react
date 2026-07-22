@@ -200,9 +200,7 @@ export function compileToVTT(cues: SubtitleCue[]): string {
   vtt += `00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
   vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
-
-  filteredCues.forEach((cue) => {
+  cues.forEach((cue) => {
     const timestamp = cue.timestamp.replace(/,/g, '.');
     vtt += `${timestamp}\n${cue.text}\n\n`;
   });
@@ -216,9 +214,7 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   srt += `${index++}\n00:00:01,000 --> 00:00:04,000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
   srt += `${index++}\n00:00:04,500 --> 00:00:07,500\nPowered by FLKRD STUDIO\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
-
-  filteredCues.forEach((cue) => {
+  cues.forEach((cue) => {
     let timestamp = cue.timestamp.replace(/\./g, ',');
     
     const parts = timestamp.split('-->');
@@ -320,13 +316,20 @@ export async function translateAndSavePipeline(
         const mapped = Math.round(7 + p * 0.78);
         let partialUrl: string | undefined;
 
-        // Generate live base64 subtitle track every 20% progress so player can render subtitles live while translating
-        if (partialCues && (p - lastEmittedPct >= 20 || p >= 98)) {
+        // Generate live base64 subtitle track on EVERY 3%+ progress or p >= 98 so player renders live partial Kurdish subtitles starting from 5%
+        if (partialCues && (p - lastEmittedPct >= 3 || p >= 98 || lastEmittedPct === 0)) {
           lastEmittedPct = p;
           try {
             const partialSrt = compileToSRT(partialCues);
             const base64Srt = btoa(unescape(encodeURIComponent(partialSrt)));
             partialUrl = `data:text/plain;base64,${base64Srt}`;
+
+            // Dispatch realtime window event for immediate player live subtitle update
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
+                detail: { subtitleUrl: partialUrl, progress: mapped }
+              }));
+            }
           } catch (e) {}
         }
 
