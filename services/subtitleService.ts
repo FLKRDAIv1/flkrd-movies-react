@@ -374,7 +374,7 @@ export const subtitleService = {
             }
             return [];
         } catch (e: any) {
-            console.warn("[SUBTITLE SERVICE] SubDL search failed gracefully:", e?.message);
+            console.warn("[SUBTITLE SERVICE] SubDL search error:", e);
             return [];
         }
     },
@@ -390,53 +390,45 @@ export const subtitleService = {
                 body: JSON.stringify({ file_id: fileId })
             });
 
-            if (!response.ok) throw new Error(`Backend download failed with status ${response.status}`);
-            
+            if (!response.ok) return null;
             const data = await response.json();
-            if (data.error || data._error) {
-                 console.warn("[SUBTITLE SERVICE] Backend reported an error:", data.error || data._error);
+            if (data.status === 'error' || data.error || (data.remaining !== undefined && data.remaining <= 0)) {
+                console.warn("[SUBTITLE SERVICE] OpenSubtitles REST API limit reached:", data.message || data.error || data);
+                return null;
             }
             return data.link || null;
-        } catch (error: any) {
-            console.warn("[SUBTITLE SERVICE] Custom proxy download failed gracefully:", error?.message);
-            throw error;
+        } catch (e) {
+            console.warn("[SUBTITLE SERVICE] Error calling getDownloadLink API:", e);
+            return null;
         }
     },
 
-    async downloadSubtitle(sub: SubtitleResult) {
+    async downloadSubtitle(sub: any) {
         try {
-            let link = sub.attributes.url;
-            
-            if (link && link.startsWith('data:')) {
-                const base64Part = link.split(',')[1];
-                if (base64Part) {
-                    try {
-                        const decoded = decodeURIComponent(escape(atob(base64Part)));
-                        return decoded;
-                    } catch (decErr) {
-                        console.warn("[SUBTITLE SERVICE] Failed to decode base64 data url, returning raw link:", decErr);
+            let link = sub.attributes?.files?.[0]?.file_url || sub.attributes?.url || sub.url || sub.link;
+
+            const isOpenSub = link && link.includes('opensubtitles');
+
+            if (isOpenSub && sub.attributes?.file_id && sub.attributes.file_id !== 0) {
+                try {
+                    const apiLink = await this.getDownloadLink(sub.attributes.file_id);
+                    if (apiLink) {
+                        link = apiLink;
+                    } else {
+                        console.warn("[SUBTITLE SERVICE] OpenSubtitles API download points exhausted. Falling back to direct URL/proxy link...");
+                        link = sub.attributes?.url || sub.url || sub.link || link;
                     }
+                } catch (err) {
+                    console.warn("[SUBTITLE SERVICE] getDownloadLink failed, falling back to direct URL:", err);
+                    link = sub.attributes?.url || sub.url || sub.link || link;
                 }
             }
 
-            const isOpenSub = link && (
-                link.includes('opensubtitles')
-            );
-
-            // If it is an OpenSubtitles link, we MUST have a file_id to download it via the API
-            if (isOpenSub) {
-                if (sub.attributes.file_id && sub.attributes.file_id !== 0) {
-                    link = await this.getDownloadLink(sub.attributes.file_id);
-                } else {
-                    throw new Error("OpenSubtitles webpage scraping is blocked. Official API download requires a file_id.");
-                }
-            }
-            
             if (!link || link.trim() === '') {
                 throw new Error("Could not obtain download link");
             }
 
-            // Resolve relative paths to absolute URLs (e.g. from Stremio Proxy or local custom storage)
+            // Resolve relative paths to absolute URLs
             if (link.startsWith('//')) {
                 link = `https:${link}`;
             } else if (link.startsWith('/')) {
@@ -451,37 +443,32 @@ export const subtitleService = {
                 }
             }
 
-            // Fetch the actual text content (or zip)
-            const isLocal = link.startsWith('/') || link.includes(window.location.hostname) || link.includes('fkurd.pro');
+            console.log("[SUBTITLE SERVICE] Downloading subtitle from resolved link:", link);
+            const isLocal = link.startsWith('/') || link.includes(window.location.hostname) || link.includes('fkurd.pro') || link.includes('supabase.co');
             const response = isLocal ? await fetch(link) : await this.fetchWithFallback(link);
-            if (!response.ok) throw new Error("Could not fetch subtitle content");
-            
+            if (!response || !response.ok) throw new Error(`Could not fetch subtitle content (status: ${response?.status})`);
+
             const contentType = response.headers.get('content-type') || '';
-            
-            // Handle ZIP extraction for SubDL
+            let text = '';
+
             if (contentType.includes('zip') || link.toLowerCase().includes('.zip')) {
                 const blob = await response.blob();
-                
                 const zip = new JSZip();
                 const zipContent = await zip.loadAsync(blob);
-                
-                // Find first .srt or .vtt file
                 const srtFile = Object.values(zipContent.files).find((f: any) => 
                     !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
                 ) as any;
-                
                 if (srtFile) {
-                    console.log("[SUBTITLE SERVICE] Extracted subtitle from SubDL ZIP:", srtFile.name);
-                    return await srtFile.async('string');
+                    text = await srtFile.async('string');
+                } else {
+                    throw new Error("No .srt/.vtt file found inside ZIP archive");
                 }
-                throw new Error("No subtitle file found in ZIP archive");
+            } else {
+                text = await response.text();
             }
 
-            const text = await response.text();
-            if (!text || text.length < 10) throw new Error("Empty subtitle content");
-            
             return text;
-        } catch (e) {
+        } catch (e: any) {
             console.error("[SUBTITLE SERVICE] Unified download failed:", e);
             throw e;
         }
