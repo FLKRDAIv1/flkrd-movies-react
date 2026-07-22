@@ -90,7 +90,16 @@ export default async function handler(req, res) {
     }
 
     try {
+        const { text, source = 'auto', target = 'ckb' } = req.body || {};
+
+        if (!text) {
+            return res.status(400).json({ error: 'Missing text in request body' });
+        }
+
+        const isBadini = target === 'badini';
+        const actualTarget = isBadini ? 'ku' : target;
         let actualSource = source || 'auto';
+
         const isArray = Array.isArray(text);
         const textArray = isArray ? text : [text];
 
