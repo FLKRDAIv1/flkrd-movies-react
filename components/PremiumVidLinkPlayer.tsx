@@ -832,12 +832,12 @@ export default function PremiumVidLinkPlayer({
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
-    if (activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(targetId)) {
+    if (activeTranslation.subtitleUrl && String(activeTranslation.tmdbId) === String(targetId)) {
       const subUrl = activeTranslation.subtitleUrl;
-      if (subUrl && resolvedSubUrl !== subUrl) {
+      if (resolvedSubUrl !== subUrl) {
         setResolvedSubUrl(subUrl);
 
-        // Convert the newly uploaded .srt file to a local VTT blob for instant rendering
+        // Convert the newly uploaded .srt file or data URI to local VTT for instant rendering
         subtitleService.getSubtitleBlob(subUrl).then(blobUrl => {
           if (blobUrl) {
             fetch(blobUrl).then(res => res.text()).then(text => setVttContent(text));
@@ -848,20 +848,24 @@ export default function PremiumVidLinkPlayer({
           fetch(subUrl).then(res => res.text()).then(text => setVttContent(text));
         });
 
-        // Add the new Kurdish track to the list if not present
+        // Add or update the live Kurdish track in available tracks
         const trackId = `custom-db-${activeTranslation.tmdbId}`;
         setAvailableSubs(prev => {
-          if (prev.some(s => s.id === trackId)) return prev;
-
+          const existingIndex = prev.findIndex(s => s.id === trackId);
           const newTrack = {
             id: trackId,
             attributes: {
               language: 'ku',
-              display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}]`,
+              display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
               url: subUrl,
               file_id: 0
             }
           };
+          if (existingIndex > -1) {
+            const updated = [...prev];
+            updated[existingIndex] = newTrack;
+            return updated;
+          }
           return [newTrack, ...prev];
         });
         

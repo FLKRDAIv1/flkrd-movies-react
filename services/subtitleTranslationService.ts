@@ -124,7 +124,7 @@ export async function translateCuesToKurdish(
   cues: SubtitleCue[],
   sourceLang: string,
   targetLang: string,
-  onProgress?: (progress: number, statusText: string) => void,
+  onProgress?: (progress: number, statusText: string, partialCues?: SubtitleCue[]) => void,
   signal?: AbortSignal,
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
@@ -152,7 +152,7 @@ export async function translateCuesToKurdish(
         throw new DOMException('Translation cancelled by user during pause', 'AbortError');
       }
       if (onProgress) {
-        onProgress(Math.round((completedCount / cues.length) * 100), `وەرگێڕان ڕاوەستێنراوە (Paused)...`);
+        onProgress(Math.round((completedCount / cues.length) * 100), `وەرگێڕان ڕاوەستێنراوە (Paused)...`, translatedCues);
       }
       await new Promise(resolve => setTimeout(resolve, 200));
     }
@@ -171,7 +171,7 @@ export async function translateCuesToKurdish(
         if (onProgress) {
           const progressPct = Math.round((completedCount / cues.length) * 100);
           const statusText = `Translating dialogue lines (${Math.min(completedCount, cues.length)} / ${cues.length})...`;
-          onProgress(progressPct, statusText);
+          onProgress(progressPct, statusText, translatedCues);
         }
       });
     });
@@ -244,7 +244,7 @@ export async function translateAndSavePipeline(
   season: number = 0,
   episode: number = 0,
   targetLang: 'ku' | 'badini' = 'ku',
-  onProgress?: (progress: number, statusText: string) => void,
+  onProgress?: (progress: number, statusText: string, partialSubtitleUrl?: string) => void,
   signal?: AbortSignal,
   pauseState?: { isPaused: boolean }
 ): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
@@ -312,13 +312,26 @@ export async function translateAndSavePipeline(
     const targetNameKurdish = targetLang === 'badini' ? 'Kurdish Badini' : 'Kurdish Sorani';
     if (onProgress) onProgress(7, `Translating from ${sourceLang.toUpperCase()} to ${targetNameKurdish}...`);
 
+    let lastEmittedPct = 0;
     const translatedCues = await translateCuesToKurdish(
       cues,
       sourceLang,
       apiTargetLang,
-      (p, status) => {
+      (p, status, partialCues) => {
         const mapped = Math.round(7 + p * 0.78);
-        if (onProgress) onProgress(mapped, status);
+        let partialUrl: string | undefined;
+
+        // Generate live base64 subtitle track every 20% progress so player can render subtitles live while translating
+        if (partialCues && (p - lastEmittedPct >= 20 || p >= 98)) {
+          lastEmittedPct = p;
+          try {
+            const partialSrt = compileToSRT(partialCues);
+            const base64Srt = btoa(unescape(encodeURIComponent(partialSrt)));
+            partialUrl = `data:text/plain;base64,${base64Srt}`;
+          } catch (e) {}
+        }
+
+        if (onProgress) onProgress(mapped, status, partialUrl);
       },
       signal,
       pauseState

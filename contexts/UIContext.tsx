@@ -699,12 +699,13 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         season,
         episode,
         targetLang,
-        (progress, status) => {
+        (progress, status, partialSubtitleUrl) => {
           setActiveTranslation(prev => {
             const next = {
               ...prev,
               progress,
-              statusText: status
+              statusText: status,
+              subtitleUrl: partialSubtitleUrl || prev.subtitleUrl
             };
             try {
               localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
@@ -715,7 +716,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 episode: prev.episode,
                 targetLang,
                 progress,
-                statusText: status
+                statusText: status,
+                subtitleUrl: partialSubtitleUrl || prev.subtitleUrl
               }));
             } catch (e) {}
             return next;

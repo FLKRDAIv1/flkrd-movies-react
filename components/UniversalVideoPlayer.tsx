@@ -1389,30 +1389,34 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0, targetLang);
     };
 
-    // Sync with global background subtitle translator
+    // Sync with global background subtitle translator (applies live progressively at 20%, 40%, 60%, 100%)
     useEffect(() => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
 
-        if (activeTranslation.showCelebration && String(activeTranslation.tmdbId) === String(targetId)) {
+        if (activeTranslation.subtitleUrl && String(activeTranslation.tmdbId) === String(targetId)) {
             const subUrl = activeTranslation.subtitleUrl;
-            if (subUrl && localSubtitleUrl !== subUrl) {
+            if (localSubtitleUrl !== subUrl) {
                 setLocalSubtitleUrl(subUrl);
 
-                // Add the new Kurdish track to the list if not present
+                // Add or update the live Kurdish track in available tracks
                 const trackId = `custom-db-${activeTranslation.tmdbId}`;
                 setAvailableSubs(prev => {
-                    if (prev.some(s => s.id === trackId)) return prev;
-
+                    const existingIndex = prev.findIndex(s => s.id === trackId);
                     const newTrack: SubtitleResult = {
                         id: trackId,
                         attributes: {
                             language: 'ku',
-                            display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}]`,
+                            display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
                             url: subUrl,
                             file_id: 0
                         }
                     };
+                    if (existingIndex > -1) {
+                        const updated = [...prev];
+                        updated[existingIndex] = newTrack;
+                        return updated;
+                    }
                     return [newTrack, ...prev];
                 });
                 setCurrentSubId(trackId);

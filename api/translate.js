@@ -224,8 +224,8 @@ export default async function handler(req, res) {
 
         // 1. Try joined high-efficiency translation if parameter is an array
         if (isArray) {
-            const separator = ' [||] ';
-            const joinedText = textArray.map(t => t.replace(/\n/g, ' [n] ')).join(separator);
+            // Format with explicit index markers: [0] line1\n[1] line2 ...
+            const joinedText = textArray.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
             let translatedJoined = null;
 
             // 1.1 Try GAS (Google Apps Script - Official Google Translate engine)
@@ -242,13 +242,32 @@ export default async function handler(req, res) {
             }
 
             if (translatedJoined) {
-                // Split back by separator (regex to handle space variations around brackets)
-                const results = translatedJoined.split(/\s*\[\|\|\]\s*/i);
-                if (results.length === textArray.length) {
-                    const decodedResults = results.map(r => r.replace(/\s*\[n\]\s*/gi, '\n'));
-                    return res.status(200).json({ translation: applyBadiniTransliteration(decodedResults) });
+                // Parse indexed lines matching [0], [1], [2] ...
+                const rawLines = translatedJoined.split('\n');
+                const results = new Array(textArray.length);
+                let matchedCount = 0;
+
+                for (const line of rawLines) {
+                    const match = line.trim().match(/^\[(\d+)\]\s*(.*)$/);
+                    if (match) {
+                        const idx = parseInt(match[1], 10);
+                        if (idx >= 0 && idx < textArray.length && !results[idx]) {
+                            results[idx] = match[2].replace(/\{n\}/gi, '\n').trim();
+                            matchedCount++;
+                        }
+                    }
+                }
+
+                // If at least 60% of indices matched, fill missing with originals and return instantly
+                if (matchedCount >= Math.floor(textArray.length * 0.6)) {
+                    for (let i = 0; i < textArray.length; i++) {
+                        if (!results[i]) {
+                            results[i] = textArray[i];
+                        }
+                    }
+                    return res.status(200).json({ translation: applyBadiniTransliteration(results) });
                 } else {
-                    console.warn(`[SERVER TRANSLATE] Separator mismatch (in: ${textArray.length}, out: ${results.length}). Falling back to item-by-item.`);
+                    console.warn(`[SERVER TRANSLATE] Index parse low match (${matchedCount}/${textArray.length}). Retrying item-by-item.`);
                 }
             }
 
