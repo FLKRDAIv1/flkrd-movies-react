@@ -981,6 +981,19 @@ export default function PremiumVidLinkPlayer({
     };
   }, [tmdbId, imdbId, resolvedTmdbId, type, language, addNotification]);
 
+  // Window event listener for global translation completion
+  useEffect(() => {
+    const handleTranslationFinished = (e: any) => {
+      if (e.detail && e.detail.subtitleUrl) {
+        console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", e.detail.subtitleUrl);
+        setResolvedSubUrl(e.detail.subtitleUrl);
+        setShowSubtitles(true);
+      }
+    };
+    window.addEventListener('flkrd-subtitle-translated', handleTranslationFinished);
+    return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationFinished);
+  }, []);
+
   // Flag Helper
   const getLanguageFlag = (langCode: string) => {
     const code = langCode?.toLowerCase();
