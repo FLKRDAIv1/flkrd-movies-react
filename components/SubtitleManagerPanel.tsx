@@ -27,6 +27,8 @@ import {
   List,
   Keyboard,
   Play,
+  Pause,
+  RotateCcw,
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 
@@ -40,10 +42,14 @@ interface SubtitleTrack {
   attributes?: {
     display_name?: string;
     language?: string;
+    release?: string;
+    download_count?: number;
+    url?: string;
   };
+  name?: string;
 }
 
-interface SubtitleManagerPanelProps {
+export interface SubtitleManagerPanelProps {
   // Visibility
   isOpen: boolean;
   onClose: () => void;
@@ -55,7 +61,7 @@ interface SubtitleManagerPanelProps {
   // Admin
   isAdmin?: boolean;
   isUploadingSub?: boolean;
-  uploadStatus?: { type: 'success' | 'error'; message: string } | null;
+  uploadStatus?: { type: 'success' | 'error'; message: string } | string | null;
   onUploadClick?: () => void;
   onFileChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 
@@ -68,8 +74,8 @@ interface SubtitleManagerPanelProps {
   // Display toggles
   subBgOpacity: number;
   setSubBgOpacity: (v: number) => void;
-  subBlur: boolean;
-  setSubBlur: (v: boolean) => void;
+  subBlur: boolean | number;
+  setSubBlur: (v: any) => void;
   showSubBackground: boolean;
   setShowSubBackground: (v: boolean) => void;
 
@@ -97,7 +103,7 @@ interface SubtitleManagerPanelProps {
   onRetrySearch?: () => void;
   getLanguageFlag?: (lang: string) => any;
 
-  // Translation progress
+  // Translation progress & controls
   isTranslating?: boolean;
   translationProgress?: number;
   translatingName?: string;
@@ -241,6 +247,10 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   translationStatus = '',
   showCelebration = false,
   onCloseCelebration,
+  onPauseTranslation,
+  onResumeTranslation,
+  onCancelTranslation,
+  isTranslationPaused = false,
   dubContent,
   language = 'ku',
 }) => {
@@ -575,13 +585,39 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                               </div>
                             </div>
                             
-                            {/* Window controls */}
-                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border ${
-                              isDark ? 'bg-white/5 border-white/10' : 'bg-zinc-100 border-zinc-200'
-                            }`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500/80 animate-pulse"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500/80 animate-pulse"></span>
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/80 animate-pulse"></span>
+                            {/* Window & Translation Controls */}
+                            <div className="flex items-center gap-2">
+                              {isTranslationPaused ? (
+                                <button
+                                  type="button"
+                                  onClick={onResumeTranslation}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 text-[10px] font-bold transition-all active:scale-95 shadow-md"
+                                  title={isKu ? 'بەردەوامبوون' : 'Resume Translation'}
+                                >
+                                  <Play size={12} fill="currentColor" />
+                                  <span>{isKu ? 'بەردەوامبە' : 'Resume'}</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={onPauseTranslation}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/25 text-[10px] font-bold transition-all active:scale-95 shadow-md"
+                                  title={isKu ? 'راگرتنی کاتی' : 'Pause Translation'}
+                                >
+                                  <Pause size={12} fill="currentColor" />
+                                  <span>{isKu ? 'ڕاگرتن' : 'Pause'}</span>
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={onCancelTranslation}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 text-[10px] font-bold transition-all active:scale-95 shadow-md"
+                                title={isKu ? 'وازهێنان / هەڵوەشاندنەوە' : 'Cancel Translation'}
+                              >
+                                <X size={13} />
+                                <span>{isKu ? 'وەستان' : 'Cancel'}</span>
+                              </button>
                             </div>
                           </div>
 

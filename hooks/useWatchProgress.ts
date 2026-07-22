@@ -127,12 +127,15 @@ export const useWatchProgress = ({
     let duration = 0;
 
     try {
-      // 1. Retrieve current session user synchronously from local storage if available
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
+      // 1. Reuse existing session userId (or fetch if not yet resolved)
+      let userId = userIdRef.current;
+      if (!userId) {
+        const { data: { session } } = await supabase.auth.getSession();
+        userId = session?.user?.id || null;
+        userIdRef.current = userId;
+      }
       
       if (userId) {
-        userIdRef.current = userId;
         // 2. Query Supabase progress
         const { data, error } = await supabase
           .from('user_watch_progress')

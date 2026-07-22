@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Content } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { API_KEY, FORBIDDEN_KEYWORDS_EN, FORBIDDEN_KEYWORDS_KU } from '../constants';
@@ -54,6 +54,7 @@ export const useSearchEngine = (language: 'en' | 'ku' | 'badini') => {
   const [loading, setLoading] = useState(false);
   const [isBlockedQuery, setIsBlockedQuery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const dubbedCacheRef = useRef<any[] | null>(null);
 
   const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
 
@@ -86,21 +87,24 @@ export const useSearchEngine = (language: 'en' | 'ku' | 'badini') => {
     try {
       const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(trimmed)}&page=1&include_adult=false`;
       
-      const [tmdbData, cachedMovies] = await Promise.all([
-        fetchData(endpoint, language),
-        (async () => {
-          const local = await db.getMovies();
-          if (local && local.length > 0) return local;
-          
-          // Fallback to Supabase directly if local is empty
+      // Cache dubbed movies query in memory to avoid repeated Supabase fetches
+      if (!dubbedCacheRef.current) {
+        const local = await db.getMovies();
+        if (local && local.length > 0) {
+          dubbedCacheRef.current = local;
+        } else {
           const { data } = await supabase.from('dubbed_movies').select('*').limit(20);
           if (data) {
-              db.saveMovies(data).catch(() => {});
-              return data;
+            db.saveMovies(data).catch(() => {});
+            dubbedCacheRef.current = data;
+          } else {
+            dubbedCacheRef.current = [];
           }
-          return [];
-        })()
-      ]);
+        }
+      }
+
+      const tmdbData = await fetchData(endpoint, language);
+      const cachedMovies = dubbedCacheRef.current || [];
 
       let combinedResults: any[] = [];
 

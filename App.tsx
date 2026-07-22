@@ -421,6 +421,10 @@ const logVisit = async (path: string) => {
             deviceType = 'Tablet';
         }
 
+        // Throttle: log analytics max once per session
+        if (sessionStorage.getItem('flkrd_analytics_logged')) return;
+        sessionStorage.setItem('flkrd_analytics_logged', 'true');
+
         await supabase.from('site_analytics').insert([{
             session_id: sessionId,
             country: country,

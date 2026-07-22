@@ -387,22 +387,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
     setLoadingAnalytics(true);
     fetchAnalytics().finally(() => setLoadingAnalytics(false));
-
-    // Real-time visitor sync channel (listens to INSERTS and UPDATES)
-    const channel = supabase
-      .channel('realtime_analytics_dashboard')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'site_analytics' },
-        () => {
-          fetchAnalytics();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [isOpen]);
 
   // System update checking states

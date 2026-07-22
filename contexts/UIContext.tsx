@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 
@@ -54,6 +54,7 @@ export interface PlayerConfig {
 
 export interface ActiveTranslationState {
   isTranslating: boolean;
+  isPaused?: boolean;
   progress: number;
   statusText: string;
   translatingName: string;
@@ -95,6 +96,8 @@ interface UIContextType {
   // Background Subtitle Translation System
   activeTranslation: ActiveTranslationState;
   startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number, targetLang?: 'ku' | 'badini') => Promise<void>;
+  pauseGlobalTranslation: () => void;
+  resumeGlobalTranslation: () => void;
   cancelGlobalTranslation: () => void;
   dismissCelebration: () => void;
 
@@ -641,6 +644,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     };
   });
 
+  const translationControllerRef = useRef<AbortController | null>(null);
+  const pauseStateRef = useRef<{ isPaused: boolean }>({ isPaused: false });
+
   const startGlobalTranslation = async (
     sub: any,
     tmdbId: string | number,
@@ -649,9 +655,17 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     episode: number = 0,
     targetLang: 'ku' | 'badini' = 'ku'
   ) => {
+    // Abort any existing translation first
+    if (translationControllerRef.current) {
+      translationControllerRef.current.abort();
+    }
+    translationControllerRef.current = new AbortController();
+    pauseStateRef.current = { isPaused: false };
+
     const subName = sub.attributes?.display_name || 'Selected Track';
     setActiveTranslation({
       isTranslating: true,
+      isPaused: false,
       progress: 0,
       statusText: 'Starting translation...',
       translatingName: subName,
@@ -706,13 +720,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             } catch (e) {}
             return next;
           });
-        }
+        },
+        translationControllerRef.current.signal,
+        pauseStateRef.current
       );
 
       if (result.success && result.subtitleUrl) {
         setActiveTranslation(prev => ({
           ...prev,
           isTranslating: false,
+          isPaused: false,
           progress: 100,
           statusText: 'Completed successfully!',
           showCelebration: true,
@@ -724,19 +741,55 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         throw new Error(result.error || 'Translation pipeline failed');
       }
     } catch (err: any) {
-      console.error("[UI CONTEXT] Subtitle translation pipeline exception:", err);
-      setActiveTranslation(prev => ({
-        ...prev,
-        isTranslating: false,
-        statusText: `Failed: ${err.message || 'Unknown error'}`,
-        error: err.message || 'Unknown error'
-      }));
+      if (err.name === 'AbortError' || err.message?.includes('cancelled')) {
+        console.log("[UI CONTEXT] Translation cancelled by user.");
+        setActiveTranslation(prev => ({
+          ...prev,
+          isTranslating: false,
+          isPaused: false,
+          statusText: 'Translation cancelled.',
+        }));
+      } else {
+        console.error("[UI CONTEXT] Subtitle translation pipeline exception:", err);
+        setActiveTranslation(prev => ({
+          ...prev,
+          isTranslating: false,
+          isPaused: false,
+          statusText: `Failed: ${err.message || 'Unknown error'}`,
+          error: err.message || 'Unknown error'
+        }));
+      }
     }
   };
 
+  const pauseGlobalTranslation = () => {
+    pauseStateRef.current.isPaused = true;
+    setActiveTranslation(prev => ({
+      ...prev,
+      isPaused: true,
+      statusText: 'وەرگێڕان ڕاوەستێنراوە (Paused)...'
+    }));
+  };
+
+  const resumeGlobalTranslation = () => {
+    pauseStateRef.current.isPaused = false;
+    setActiveTranslation(prev => ({
+      ...prev,
+      isPaused: false,
+      statusText: 'بەردەوامبوونی وەرگێڕان...'
+    }));
+  };
+
   const cancelGlobalTranslation = () => {
+    if (translationControllerRef.current) {
+      translationControllerRef.current.abort();
+      translationControllerRef.current = null;
+    }
+    pauseStateRef.current.isPaused = false;
+
     setActiveTranslation({
       isTranslating: false,
+      isPaused: false,
       progress: 0,
       statusText: '',
       translatingName: '',
@@ -780,7 +833,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   return (
     <UIContext.Provider value={{ 
       theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
-      activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
+      activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
       mobileNavConfig, updateMobileNavConfig,
       playerConfig, updatePlayerConfig

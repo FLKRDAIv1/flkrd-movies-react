@@ -124,7 +124,9 @@ export async function translateCuesToKurdish(
   cues: SubtitleCue[],
   sourceLang: string,
   targetLang: string,
-  onProgress?: (progress: number, statusText: string) => void
+  onProgress?: (progress: number, statusText: string) => void,
+  signal?: AbortSignal,
+  pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
   const chunkSize = 80;
@@ -134,14 +136,32 @@ export async function translateCuesToKurdish(
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 3;
+  const concurrency = 5; // Increased for faster batch processing
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
+    // Check if aborted
+    if (signal?.aborted) {
+      console.log("[TRANSLATE] Subtitle translation aborted by user signal.");
+      throw new DOMException('Translation cancelled by user', 'AbortError');
+    }
+
+    // Handle pause state
+    while (pauseState?.isPaused) {
+      if (signal?.aborted) {
+        throw new DOMException('Translation cancelled by user during pause', 'AbortError');
+      }
+      if (onProgress) {
+        onProgress(Math.round((completedCount / cues.length) * 100), `وەرگێڕان ڕاوەستێنراوە (Paused)...`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
     const batch = chunks.slice(i, i + concurrency);
     const batchPromises = batch.map((chunk, batchIdx) => {
       const chunkIndex = i + batchIdx;
       return translateChunkWithFallback(chunk, sourceLang, targetLang).then((translatedTexts) => {
+        if (signal?.aborted) return;
         const offset = chunkIndex * chunkSize;
         for (let j = 0; j < chunk.length; j++) {
           const translated = translatedTexts[j] ?? chunk[j].text;
@@ -157,7 +177,6 @@ export async function translateCuesToKurdish(
     });
 
     await Promise.all(batchPromises);
-    await new Promise(resolve => setTimeout(resolve, 60)); // tiny throttle between batches
   }
 
   return translatedCues;
@@ -225,7 +244,9 @@ export async function translateAndSavePipeline(
   season: number = 0,
   episode: number = 0,
   targetLang: 'ku' | 'badini' = 'ku',
-  onProgress?: (progress: number, statusText: string) => void
+  onProgress?: (progress: number, statusText: string) => void,
+  signal?: AbortSignal,
+  pauseState?: { isPaused: boolean }
 ): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
   try {
     // Detect source language for all world languages
@@ -278,9 +299,11 @@ export async function translateAndSavePipeline(
 
     if (onProgress) onProgress(2, `Downloading ${sourceLang.toUpperCase()} subtitle track...`);
     
+    if (signal?.aborted) throw new DOMException('Translation cancelled by user', 'AbortError');
     const text = await subtitleService.downloadSubtitle(sub);
     if (!text) throw new Error("Could not download subtitle track.");
 
+    if (signal?.aborted) throw new DOMException('Translation cancelled by user', 'AbortError');
     if (onProgress) onProgress(5, "Parsing dialogue cues...");
     
     const cues = parseSubtitleToCues(text);
@@ -289,10 +312,17 @@ export async function translateAndSavePipeline(
     const targetNameKurdish = targetLang === 'badini' ? 'Kurdish Badini' : 'Kurdish Sorani';
     if (onProgress) onProgress(7, `Translating from ${sourceLang.toUpperCase()} to ${targetNameKurdish}...`);
 
-    const translatedCues = await translateCuesToKurdish(cues, sourceLang, apiTargetLang, (p, status) => {
-      const mapped = Math.round(7 + p * 0.78);
-      if (onProgress) onProgress(mapped, status);
-    });
+    const translatedCues = await translateCuesToKurdish(
+      cues,
+      sourceLang,
+      apiTargetLang,
+      (p, status) => {
+        const mapped = Math.round(7 + p * 0.78);
+        if (onProgress) onProgress(mapped, status);
+      },
+      signal,
+      pauseState
+    );
 
     if (onProgress) onProgress(86, "Compiling translated dialogue to SRT format...");
 

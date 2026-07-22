@@ -217,7 +217,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     sources = [],
     isPip = false
 }) => {
-    const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
+    const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
     const { isPaused } = usePlayer();
     const { addNotification } = useNotification();
     const navigate = useNavigate();
@@ -3575,6 +3575,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onRetrySearch={handleSearchAllSubs}
                         getLanguageFlag={getLanguageFlag}
                         isTranslating={activeTranslation.isTranslating && String(activeTranslation.tmdbId) === String(tmdbId || imdbId)}
+                        isTranslationPaused={activeTranslation.isPaused}
+                        onPauseTranslation={pauseGlobalTranslation}
+                        onResumeTranslation={resumeGlobalTranslation}
+                        onCancelTranslation={cancelGlobalTranslation}
                         translationProgress={activeTranslation.progress}
                         translationStatus={activeTranslation.statusText}
                         translatingName={activeTranslation.translatingName}

@@ -100,7 +100,7 @@ export default function PremiumVidLinkPlayer({
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
   );
-  const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, dismissCelebration } = useUI();
+  const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration } = useUI();
   const { isPaused } = usePlayer();
   const { addNotification } = useNotification();
   const [isShieldActive, setIsShieldActive] = useState(false);
@@ -1880,6 +1880,10 @@ export default function PremiumVidLinkPlayer({
               onRetrySearch={handleSearchAllSubs}
               getLanguageFlag={getLanguageFlag}
               isTranslating={activeTranslation.isTranslating && String(activeTranslation.tmdbId) === String(resolvedTmdbId || tmdbId || imdbId)}
+              isTranslationPaused={activeTranslation.isPaused}
+              onPauseTranslation={pauseGlobalTranslation}
+              onResumeTranslation={resumeGlobalTranslation}
+              onCancelTranslation={cancelGlobalTranslation}
               translationProgress={activeTranslation.progress}
               translationStatus={activeTranslation.statusText}
               translatingName={activeTranslation.translatingName}

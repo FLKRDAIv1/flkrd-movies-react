@@ -201,7 +201,7 @@ export default async function handler(req, res) {
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 9000); // 9s max
+            const timer = setTimeout(() => ctrl.abort(), 6000); // 6s max for faster fallback
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
