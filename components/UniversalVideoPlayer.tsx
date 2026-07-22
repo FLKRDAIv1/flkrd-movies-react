@@ -1735,15 +1735,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             );
             setIsFullscreen(isFull);
 
-            // Intercept iframe fullscreen and redirect to container
+            // Intercept iframe or video element fullscreen and redirect to container so subtitles stay in Top-Layer
             const activeFullscreenElement =
                 document.fullscreenElement ||
                 (document as any).webkitFullscreenElement ||
                 (document as any).mozFullScreenElement ||
                 (document as any).msFullscreenElement;
 
-            if (activeFullscreenElement === iframeRef.current && containerRef.current) {
-                console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
+            if (activeFullscreenElement && activeFullscreenElement !== containerRef.current && containerRef.current && (containerRef.current.contains(activeFullscreenElement) || activeFullscreenElement === iframeRef.current || activeFullscreenElement === videoRef.current)) {
+                console.log("[PLAYER] Intercepted inner element fullscreen. Redirecting to container to preserve subtitle overlay...");
 
                 const exit = document.exitFullscreen ||
                     (document as any).webkitExitFullscreen ||
@@ -1755,11 +1755,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     (containerRef.current as any).mozRequestFullScreen ||
                     (containerRef.current as any).msRequestFullscreen;
 
-                exit.call(document).then(() => {
-                    req.call(containerRef.current).catch(err => {
-                        console.error("[PLAYER] Failed to redirect fullscreen:", err);
+                if (exit && req) {
+                    exit.call(document).then(() => {
+                        req.call(containerRef.current).catch(err => {
+                            console.error("[PLAYER] Failed to redirect fullscreen:", err);
+                        });
+                    }).catch(() => {
+                        req.call(containerRef.current).catch(() => {});
                     });
-                });
+                }
                 return;
             }
 
@@ -2611,6 +2615,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             fontSize: `clamp(16px, ${subtitleSize}px, 6.5vw)`,
                             color: subtitleColor,
                             fontFamily: "'Zain', 'Outfit', sans-serif",
+                            transform: 'translateZ(99999px)',
+                            WebkitTransform: 'translateZ(99999px)',
+                            willChange: 'transform',
                         }}
                     >
                         {(() => {

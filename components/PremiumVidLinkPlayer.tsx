@@ -1321,14 +1321,14 @@ export default function PremiumVidLinkPlayer({
       );
       setIsFullscreen(isFull);
 
-      // Intercept iframe fullscreen and redirect to container
+      // Intercept iframe or inner element fullscreen and redirect to container
       const activeFullscreenElement = 
         document.fullscreenElement ||
         (document as any).webkitFullscreenElement ||
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement;
 
-      if (activeFullscreenElement === iframeRef.current && containerRef.current) {
+      if (activeFullscreenElement && activeFullscreenElement !== containerRef.current && containerRef.current && (containerRef.current.contains(activeFullscreenElement) || activeFullscreenElement === iframeRef.current)) {
         console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
         
         const exit = document.exitFullscreen ||
@@ -1341,11 +1341,15 @@ export default function PremiumVidLinkPlayer({
                     (containerRef.current as any).mozRequestFullScreen ||
                     (containerRef.current as any).msRequestFullscreen;
 
-        exit.call(document).then(() => {
-          req.call(containerRef.current).catch(err => {
-            console.error("[PLAYER] Failed to redirect fullscreen:", err);
+        if (exit && req) {
+          exit.call(document).then(() => {
+            req.call(containerRef.current).catch(err => {
+              console.error("[PLAYER] Failed to redirect fullscreen:", err);
+            });
+          }).catch(() => {
+            req.call(containerRef.current).catch(() => {});
           });
-        });
+        }
         return;
       }
 
@@ -1823,7 +1827,10 @@ export default function PremiumVidLinkPlayer({
                       color: subColor,
                       fontWeight: 800, // Optimized weight for Zain font
                       fontFamily: "'Zain', 'Outfit', sans-serif",
-                      lineHeight: hasRtl ? '1.5' : '1.4'
+                      lineHeight: hasRtl ? '1.5' : '1.4',
+                      transform: 'translateZ(99999px)',
+                      WebkitTransform: 'translateZ(99999px)',
+                      willChange: 'transform'
                     }}
                   >
                     {resolvedCues.map((cue, i) => {
