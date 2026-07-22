@@ -882,7 +882,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
         const fetchAndParseVtt = async () => {
             try {
-                let text = '';
+                let rawText = '';
                 if (localSubtitleUrl.startsWith('data:')) {
                     try {
                         if (localSubtitleUrl.includes(';base64,')) {
@@ -892,49 +892,48 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             for (let i = 0; i < binaryStr.length; i++) {
                                 bytes[i] = binaryStr.charCodeAt(i);
                             }
-                            text = new TextDecoder('utf-8').decode(bytes);
+                            rawText = new TextDecoder('utf-8').decode(bytes);
                         } else {
-                            text = decodeURIComponent(localSubtitleUrl.split(',')[1] || localSubtitleUrl);
+                            rawText = decodeURIComponent(localSubtitleUrl.split(',')[1] || localSubtitleUrl);
                         }
                     } catch (e) {
                         console.error("[UNIVERSAL-PLAYER] Error decoding data URI subtitle:", e);
                         const res = await fetch(localSubtitleUrl);
-                        if (res.ok) text = await res.text();
+                        if (res.ok) rawText = await res.text();
                     }
                 } else if (localSubtitleUrl.startsWith('blob:')) {
                     const res = await fetch(localSubtitleUrl);
-                    if (res.ok) text = await res.text();
+                    if (res.ok) rawText = await res.text();
                 } else {
+                    // Try direct fetch first for remote HTTPS URLs (e.g. Supabase Storage)
                     try {
-                        const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
-                        if (blobUrl) {
-                            const res = await fetch(blobUrl);
-                            if (res.ok) text = await res.text();
-                        }
+                        const res = await fetch(localSubtitleUrl);
+                        if (res.ok) rawText = await res.text();
                     } catch (e) {}
 
-                    if (!text) {
+                    if (!rawText) {
                         try {
-                            const res = await fetch(localSubtitleUrl);
-                            if (res.ok) text = await res.text();
+                            const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
+                            if (blobUrl) {
+                                const res = await fetch(blobUrl);
+                                if (res.ok) rawText = await res.text();
+                            }
                         } catch (e) {}
                     }
                 }
 
-                if (text && active) {
-                    let processedText = text;
-                    if (!processedText.startsWith('WEBVTT')) {
-                        processedText = 'WEBVTT\n\n' + processedText.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2').replace(/^\d+\r?$/gm, '');
-                    }
-                    const cues = subtitleService.parseVtt(processedText);
-                    const hasKurdish = /[\u0600-\u06FF]/.test(processedText);
+                if (rawText && active) {
+                    console.log("[UNIVERSAL-PLAYER] Successfully loaded subtitle raw text (length:", rawText.length, ")");
+                    const cues = subtitleService.parseVtt(rawText);
+                    console.log("[UNIVERSAL-PLAYER] Parsed subtitle cues count:", cues.length);
+                    const hasKurdish = /[\u0600-\u06FF]/.test(rawText);
                     if (hasKurdish) {
                         const introCues = [
                             { start: 1.0, end: 4.0, text: "ژێرنووسکراوە لەلایەن زانا فاروقەوە" },
                             { start: 4.5, end: 7.5, text: "FLKRD Studio" }
                         ];
-                        // Filter out original cues starting in the first 7.5s to prevent overlaps
-                        const mainCues = cues.filter(c => c.start >= 7.5);
+                        // Filter out original cues that overlap with intro window
+                        const mainCues = cues.filter(c => c.start >= 7.5 || c.end <= 1.0);
                         setSubtitleCues([...introCues, ...mainCues]);
                     } else {
                         setSubtitleCues(cues);
