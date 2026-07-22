@@ -201,7 +201,7 @@ export default async function handler(req, res) {
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 6000); // 6s max for faster fallback
+            const timer = setTimeout(() => ctrl.abort(), 12000); // 12s timeout for reliable batch execution
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
@@ -217,66 +217,71 @@ export default async function handler(req, res) {
                 }
             } catch (err) {
                 clearTimeout(timer);
-                console.warn('[SERVER TRANSLATE] GAS call failed:', err.message);
             }
             return null;
         };
 
-        // 1. Try joined high-efficiency translation if parameter is an array
-        if (isArray) {
-            // Format with explicit index markers: [0] line1\n[1] line2 ...
-            const joinedText = textArray.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
-            let translatedJoined = null;
+        // Helper to translate a chunk of text items
+        const translateChunk = async (chunkItems) => {
+            const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
+            
+            // 1. Try GAS
+            let translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
 
-            // 1.1 Try GAS (Google Apps Script - Official Google Translate engine)
-            translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
-
-            // 1.2 Fallback to Google Translate Free API
+            // 2. Fallback to Google Translate API
             if (!translatedJoined) {
                 translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
             }
 
-            // 1.3 Fallback to Lingva / MyMemory single translation
+            // 3. Fallback to Lingva / MyMemory
             if (!translatedJoined) {
                 translatedJoined = await translateSingle(joinedText);
             }
 
             if (translatedJoined) {
-                // Parse indexed lines matching [0], [1], [2] ...
                 const rawLines = translatedJoined.split('\n');
-                const results = new Array(textArray.length);
+                const results = new Array(chunkItems.length);
                 let matchedCount = 0;
 
                 for (const line of rawLines) {
                     const match = line.trim().match(/^\[(\d+)\]\s*(.*)$/);
                     if (match) {
                         const idx = parseInt(match[1], 10);
-                        if (idx >= 0 && idx < textArray.length && !results[idx]) {
+                        if (idx >= 0 && idx < chunkItems.length && !results[idx]) {
                             results[idx] = match[2].replace(/\{n\}/gi, '\n').trim();
                             matchedCount++;
                         }
                     }
                 }
 
-                // If at least 60% of indices matched, fill missing with originals and return instantly
-                if (matchedCount >= Math.floor(textArray.length * 0.6)) {
-                    for (let i = 0; i < textArray.length; i++) {
-                        if (!results[i]) {
-                            results[i] = textArray[i];
-                        }
+                if (matchedCount >= Math.floor(chunkItems.length * 0.5)) {
+                    for (let i = 0; i < chunkItems.length; i++) {
+                        if (!results[i]) results[i] = chunkItems[i];
                     }
-                    return res.status(200).json({ translation: applyBadiniTransliteration(results) });
-                } else {
-                    console.warn(`[SERVER TRANSLATE] Index parse low match (${matchedCount}/${textArray.length}). Retrying item-by-item.`);
+                    return results;
                 }
             }
 
-            // Fallback item-by-item translation if joined strategy fails
-            const results = [];
-            for (const item of textArray) {
-                results.push(await translateSingle(item));
+            // Item-by-item fallback for this chunk
+            const fallbackResults = [];
+            for (const item of chunkItems) {
+                fallbackResults.push(await translateSingle(item));
             }
-            return res.status(200).json({ translation: applyBadiniTransliteration(results) });
+            return fallbackResults;
+        };
+
+        // 1. Array batch translation with sub-chunking (max 25 items per chunk for ultra-fast parallel processing)
+        if (isArray) {
+            const CHUNK_SIZE = 25;
+            const chunks = [];
+            for (let i = 0; i < textArray.length; i += CHUNK_SIZE) {
+                chunks.push(textArray.slice(i, i + CHUNK_SIZE));
+            }
+
+            const chunkResults = await Promise.all(chunks.map(chunk => translateChunk(chunk)));
+            const finalResults = chunkResults.flat();
+
+            return res.status(200).json({ translation: applyBadiniTransliteration(finalResults) });
         } else {
             // Single translation — try GAS first, then fall back
             const gasResult = await callGAS({ text: textArray[0], source, target: actualTarget });

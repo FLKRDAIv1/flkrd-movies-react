@@ -2606,13 +2606,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute bottom-[10%] md:bottom-[15%] left-0 right-0 z-50 flex justify-center px-4 md:px-6 w-full"
+                        className="absolute bottom-[12%] md:bottom-[16%] left-0 right-0 z-[99999] flex justify-center px-4 md:px-6 w-full pointer-events-none"
                         style={{
-                            fontSize: `clamp(14px, ${subtitleSize}px, 6.5vw)`,
+                            fontSize: `clamp(16px, ${subtitleSize}px, 6.5vw)`,
                             color: subtitleColor,
                             fontFamily: "'Zain', 'Outfit', sans-serif",
-                            // Only block pointer events when not admin so video controls still work
-                            pointerEvents: isAdmin ? 'auto' : 'none',
                         }}
                     >
                         {(() => {

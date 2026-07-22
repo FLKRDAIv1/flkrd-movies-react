@@ -1795,7 +1795,7 @@ export default function PremiumVidLinkPlayer({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-[15%] left-0 right-0 z-[100] pointer-events-none w-full flex justify-center px-4"
+              className="absolute bottom-[15%] left-0 right-0 z-[99999] pointer-events-none w-full flex justify-center px-4"
             >
               {(() => {
                 // Determine text direction by checking active cues with their potential override texts
