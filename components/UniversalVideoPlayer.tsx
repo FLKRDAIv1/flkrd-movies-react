@@ -884,41 +884,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             try {
                 let rawText = '';
                 if (localSubtitleUrl.startsWith('data:')) {
+                    const base64Part = localSubtitleUrl.split(',')[1] || '';
                     try {
-                        if (localSubtitleUrl.includes(';base64,')) {
-                            const base64Str = localSubtitleUrl.split(';base64,')[1];
-                            const binaryStr = atob(base64Str);
-                            const bytes = new Uint8Array(binaryStr.length);
-                            for (let i = 0; i < binaryStr.length; i++) {
-                                bytes[i] = binaryStr.charCodeAt(i);
-                            }
-                            rawText = new TextDecoder('utf-8').decode(bytes);
-                        } else {
-                            rawText = decodeURIComponent(localSubtitleUrl.split(',')[1] || localSubtitleUrl);
-                        }
+                        rawText = decodeURIComponent(escape(atob(base64Part)));
                     } catch (e) {
-                        console.error("[UNIVERSAL-PLAYER] Error decoding data URI subtitle:", e);
-                        const res = await fetch(localSubtitleUrl);
-                        if (res.ok) rawText = await res.text();
+                        rawText = atob(base64Part);
                     }
                 } else if (localSubtitleUrl.startsWith('blob:')) {
                     const res = await fetch(localSubtitleUrl);
                     if (res.ok) rawText = await res.text();
                 } else {
-                    // Try direct fetch first for remote HTTPS URLs (e.g. Supabase Storage)
                     try {
-                        const res = await fetch(localSubtitleUrl);
-                        if (res.ok) rawText = await res.text();
-                    } catch (e) {}
-
-                    if (!rawText) {
-                        try {
-                            const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
-                            if (blobUrl) {
-                                const res = await fetch(blobUrl);
-                                if (res.ok) rawText = await res.text();
-                            }
-                        } catch (e) {}
+                        rawText = await subtitleService.downloadSubtitle({ attributes: { url: localSubtitleUrl } });
+                    } catch (e) {
+                        const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
+                        if (blobUrl) {
+                            const res = await fetch(blobUrl);
+                            if (res.ok) rawText = await res.text();
+                        }
                     }
                 }
 

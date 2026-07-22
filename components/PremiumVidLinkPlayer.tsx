@@ -1119,14 +1119,33 @@ export default function PremiumVidLinkPlayer({
     setShowSubtitles(true);
 
     const fetchVtt = async () => {
+      if (!resolvedSubUrl) return;
       try {
-        const blobUrl = await subtitleService.getSubtitleBlob(resolvedSubUrl);
-        if (blobUrl) {
-          const response = await fetch(blobUrl);
-          if (response.ok) {
-            const text = await response.text();
-            setVttContent(text);
+        let text = '';
+        if (resolvedSubUrl.startsWith('data:')) {
+          const base64Part = resolvedSubUrl.split(',')[1] || '';
+          try {
+            text = decodeURIComponent(escape(atob(base64Part)));
+          } catch (bErr) {
+            text = atob(base64Part);
           }
+        } else if (resolvedSubUrl.startsWith('blob:')) {
+          const response = await fetch(resolvedSubUrl);
+          if (response.ok) text = await response.text();
+        } else {
+          try {
+            text = await subtitleService.downloadSubtitle({ attributes: { url: resolvedSubUrl } });
+          } catch (dErr) {
+            const blobUrl = await subtitleService.getSubtitleBlob(resolvedSubUrl);
+            if (blobUrl) {
+              const response = await fetch(blobUrl);
+              if (response.ok) text = await response.text();
+            }
+          }
+        }
+        if (text) {
+          console.log("[VIP-PLAYER] Successfully loaded VTT subtitle text, length:", text.length);
+          setVttContent(text);
         }
       } catch (e) {
         console.error("[VIP-PLAYER] VTT Fetch Error:", e);
@@ -2852,10 +2871,16 @@ export default function PremiumVidLinkPlayer({
   );
 }
 
-// VTT Parser Helper
+// VTT/SRT Parser Helper
 function parseVttCues(vttText: string) {
   const cues: any[] = [];
-  const blocks = vttText.split(/\r?\n\r?\n/);
+  if (!vttText || typeof vttText !== 'string') return cues;
+
+  const cleanedText = vttText
+    .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+    .replace(/\u00A0/g, ' ');
+
+  const blocks = cleanedText.split(/\r?\n\r?\n/);
   
   for (const block of blocks) {
     if (block.includes('-->')) {
@@ -2873,7 +2898,7 @@ function parseVttCues(vttText: string) {
         .replace(/\{[^}]+\}/g, '')
         .trim();
       
-      if (text) cues.push({ start, end, text });
+      if (text && !isNaN(start) && !isNaN(end)) cues.push({ start, end, text });
     }
   }
 
@@ -2881,15 +2906,19 @@ function parseVttCues(vttText: string) {
 }
 
 function parseTime(timeStr: string) {
-  const parts = timeStr.split(':');
+  if (!timeStr) return 0;
+  const normalized = timeStr.trim().replace(',', '.');
+  const parts = normalized.split(':');
   let seconds = 0;
   if (parts.length === 3) {
-    seconds += parseInt(parts[0]) * 3600;
-    seconds += parseInt(parts[1]) * 60;
-    seconds += parseFloat(parts[2]);
+    seconds += (parseFloat(parts[0]) || 0) * 3600;
+    seconds += (parseFloat(parts[1]) || 0) * 60;
+    seconds += (parseFloat(parts[2]) || 0);
+  } else if (parts.length === 2) {
+    seconds += (parseFloat(parts[0]) || 0) * 60;
+    seconds += (parseFloat(parts[1]) || 0);
   } else {
-    seconds += parseInt(parts[0]) * 60;
-    seconds += parseFloat(parts[1]);
+    seconds = parseFloat(normalized) || 0;
   }
   return seconds;
 }
