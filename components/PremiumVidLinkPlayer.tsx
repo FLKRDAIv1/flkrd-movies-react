@@ -1304,76 +1304,89 @@ export default function PremiumVidLinkPlayer({
     checkKurdishDub();
   }, [tmdbId, imdbId, title]);
 
-  // Official VidLink Progress & Event Tracking
+  // Universal Iframe Progress & Event Tracking for all sources (VidLink, Videasy, SuperEmbed, etc.)
   useEffect(() => {
-    const handleVidLinkMessage = (event: MessageEvent) => {
-      if (event.origin !== 'https://vidlink.pro') return;
-      
-      // 1. Handle PLAYER_EVENT (Real-time tracking from docs)
-      if (event.data?.type === 'PLAYER_EVENT') {
-        const { event: eventType, currentTime, duration } = event.data.data;
-        
-        // SYNC SUBTITLES — use cached cues array ref instead of parsing every frame
-        if (currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
-          lastMessageTimeRef.current = performance.now();
-          lastReceivedTimeRef.current = currentTime;
-          
-          if (eventType === 'pause' || eventType === 'paused') {
-            setIsPlaying(false);
-          } else {
-            setIsPlaying(true);
-          }
+    const handleIframeMessage = (event: MessageEvent) => {
+      if (!event.data) return;
 
-          const offsetSec = subtitleOffsetRef.current / 1000;
-          if (parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
-            setActiveCues(active);
-          }
+      let extractedTime: number | undefined;
+      let eventType: string | undefined;
+      let duration: number | undefined;
+
+      // 1. Handle VidLink PLAYER_EVENT or MEDIA_DATA
+      if (event.data?.type === 'PLAYER_EVENT' && event.data?.data) {
+        extractedTime = event.data.data.currentTime;
+        eventType = event.data.data.event;
+        duration = event.data.data.duration;
+      } else if (event.data?.type === 'MEDIA_DATA' && event.data?.data) {
+        extractedTime = event.data.data.currentTime;
+        eventType = event.data.data.event;
+        duration = event.data.data.duration;
+        try {
+          localStorage.setItem('vidLinkProgress', JSON.stringify(event.data.data));
+        } catch (e) {}
+      } else {
+        // 2. Generic postMessage format from Videasy, SuperEmbed, etc.
+        const payload = event.data;
+        if (typeof payload === 'object') {
+          if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
+          else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
+          else if (typeof payload.time === 'number') extractedTime = payload.time;
+          else if (typeof payload.position === 'number') extractedTime = payload.position;
+          else if (payload.data && typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
+
+          eventType = payload.event || payload.type;
+          duration = payload.duration;
+        } else if (typeof payload === 'number') {
+          extractedTime = payload;
+        }
+      }
+
+      if (extractedTime !== undefined && !isNaN(extractedTime) && extractedTime < 50000) {
+        lastMessageTimeRef.current = performance.now();
+        lastReceivedTimeRef.current = extractedTime;
+
+        if (eventType === 'pause' || eventType === 'paused') {
+          setIsPlaying(false);
+        } else {
+          setIsPlaying(true);
         }
 
-        if (onProgress && currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
-          onProgress({ 
-            event: eventType,
-            currentTime, 
-            duration 
+        const offsetSec = subtitleOffsetRef.current / 1000;
+        if (parsedCuesRef.current.length > 0) {
+          const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec - 0.1) && extractedTime! <= (c.end + offsetSec + 0.1));
+          setActiveCues(active);
+        }
+
+        if (onProgress) {
+          onProgress({
+            event: eventType || 'timeupdate',
+            currentTime: extractedTime,
+            duration
           });
         }
       }
-
-      // 2. Handle MEDIA_DATA (General state tracking from docs)
-      if (event.data?.type === 'MEDIA_DATA') {
-        const mediaData = event.data.data;
-        localStorage.setItem('vidLinkProgress', JSON.stringify(mediaData));
-        const currentTime = mediaData.currentTime;
-        if (currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
-          lastMessageTimeRef.current = performance.now();
-          lastReceivedTimeRef.current = currentTime;
-          const isPaused = mediaData.paused === true || mediaData.isPlaying === false || mediaData.event === 'pause' || mediaData.event === 'paused';
-          if (isPaused) {
-            setIsPlaying(false);
-          } else {
-            setIsPlaying(true);
-          }
-
-          const offsetSec = subtitleOffsetRef.current / 1000;
-          if (parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
-            setActiveCues(active);
-          }
-
-          if (onProgress) {
-            onProgress({ 
-              event: 'timeupdate',
-              currentTime, 
-              duration: mediaData.duration 
-            });
-          }
-        }
-      }
     };
-    window.addEventListener('message', handleVidLinkMessage);
-    return () => window.removeEventListener('message', handleVidLinkMessage);
+
+    window.addEventListener('message', handleIframeMessage);
+    return () => window.removeEventListener('message', handleIframeMessage);
   }, [onProgress]);
+
+  // Universal Fallback Timer: Advances playhead second-by-second for iframe sources that do not emit continuous postMessages
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = performance.now();
+      if (now - lastMessageTimeRef.current > 1000 && parsedCuesRef.current.length > 0) {
+        const nextTime = lastReceivedTimeRef.current + 1;
+        lastReceivedTimeRef.current = nextTime;
+        const offsetSec = subtitleOffsetRef.current / 1000;
+        const active = parsedCuesRef.current.filter(c => nextTime >= (c.start + offsetSec - 0.1) && nextTime <= (c.end + offsetSec + 0.1));
+        setActiveCues(active);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
