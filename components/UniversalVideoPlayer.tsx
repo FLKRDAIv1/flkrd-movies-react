@@ -926,18 +926,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     console.log("[UNIVERSAL-PLAYER] Successfully loaded subtitle raw text (length:", rawText.length, ")");
                     const cues = subtitleService.parseVtt(rawText);
                     console.log("[UNIVERSAL-PLAYER] Parsed subtitle cues count:", cues.length);
-                    const hasKurdish = /[\u0600-\u06FF]/.test(rawText);
-                    if (hasKurdish) {
-                        const introCues = [
-                            { start: 1.0, end: 4.0, text: "ژێرنووسکراوە لەلایەن زانا فاروقەوە" },
-                            { start: 4.5, end: 7.5, text: "FLKRD Studio" }
-                        ];
-                        // Filter out original cues that overlap with intro window
-                        const mainCues = cues.filter(c => c.start >= 7.5 || c.end <= 1.0);
-                        setSubtitleCues([...introCues, ...mainCues]);
-                    } else {
-                        setSubtitleCues(cues);
-                    }
+                    setSubtitleCues(cues);
                 }
             } catch (e) {
                 console.error("[UNIVERSAL-PLAYER] Error fetching/parsing subtitle URL:", e);

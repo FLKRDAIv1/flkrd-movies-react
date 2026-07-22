@@ -2872,18 +2872,6 @@ function parseVttCues(vttText: string) {
     }
   }
 
-  const withIndices = cues.map((c, i) => ({ ...c, index: i }));
-  const hasKurdish = /[\u0600-\u06FF]/.test(vttText);
-  if (hasKurdish) {
-    const introCues = [
-      { start: 1.0, end: 4.0, text: "ژێرنووسکراوە لەلایەن زانا فاروقەوە", index: -1 },
-      { start: 4.5, end: 7.5, text: "FLKRD Studio", index: -2 }
-    ];
-    // Filter out original cues starting in the first 7.5s to prevent overlaps
-    const mainCues = withIndices.filter(c => c.start >= 7.5);
-    return [...introCues, ...mainCues];
-  }
-
   return withIndices;
 }
 

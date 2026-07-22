@@ -737,6 +737,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           showCelebration: true,
           subtitleUrl: result.subtitleUrl
         }));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
+            detail: { subtitleUrl: result.subtitleUrl, tmdbId } 
+          }));
+        }
         // Update global subtitle coverage Set
         await refreshTranslatedMovieIds();
       } else {
