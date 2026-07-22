@@ -1356,6 +1356,38 @@ export default function PremiumVidLinkPlayer({
       );
       setIsFullscreen(isFull);
 
+      // Intercept iframe or inner element fullscreen and redirect to container
+      const activeFullscreenElement = 
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement;
+
+      if (activeFullscreenElement && activeFullscreenElement !== containerRef.current && containerRef.current && (containerRef.current.contains(activeFullscreenElement) || activeFullscreenElement === iframeRef.current)) {
+        console.log("[PLAYER] Intercepted iframe fullscreen. Redirecting to container...");
+        
+        const exit = document.exitFullscreen ||
+                     (document as any).webkitExitFullscreen ||
+                     (document as any).mozCancelFullScreen ||
+                     (document as any).msExitFullscreen;
+                     
+        const req = containerRef.current.requestFullscreen ||
+                    (containerRef.current as any).webkitRequestFullscreen ||
+                    (containerRef.current as any).mozRequestFullScreen ||
+                    (containerRef.current as any).msRequestFullscreen;
+
+        if (exit && req) {
+          exit.call(document).then(() => {
+            req.call(containerRef.current).catch(err => {
+              console.error("[PLAYER] Failed to redirect fullscreen:", err);
+            });
+          }).catch(() => {
+            req.call(containerRef.current).catch(() => {});
+          });
+        }
+        return;
+      }
+
       // If user exited native fullscreen, trigger onClose after a tiny delay (to avoid transition race conditions)
       if (!isFull && startFullscreen && onClose) {
         setTimeout(() => {

@@ -200,7 +200,9 @@ export function compileToVTT(cues: SubtitleCue[]): string {
   vtt += `00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
   vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
 
-  cues.forEach((cue) => {
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
+
+  filteredCues.forEach((cue) => {
     const timestamp = cue.timestamp.replace(/,/g, '.');
     vtt += `${timestamp}\n${cue.text}\n\n`;
   });
@@ -214,7 +216,9 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   srt += `${index++}\n00:00:01,000 --> 00:00:04,000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
   srt += `${index++}\n00:00:04,500 --> 00:00:07,500\nPowered by FLKRD STUDIO\n\n`;
 
-  cues.forEach((cue) => {
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
+
+  filteredCues.forEach((cue) => {
     let timestamp = cue.timestamp.replace(/\./g, ',');
     
     const parts = timestamp.split('-->');
@@ -246,46 +250,47 @@ export async function translateAndSavePipeline(
 ): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
   try {
     // Detect source language for all world languages
-    const subLangRaw = (sub.attributes?.language || sub.attributes?.display_name || 'en').toLowerCase().trim();
+    const subLangRaw = (sub.attributes?.language || 'en').toLowerCase().trim();
     const langMap: Record<string, string> = {
-      'en': 'en', 'eng': 'en', 'english': 'en',
-      'ar': 'ar', 'ara': 'ar', 'arabic': 'ar',
-      'fa': 'fa', 'fas': 'fa', 'per': 'fa', 'farsi': 'fa', 'persian': 'fa',
-      'fr': 'fr', 'fra': 'fr', 'fre': 'fr', 'french': 'fr',
-      'es': 'es', 'spa': 'es', 'spanish': 'es',
-      'tr': 'tr', 'tur': 'tr', 'turkish': 'tr',
-      'de': 'de', 'deu': 'de', 'ger': 'de', 'german': 'de',
-      'it': 'it', 'ita': 'it', 'italian': 'it',
-      'ru': 'ru', 'rus': 'ru', 'russian': 'ru',
-      'zh': 'zh-CN', 'zho': 'zh-CN', 'chi': 'zh-CN', 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW', 'chinese': 'zh-CN',
-      'ja': 'ja', 'jpn': 'ja', 'japanese': 'ja',
-      'ko': 'ko', 'kor': 'ko', 'korean': 'ko',
-      'hi': 'hi', 'hin': 'hi', 'hindi': 'hi',
-      'pt': 'pt', 'por': 'pt', 'pt-br': 'pt', 'portuguese': 'pt',
-      'vi': 'vi', 'vie': 'vi', 'vietnamese': 'vi',
-      'th': 'th', 'tha': 'th', 'thai': 'th',
-      'id': 'id', 'ind': 'id', 'indonesian': 'id',
-      'nl': 'nl', 'nld': 'nl', 'dut': 'nl', 'dutch': 'nl',
-      'pl': 'pl', 'pol': 'pl', 'polish': 'pl',
-      'sv': 'sv', 'swe': 'sv', 'swedish': 'sv',
-      'no': 'no', 'nor': 'no', 'norwegian': 'no',
-      'da': 'da', 'dan': 'da', 'danish': 'da',
-      'fi': 'fi', 'fin': 'fi', 'finnish': 'fi',
-      'cs': 'cs', 'ces': 'cs', 'cze': 'cs', 'czech': 'cs',
-      'sk': 'sk', 'slk': 'sk', 'slo': 'sk', 'slovak': 'sk',
-      'hu': 'hu', 'hun': 'hu', 'hungarian': 'hu',
-      'ro': 'ro', 'ron': 'ro', 'rum': 'ro', 'romanian': 'ro',
-      'el': 'el', 'ell': 'el', 'gre': 'el', 'greek': 'el',
-      'he': 'he', 'heb': 'he', 'hebrew': 'he',
-      'uk': 'uk', 'ukr': 'uk', 'ukrainian': 'uk',
-      'bg': 'bg', 'bul': 'bg', 'bulgarian': 'bg'
+      'en': 'en', 'eng': 'en',
+      'ar': 'ar', 'ara': 'ar',
+      'fa': 'fa', 'fas': 'fa', 'per': 'fa',
+      'fr': 'fr', 'fra': 'fr', 'fre': 'fr',
+      'es': 'es', 'spa': 'es',
+      'tr': 'tr', 'tur': 'tr',
+      'de': 'de', 'deu': 'de', 'ger': 'de',
+      'it': 'it', 'ita': 'it',
+      'ru': 'ru', 'rus': 'ru',
+      'zh': 'zh-CN', 'zho': 'zh-CN', 'chi': 'zh-CN', 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW',
+      'ja': 'ja', 'jpn': 'ja',
+      'ko': 'ko', 'kor': 'ko',
+      'hi': 'hi', 'hin': 'hi',
+      'pt': 'pt', 'por': 'pt', 'pt-br': 'pt',
+      'vi': 'vi', 'vie': 'vi',
+      'th': 'th', 'tha': 'th',
+      'id': 'id', 'ind': 'id',
+      'nl': 'nl', 'nld': 'nl', 'dut': 'nl',
+      'pl': 'pl', 'pol': 'pl',
+      'sv': 'sv', 'swe': 'sv',
+      'no': 'no', 'nor': 'no',
+      'da': 'da', 'dan': 'da',
+      'fi': 'fi', 'fin': 'fi',
+      'cs': 'cs', 'ces': 'cs', 'cze': 'cs',
+      'sk': 'sk', 'slk': 'sk', 'slo': 'sk',
+      'hu': 'hu', 'hun': 'hu',
+      'ro': 'ro', 'ron': 'ro', 'rum': 'ro',
+      'el': 'el', 'ell': 'el', 'gre': 'el',
+      'he': 'he', 'heb': 'he',
+      'uk': 'uk', 'ukr': 'uk',
+      'bg': 'bg', 'bul': 'bg'
     };
 
-    let sourceLang = 'auto';
-    for (const key of Object.keys(langMap)) {
-      if (subLangRaw.includes(key)) {
-        sourceLang = langMap[key];
-        break;
+    let sourceLang = langMap[subLangRaw];
+    if (!sourceLang) {
+      if (subLangRaw.length === 2 || subLangRaw.length === 3) {
+        sourceLang = subLangRaw.substring(0, 2);
+      } else {
+        sourceLang = 'auto';
       }
     }
 
@@ -316,20 +321,13 @@ export async function translateAndSavePipeline(
         const mapped = Math.round(7 + p * 0.78);
         let partialUrl: string | undefined;
 
-        // Generate live base64 subtitle track on EVERY 3%+ progress or p >= 98 so player renders live partial Kurdish subtitles starting from 5%
-        if (partialCues && (p - lastEmittedPct >= 3 || p >= 98 || lastEmittedPct === 0)) {
+        // Generate live base64 subtitle track every 20% progress so player can render subtitles live while translating
+        if (partialCues && (p - lastEmittedPct >= 20 || p >= 98)) {
           lastEmittedPct = p;
           try {
             const partialSrt = compileToSRT(partialCues);
             const base64Srt = btoa(unescape(encodeURIComponent(partialSrt)));
             partialUrl = `data:text/plain;base64,${base64Srt}`;
-
-            // Dispatch realtime window event for immediate player live subtitle update
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
-                detail: { subtitleUrl: partialUrl, progress: mapped }
-              }));
-            }
           } catch (e) {}
         }
 

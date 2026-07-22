@@ -823,8 +823,8 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                 
                                 if (aK !== bK) return aK ? -1 : 1;
                                 
-                                const aV = String(a.id).startsWith('custom-db-') || String(a.id).startsWith('custom-local-') || String(a.id).startsWith('prop-kurdish');
-                                const bV = String(b.id).startsWith('custom-db-') || String(b.id).startsWith('custom-local-') || String(b.id).startsWith('prop-kurdish');
+                                const aV = String(a.id).startsWith('custom-db-');
+                                const bV = String(b.id).startsWith('custom-db-');
                                 if (aV !== bV) return aV ? -1 : 1;
                                 
                                 return 0;
@@ -833,7 +833,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                 const sLang = (sub.attributes?.language || '').toLowerCase();
                                 const isKurdishSub = ['ku','ckb','kur','badini'].includes(sLang);
                                 const isActive = sub.id === currentSubId;
-                                const isVerified = isKurdishSub || String(sub.id).startsWith('custom-db-') || String(sub.id).startsWith('custom-local-') || String(sub.id).startsWith('prop-kurdish');
+                                const isVerified = isKurdishSub && String(sub.id).startsWith('custom-db-');
                                 return (
                                   <motion.div
                                     key={sub.id}
@@ -866,7 +866,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                                 ${isActive
                                                   ? 'bg-gradient-to-r from-red-600/25 to-red-950/15 border-red-500/50 shadow-[0_8px_30px_rgba(220,38,38,0.18)] ring-1 ring-red-500/20'
                                                   : isKurdishSub
-                                                    ? 'bg-gradient-to-r from-yellow-500/10 via-red-600/10 to-transparent border-yellow-500/30 hover:border-yellow-500/50 shadow-[0_4px_20px_rgba(234,179,8,0.1)]'
+                                                    ? 'bg-gradient-to-r from-red-600/5 to-transparent border-red-500/20 hover:border-red-500/40'
                                                     : 'bg-white/[0.015] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.04]'
                                                 }`}
                                   >
@@ -875,26 +875,26 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                     )}
                                     {/* Flag */}
                                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base border
-                                                     ${isActive ? 'bg-red-500/20 border-red-500/40' : isKurdishSub ? 'bg-yellow-500/20 border-yellow-500/30 shadow-md' : 'bg-white/5 border-white/10'}`}>
+                                                     \${isActive ? 'bg-red-500/20 border-red-500/40' : isKurdishSub ? 'bg-red-600/10 border-red-500/15' : 'bg-white/5 border-white/10'}`}>
                                       <span className="select-none">
                                         {getLanguageFlag?.(sub.attributes?.language || '') ?? '🌐'}
                                       </span>
                                     </div>
                                     {/* Info */}
                                     <div className="flex flex-col flex-1 min-w-0 relative z-10">
-                                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                                        <span className={`text-[8px] font-black uppercase tracking-widest ${
-                                          isActive ? 'text-red-400' : isKurdishSub ? 'text-yellow-400 font-extrabold' : 'text-zinc-500'
+                                      <div className="flex items-center gap-1.5 mb-0.5">
+                                        <span className={`text-[8px] font-black uppercase tracking-widest \${
+                                          isActive ? 'text-red-400' : isKurdishSub ? 'text-red-500' : 'text-zinc-500'
                                         }`}>
                                           {sub.attributes?.language || 'UNK'}
                                         </span>
                                         {isVerified && (
-                                          <span className="text-[7px] bg-gradient-to-r from-yellow-500 to-amber-600 text-black font-[1000] px-1.5 py-0.5 rounded-md tracking-wider uppercase flex items-center gap-1 shadow-md border border-yellow-400/40">
-                                            ✓ 📌 {isKu ? 'ژێرنووسکراو (سەلمێنراو)' : 'PINNED (Verified)'}
+                                          <span className="text-[6px] bg-red-600 text-white px-1.5 py-0.5 rounded font-black tracking-widest uppercase flex items-center gap-0.5 shadow-sm shadow-red-600/25">
+                                            <Sparkles size={6} /> Verified
                                           </span>
                                         )}
                                       </div>
-                                      <span className={`text-[11px] font-bold truncate ${isActive ? 'text-white font-black' : isKurdishSub ? 'text-yellow-100 font-bold' : 'text-zinc-300'}`}>
+                                      <span className={`text-[11px] font-bold truncate \${isActive ? 'text-white' : 'text-zinc-300'}`}>
                                         {(sub.attributes?.display_name || 'Subtitle Track').replace(/\.(srt|vtt)/gi, '')}
                                       </span>
                                     </div>
@@ -916,7 +916,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                                       )}
                                       <ArrowRight
                                         size={12}
-                                        className={`transition-all ${
+                                        className={`transition-all \${
                                           isActive ? 'text-red-500 opacity-100' : 'text-zinc-600 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0'
                                         }`}
                                       />

@@ -90,7 +90,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { text, source = 'auto', target = 'ckb' } = req.body || {};
+        const { text, source = 'en', target = 'ckb' } = req.body || {};
 
         if (!text) {
             return res.status(400).json({ error: 'Missing text in request body' });
@@ -98,22 +98,9 @@ export default async function handler(req, res) {
 
         const isBadini = target === 'badini';
         const actualTarget = isBadini ? 'ku' : target;
-        let actualSource = source || 'auto';
 
         const isArray = Array.isArray(text);
         const textArray = isArray ? text : [text];
-
-        // Auto-detect source script if auto or mismatch
-        const sampleText = textArray.slice(0, 10).join(' ');
-        if (actualSource === 'auto' || actualSource === 'en') {
-            if (/[\u0600-\u06FF]/.test(sampleText)) {
-                actualSource = 'ar';
-            } else if (/[\u0400-\u04FF]/.test(sampleText)) {
-                actualSource = 'ru';
-            } else if (/[\u3040-\u30FF\u4E00-\u9FFF]/.test(sampleText)) {
-                actualSource = 'ja';
-            }
-        }
 
         const LINGVA_INSTANCES = [
             "https://translate.plausibility.cloud",
@@ -149,13 +136,13 @@ export default async function handler(req, res) {
             if (!t || !t.trim()) return t || '';
             
             // 0. Try Google Translate Free API first
-            const googleRes = await translateWithGoogleAPI(t, actualSource, actualTarget);
+            const googleRes = await translateWithGoogleAPI(t, source, actualTarget);
             if (googleRes) return googleRes;
 
             // 1. Try Lingva POST
             for (const instance of LINGVA_INSTANCES) {
                 try {
-                    const response = await fetch(`${instance}/api/v1/${actualSource}/${actualTarget}`, {
+                    const response = await fetch(`${instance}/api/v1/${source}/${actualTarget}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -174,7 +161,7 @@ export default async function handler(req, res) {
             // 2. Try MyMemory
             try {
                 const mymemoryTarget = actualTarget === 'ckb' ? 'ku' : actualTarget;
-                const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${actualSource}|${mymemoryTarget}`;
+                const myMemoryUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(t)}&langpair=${source}|${mymemoryTarget}`;
                 const response = await fetch(myMemoryUrl);
                 if (response.ok) {
                     const data = await response.json();
@@ -187,7 +174,7 @@ export default async function handler(req, res) {
             // 3. Try Lingva GET
             for (const instance of LINGVA_INSTANCES) {
                 try {
-                    const url = `${instance}/api/v1/${actualSource}/${actualTarget}/${encodeURIComponent(t)}`;
+                    const url = `${instance}/api/v1/${source}/${actualTarget}/${encodeURIComponent(t)}`;
                     const response = await fetch(url);
                     if (response.ok) {
                         const data = await response.json();
@@ -239,11 +226,11 @@ export default async function handler(req, res) {
             const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
             
             // 1. Try GAS
-            let translatedJoined = await callGAS({ text: joinedText, source: actualSource, target: actualTarget });
+            let translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
 
             // 2. Fallback to Google Translate API
             if (!translatedJoined) {
-                translatedJoined = await translateWithGoogleAPI(joinedText, actualSource, actualTarget);
+                translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
             }
 
             // 3. Fallback to Lingva / MyMemory
