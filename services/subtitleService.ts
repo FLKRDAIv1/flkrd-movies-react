@@ -582,43 +582,73 @@ export const subtitleService = {
         const cues: { start: number, end: number, text: string }[] = [];
         if (!vttText || !vttText.trim()) return cues;
 
-        const normalized = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-        const lines = normalized.split('\n');
-        let currentCue: any = null;
+        // Clean BOM, RTL/LTR directional marks (\u200E, \u200F, \u202A-\u202E, \uFEFF) and non-breaking spaces (\u00A0)
+        const cleanedText = vttText
+            .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+            .replace(/\u00A0/g, ' ')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n');
 
-        // Matches: 00:01:21.020 --> 00:01:26.190 OR 00:01:21,020 --> 00:01:26,190 OR 01:21.020 --> 01:26.190
-        const timeRegex = /(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})[.,](\d{2,3})\s*-->\s*(?:(\d{1,2}):)?(\d{1,2}):(\d{1,2})[.,](\d{2,3})/;
-
-        const parseTime = (hStr: string | undefined, mStr: string, sStr: string, msStr: string) => {
-            const h = hStr ? parseInt(hStr, 10) : 0;
-            const m = parseInt(mStr, 10);
-            const s = parseInt(sStr, 10);
-            const ms = parseInt(msStr.padEnd(3, '0').slice(0, 3), 10);
-            return h * 3600 + m * 60 + s + ms / 1000;
+        const parseTime = (timeStr: string): number => {
+            if (!timeStr) return 0;
+            const normalized = timeStr.trim().replace(',', '.');
+            const parts = normalized.split(':');
+            if (parts.length === 3) {
+                const h = parseFloat(parts[0]) || 0;
+                const m = parseFloat(parts[1]) || 0;
+                const s = parseFloat(parts[2]) || 0;
+                return h * 3600 + m * 60 + s;
+            } else if (parts.length === 2) {
+                const m = parseFloat(parts[0]) || 0;
+                const s = parseFloat(parts[1]) || 0;
+                return m * 60 + s;
+            }
+            return parseFloat(normalized) || 0;
         };
+
+        const lines = cleanedText.split('\n');
+        let currentCue: { start: number, end: number, text: string } | null = null;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
-            const match = line.match(timeRegex);
-            if (match) {
-                if (currentCue && currentCue.text) cues.push(currentCue);
-                const startSec = parseTime(match[1], match[2], match[3], match[4]);
-                const endSec = parseTime(match[5], match[6], match[7], match[8]);
-                currentCue = {
-                    start: startSec,
-                    end: endSec,
-                    text: ''
-                };
-            } else if (currentCue && !line.includes('-->') && !/^\d+$/.test(line) && !line.startsWith('WEBVTT') && !line.startsWith('NOTE')) {
-                const cleanedLine = line.replace(/<[^>]+>/g, '').replace(/\{[^}]+\}/g, '').trim();
-                if (cleanedLine !== '') {
-                    currentCue.text += (currentCue.text ? '\n' : '') + cleanedLine;
+            if (line.includes('-->')) {
+                const parts = line.split('-->');
+                if (parts.length >= 2) {
+                    const startStr = parts[0].trim().split(/\s+/).pop() || '';
+                    const endStr = parts[1].trim().split(/\s+/)[0] || '';
+
+                    const startSec = parseTime(startStr);
+                    const endSec = parseTime(endStr);
+
+                    if (currentCue && currentCue.text.trim()) {
+                        cues.push(currentCue);
+                    }
+                    currentCue = {
+                        start: startSec,
+                        end: endSec,
+                        text: ''
+                    };
+                    continue;
+                }
+            }
+
+            if (currentCue && !line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line)) {
+                const cleanedLine = line
+                    .replace(/<[^>]+>/g, '')
+                    .replace(/\{[^}]+\}/g, '')
+                    .trim();
+                if (cleanedLine) {
+                    currentCue.text = currentCue.text ? `${currentCue.text}\n${cleanedLine}` : cleanedLine;
                 }
             }
         }
-        if (currentCue && currentCue.text) cues.push(currentCue);
+
+        if (currentCue && currentCue.text.trim()) {
+            cues.push(currentCue);
+        }
+
         return cues;
     },
 
