@@ -505,9 +505,7 @@ export const subtitleService = {
                 } catch (bErr) {
                     text = atob(base64Part);
                 }
-                const vttText = cleanAndFormatVtt(text, offset);
-                const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
-                return URL.createObjectURL(blob);
+                return await this.processSubtitleText(text, offset);
             }
 
             let absoluteUrl = url;
