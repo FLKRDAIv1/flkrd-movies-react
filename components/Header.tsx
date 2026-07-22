@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
-import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle } from 'lucide-react';
+import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import NotificationInbox from './NotificationInbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,6 +89,59 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
   const [headerSearchQuery, setHeaderSearchQuery] = useState('');
   const [localScrolled, setLocalScrolled] = useState(scrolled);
+
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return !!(document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement);
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement));
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleAppFullscreen = async () => {
+    try {
+      const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement || (document as any).mozFullScreenElement);
+      if (!isFull) {
+        const docEl = document.documentElement as any;
+        if (docEl.requestFullscreen) {
+          await docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          await docEl.webkitRequestFullscreen();
+        } else if (docEl.mozRequestFullScreen) {
+          await docEl.mozRequestFullScreen();
+        } else if (docEl.msRequestFullscreen) {
+          await docEl.msRequestFullscreen();
+        }
+      } else {
+        const doc = document as any;
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          await doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          await doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          await doc.msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn("[FULLSCREEN] App toggle failed:", err);
+    }
+  };
 
   useEffect(() => {
     setLocalScrolled(scrolled);
@@ -363,6 +416,22 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
                   />
 
+                  {/* Subtle Native Fullscreen Button (Desktop) */}
+                  <button
+                    onClick={toggleAppFullscreen}
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                      isDarkNavbar 
+                        ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
+                        : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
+                      isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10 shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+                    )}
+                    title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین (Native Fullscreen)' : 'Toggle Fullscreen')}
+                    aria-label="Toggle Fullscreen"
+                  >
+                    {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+                  </button>
+
                  {/* Consolidated User Profile Capsule with Dropdown Menu */}
                  <div className="relative" ref={profileMenuRef}>
                    <div 
@@ -389,7 +458,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
                          animate={{ opacity: 1, y: 0, scale: 1 }}
                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                         className="absolute left-0 mt-2 w-40 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
+                         className="absolute left-0 mt-2 w-44 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
                        >
                          <button
                            onClick={() => {
@@ -400,6 +469,17 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                          >
                            <User size={14} className="text-sec-text" />
                            <span>{t('profile') || 'Profile'}</span>
+                         </button>
+
+                         <button
+                           onClick={() => {
+                             setIsProfileDropdownOpen(false);
+                             toggleAppFullscreen();
+                           }}
+                           className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                         >
+                           {isFullscreen ? <Minimize2 size={14} className="text-red-500" /> : <Maximize2 size={14} className="text-sec-text" />}
+                           <span>{isFullscreen ? (language === 'ku' || language === 'badini' ? 'ئاسایی کردنەوە' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}</span>
                          </button>
 
                          <button
@@ -476,29 +556,45 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   />
 
                  {/* Mobile Menu Action Triggers */}
-                 <div className="flex items-center gap-2 flex-shrink-0">
-                   {/* Avatar Link */}
-                   <div 
-                     onClick={() => navigate('/profile')}
-                     className={cn(
-                       "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer",
-                       isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
-                     )}
-                   >
-                     {renderAvatar()}
-                   </div>
+                 <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Subtle Native Fullscreen Button (Mobile Header) */}
+                    <button
+                      onClick={toggleAppFullscreen}
+                      className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm",
+                        isDarkNavbar 
+                          ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
+                          : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
+                        isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
+                      )}
+                      title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
+                      aria-label="Toggle Fullscreen"
+                    >
+                      {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    </button>
 
-                   {/* Hamburger Menu Icon */}
-                   <button
-                     onClick={() => setIsDrawerOpen(true)}
-                     className={cn(
-                       "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90",
-                       isDarkNavbar ? "text-white" : "text-black"
-                     )}
-                     aria-label="Open Menu"
-                   >
-                     <Menu size={16} />
-                   </button>
+                    {/* Avatar Link */}
+                    <div 
+                      onClick={() => navigate('/profile')}
+                      className={cn(
+                        "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer",
+                        isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
+                      )}
+                    >
+                      {renderAvatar()}
+                    </div>
+
+                    {/* Hamburger Menu Icon */}
+                    <button
+                      onClick={() => setIsDrawerOpen(true)}
+                      className={cn(
+                        "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90",
+                        isDarkNavbar ? "text-white" : "text-black"
+                      )}
+                      aria-label="Open Menu"
+                    >
+                      <Menu size={16} />
+                    </button>
                  </div>
                </div>
 
@@ -657,6 +753,20 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     <NotificationInbox />
                   </div>
                 </div>
+
+                {/* Native Fullscreen Toggle Row */}
+                <button
+                  onClick={() => { toggleAppFullscreen(); }}
+                  className="w-full flex items-center justify-between p-3.5 bg-box-bg border border-border-color rounded-2.5xl text-left hover:bg-zinc-200/50 dark:hover:bg-white/10 transition-all focus:outline-none"
+                >
+                  <div className="flex items-center gap-3">
+                    {isFullscreen ? <Minimize2 className="w-4.5 h-4.5 text-red-500" /> : <Maximize2 className="w-4.5 h-4.5 text-sec-text" />}
+                    <span className="text-[11px] font-black uppercase tracking-wider text-sec-text">
+                      {isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'سکرین بەتاڵ (Fullscreen)' : 'Native Fullscreen')}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-600" />
+                </button>
 
                 {/* Settings button */}
                 <button
