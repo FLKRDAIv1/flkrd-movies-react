@@ -745,6 +745,32 @@ export default function PremiumVidLinkPlayer({
 
       const customSubsList: any[] = [];
       if (activeId) {
+        // 0. Check localStorage for locally translated subtitle backup on this device
+        ['ku', 'badini'].forEach(l => {
+          const localKey = `flkrd_translated_sub_${activeId}_${type || 'movie'}_${season || 0}_${episode || 0}_${l}`;
+          const rawLocal = localStorage.getItem(localKey);
+          if (rawLocal) {
+            try {
+              const parsed = JSON.parse(rawLocal);
+              if (parsed.url) {
+                const isBadini = l === 'badini';
+                const labelSuffix = isBadini ? 'Badini' : 'Sorani';
+                customSubsList.push({
+                  id: `custom-local-${activeId}-${l}`,
+                  attributes: {
+                    language: l,
+                    display_name: parsed.fileName 
+                      ? `[Kurdish Sub] ${parsed.fileName.replace(/(_ku\.srt|\.srt)/gi, '')}` 
+                      : `[Kurdish Subtitle ${labelSuffix}] (Local Device Saved)`,
+                    url: parsed.url,
+                    file_id: 0
+                  }
+                });
+              }
+            } catch (e) {}
+          }
+        });
+
         try {
           const { data: dbSubs } = await supabase
             .from('custom_subtitles')

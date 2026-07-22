@@ -377,6 +377,24 @@ export async function translateAndSavePipeline(
       resolvedPublicUrl = `data:text/plain;base64,${base64Srt}`;
     }
 
+    // Save to localStorage so translator device ALWAYS keeps a local backup copy on device
+    try {
+      const localKey = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
+      localStorage.setItem(localKey, JSON.stringify({
+        url: resolvedPublicUrl,
+        srtContent: srtContent,
+        timestamp: Date.now(),
+        tmdbId: String(tmdbId),
+        mediaType: mediaType || 'movie',
+        season: season || 0,
+        episode: episode || 0,
+        language: targetLang,
+        fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
+      }));
+    } catch (e) {
+      console.warn("[SUBTITLE-PIPELINE] LocalStorage save warning:", e);
+    }
+
     // Registering subtitle in Supabase Postgres registry using upsert to avoid DELETE CORS / 409 Duplicate Key Conflict
     const { error: dbErr } = await supabase
       .from('custom_subtitles')

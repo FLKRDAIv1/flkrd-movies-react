@@ -986,6 +986,34 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 const targetIds = Array.from(new Set([String(tmdbId || ''), String(imdbId || ''), String(idToQuery || '')].filter(Boolean)));
 
+                // 0. Check localStorage for locally translated subtitle backup on this device
+                targetIds.forEach(tId => {
+                    ['ku', 'badini'].forEach(l => {
+                        const localKey = `flkrd_translated_sub_${tId}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${l}`;
+                        const rawLocal = localStorage.getItem(localKey);
+                        if (rawLocal) {
+                            try {
+                                const parsed = JSON.parse(rawLocal);
+                                if (parsed.url) {
+                                    const isBadini = l === 'badini';
+                                    const labelSuffix = isBadini ? 'بادینی' : 'سۆرانی';
+                                    customSubsList.push({
+                                        id: `custom-local-${tId}-${l}`,
+                                        attributes: {
+                                            language: l,
+                                            display_name: parsed.fileName 
+                                                ? `[ژێرنووسی وەرگێڕدراو - ئامێرەکەت] ${parsed.fileName.replace(/(_ku\.srt|\.srt)/gi, '')}` 
+                                                : `[ژێرنووسی کوردی ${labelSuffix}] (Local Saved)`,
+                                            url: parsed.url,
+                                            file_id: 0
+                                        }
+                                    });
+                                }
+                            } catch (e) {}
+                        }
+                    });
+                });
+
                 let query = supabase
                     .from('custom_subtitles')
                     .select('*')
