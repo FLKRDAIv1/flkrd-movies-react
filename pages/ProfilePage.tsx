@@ -344,54 +344,64 @@ const ProfilePage: React.FC = () => {
                             resolve(event.target?.result as string);
                         }
                     };
-                    img.onerror = () => resolve(event.target?.result as string);
                 };
                 reader.onerror = (err) => reject(err);
             }
         });
-    };    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    };
+
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
         setAvatarUploading(true);
         try {
             let finalUrl = '';
-            const ext = (file.name.split('.').pop() || 'gif').toLowerCase();
+            const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+            const ext = (file.name.split('.').pop() || (isGif ? 'gif' : 'jpg')).toLowerCase();
+            const mimeType = file.type || (ext === 'gif' ? 'image/gif' : (ext === 'png' ? 'image/png' : 'image/jpeg'));
             const storagePath = `user_avatars/${user.id}_${Date.now()}.${ext}`;
 
-            // 1. Primary path: Upload directly to Supabase Storage 'avatars' bucket
+            // 1. Primary path: Upload directly to Supabase Storage 'avatars' bucket with explicit contentType
             try {
                 const { data: uploadRes, error: uploadErr } = await supabase.storage
                     .from('avatars')
-                    .upload(storagePath, file, { cacheControl: '3600', upsert: true });
+                    .upload(storagePath, file, { 
+                        contentType: mimeType,
+                        cacheControl: '3600', 
+                        upsert: true 
+                    });
 
                 if (!uploadErr && uploadRes) {
                     const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
                     if (pubData?.publicUrl) {
                         finalUrl = pubData.publicUrl;
                     }
+                } else if (uploadErr) {
+                    console.warn("[AVATAR] Supabase Storage upload returned error:", uploadErr.message);
                 }
-            } catch (storageErr) {
-                console.warn("[AVATAR] Supabase Storage upload error, falling back to local processing", storageErr);
+            } catch (storageErr: any) {
+                console.warn("[AVATAR] Supabase Storage exception, falling back to local DataURL", storageErr?.message);
             }
 
-            // 2. Fallback path: Process as local DataURL if cloud upload is unreached
+            // 2. Fallback path: Process as local DataURL if cloud upload failed or bucket missing
             if (!finalUrl) {
                 finalUrl = await processAvatarFile(file);
             }
             await db.saveAvatar('current_user_avatar', finalUrl);
 
-            // 3. Update Supabase Auth User Metadata with finalUrl if it's a valid public HTTP URL
-            if (finalUrl.startsWith('http')) {
-                try {
-                    await supabase.auth.updateUser({
-                        data: { avatar_url: finalUrl }
-                    });
-                } catch (authErr) {
-                    // Silent catch for auth CORS restrictions
-                }
+            // 3. Update Supabase Auth User Metadata with finalUrl so ALL users & sessions see the new avatar
+            try {
+                await supabase.auth.updateUser({
+                    data: { 
+                        avatar_url: finalUrl,
+                        avatar_effect: avatarEffect || 'none'
+                    }
+                });
+            } catch (authErr) {
+                console.warn("[AVATAR] Supabase Auth metadata update warning:", authErr);
             }
 
-            // 4. Save to local storage & state, then dispatch events
+            // 4. Save to local storage & state, then dispatch events across app
             safeSetAvatarStorage(finalUrl);
             setAvatarUrl(finalUrl);
             window.dispatchEvent(new Event('storage'));
@@ -399,10 +409,13 @@ const ProfilePage: React.FC = () => {
 
             addNotification({
                 type: 'success',
-                title: 'Avatar Updated',
-                message: file.type === 'image/gif' ? 'Animated GIF profile updated & uploaded to cloud!' : 'Profile picture updated & uploaded to cloud!'
+                title: isGif ? 'ئەنیمەیشن/جیف سەرکەوتوو بوو' : 'وێنەی پرۆفایل سەرکەوتوو بوو',
+                message: isGif 
+                    ? 'وێنەی ئەنیمەیشنی پرۆفایلەکەت (GIF / Live Wallpaper) بە سەرکەوتوویی لەسەر هەموو بەرنامەکە نوێکرایەوە!' 
+                    : 'وێنەی پرۆفایلەکەت بە سەرکەوتوویی بارکرا و لەسەر هەموو شوێنێک دیار دەبێت.'
             });
         } catch (err: any) {
+            console.error("[AVATAR] Handler error:", err);
             addNotification({ type: 'error', title: 'Upload Failed', message: err.message || 'Could not upload avatar.' });
         } finally {
             setAvatarUploading(false);
