@@ -1316,7 +1316,12 @@ export default function PremiumVidLinkPlayer({
         if (currentTime !== undefined && !isNaN(currentTime) && currentTime < 50000) {
           lastMessageTimeRef.current = performance.now();
           lastReceivedTimeRef.current = currentTime;
-          setIsPlaying(true);
+          const isPaused = mediaData.paused === true || mediaData.isPlaying === false || mediaData.event === 'pause' || mediaData.event === 'paused';
+          if (isPaused) {
+            setIsPlaying(false);
+          } else {
+            setIsPlaying(true);
+          }
 
           const offsetSec = subtitleOffsetRef.current / 1000;
           if (parsedCuesRef.current.length > 0) {
@@ -2872,7 +2877,7 @@ function parseVttCues(vttText: string) {
     }
   }
 
-  return withIndices;
+  return cues.map((c, i) => ({ ...c, index: i }));
 }
 
 function parseTime(timeStr: string) {

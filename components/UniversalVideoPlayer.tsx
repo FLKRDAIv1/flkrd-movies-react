@@ -1717,7 +1717,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     setCurrentTime(timeAsNum);
                     lastReceivedTimeRef.current = timeAsNum;
                     lastMessageTimeRef.current = performance.now();
-                    setIsPlaying(true);
+                    if (paused !== true) {
+                        setIsPlaying(true);
+                    }
 
                     if (onProgressRef.current) {
                         onProgressRef.current({
@@ -1755,7 +1757,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const interval = setInterval(() => {
             const now = performance.now();
             // If no postMessage timeupdate received in last 1200ms and video is playing, advance local currentTime
-            if (now - lastMessageTimeRef.current > 1200) {
+            if (isPlaying && now - lastMessageTimeRef.current > 1200) {
                 setCurrentTime(prev => {
                     const next = prev + 1;
                     lastReceivedTimeRef.current = next;
@@ -1765,7 +1767,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isIframe]);
+    }, [isIframe, isPlaying]);
 
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
