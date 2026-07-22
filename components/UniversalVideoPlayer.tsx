@@ -2255,11 +2255,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 setIsIframe(!isDirect);
             }
 
-            // Safety timeout — hide loader after 6s regardless
+            // Safety timeout — hide loader after 3.5s regardless for fast responsive playback
             if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
             safetyTimerRef.current = setTimeout(() => {
                 setLoading(false);
-            }, 6000);
+            }, 3500);
         }
 
         if (isHls && !hlsError) {
@@ -2270,21 +2270,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         enableWorker: true,
                         autoStartLoad: true,
                         startLevel: -1,
-                        capLevelToPlayerSize: false,
+                        capLevelToPlayerSize: true,
                         debug: false,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 60,
-                        maxBufferSize: 120 * 1024 * 1024,
+                        maxBufferLength: 60,
+                        maxMaxBufferLength: 120,
+                        maxBufferSize: 60 * 1024 * 1024,
                         backBufferLength: 30,
+                        maxBufferHole: 0.5,
+                        highBufferWatchdogPeriod: 2,
+                        nudgeMaxRetry: 10,
                         manifestLoadingMaxRetry: 10,
-                        manifestLoadingRetryDelay: 1000,
+                        manifestLoadingRetryDelay: 500,
                         levelLoadingMaxRetry: 10,
-                        levelLoadingRetryDelay: 1000,
+                        levelLoadingRetryDelay: 500,
                         fragLoadingMaxRetry: 10,
-                        fragLoadingRetryDelay: 1000,
+                        fragLoadingRetryDelay: 500,
                         lowLatencyMode: false,
                         enableAdaptiveMaxBufferLength: true,
-                        abrEwmaDefaultEstimate: 12000000,
+                        abrEwmaDefaultEstimate: 1500000, // 1.5 Mbps default: ultra-fast initial chunk load on slow internet!
                     });
                     if (videoRef.current) {
                         hls.loadSource(activeSrc);
