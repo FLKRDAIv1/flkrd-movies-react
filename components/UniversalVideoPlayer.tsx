@@ -1696,42 +1696,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 setIsPlaying(true);
             }
 
-            // Comprehensive postMessage event parser for all embed sources
-            if (payload.type === 'timeupdate' || payload.type === 'vjs-timeupdate') {
-                newTime = payload.data?.currentTime || payload.currentTime || payload.seconds;
-            }
-            else if (payload.event === 'timeupdate' || payload.event === 'media_time' || payload.event === 'time' || payload.event === 'progress') {
-                newTime = payload.text || payload.data?.currentTime || payload.data?.seconds || payload.data?.time || payload.data || payload.time || payload.value || payload.seconds;
-            }
-            else if (payload.type === 'PLAYER_EVENT' || payload.type === 'MEDIA_DATA') {
-                newTime = payload.data?.currentTime || payload.data?.seconds || payload.data?.time || payload.currentTime || payload.seconds;
-            }
-            else if (payload.currentTime !== undefined) {
-                newTime = payload.currentTime;
-            }
-            else if (payload.data?.currentTime !== undefined) {
-                newTime = payload.data.currentTime;
-            }
-            else if (payload.seconds !== undefined) {
-                newTime = payload.seconds;
-            }
-            else if (payload.time !== undefined) {
-                newTime = payload.time;
-            }
-            else if (payload.value !== undefined) {
-                newTime = payload.value;
-            }
-            else if (payload.position !== undefined) {
-                newTime = payload.position;
-            }
-            else if (payload.data?.position !== undefined) {
-                newTime = payload.data.position;
-            }
-            else if (payload.timestamp !== undefined) {
-                newTime = payload.timestamp;
+            // Comprehensive postMessage event parser for all embed sources avoiding NaN Object conversion
+            let extractedTime: number | undefined = undefined;
+            
+            if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
+            else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
+            else if (typeof payload.time === 'number') extractedTime = payload.time;
+            else if (typeof payload.position === 'number') extractedTime = payload.position;
+            else if (typeof payload.value === 'number') extractedTime = payload.value;
+            else if (payload.data && typeof payload.data === 'object') {
+                if (typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
+                else if (typeof payload.data.seconds === 'number') extractedTime = payload.data.seconds;
+                else if (typeof payload.data.time === 'number') extractedTime = payload.data.time;
+                else if (typeof payload.data.position === 'number') extractedTime = payload.data.position;
+                else if (typeof payload.data.value === 'number') extractedTime = payload.data.value;
+            } else if (typeof payload.data === 'number') {
+                extractedTime = payload.data;
+            } else {
+                const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.position || payload.value;
+                if (strCandidate !== undefined) {
+                    const parsed = parseFloat(String(strCandidate));
+                    if (!isNaN(parsed)) extractedTime = parsed;
+                }
             }
 
-            const timeAsNum = newTime !== undefined ? Number(newTime) : undefined;
+            const timeAsNum = extractedTime;
 
             if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
                 // Prevent Unix timestamp overflow (we only accept actual playhead time < 13.8 hours)
@@ -1769,6 +1758,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         window.addEventListener('message', handlePlayerMessages);
         return () => window.removeEventListener('message', handlePlayerMessages);
     }, [handlePlayerMessages]);
+
+    // Fallback playhead timer when iframe doesn't send postMessage events continuously
+    useEffect(() => {
+        if (!isIframe) return;
+
+        const interval = setInterval(() => {
+            const now = performance.now();
+            // If no postMessage timeupdate received in last 1200ms and video is playing, advance local currentTime
+            if (now - lastMessageTimeRef.current > 1200) {
+                setCurrentTime(prev => {
+                    const next = prev + 1;
+                    lastReceivedTimeRef.current = next;
+                    return next;
+                });
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isIframe]);
 
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
