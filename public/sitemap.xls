@@ -1396,31 +1396,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/movie/1242332</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://fkurd.pro/details/movie/1284465</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/movie/1380316</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/movie/1301421</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/movie/1616674</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1432,13 +1408,43 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/movie/467905</loc>
+    <loc>https://fkurd.pro/details/movie/1301421</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1242332</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1400940</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1616674</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1318413</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fkurd.pro/details/movie/950028</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1380316</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2742,12 +2748,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/295558</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://fkurd.pro/details/tv/298610</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
@@ -2760,25 +2760,25 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://fkurd.pro/details/tv/321564</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://fkurd.pro/details/tv/288671</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/270476</loc>
+    <loc>https://fkurd.pro/details/tv/30984</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/82684</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/321564</loc>
+    <loc>https://fkurd.pro/details/tv/289763</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2790,7 +2790,19 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/156988</loc>
+    <loc>https://fkurd.pro/details/tv/323411</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/289139</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/136315</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2808,37 +2820,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/107371</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://fkurd.pro/details/tv/312949</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/301412</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/136315</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/98177</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/289763</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2850,13 +2832,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/95350</loc>
+    <loc>https://fkurd.pro/details/tv/387</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/223564</loc>
+    <loc>https://fkurd.pro/details/tv/203744</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2868,37 +2850,31 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://fkurd.pro/details/tv/301412</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/297826</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://fkurd.pro/details/tv/278178</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/296003</loc>
+    <loc>https://fkurd.pro/details/tv/270476</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/287620</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/285404</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/300126</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/tv/273114</loc>
+    <loc>https://fkurd.pro/details/tv/260823</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2910,19 +2886,79 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/260463</loc>
+    <loc>https://fkurd.pro/details/tv/97546</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/222623</loc>
+    <loc>https://fkurd.pro/details/tv/296003</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/tv/285574</loc>
+    <loc>https://fkurd.pro/details/tv/285404</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/298994</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/273114</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/235884</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/615</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/254420</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/258348</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/296286</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/153217</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/220102</loc>
+    <lastmod>2026-07-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/tv/82684</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

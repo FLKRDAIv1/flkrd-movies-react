@@ -428,6 +428,17 @@ export const subtitleService = {
                 throw new Error("Could not obtain download link");
             }
 
+            // Handle direct Base64 Data URIs without making network fetch calls
+            if (link.startsWith('data:')) {
+                console.log("[SUBTITLE SERVICE] Decoding direct Base64 Data URI subtitle...");
+                const base64Part = link.split(',')[1] || '';
+                try {
+                    return decodeURIComponent(escape(atob(base64Part)));
+                } catch (bErr) {
+                    return atob(base64Part);
+                }
+            }
+
             // Resolve relative paths to absolute URLs
             if (link.startsWith('//')) {
                 link = `https:${link}`;
@@ -444,8 +455,17 @@ export const subtitleService = {
             }
 
             console.log("[SUBTITLE SERVICE] Downloading subtitle from resolved link:", link);
-            const isLocal = link.startsWith('/') || link.includes(window.location.hostname) || link.includes('fkurd.pro') || link.includes('supabase.co');
-            const response = isLocal ? await fetch(link) : await this.fetchWithFallback(link);
+            let response: Response | null = null;
+            try {
+                response = await fetch(link);
+                if (!response || !response.ok) {
+                    response = await this.fetchWithFallback(link);
+                }
+            } catch (netErr) {
+                console.warn("[SUBTITLE SERVICE] Direct fetch failed, trying proxy fallback:", netErr);
+                response = await this.fetchWithFallback(link);
+            }
+
             if (!response || !response.ok) throw new Error(`Could not fetch subtitle content (status: ${response?.status})`);
 
             const contentType = response.headers.get('content-type') || '';
@@ -476,6 +496,20 @@ export const subtitleService = {
 
     async getSubtitleBlob(url: string, offset: number = 0) {
         try {
+            if (url.startsWith('data:')) {
+                console.log("[SUBTITLE SERVICE] Decoding direct Base64 Data URI subtitle in getSubtitleBlob...");
+                const base64Part = url.split(',')[1] || '';
+                let text = '';
+                try {
+                    text = decodeURIComponent(escape(atob(base64Part)));
+                } catch (bErr) {
+                    text = atob(base64Part);
+                }
+                const vttText = cleanAndFormatVtt(text, offset);
+                const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
+                return URL.createObjectURL(blob);
+            }
+
             let absoluteUrl = url;
             if (url.startsWith('//')) {
                 absoluteUrl = `https:${url}`;
@@ -490,9 +524,17 @@ export const subtitleService = {
                     absoluteUrl = `https://fkurd.pro${url}`;
                 }
             }
-            console.log("[SUBTITLE SERVICE] Fetching subtitle VTT with proxy rotation for:", absoluteUrl);
-            const isLocal = absoluteUrl.startsWith('/') || absoluteUrl.includes(window.location.hostname) || absoluteUrl.includes('fkurd.pro') || absoluteUrl.includes('supabase.co');
-            const response = isLocal ? await fetch(absoluteUrl) : await this.fetchWithFallback(absoluteUrl);
+            console.log("[SUBTITLE SERVICE] Fetching subtitle VTT for:", absoluteUrl);
+            let response: Response | null = null;
+            try {
+                response = await fetch(absoluteUrl);
+                if (!response || !response.ok) {
+                    response = await this.fetchWithFallback(absoluteUrl);
+                }
+            } catch (netErr) {
+                console.warn("[SUBTITLE SERVICE] Direct fetch failed in getSubtitleBlob, trying proxy fallback:", netErr);
+                response = await this.fetchWithFallback(absoluteUrl);
+            }
             if (response && response.ok) {
                 const contentType = response.headers.get('content-type') || '';
                 let text = '';
