@@ -96,8 +96,8 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        const isBadini = target === 'badini';
-        const actualTarget = isBadini ? 'ku' : target;
+        const isBadini = target === 'badini' || target === 'ku' || target === 'kmr';
+        const actualTarget = isBadini ? 'ku' : (target === 'sorani' ? 'ckb' : target);
 
         const isArray = Array.isArray(text);
         const textArray = isArray ? text : [text];
@@ -110,23 +110,55 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
-        // Primary Google Translate Web API fetcher
+        // Primary Google Translate Web API fetcher using POST to bypass 414 Request-URI Too Long
         const translateWithGoogleAPI = async (t, src, tgt) => {
+            if (!t || !t.trim()) return t || '';
             try {
-                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(t)}`;
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
                 const response = await fetch(url, {
+                    method: 'POST',
                     headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    }
+                    },
+                    body: `q=${encodeURIComponent(t)}`,
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
+                
                 if (response.ok) {
                     const data = await response.json();
                     if (data && data[0]) {
-                        return data[0].map(x => x[0]).join('');
+                        return data[0].map(x => x[0] || '').join('');
                     }
                 }
             } catch (err) {
-                console.warn("[SERVER TRANSLATE] Google Translate API failed:", err.message);
+                console.warn("[SERVER TRANSLATE] Google Translate POST failed:", err.message);
+            }
+
+            // Fallback GET for smaller snippets
+            try {
+                const getUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(t)}`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
+                const response = await fetch(getUrl, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data[0]) {
+                        return data[0].map(x => x[0] || '').join('');
+                    }
+                }
+            } catch (err) {
+                console.warn("[SERVER TRANSLATE] Google Translate GET failed:", err.message);
             }
             return null;
         };
@@ -135,7 +167,7 @@ export default async function handler(req, res) {
         const translateSingle = async (t) => {
             if (!t || !t.trim()) return t || '';
             
-            // 0. Try Google Translate Free API first
+            // 0. Try Google Translate Free API first (ultra-fast)
             const googleRes = await translateWithGoogleAPI(t, source, actualTarget);
             if (googleRes) return googleRes;
 
@@ -171,37 +203,17 @@ export default async function handler(req, res) {
                 }
             } catch (err) {}
 
-            // 3. Try Lingva GET
-            for (const instance of LINGVA_INSTANCES) {
-                try {
-                    const url = `${instance}/api/v1/${source}/${actualTarget}/${encodeURIComponent(t)}`;
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data && data.translation) return data.translation;
-                    }
-                } catch (err) {}
-            }
-
-            return t; // Fallback to original text if everything fails
+            return t; // Return original text if all translation engines fail
         };
 
-        const applyBadiniTransliteration = (t) => {
-            if (!isBadini) return t;
-            if (Array.isArray(t)) {
-                return t.map(item => transliterateHawarToArabic(item));
-            }
-            return transliterateHawarToArabic(t);
-        };
-
-        // Helper: call Google Apps Script with timeout
+        // Helper: call Google Apps Script with tight timeout (4s)
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
                        "https://script.google.com/macros/s/AKfycbxde4VzWWNB5_X_3U4e_7604PkI-02xFurowcP0fAqLpyZVzGpBbZN_PSIatZTj6f49nQ/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 12000); // 12s timeout for reliable batch execution
+            const timer = setTimeout(() => ctrl.abort(), 4000);
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
@@ -221,16 +233,24 @@ export default async function handler(req, res) {
             return null;
         };
 
+        const applyBadiniTransliteration = (t) => {
+            if (!isBadini) return t;
+            if (Array.isArray(t)) {
+                return t.map(item => transliterateHawarToArabic(item));
+            }
+            return transliterateHawarToArabic(t);
+        };
+
         // Helper to translate a chunk of text items
         const translateChunk = async (chunkItems) => {
             const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
             
-            // 1. Try GAS
-            let translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
+            // 1. Try Google Translate API POST first (Ultra Fast ~150ms)
+            let translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
 
-            // 2. Fallback to Google Translate API
+            // 2. Fallback to GAS
             if (!translatedJoined) {
-                translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
+                translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
             }
 
             // 3. Fallback to Lingva / MyMemory
@@ -271,10 +291,17 @@ export default async function handler(req, res) {
                     }
                 }
 
-                // If at least 30% of indexed lines matched, fill remaining gaps and return
+                // If at least 30% of indexed lines matched, fill remaining gaps in parallel
                 if (matchedCount >= Math.floor(chunkItems.length * 0.3)) {
+                    const missingIndices = [];
                     for (let i = 0; i < chunkItems.length; i++) {
-                        if (!results[i]) results[i] = chunkItems[i];
+                        if (!results[i]) missingIndices.push(i);
+                    }
+                    if (missingIndices.length > 0) {
+                        await Promise.all(missingIndices.map(async (i) => {
+                            const singleTrans = await translateSingle(chunkItems[i]);
+                            results[i] = singleTrans || chunkItems[i];
+                        }));
                     }
                     return results;
                 }
@@ -288,12 +315,9 @@ export default async function handler(req, res) {
                 }
             }
 
-            // Item-by-item fallback for this chunk
-            const fallbackResults = [];
-            for (const item of chunkItems) {
-                fallbackResults.push(await translateSingle(item));
-            }
-            return fallbackResults;
+            // Parallel item-by-item fallback for this chunk (Fast & Non-blocking)
+            const fallbackResults = await Promise.all(chunkItems.map(item => translateSingle(item)));
+            return fallbackResults.map((res, i) => res || chunkItems[i]);
         };
 
         // 1. Array batch translation with sub-chunking (max 25 items per chunk for ultra-fast parallel processing)
@@ -309,9 +333,10 @@ export default async function handler(req, res) {
 
             return res.status(200).json({ translation: applyBadiniTransliteration(finalResults) });
         } else {
-            // Single translation — try GAS first, then fall back
-            const gasResult = await callGAS({ text: textArray[0], source, target: actualTarget });
-            const singleTranslation = gasResult || await translateSingle(textArray[0]);
+            // Single translation — try Google Translate POST first, then fall back
+            const singleTranslation = await translateWithGoogleAPI(textArray[0], source, actualTarget) ||
+                                      await callGAS({ text: textArray[0], source, target: actualTarget }) ||
+                                      await translateSingle(textArray[0]);
             return res.status(200).json({ translation: applyBadiniTransliteration(singleTranslation) });
         }
 
