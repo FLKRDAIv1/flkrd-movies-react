@@ -481,16 +481,22 @@ export const subtitleService = {
                 const blob = await response.blob();
                 const zip = new JSZip();
                 const zipContent = await zip.loadAsync(blob);
-                const srtFile = Object.values(zipContent.files).find((f: any) => 
+                // Find largest subtitle file (avoids cover art .srt edge cases)
+                const subFiles = Object.values(zipContent.files).filter((f: any) =>
                     !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
-                ) as any;
+                ) as any[];
+                const srtFile = subFiles.sort((a: any, b: any) => b._data?.uncompressedSize - a._data?.uncompressedSize)[0];
                 if (srtFile) {
-                    text = await srtFile.async('string');
+                    // CRITICAL: Use Uint8Array + TextDecoder('utf-8') to preserve Kurdish/Arabic glyphs
+                    const bytes = await srtFile.async('uint8array');
+                    text = new TextDecoder('utf-8').decode(bytes);
                 } else {
-                    throw new Error("No .srt/.vtt file found inside ZIP archive");
+                    throw new Error('No .srt/.vtt file found inside ZIP archive');
                 }
             } else {
-                text = await response.text();
+                // Force UTF-8 decode from raw bytes to prevent mojibake on Kurdish characters
+                const buffer = await response.arrayBuffer();
+                text = new TextDecoder('utf-8').decode(new Uint8Array(buffer));
             }
 
             return text;
@@ -555,19 +561,24 @@ export const subtitleService = {
                     const zip = new JSZip();
                     const zipContent = await zip.loadAsync(blob);
                     
-                    // Find first .srt or .vtt file
-                    const srtFile = Object.values(zipContent.files).find((f: any) => 
+                    // Find largest subtitle file with UTF-8-safe extraction
+                    const subFiles = Object.values(zipContent.files).filter((f: any) =>
                         !f.dir && (f.name.toLowerCase().endsWith('.srt') || f.name.toLowerCase().endsWith('.vtt'))
-                    ) as any;
+                    ) as any[];
+                    const srtFile = subFiles.sort((a: any, b: any) => b._data?.uncompressedSize - a._data?.uncompressedSize)[0];
                     
                     if (srtFile) {
-                        console.log("[SUBTITLE SERVICE] Extracted subtitle from ZIP in getSubtitleBlob:", srtFile.name);
-                        text = await srtFile.async('string');
+                        console.log('[SUBTITLE SERVICE] Extracted subtitle from ZIP in getSubtitleBlob:', srtFile.name);
+                        // CRITICAL: UTF-8 decode — preserves Kurdish/Arabic characters correctly
+                        const bytes = await srtFile.async('uint8array');
+                        text = new TextDecoder('utf-8').decode(bytes);
                     } else {
-                        throw new Error("No subtitle file found in ZIP archive");
+                        throw new Error('No subtitle file found in ZIP archive');
                     }
                 } else {
-                    text = await response.text();
+                    // Force UTF-8 decode from raw bytes
+                    const buffer = await response.arrayBuffer();
+                    text = new TextDecoder('utf-8').decode(new Uint8Array(buffer));
                 }
                 
                 // Process VTT (SRT-to-VTT + Offset)
@@ -598,10 +609,18 @@ export const subtitleService = {
     async processSubtitleText(text: string, offset: number) {
         try {
             let processedText = text;
-            if (!processedText.startsWith('WEBVTT')) {
+            // Remove BOM and directional marks before processing
+            processedText = processedText
+                .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+                .replace(/\u00A0/g, ' ')
+                .replace(/\r\n/g, '\n')
+                .replace(/\r/g, '\n');
+
+            if (!processedText.trim().startsWith('WEBVTT')) {
+                // SRT → VTT: replace commas in timestamps, remove sequence numbers, add header
                 processedText = 'WEBVTT\n\n' + processedText
-                    .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                    .replace(/^\d+\r?$/gm, '');
+                    .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')  // fix timestamps
+                    .replace(/^\d+\s*$/gm, '');                             // remove seq numbers
             }
 
             if (offset !== 0) {
@@ -609,10 +628,10 @@ export const subtitleService = {
             }
 
             // Create a local memory blob URL as the modern, high-performance solution
-            const blob = new Blob([processedText], { type: 'text/vtt' });
+            const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
             return URL.createObjectURL(blob);
         } catch (e) {
-            console.error("[SUBTITLE SERVICE] Error creating Blob URL:", e);
+            console.error('[SUBTITLE SERVICE] Error creating Blob URL:', e);
             return null;
         }
     },

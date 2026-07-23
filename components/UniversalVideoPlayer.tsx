@@ -189,6 +189,46 @@ function cleanAndFormatVtt(text: string): string {
     return cleaned;
 }
 
+
+/** Auto-switch to next source after a 5-second countdown when iframe is blocked */
+const IframeBlockedAutoSwitch: React.FC<{
+    sources: any[];
+    activeSource?: string;
+    setActiveSource?: (s: string) => void;
+    setIframeBlocked: (v: boolean) => void;
+}> = ({ sources, activeSource, setActiveSource, setIframeBlocked }) => {
+    const [countdown, setCountdown] = React.useState(5);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    // Switch to next available source
+                    const nextSource = sources.find(s => s.name !== activeSource);
+                    if (nextSource && setActiveSource) {
+                        setIframeBlocked(false);
+                        setActiveSource(nextSource.name);
+                    }
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    if (!sources || sources.length <= 1 || !setActiveSource) return null;
+    const nextSource = sources.find(s => s.name !== activeSource);
+    if (!nextSource) return null;
+
+    return (
+        <div className="text-xs text-gray-500 animate-pulse">
+            Auto-switching to <span className="text-white font-semibold">{nextSource.name}</span> in {countdown}s…
+        </div>
+    );
+};
+
 const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     src,
     onLoad,
@@ -319,6 +359,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
+    // Tracks if the current iframe source was blocked by X-Frame-Options / CSP
+    const [iframeBlocked, setIframeBlocked] = useState(false);
+    const iframeBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
     const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
     const setIsFullscreen = isFullscreenProp !== undefined ? () => { } : setLocalIsFullscreen;
@@ -958,7 +1001,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     const handleIframeLoad = () => {
         setLoading(false);
+        setIframeBlocked(false); // Reset blocked state on every new load
         if (onLoad) onLoad();
+
+        // --- Iframe Block Detection ---
+        // When X-Frame-Options: DENY or CSP frame-ancestors blocks an embed,
+        // the iframe fires onLoad but the contentDocument is either null or an error page.
+        // We use a 4-second timeout: if no postMessage heartbeat arrives, we mark it blocked.
+        if (iframeBlockedTimerRef.current) clearTimeout(iframeBlockedTimerRef.current);
+        iframeBlockedTimerRef.current = setTimeout(() => {
+            try {
+                const doc = iframeRef.current?.contentDocument;
+                // If we can access contentDocument but it has no body or a blank title — it's blocked
+                if (doc && (!doc.body || doc.body.innerHTML.trim() === '' || doc.title.toLowerCase().includes('refused'))) {
+                    console.warn('[PLAYER] Iframe appears blocked (empty document detected). Marking as blocked.');
+                    setIframeBlocked(true);
+                }
+            } catch (e) {
+                // Cross-origin access throws — means it loaded from a different origin, which is NORMAL.
+                // Only flag as blocked if no postMessage heartbeat arrived in 4s.
+                // We let this silently pass — most valid embeds cross-origin.
+            }
+        }, 4000);
 
         // Subscribe to PlayerJS and JW Player events
         try {
@@ -2741,6 +2805,60 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onLoad={handleIframeLoad}
                         title="FLKRD Universal Player"
                     />
+                )}
+
+                {/* ── Iframe Blocked Overlay ─────────────────────────────── */}
+                {isIframe && iframeBlocked && (
+                    <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center bg-black/95 gap-6 px-6 text-center">
+                        {/* Animated warning icon */}
+                        <div className="relative w-20 h-20 flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full bg-red-600/20 animate-ping" />
+                            <div className="relative w-16 h-16 rounded-full bg-red-600/10 border-2 border-red-500/40 flex items-center justify-center">
+                                <Shield className="w-8 h-8 text-red-400" />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 max-w-xs">
+                            <h3 className="text-white font-black text-xl tracking-tight uppercase italic">Server Blocked</h3>
+                            <p className="text-gray-400 text-sm leading-relaxed">
+                                This streaming node has blocked embedding.<br />
+                                Switching to the next available server…
+                            </p>
+                        </div>
+
+                        {/* Source switcher — try next */}
+                        {sources && sources.length > 1 && setActiveSource && (
+                            <div className="flex flex-col gap-3 w-full max-w-xs">
+                                {sources
+                                    .filter(s => s.name !== activeSource)
+                                    .slice(0, 3)
+                                    .map((s: any) => (
+                                        <button
+                                            key={s.name}
+                                            onClick={() => {
+                                                setIframeBlocked(false);
+                                                setActiveSource(s.name);
+                                            }}
+                                            className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold transition-all flex items-center justify-between gap-2"
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                <Activity className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+                                                {s.name}
+                                            </span>
+                                            <ArrowRight className="w-4 h-4 text-gray-500" />
+                                        </button>
+                                    ))}
+                            </div>
+                        )}
+
+                        {/* Auto-switch countdown */}
+                        <IframeBlockedAutoSwitch
+                            sources={sources || []}
+                            activeSource={activeSource}
+                            setActiveSource={setActiveSource}
+                            setIframeBlocked={setIframeBlocked}
+                        />
+                    </div>
                 )}
             </div>
 
