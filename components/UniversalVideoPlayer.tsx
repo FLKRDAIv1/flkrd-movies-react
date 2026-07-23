@@ -423,7 +423,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, [subtitleCues]);
 
-    // Ensure native video element text track is ALWAYS active and showing for fullscreen rendering
+    // Ensure native video element text track is ALWAYS active and showing in Normal & Fullscreen modes
     useEffect(() => {
         if (!videoRef.current) return;
         const syncTracks = () => {
@@ -435,8 +435,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         };
         syncTracks();
-        const timeout = setTimeout(syncTracks, 500);
-        return () => clearTimeout(timeout);
+        const timeout1 = setTimeout(syncTracks, 300);
+        const timeout2 = setTimeout(syncTracks, 1000);
+
+        const videoEl = videoRef.current;
+        if (videoEl) {
+            videoEl.addEventListener('webkitbeginfullscreen', syncTracks);
+            videoEl.addEventListener('webkitendfullscreen', syncTracks);
+        }
+        document.addEventListener('fullscreenchange', syncTracks);
+        document.addEventListener('webkitfullscreenchange', syncTracks);
+        document.addEventListener('mozfullscreenchange', syncTracks);
+        document.addEventListener('MSFullscreenChange', syncTracks);
+
+        return () => {
+            clearTimeout(timeout1);
+            clearTimeout(timeout2);
+            if (videoEl) {
+                videoEl.removeEventListener('webkitbeginfullscreen', syncTracks);
+                videoEl.removeEventListener('webkitendfullscreen', syncTracks);
+            }
+            document.removeEventListener('fullscreenchange', syncTracks);
+            document.removeEventListener('webkitfullscreenchange', syncTracks);
+            document.removeEventListener('mozfullscreenchange', syncTracks);
+            document.removeEventListener('MSFullscreenChange', syncTracks);
+        };
     }, [vttBlobUrl, localSubtitleUrl, subtitleUrl, showSubtitles]);
 
     const [subSearchQuery, setSubSearchQuery] = useState('');
@@ -2699,18 +2722,49 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* Force Style & Ensure Subtitles are 100% Visible in Native & Web Fullscreen */}
             <style>{`
-                video::cue {
+                video::cue,
+                :fullscreen video::cue,
+                :-webkit-full-screen video::cue,
+                :-moz-full-screen video::cue,
+                :ms-fullscreen video::cue {
                     visibility: ${showSubtitles ? 'visible' : 'hidden'} !important;
                     background: ${showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'rgba(0,0,0,0.75)'} !important;
                     font-family: 'Zain', 'Outfit', sans-serif !important;
-                    font-size: clamp(16px, 2.8vw, 32px) !important;
+                    font-size: clamp(18px, 3.5vw, 42px) !important;
                     color: ${subtitleColor || '#ffffff'} !important;
                     text-shadow: 0 3px 10px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.8) !important;
                     line-height: 1.4 !important;
-                    padding: 4px 12px !important;
-                    border-radius: 8px !important;
+                    padding: 6px 16px !important;
+                    border-radius: 10px !important;
+                    z-index: 2147483647 !important;
                 }
-                
+
+                video::-webkit-media-text-track-container {
+                    transform: translateY(-8%) !important;
+                    z-index: 2147483647 !important;
+                }
+
+                video::-webkit-media-text-track-display {
+                    z-index: 2147483647 !important;
+                }
+
+                .custom-subtitle-overlay,
+                :fullscreen .custom-subtitle-overlay,
+                :-webkit-full-screen .custom-subtitle-overlay,
+                :-moz-full-screen .custom-subtitle-overlay,
+                :ms-fullscreen .custom-subtitle-overlay {
+                    position: absolute !important;
+                    bottom: 12% !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    z-index: 2147483647 !important;
+                    display: flex !important;
+                    justify-content: center !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    pointer-events: none !important;
+                }
+
                 .custom-subtitle-text {
                     text-shadow: 0 4px 12px rgba(0,0,0,0.95), 0 0 24px rgba(0,0,0,0.8) !important;
                 }
@@ -2869,14 +2923,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="absolute bottom-[12%] md:bottom-[16%] left-0 right-0 z-[99999] flex justify-center px-4 md:px-6 w-full pointer-events-none"
+                        className="absolute bottom-[12%] md:bottom-[16%] left-0 right-0 z-[2147483647] flex justify-center px-4 md:px-6 w-full pointer-events-none custom-subtitle-overlay"
                         style={{
-                            fontSize: `clamp(16px, ${subtitleSize}px, 6.5vw)`,
+                            fontSize: `clamp(18px, ${subtitleSize}px, 6.5vw)`,
                             color: subtitleColor,
                             fontFamily: "'Zain', 'Outfit', sans-serif",
                             transform: 'translateZ(99999px)',
                             WebkitTransform: 'translateZ(99999px)',
                             willChange: 'transform',
+                            zIndex: 2147483647,
                         }}
                     >
                         {(() => {
