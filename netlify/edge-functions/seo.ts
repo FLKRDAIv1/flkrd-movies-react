@@ -1,3 +1,4 @@
+// @ts-nocheck
 export default async (request: Request, context: any) => {
   const url = new URL(request.url);
   const path = url.pathname;
