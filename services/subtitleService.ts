@@ -694,6 +694,15 @@ export const subtitleService = {
             }
         }
 
+        // Auto inject Intro Watermark Cues for Kurdish subtitles if not already present
+        const hasZanaIntro = cues.some(c => c.text.includes('زانا فارۆق') || c.text.includes('FLKRD STUDIO'));
+        if (!hasZanaIntro && cues.length > 0) {
+            const intro1 = { start: 1.5, end: 5.5, text: 'ئەم بەرهەمە ژێرنووسکرایە لەلایەن زانا فارۆقەوە' };
+            const intro2 = { start: 6.0, end: 10.0, text: '⚡ POWERED BY FLKRD STUDIO ⚡' };
+            const filteredOriginal = cues.filter(c => c.end > 10.2 || c.start >= 10.2);
+            return [intro1, intro2, ...filteredOriginal];
+        }
+
         return cues;
     },
 

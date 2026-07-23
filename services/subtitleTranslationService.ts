@@ -231,9 +231,13 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   let srt = '';
   let index = 1;
 
-  srt += `${index++}\n00:00:01,000 --> 00:00:05,000\nژێرنووس کراوە لەلایەن زانا فارۆق | Powered by FLKRD STUDIO\n\n`;
+  // Custom intro credit Cue 1 (Zana Farooq translation watermark)
+  srt += `${index++}\n00:00:01,500 --> 00:00:05,500\nئەم بەرهەمە ژێرنووسکرایە لەلایەن زانا فارۆقەوە\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 5.5);
+  // Custom intro credit Cue 2 (2 seconds later: FLKRD STUDIO watermark)
+  srt += `${index++}\n00:00:06,000 --> 00:00:10,000\n⚡ POWERED BY FLKRD STUDIO ⚡\n\n`;
+
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 10.2);
 
   filteredCues.forEach((cue) => {
     let timestamp = cue.timestamp.replace(/\./g, ',');
