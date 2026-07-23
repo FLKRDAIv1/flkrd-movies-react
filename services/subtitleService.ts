@@ -433,9 +433,15 @@ export const subtitleService = {
                 console.log("[SUBTITLE SERVICE] Decoding direct Base64 Data URI subtitle...");
                 const base64Part = link.split(',')[1] || '';
                 try {
-                    return decodeURIComponent(escape(atob(base64Part)));
+                    const binString = atob(base64Part);
+                    const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+                    return new TextDecoder('utf-8').decode(bytes);
                 } catch (bErr) {
-                    return atob(base64Part);
+                    try {
+                        return decodeURIComponent(escape(atob(base64Part)));
+                    } catch (e2) {
+                        return atob(base64Part);
+                    }
                 }
             }
 
@@ -501,9 +507,15 @@ export const subtitleService = {
                 const base64Part = url.split(',')[1] || '';
                 let text = '';
                 try {
-                    text = decodeURIComponent(escape(atob(base64Part)));
+                    const binString = atob(base64Part);
+                    const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+                    text = new TextDecoder('utf-8').decode(bytes);
                 } catch (bErr) {
-                    text = atob(base64Part);
+                    try {
+                        text = decodeURIComponent(escape(atob(base64Part)));
+                    } catch (e2) {
+                        text = atob(base64Part);
+                    }
                 }
                 return await this.processSubtitleText(text, offset);
             }
@@ -634,13 +646,20 @@ export const subtitleService = {
         };
 
         const lines = cleanedText.split('\n');
-        let currentCue: { start: number, end: number, text: string } | null = null;
+        let currentCue: { start: number, end: number, textLines: string[] } | null = null;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line) continue;
 
             if (line.includes('-->')) {
+                if (currentCue && currentCue.textLines.length > 0) {
+                    const text = currentCue.textLines.join('\n').trim();
+                    if (text) {
+                        cues.push({ start: currentCue.start, end: currentCue.end, text });
+                    }
+                }
+
                 const parts = line.split('-->');
                 if (parts.length >= 2) {
                     const startStr = parts[0].trim().split(/\s+/).pop() || '';
@@ -649,37 +668,37 @@ export const subtitleService = {
                     const startSec = parseTime(startStr);
                     const endSec = parseTime(endStr);
 
-                    if (currentCue && currentCue.text.trim()) {
-                        cues.push(currentCue);
-                    }
                     currentCue = {
                         start: startSec,
                         end: endSec,
-                        text: ''
+                        textLines: []
                     };
-                    continue;
                 }
-            }
-
-            if (currentCue && !line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line)) {
-                const cleanedLine = line
-                    .replace(/<[^>]+>/g, '')
-                    .replace(/\{[^}]+\}/g, '')
-                    .trim();
-                if (cleanedLine) {
-                    currentCue.text = currentCue.text ? `${currentCue.text}\n${cleanedLine}` : cleanedLine;
+            } else if (currentCue) {
+                if (!line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line)) {
+                    const cleanedLine = line
+                        .replace(/<[^>]+>/g, '')
+                        .replace(/\{[^}]+\}/g, '')
+                        .trim();
+                    if (cleanedLine) {
+                        currentCue.textLines.push(cleanedLine);
+                    }
                 }
             }
         }
 
-        if (currentCue && currentCue.text.trim()) {
-            cues.push(currentCue);
+        if (currentCue && currentCue.textLines.length > 0) {
+            const text = currentCue.textLines.join('\n').trim();
+            if (text) {
+                cues.push({ start: currentCue.start, end: currentCue.end, text });
+            }
         }
 
         return cues;
     },
 
     timeToSeconds(timeStr: string) {
+
         if (!timeStr) return 0;
         const normalized = timeStr.replace(',', '.');
         const parts = normalized.split(':');

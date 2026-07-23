@@ -42,11 +42,22 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   // Real-time Global Admin Broadcast & DB Listener
   React.useEffect(() => {
-    import('../utils/supabaseClient').then(({ supabase }) => {
+    let broadcastChannel: any = null;
+    let dbChannel: any = null;
+
+    import('../utils/supabaseClient').then(async ({ supabase }) => {
+      // Guard: only subscribe to realtime if Supabase is not quota-blocked
+      try {
+        const { error: probeError } = await supabase.from('admin_broadcasts').select('id').limit(1);
+        if (probeError) return; // 402 quota or other error — skip realtime silently
+      } catch (e) {
+        return; // Network error — skip realtime silently
+      }
+
       // 1. Listen to Realtime Broadcast channel
-      const broadcastChannel = supabase.channel('global_admin_broadcast');
+      broadcastChannel = supabase.channel('global_admin_broadcast');
       broadcastChannel
-        .on('broadcast', { event: 'admin_notification' }, ({ payload }) => {
+        .on('broadcast', { event: 'admin_notification' }, ({ payload }: any) => {
           if (payload && payload.title && payload.message) {
             addNotification({
               type: payload.type || 'info',
@@ -61,12 +72,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         .subscribe();
 
       // 2. Listen to Database INSERTS on admin_broadcasts table
-      const dbChannel = supabase
+      dbChannel = supabase
         .channel('admin_broadcasts_db_sync')
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'admin_broadcasts' },
-          (payload) => {
+          (payload: any) => {
             if (payload.new && payload.new.title && payload.new.message) {
               const item = payload.new;
               addNotification({
@@ -81,13 +92,16 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           }
         )
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(broadcastChannel);
-        supabase.removeChannel(dbChannel);
-      };
     });
+
+    return () => {
+      import('../utils/supabaseClient').then(({ supabase }) => {
+        if (broadcastChannel) supabase.removeChannel(broadcastChannel);
+        if (dbChannel) supabase.removeChannel(dbChannel);
+      });
+    };
   }, [addNotification]);
+
 
 
   return (

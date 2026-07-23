@@ -37,7 +37,7 @@ export default async (request: Request, context: any) => {
   let structuredData: any = null;
 
   const TMDB_API_KEY = Deno.env.get("VITE_TMDB_API_KEY") || Deno.env.get("TMDB_API_KEY");
-  const supabaseUrl = Deno.env.get("VITE_SUPABASE_URL") || Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") || "https://fmahzalaxbkmhbpcally.supabase.co";
+  const supabaseUrl = Deno.env.get("VITE_SUPABASE_URL") || Deno.env.get("NEXT_PUBLIC_SUPABASE_URL") || "https://ofddaeofptotnxeoxfko.supabase.co";
   const supabaseKey = Deno.env.get("VITE_SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 
   try {

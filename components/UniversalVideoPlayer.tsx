@@ -299,6 +299,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         );
         return !isDirect;
     });
+
+    useEffect(() => {
+        const activeSrc = src || '';
+        if (!activeSrc) return;
+        const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
+        const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
+        const isDirect = (
+            activeSrc.toLowerCase().endsWith('.m3u8') ||
+            activeSrc.toLowerCase().endsWith('.mp4') ||
+            activeSrc.toLowerCase().endsWith('.webm') ||
+            activeSrc.includes('video.m3u8') ||
+            activeSrc.includes('_av1.m3u8') ||
+            activeSrc.includes('_h264.m3u8')
+        );
+        setIsHls(isDirect && (activeSrc.includes('.m3u8') || activeSrc.includes('video.m3u8')));
+        setIsIframe(isCinePro && isTauri ? false : !isDirect);
+    }, [src]);
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
@@ -817,10 +834,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const blobUrl = await subtitleService.getSubtitleBlob(subtitleUrl);
                 if (blobUrl) {
                     setLocalSubtitleUrl(blobUrl);
-                    setKuCCNotificationVisible(false);
+                } else {
+                    setLocalSubtitleUrl(subtitleUrl);
                 }
+                setKuCCNotificationVisible(false);
+                setShowSubtitles(true);
             } catch (e) {
-                console.error("[UNIVERSAL-PLAYER] Failed to auto-download prop subtitleUrl:", e);
+                console.warn("[UNIVERSAL-PLAYER] getSubtitleBlob failed, falling back to direct subtitleUrl:", e);
+                setLocalSubtitleUrl(subtitleUrl);
+                setShowSubtitles(true);
             }
         };
 
@@ -886,9 +908,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (localSubtitleUrl.startsWith('data:')) {
                     const base64Part = localSubtitleUrl.split(',')[1] || '';
                     try {
-                        rawText = decodeURIComponent(escape(atob(base64Part)));
+                        const binString = atob(base64Part);
+                        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+                        rawText = new TextDecoder('utf-8').decode(bytes);
                     } catch (e) {
-                        rawText = atob(base64Part);
+                        try {
+                            rawText = decodeURIComponent(escape(atob(base64Part)));
+                        } catch (e2) {
+                            rawText = atob(base64Part);
+                        }
                     }
                 } else if (localSubtitleUrl.startsWith('blob:')) {
                     const res = await fetch(localSubtitleUrl);
@@ -897,10 +925,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     try {
                         rawText = await subtitleService.downloadSubtitle({ attributes: { url: localSubtitleUrl } });
                     } catch (e) {
-                        const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
-                        if (blobUrl) {
-                            const res = await fetch(blobUrl);
+                        try {
+                            const res = await fetch(localSubtitleUrl);
                             if (res.ok) rawText = await res.text();
+                        } catch (e2) {
+                            const blobUrl = await subtitleService.getSubtitleBlob(localSubtitleUrl);
+                            if (blobUrl) {
+                                const res = await fetch(blobUrl);
+                                if (res.ok) rawText = await res.text();
+                            }
                         }
                     }
                 }
@@ -1115,6 +1148,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     };
                 }
 
+                if (!customSub && customSubsList.length > 0) {
+                    customSub = customSubsList[0];
+                }
+
                 if (!customSub && subtitleUrl) {
                     customSub = {
                         id: `custom-db-prop`,
@@ -1136,7 +1173,56 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (customSub) {
                     console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
                     try {
-                        const text = await subtitleService.downloadSubtitle(customSub);
+                        let text: string | null = null;
+
+                        // Fast path: if this subtitle came from localStorage, read srtContent directly
+                        if (customSub.id.startsWith('custom-local-')) {
+                            const parts = customSub.id.replace('custom-local-', '').split('-');
+                            const localLang = parts[parts.length - 1] || 'ku';
+                            const localId = parts.slice(0, parts.length - 1).join('-');
+                            const lk = `flkrd_translated_sub_${localId}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${localLang}`;
+                            const raw = localStorage.getItem(lk);
+                            if (raw) {
+                                try {
+                                    const parsed = JSON.parse(raw);
+                                    if (parsed?.srtContent) text = parsed.srtContent;
+                                } catch (e) {}
+                            }
+                        }
+
+                        // If this is a local-saved subtitle (data URI from localStorage), use directly
+                        if (!text && customSub.attributes.url?.startsWith('data:')) {
+                            const base64Part = customSub.attributes.url.split(',')[1] || '';
+                            try { text = decodeURIComponent(escape(atob(base64Part))); } catch { text = atob(base64Part); }
+                        } else if (!text) {
+                            try {
+                                text = await subtitleService.downloadSubtitle(customSub);
+                            } catch (downloadErr) {
+                                // Supabase Storage quota blocked (402) — try localStorage fallback
+                                const targetIdList = Array.from(new Set([String(tmdbId || ''), String(imdbId || '')].filter(Boolean)));
+                                outerLoop: for (const tid of targetIdList) {
+                                    for (const langKey of ['ku', 'badini']) {
+                                        const lk = `flkrd_translated_sub_${tid}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${langKey}`;
+                                        const raw = localStorage.getItem(lk);
+                                        if (raw) {
+                                            try {
+                                                const parsed = JSON.parse(raw);
+                                                // Prefer raw srtContent if available
+                                                if (parsed?.srtContent) {
+                                                    text = parsed.srtContent;
+                                                    break outerLoop;
+                                                } else if (parsed?.url?.startsWith('data:')) {
+                                                    const b64 = parsed.url.split(',')[1] || '';
+                                                    try { text = decodeURIComponent(escape(atob(b64))); } catch { text = atob(b64); }
+                                                    if (text) break outerLoop;
+                                                }
+                                            } catch (e) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         if (text) {
                             const processedText = cleanAndFormatVtt(text);
                             const blob = new Blob([processedText], { type: 'text/vtt' });
@@ -1635,8 +1721,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
         try {
-            // Security check: only allow trusted origins if possible, but for universal player we allow all
-            const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+            let payload = event.data;
+            if (typeof payload === 'string') {
+                try {
+                    payload = JSON.parse(payload);
+                } catch (e) {
+                    if (payload.includes(':')) {
+                        const parts = payload.split(':');
+                        const num = parseFloat(parts[1]);
+                        if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
+                    } else {
+                        const num = parseFloat(payload);
+                        if (!isNaN(num)) payload = { currentTime: num };
+                    }
+                }
+            }
 
             if (!payload) return;
 
@@ -1735,12 +1834,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     // Fallback playhead timer when iframe doesn't send postMessage events continuously
     useEffect(() => {
-        if (!isIframe) return;
+        if (!isIframe || !isPlaying) return;
 
         const interval = setInterval(() => {
             const now = performance.now();
-            // If no postMessage timeupdate received in last 1000ms, advance local currentTime
-            if (now - lastMessageTimeRef.current > 1000) {
+            // Only advance local currentTime if player is actively playing AND no postMessage timeupdate received in last 1200ms
+            if (isPlaying && (now - lastMessageTimeRef.current > 1200)) {
                 setCurrentTime(prev => {
                     const next = prev + 1;
                     lastReceivedTimeRef.current = next;
@@ -1750,7 +1849,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [isIframe]);
+    }, [isIframe, isPlaying]);
 
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
@@ -2358,9 +2457,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         maxMaxBufferLength: 120,
                         maxBufferSize: 60 * 1024 * 1024,
                         backBufferLength: 30,
-                        maxBufferHole: 0.5,
+                        maxBufferHole: 0.8,
                         highBufferWatchdogPeriod: 2,
-                        nudgeMaxRetry: 10,
+                        nudgeMaxRetry: 20,
+                        nudgeOffset: 0.2,
                         manifestLoadingMaxRetry: 10,
                         manifestLoadingRetryDelay: 500,
                         levelLoadingMaxRetry: 10,
@@ -2380,6 +2480,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             if (onLoad) onLoad();
                         });
                         hls.on(window.Hls.Events.ERROR, (_: any, data: any) => {
+                            // Non-fatal buffer stall auto-recovery (resolves bufferStalledError & bufferNudgeOnStall)
+                            if (data.details === 'bufferStalledError' || data.details === 'bufferNudgeOnStall' || data.details === 'bufferSeekOverHole') {
+                                console.warn("[UNIVERSAL-PLAYER] HLS buffer stall detected, nudging playhead past gap:", data.details);
+                                hls.startLoad();
+                                if (videoRef.current && !videoRef.current.paused) {
+                                    videoRef.current.currentTime += 0.15;
+                                    videoRef.current.play().catch(() => {});
+                                }
+                                return;
+                            }
+
                             if (data.fatal) {
                                 switch (data.type) {
                                     case window.Hls.ErrorTypes.NETWORK_ERROR:

@@ -3712,17 +3712,39 @@ const PlayerControlsCustomizer: React.FC = () => {
                 </div>
 
                 {/* Vertical Offset */}
-                <div className="space-y-1">
+                <div className="space-y-2">
                     <div className="flex justify-between text-[11px] font-black uppercase text-gray-400">
-                        <span>دووری لە لێوارەکەوە (Offset)</span>
-                        <span className="font-mono text-rose-500">{localConfig.controlsOffset}px</span>
+                        <span>دووری لە لێوارەکەوە (Offset Range)</span>
+                        <span className="font-mono text-rose-500 font-bold">{localConfig.controlsOffset}px</span>
                     </div>
                     <input
-                        type="range" min="8" max="120" step="1"
+                        type="range" min="0" max="500" step="2"
                         value={localConfig.controlsOffset}
                         onChange={(e) => setLocalConfig({ ...localConfig, controlsOffset: Number(e.target.value) })}
-                        className="w-full accent-rose-600 bg-white/10 h-1.5 rounded-lg appearance-none cursor-pointer"
+                        className="w-full accent-rose-600 bg-white/10 h-2 rounded-lg appearance-none cursor-pointer"
                     />
+                    {/* Quick Presets */}
+                    <div className="flex gap-1.5 pt-1">
+                        {[
+                            { label: 'خوارەوە (20px)', val: 20 },
+                            { label: 'سەرەوە (120px)', val: 120 },
+                            { label: 'زۆر بەرز (240px)', val: 240 },
+                            { label: 'لوتکە (380px)', val: 380 }
+                        ].map(p => (
+                            <button
+                                key={p.val}
+                                type="button"
+                                onClick={() => setLocalConfig({ ...localConfig, controlsOffset: p.val })}
+                                className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                                    localConfig.controlsOffset === p.val
+                                        ? 'bg-rose-600 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                                }`}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 

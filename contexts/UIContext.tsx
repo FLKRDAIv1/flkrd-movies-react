@@ -310,32 +310,43 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             setPlayerConfig(prev => ({ ...prev, ...newPlayerConfig }));
           }
         }
-      } catch (err) {
-        console.error('[UI CONTEXT] Failed to sync server priorities:', err);
+      } catch (err: any) {
+        if (!err?.message?.includes('exceed_egress_quota') && !err?.message?.includes('Payment Required')) {
+          console.warn('[UI CONTEXT] Failed to sync server priorities:', err);
+        }
       }
     };
 
     // Initial load
     syncServerPriorities();
 
-    // 🔴 REALTIME: Subscribe to server_config changes so ALL users update instantly
-    // when admin saves a new server order — no page refresh needed
-    const serverConfigChannel = supabase
-      .channel('server_config_realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'server_config' },
-        () => {
-          console.log('[UI CONTEXT] Server priority updated by admin — re-syncing...');
-          syncServerPriorities();
-        }
-      )
-      .subscribe();
+    // 🔴 REALTIME: Subscribe to server_config changes — only if Supabase is not quota-blocked
+    let serverConfigChannel: any = null;
+    (async () => {
+      try {
+        const { error: probe } = await supabase.from('server_config').select('id').limit(1);
+        if (probe) return; // 402 quota or error — skip realtime
+        serverConfigChannel = supabase
+          .channel('server_config_realtime')
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'server_config' },
+            () => {
+              console.log('[UI CONTEXT] Server priority updated by admin — re-syncing...');
+              syncServerPriorities();
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        // Skip realtime on network error
+      }
+    })();
 
     return () => {
-      serverConfigChannel.unsubscribe();
+      if (serverConfigChannel) serverConfigChannel.unsubscribe();
     };
   }, []);
+
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
@@ -602,8 +613,10 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         const ids = data.map((d: any) => String(d.tmdb_id));
         setTranslatedMovieIds(new Set(ids));
       }
-    } catch (e) {
-      console.error('[UI CONTEXT] Failed to load translated movie IDs:', e);
+    } catch (e: any) {
+      if (!e?.message?.includes('exceed_egress_quota') && !e?.message?.includes('Payment Required')) {
+        console.warn('[UI CONTEXT] Failed to load translated movie IDs:', e);
+      }
     }
   };
 
@@ -722,6 +735,27 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             } catch (e) {}
             return next;
           });
+
+          // LIVE UPDATE: Dispatch custom event and update local device localStorage cache so active video player updates live
+          if (partialSubtitleUrl && typeof window !== 'undefined') {
+            try {
+              const lk = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
+              localStorage.setItem(lk, JSON.stringify({
+                url: partialSubtitleUrl,
+                timestamp: Date.now(),
+                tmdbId: String(tmdbId),
+                mediaType: mediaType || 'movie',
+                season: season || 0,
+                episode: episode || 0,
+                targetLang
+              }));
+            } catch (e) {}
+
+            console.log(`[UI CONTEXT] Live progressive subtitle update (${progress}%):`, partialSubtitleUrl.substring(0, 50));
+            window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
+              detail: { subtitleUrl: partialSubtitleUrl, tmdbId } 
+            }));
+          }
         },
         translationControllerRef.current.signal,
         pauseStateRef.current
@@ -737,6 +771,21 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           showCelebration: true,
           subtitleUrl: result.subtitleUrl
         }));
+
+        // Store directly in localStorage for instant local reuse across all video players
+        try {
+          const lk = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
+          localStorage.setItem(lk, JSON.stringify({
+            url: result.subtitleUrl,
+            timestamp: Date.now(),
+            tmdbId: String(tmdbId),
+            mediaType: mediaType || 'movie',
+            season: season || 0,
+            episode: episode || 0,
+            targetLang
+          }));
+        } catch (e) {}
+
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
             detail: { subtitleUrl: result.subtitleUrl, tmdbId } 

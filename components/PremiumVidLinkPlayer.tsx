@@ -1059,6 +1059,33 @@ export default function PremiumVidLinkPlayer({
 
       try {
         const targetIds = Array.from(new Set([String(tmdbId || ''), String(imdbId || ''), String(activeId || ''), String(resolvedTmdbId || '')].filter(Boolean)));
+        
+        // 0. Check localStorage backup on device first (instant zero-latency fallback)
+        for (const tid of targetIds) {
+          for (const langKey of ['ku', 'badini']) {
+            const localKey = `flkrd_translated_sub_${tid}_${type || 'movie'}_${season || 0}_${episode || 0}_${langKey}`;
+            const rawLocal = localStorage.getItem(localKey);
+            if (rawLocal) {
+              try {
+                const parsed = JSON.parse(rawLocal);
+                if (isMounted) {
+                  console.log("[VIP-PLAYER] Automatically applying local device translation from localStorage");
+                  setResolvedSubDisplayName(parsed.fileName ? parsed.fileName.replace(/(_ku\.srt|\.srt)/gi, '') : 'Kurdish (Local Saved)');
+                  // Prefer raw srtContent — convert to blob URL for reliable display
+                  if (parsed?.srtContent) {
+                    const blob = new Blob([parsed.srtContent], { type: 'text/plain' });
+                    setResolvedSubUrl(URL.createObjectURL(blob));
+                  } else if (parsed?.url) {
+                    setResolvedSubUrl(parsed.url);
+                  }
+                  return;
+                }
+              } catch (e) {}
+            }
+          }
+        }
+
+
         const { data: dbSubs } = await supabase
           .from('custom_subtitles')
           .select('*')
@@ -1138,9 +1165,15 @@ export default function PremiumVidLinkPlayer({
         if (resolvedSubUrl.startsWith('data:')) {
           const base64Part = resolvedSubUrl.split(',')[1] || '';
           try {
-            text = decodeURIComponent(escape(atob(base64Part)));
+            const binString = atob(base64Part);
+            const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+            text = new TextDecoder('utf-8').decode(bytes);
           } catch (bErr) {
-            text = atob(base64Part);
+            try {
+              text = decodeURIComponent(escape(atob(base64Part)));
+            } catch (e2) {
+              text = atob(base64Part);
+            }
           }
         } else if (resolvedSubUrl.startsWith('blob:')) {
           const response = await fetch(resolvedSubUrl);
@@ -1327,8 +1360,23 @@ export default function PremiumVidLinkPlayer({
         } catch (e) {}
       } else {
         // 2. Generic postMessage format from Videasy, SuperEmbed, etc.
-        const payload = event.data;
-        if (typeof payload === 'object') {
+        let payload = event.data;
+        if (typeof payload === 'string') {
+          try {
+            payload = JSON.parse(payload);
+          } catch (e) {
+            if (payload.includes(':')) {
+              const parts = payload.split(':');
+              const num = parseFloat(parts[1]);
+              if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
+            } else {
+              const num = parseFloat(payload);
+              if (!isNaN(num)) payload = { currentTime: num };
+            }
+          }
+        }
+
+        if (typeof payload === 'object' && payload !== null) {
           if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
           else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
           else if (typeof payload.time === 'number') extractedTime = payload.time;
@@ -1374,9 +1422,11 @@ export default function PremiumVidLinkPlayer({
 
   // Universal Fallback Timer: Advances playhead second-by-second for iframe sources that do not emit continuous postMessages
   useEffect(() => {
+    if (!isPlaying) return;
+
     const interval = setInterval(() => {
       const now = performance.now();
-      if (now - lastMessageTimeRef.current > 1000 && parsedCuesRef.current.length > 0) {
+      if (isPlaying && now - lastMessageTimeRef.current > 1200 && parsedCuesRef.current.length > 0) {
         const nextTime = lastReceivedTimeRef.current + 1;
         lastReceivedTimeRef.current = nextTime;
         const offsetSec = subtitleOffsetRef.current / 1000;
@@ -1386,7 +1436,7 @@ export default function PremiumVidLinkPlayer({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isPlaying]);
 
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
@@ -2899,35 +2949,8 @@ export default function PremiumVidLinkPlayer({
 
 // VTT/SRT Parser Helper
 function parseVttCues(vttText: string) {
-  const cues: any[] = [];
-  if (!vttText || typeof vttText !== 'string') return cues;
-
-  const cleanedText = vttText
-    .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
-    .replace(/\u00A0/g, ' ');
-
-  const blocks = cleanedText.split(/\r?\n\r?\n/);
-  
-  for (const block of blocks) {
-    if (block.includes('-->')) {
-      const lines = block.split(/\r?\n/);
-      const timeLine = lines.find(l => l.includes('-->'));
-      if (!timeLine) continue;
-
-      const [startStr, endStr] = timeLine.split('-->').map(s => s.trim());
-      const start = parseTime(startStr);
-      const end = parseTime(endStr);
-      const rawTextLines = lines.slice(lines.indexOf(timeLine) + 1);
-      const filteredLines = rawTextLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
-      const text = filteredLines.join('\n')
-        .replace(/<[^>]*>/g, '')
-        .replace(/\{[^}]+\}/g, '')
-        .trim();
-      
-      if (text && !isNaN(start) && !isNaN(end)) cues.push({ start, end, text });
-    }
-  }
-
+  if (!vttText || typeof vttText !== 'string') return [];
+  const cues = subtitleService.parseVtt(vttText);
   return cues.map((c, i) => ({ ...c, index: i }));
 }
 

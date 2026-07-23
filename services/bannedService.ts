@@ -140,15 +140,29 @@ class BannedService {
                 );
             channel.subscribe((status) => {
                 if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    // Silent handling for WebSocket connection issues
+                    // Silent - Supabase may be quota-blocked (402), no reconnect spam
                 }
             });
             return channel;
         } catch (e) {
-            // Silent catch
+            // Silent catch - quota or network error
         }
     }
 }
 
 export const bannedService = new BannedService();
-bannedService.setupRealtime(); // Initialize immediately
+
+// Only initialize realtime if Supabase appears reachable (not quota-blocked)
+// Use a one-shot fetch check before subscribing to prevent WebSocket reconnect loops
+(async () => {
+    try {
+        const { data, error } = await supabase.from('banned_content').select('content_id').limit(1);
+        if (!error) {
+            bannedService.setupRealtime();
+        }
+        // If error (e.g. 402 quota), skip realtime silently — fetchBannedList still works via cache
+    } catch (e) {
+        // Skip realtime on network failure
+    }
+})();
+

@@ -47,7 +47,10 @@ export async function fetchSubtitleEdits(key: SubtitleEditKey): Promise<Map<numb
     .eq('language', language);
 
   if (error) {
-    console.error('[SubtitleEditService] Failed to fetch edits:', error.message);
+    // Silently ignore quota/egress errors (402) from Supabase - not a bug
+    if (!error.message?.includes('exceed_egress_quota') && !error.message?.includes('Payment Required')) {
+      console.warn('[SubtitleEditService] Failed to fetch edits:', error.message);
+    }
     return new Map();
   }
 

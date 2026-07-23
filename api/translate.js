@@ -239,7 +239,7 @@ export default async function handler(req, res) {
             }
 
             if (translatedJoined) {
-                const rawLines = translatedJoined.split('\n');
+                const rawLines = translatedJoined.split('\n').map(l => l.trim()).filter(Boolean);
                 const results = new Array(chunkItems.length);
                 let matchedCount = 0;
 
@@ -259,22 +259,32 @@ export default async function handler(req, res) {
                 };
 
                 for (const line of rawLines) {
-                    const normLine = normalizeDigits(line.trim());
-                    const match = normLine.match(/^\[(\d+)\]\s*(.*)$/);
+                    const normLine = normalizeDigits(line);
+                    const match = normLine.match(/^[\[\(\s]*(\d+)[\]\)\s.:\-]*\s*(.*)$/);
                     if (match) {
                         const idx = parseInt(match[1], 10);
                         if (idx >= 0 && idx < chunkItems.length && !results[idx]) {
-                            results[idx] = match[2].replace(/\{n\}/gi, '\n').trim();
+                            const cleanText = match[2].replace(/^[:.\-\s]+/, '').replace(/\{n\}/gi, '\n').trim();
+                            results[idx] = cleanText;
                             matchedCount++;
                         }
                     }
                 }
 
-                if (matchedCount >= Math.floor(chunkItems.length * 0.5)) {
+                // If at least 30% of indexed lines matched, fill remaining gaps and return
+                if (matchedCount >= Math.floor(chunkItems.length * 0.3)) {
                     for (let i = 0; i < chunkItems.length; i++) {
                         if (!results[i]) results[i] = chunkItems[i];
                     }
                     return results;
+                }
+
+                // 1-to-1 Positional Fallback: if line count matches input count exactly
+                if (rawLines.length === chunkItems.length) {
+                    return rawLines.map((line, i) => {
+                        const clean = normalizeDigits(line).replace(/^[\[\(\s]*\d+[\]\)\s.:\-]*\s*/, '').replace(/\{n\}/gi, '\n').trim();
+                        return clean || chunkItems[i];
+                    });
                 }
             }
 

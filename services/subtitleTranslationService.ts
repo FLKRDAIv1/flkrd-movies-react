@@ -147,14 +147,14 @@ export async function translateCuesToKurdish(
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 80;
+  const chunkSize = 25;
   const chunks: SubtitleCue[][] = [];
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 5; // Increased for faster batch processing
+  const concurrency = 3;
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
@@ -231,10 +231,9 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   let srt = '';
   let index = 1;
 
-  srt += `${index++}\n00:00:01,000 --> 00:00:04,000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
-  srt += `${index++}\n00:00:04,500 --> 00:00:07,500\nPowered by FLKRD STUDIO\n\n`;
+  srt += `${index++}\n00:00:01,000 --> 00:00:05,000\nژێرنووس کراوە لەلایەن زانا فارۆق | Powered by FLKRD STUDIO\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
+  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 5.5);
 
   filteredCues.forEach((cue) => {
     let timestamp = cue.timestamp.replace(/\./g, ',');
@@ -339,14 +338,20 @@ export async function translateAndSavePipeline(
         const mapped = Math.round(7 + p * 0.78);
         let partialUrl: string | undefined;
 
-        // Generate live base64 subtitle track every 20% progress so player can render subtitles live while translating
-        if (partialCues && (p - lastEmittedPct >= 20 || p >= 98)) {
+        // Generate live base64 subtitle track every 15% progress so player can render subtitles live while translating
+        if (partialCues && (p - lastEmittedPct >= 15 || p >= 98)) {
           lastEmittedPct = p;
           try {
             const partialSrt = compileToSRT(partialCues);
-            const base64Srt = btoa(unescape(encodeURIComponent(partialSrt)));
-            partialUrl = `data:text/plain;base64,${base64Srt}`;
-          } catch (e) {}
+            const bytes = new TextEncoder().encode(partialSrt);
+            const binString = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+            partialUrl = `data:text/plain;base64,${btoa(binString)}`;
+          } catch (e) {
+            try {
+              const base64Srt = btoa(unescape(encodeURIComponent(compileToSRT(partialCues))));
+              partialUrl = `data:text/plain;base64,${base64Srt}`;
+            } catch (e2) {}
+          }
         }
 
         if (onProgress) onProgress(mapped, status, partialUrl);
@@ -413,22 +418,28 @@ export async function translateAndSavePipeline(
       console.warn("[SUBTITLE-PIPELINE] LocalStorage save warning:", e);
     }
 
-    // Registering subtitle in Supabase Postgres registry using upsert to avoid DELETE CORS / 409 Duplicate Key Conflict
-    const { error: dbErr } = await supabase
-      .from('custom_subtitles')
-      .upsert({
-        tmdb_id: String(tmdbId),
-        media_type: mediaType || 'movie',
-        language: targetLang,
-        subtitle_url: resolvedPublicUrl,
-        file_name: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`,
-        season: season || 0,
-        episode: episode || 0
-      }, {
-        onConflict: 'tmdb_id,media_type,language,season,episode'
-      });
+    // Registering subtitle in Supabase Postgres registry using upsert
+    try {
+      const { error: dbErr } = await supabase
+        .from('custom_subtitles')
+        .upsert({
+          tmdb_id: String(tmdbId),
+          media_type: mediaType || 'movie',
+          language: targetLang,
+          subtitle_url: resolvedPublicUrl,
+          file_name: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`,
+          season: season || 0,
+          episode: episode || 0
+        }, {
+          onConflict: 'tmdb_id,media_type,language,season,episode'
+        });
 
-    if (dbErr) throw dbErr;
+      if (dbErr) {
+        console.warn("[SUBTITLE-PIPELINE] Supabase db registry warning (quota/network):", dbErr.message);
+      }
+    } catch (dbException) {
+      console.warn("[SUBTITLE-PIPELINE] Supabase db registry exception:", dbException);
+    }
 
     // Realtime Global Broadcast Event: Notify all active clients watching this content
     try {

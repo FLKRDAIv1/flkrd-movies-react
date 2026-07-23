@@ -145,12 +145,13 @@ const Card: React.FC<{ children: React.ReactNode; className?: string; glow?: str
 );
 
 /* ─── Analytics Helpers ────────────────────────── */
-const AnimatedNumber: React.FC<{ value: number }> = ({ value }) => {
-  const [displayValue, setDisplayValue] = useState(value);
+const AnimatedNumber: React.FC<{ value?: number }> = ({ value = 0 }) => {
+  const safeVal = Number.isFinite(Number(value)) ? Number(value) : 0;
+  const [displayValue, setDisplayValue] = useState(safeVal);
 
   useEffect(() => {
-    let start = displayValue;
-    const end = value;
+    const end = Number.isFinite(Number(value)) ? Number(value) : 0;
+    const start = Number.isFinite(Number(displayValue)) ? Number(displayValue) : 0;
     if (start === end) return;
 
     const duration = 800; // ms
@@ -163,7 +164,7 @@ const AnimatedNumber: React.FC<{ value: number }> = ({ value }) => {
       const ease = progress * (2 - progress); // easeOutQuad
       const current = Math.round(start + (end - start) * ease);
       
-      setDisplayValue(current);
+      setDisplayValue(Number.isFinite(current) ? current : 0);
 
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -173,7 +174,8 @@ const AnimatedNumber: React.FC<{ value: number }> = ({ value }) => {
     requestAnimationFrame(animate);
   }, [value]);
 
-  return <>{displayValue.toLocaleString()}</>;
+  const numToShow = Number.isFinite(Number(displayValue)) ? Number(displayValue) : 0;
+  return <>{numToShow.toLocaleString()}</>;
 };
 
 const getFlagEmoji = (countryName: string): string => {
@@ -2266,9 +2268,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           {t('topCountries')}
                         </span>
                         <div className="space-y-3">
-                          {analytics.country_stats.length > 0 ? (
-                            analytics.country_stats.map((c) => {
-                              const total = analytics.total_visits || 1;
+                          {(analytics?.country_stats && Array.isArray(analytics.country_stats) && analytics.country_stats.length > 0) ? (
+                            analytics.country_stats.map((c: any) => {
+                              const total = analytics?.total_visits || 1;
                               const pct = Math.round((c.cnt / total) * 100);
                               return (
                                 <div key={c.country} className="flex flex-col gap-1.5">
@@ -2303,9 +2305,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           {t('deviceShare')}
                         </span>
                         <div className="space-y-3">
-                          {Object.keys(analytics.device_stats).length > 0 ? (
-                            Object.entries(analytics.device_stats).map(([device, count]) => {
-                              const total = analytics.total_visits || 1;
+                          {(analytics?.device_stats && Array.isArray(analytics.device_stats) && analytics.device_stats.length > 0) ? (
+                            analytics.device_stats.map((d: any) => {
+                              const device = d.device_type || 'Desktop';
+                              const count = d.cnt || 0;
+                              const total = analytics?.total_visits || 1;
                               const pct = Math.round(((count as number) / total) * 100);
                               return (
                                 <div key={device} className="flex flex-col gap-1.5">
