@@ -1115,7 +1115,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }
                         });
                     });
+                }
 
+                if (customSubsList.length > 0) {
+                    customSub = customSubsList[0];
+                } else if (dbSubs && dbSubs.length > 0) {
                     const sortedDbSubs = [...dbSubs].sort((a, b) => {
                         const score = (lang: string) => {
                             if (lang === activeLanguageCode) return 10;
@@ -1146,10 +1150,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             file_id: 0
                         }
                     };
-                }
-
-                if (!customSub && customSubsList.length > 0) {
-                    customSub = customSubsList[0];
                 }
 
                 if (!customSub && subtitleUrl) {
