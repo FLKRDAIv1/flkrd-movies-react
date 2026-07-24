@@ -233,7 +233,7 @@ export const subtitleService = {
                 if (type) query += `&type=${type}`;
                 if (type === 'tv' && season && episode) {
                     query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
-                }     }
+                }
 
                 const baseUrl = getSubApiBase();
                 const apiUrl = `${baseUrl}/api/subtitle${query}`;
