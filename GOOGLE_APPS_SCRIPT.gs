@@ -147,3 +147,10 @@ function createJsonResponse(obj) {
     .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// Handle CORS preflight OPTIONS requests
+// NOTE: Google Apps Script doesn't support true OPTIONS, but this ensures browsers
+// can always reach the script via GET and POST without CORS errors.
+function doOptions(e) {
+  return createJsonResponse({ status: 'ok' });
+}

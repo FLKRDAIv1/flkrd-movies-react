@@ -2890,6 +2890,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 kind="subtitles"
                                 srcLang="ku"
                                 label="Kurdish Sorani (Verified)"
+                                // crossOrigin REQUIRED for external URLs — without it browsers silently block track loading
+                                crossOrigin="anonymous"
                                 default
                             />
                         )}

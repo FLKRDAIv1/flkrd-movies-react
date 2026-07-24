@@ -595,12 +595,24 @@ export const subtitleService = {
                     text = new TextDecoder('utf-8').decode(new Uint8Array(buffer));
                 }
                 
-                // Process VTT (SRT-to-VTT + Offset)
+                // Process SRT → VTT conversion + Offset
                 let processedText = text;
-                if (!processedText.startsWith('WEBVTT')) {
-                    processedText = 'WEBVTT\n\n' + processedText
-                        .replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2')
-                        .replace(/^\d+\r?$/gm, '');
+                if (!processedText.trim().startsWith('WEBVTT')) {
+                    // Remove BOM and directional marks
+                    processedText = processedText
+                        .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+                        .replace(/\r\n/g, '\n')
+                        .replace(/\r/g, '\n')
+                        // Convert SRT timestamps: 00:00:00,000 → 00:00:00.000
+                        .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+                        // Remove standalone SRT sequence numbers (lines with only digits)
+                        .replace(/^[ \t]*\d+[ \t]*$/gm, '')
+                        // Strip HTML font tags left by some subtitle editors
+                        .replace(/<font[^>]*>/gi, '')
+                        .replace(/<\/font>/gi, '')
+                        // Collapse triple+ blank lines into double
+                        .replace(/\n{3,}/g, '\n\n');
+                    processedText = 'WEBVTT\n\n' + processedText.trimStart();
                 }
 
                 if (offset !== 0) {
@@ -631,10 +643,18 @@ export const subtitleService = {
                 .replace(/\r/g, '\n');
 
             if (!processedText.trim().startsWith('WEBVTT')) {
-                // SRT → VTT: replace commas in timestamps, remove sequence numbers, add header
-                processedText = 'WEBVTT\n\n' + processedText
-                    .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')  // fix timestamps
-                    .replace(/^\d+\s*$/gm, '');                             // remove seq numbers
+                // SRT → VTT: full robust conversion pipeline
+                processedText = processedText
+                    // Convert SRT timestamps: 00:00:00,000 → 00:00:00.000
+                    .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+                    // Remove standalone SRT sequence numbers
+                    .replace(/^[ \t]*\d+[ \t]*$/gm, '')
+                    // Strip residual HTML font tags
+                    .replace(/<font[^>]*>/gi, '')
+                    .replace(/<\/font>/gi, '')
+                    // Collapse extra blank lines
+                    .replace(/\n{3,}/g, '\n\n');
+                processedText = 'WEBVTT\n\n' + processedText.trimStart();
             }
 
             if (offset !== 0) {
