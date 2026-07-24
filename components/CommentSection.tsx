@@ -14,10 +14,11 @@ interface Comment {
   created_at: string;
   movie_id: string;
   media_type: string;
-  user_id: string;
+  user_id: string | null;
   user_name: string;
-  user_email: string;
-  avatar_url: string | null;
+  user_email: string | null;
+  user_avatar: string | null; // DB column is user_avatar
+  avatar_url: string | null;  // also supported as alias
   content: string;
   parent_id: string | null;
 }
@@ -75,33 +76,24 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     };
   }, [user]);
 
-  // Fetch comments safely with fallback
+  // Fetch comments — uses correct column name 'movie_id' (text) matching DB schema
   const fetchComments = async () => {
     try {
-      const numId = Number(cleanId);
-      const isNum = !isNaN(numId) && cleanId !== '' && cleanId !== null;
-
-      // Stage 1: Query with string movie_id
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from('comments')
         .select('*')
         .eq('movie_id', String(cleanId))
         .order('created_at', { ascending: true });
 
-      // Stage 2: If PostgREST 400 or type error occurs, try numeric movie_id
-      if (error && isNum) {
-        const numRes = await supabase
-          .from('comments')
-          .select('*')
-          .eq('movie_id', numId)
-          .order('created_at', { ascending: true });
-        data = numRes.data;
-        error = numRes.error;
-      }
-
       if (!error && data) {
-        setComments(data as Comment[]);
+        // Normalize: map user_avatar → avatar_url for display
+        const normalized = data.map((c: any) => ({
+          ...c,
+          avatar_url: c.avatar_url || c.user_avatar || null,
+        }));
+        setComments(normalized as Comment[]);
       } else {
+        if (error) console.warn('[CommentSection] fetch error:', error.message);
         setComments([]);
       }
     } catch (e) {
@@ -119,7 +111,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
         .channel(`comments_sync_${cleanId}_${mediaType}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${cleanId}` },
+          { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${String(cleanId)}` },
           () => { fetchComments(); }
         )
         .subscribe();
@@ -136,12 +128,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     setSubmitting(true);
     try {
       const { error } = await supabase.from('comments').insert([{
-        movie_id: cleanId,
+        movie_id: String(cleanId),
         media_type: mediaType,
         user_id: user.id,
         user_name: myName,
         user_email: user.email,
-        avatar_url: myAvatarUrl,
+        user_avatar: myAvatarUrl,  // DB column name
+        avatar_url: myAvatarUrl,   // also store in avatar_url for compat
         content: newComment.trim(),
         parent_id: null,
       }]);
@@ -161,12 +154,13 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     setSubmitting(true);
     try {
       const { error } = await supabase.from('comments').insert([{
-        movie_id: cleanId,
+        movie_id: String(cleanId),
         media_type: mediaType,
         user_id: user.id,
         user_name: myName,
         user_email: user.email,
-        avatar_url: myAvatarUrl,
+        user_avatar: myAvatarUrl,  // DB column name
+        avatar_url: myAvatarUrl,   // also store in avatar_url for compat
         content: replyContent.trim(),
         parent_id: parentId,
       }]);
