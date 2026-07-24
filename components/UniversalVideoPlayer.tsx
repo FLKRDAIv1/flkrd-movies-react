@@ -178,13 +178,20 @@ const cardVariants = {
 
 
 function cleanAndFormatVtt(text: string): string {
+    if (!text) return 'WEBVTT\n\n';
     let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    // Remove lines that consist solely of digits (cue index lines) or contain timestamps / arrow lines
-    cleaned = cleaned.split('\n').filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->')).join('\n');
+    // Remove BOM and directional formatting characters
+    cleaned = cleaned.replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '').replace(/\u00A0/g, ' ');
 
     if (!cleaned.trim().startsWith('WEBVTT')) {
-        cleaned = 'WEBVTT\n\n' + cleaned.replace(/(\d+:\d+:\d+),(\d+)/g, '$1.$2');
+        // SRT to VTT: replace comma in timestamps with dot and remove standalone cue index numbers
+        const vttBody = cleaned
+            .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+            .replace(/(\d{1,2}:\d{2}),(\d{3})/g, '00:$1.$2')
+            .replace(/^\d+\s*$/gm, '');
+
+        cleaned = 'WEBVTT\n\n' + vttBody;
     }
     return cleaned;
 }
@@ -1062,11 +1069,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     };
 
     const handleSearchAllSubs = async () => {
-        if (!imdbId) return;
+        const searchId = imdbId || (tmdbId ? String(tmdbId) : '');
+        if (!searchId) return;
         setIsSearchingSubs(true);
         try {
-            console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for imdbId:", imdbId);
-            const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'all', true);
+            console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for ID:", searchId);
+            const results = await subtitleService.searchSubtitles(searchId, contentType, season, episode, 'all', true, tmdbId ? String(tmdbId) : undefined);
             const list = Array.isArray(results) ? results : [];
             const safeList = list.filter(s => s && s.attributes);
             setAvailableSubsWithVirtual(safeList);
@@ -1121,14 +1129,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
 
             try {
-                // 1. Fetch available subs from OpenSubtitles if imdbId is present
+                // 1. Fetch available subs from OpenSubtitles/SubDL/Kurdsubtitle across all active engines
                 let safeResults: SubtitleResult[] = [];
-                if (imdbId) {
+                const searchId = imdbId || (tmdbId ? String(tmdbId) : '');
+                if (searchId) {
                     try {
-                        const results = await subtitleService.searchSubtitles(imdbId, contentType, season, episode, 'all', true);
+                        const results = await subtitleService.searchSubtitles(searchId, contentType, season, episode, 'all', true, tmdbId ? String(tmdbId) : undefined);
                         safeResults = Array.isArray(results) ? results.filter(s => s && s.attributes) : [];
                     } catch (openSubErr) {
-                        console.warn("[UNIVERSAL-PLAYER] OpenSubtitles search failed:", openSubErr);
+                        console.warn("[UNIVERSAL-PLAYER] Subtitle search failed:", openSubErr);
                     }
                 }
 
