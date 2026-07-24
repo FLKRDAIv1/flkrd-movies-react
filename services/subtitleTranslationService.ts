@@ -217,9 +217,7 @@ export function compileToVTT(cues: SubtitleCue[]): string {
   vtt += `00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
   vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 7.5);
-
-  filteredCues.forEach((cue) => {
+  cues.forEach((cue) => {
     const timestamp = cue.timestamp.replace(/,/g, '.');
     vtt += `${timestamp}\n${cue.text}\n\n`;
   });
@@ -236,9 +234,7 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   // Custom intro credit Cue 2 (2 seconds later: FLKRD STUDIO watermark)
   srt += `${index++}\n00:00:06,000 --> 00:00:10,000\n⚡ POWERED BY FLKRD STUDIO ⚡\n\n`;
 
-  const filteredCues = cues.filter(cue => timestampToSeconds(cue.timestamp) >= 10.2);
-
-  filteredCues.forEach((cue) => {
+  cues.forEach((cue) => {
     let timestamp = cue.timestamp.replace(/\./g, ',');
     
     const parts = timestamp.split('-->');

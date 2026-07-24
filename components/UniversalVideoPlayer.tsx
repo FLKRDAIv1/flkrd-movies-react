@@ -956,15 +956,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     useEffect(() => {
         const handleTranslationEvent = (e: any) => {
             const url = e.detail?.subtitleUrl || e.detail;
+            const eventTmdbId = e.detail?.tmdbId || tmdbId || imdbId;
             if (url) {
-                console.log("[UNIVERSAL-PLAYER] Received flkrd-subtitle-translated event:", url);
+                console.log("[UNIVERSAL-PLAYER] Received flkrd-subtitle-translated event - auto-applying to player:", url);
+                const trackId = `custom-db-${eventTmdbId}`;
+                const newTrack: SubtitleResult = {
+                    id: trackId,
+                    attributes: {
+                        language: 'ku',
+                        display_name: '[ژێرنووسی کوردی وەرگێڕدراو]',
+                        url: url,
+                        file_id: 0
+                    }
+                };
                 setLocalSubtitleUrl(url);
+                setKurdishSub(newTrack);
+                setCurrentSubId(trackId);
                 setShowSubtitles(true);
+                setKuCCNotificationVisible(false);
+                setAvailableSubs(prev => {
+                    const filtered = prev.filter(s => s.id !== trackId);
+                    return [newTrack, ...filtered];
+                });
             }
         };
         window.addEventListener('flkrd-subtitle-translated', handleTranslationEvent);
         return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationEvent);
-    }, []);
+    }, [tmdbId, imdbId]);
 
     // Fetch and parse VTT whenever localSubtitleUrl changes
     useEffect(() => {
@@ -1663,28 +1681,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const subUrl = activeTranslation.subtitleUrl;
             if (localSubtitleUrl !== subUrl) {
                 setLocalSubtitleUrl(subUrl);
+                setShowSubtitles(true);
+                setKuCCNotificationVisible(false);
 
                 // Add or update the live Kurdish track in available tracks
                 const trackId = `custom-db-${activeTranslation.tmdbId}`;
-                setAvailableSubs(prev => {
-                    const existingIndex = prev.findIndex(s => s.id === trackId);
-                    const newTrack: SubtitleResult = {
-                        id: trackId,
-                        attributes: {
-                            language: 'ku',
-                            display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
-                            url: subUrl,
-                            file_id: 0
-                        }
-                    };
-                    if (existingIndex > -1) {
-                        const updated = [...prev];
-                        updated[existingIndex] = newTrack;
-                        return updated;
+                const newTrack: SubtitleResult = {
+                    id: trackId,
+                    attributes: {
+                        language: 'ku',
+                        display_name: `ژێرنووسی کوردی [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
+                        url: subUrl,
+                        file_id: 0
                     }
-                    return [newTrack, ...prev];
-                });
+                };
+                setKurdishSub(newTrack);
                 setCurrentSubId(trackId);
+                setAvailableSubs(prev => {
+                    const filtered = prev.filter(s => s.id !== trackId);
+                    return [newTrack, ...filtered];
+                });
             }
         }
     }, [activeTranslation, tmdbId, imdbId, localSubtitleUrl]);
