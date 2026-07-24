@@ -160,45 +160,61 @@ export default async function handler(req, res) {
                     console.warn("[BACKEND SUBTITLE PROXY] Scraper failed:", err.message);
                 }
 
-                // OpenSubtitles GET with Key Rotation Fallback (OpenSubtitles API requires numeric imdb_id without 'tt')
+                // OpenSubtitles GET with 3-tier Key & Query Rotation (IMDb -> TMDb -> Title Search)
                 let openSubsResults = [];
                 let lastError = null;
-                const cleanImdbNum = imdb_id ? String(imdb_id).replace(/^tt/i, '') : '';
+
+                const isImdbFormat = imdb_id && String(imdb_id).startsWith('tt');
+                const cleanImdbNum = isImdbFormat ? String(imdb_id).replace(/^tt/i, '') : '';
+                const effectiveTmdbId = tmdb_id || (!isImdbFormat && imdb_id ? imdb_id : null);
+                const movieTitle = await getMovieTitle(cleanImdbNum, effectiveTmdbId, type);
 
                 for (const key of OPENSUBTITLES_KEYS) {
                     try {
-                        let url = `https://api.opensubtitles.com/api/v1/subtitles?`;
-                        if (languages && languages !== 'all') url += `languages=${languages}&`;
-                        if (order_by) url += `order_by=${order_by}&`;
-                        if (order_direction) url += `order_direction=${order_direction}&`;
-                        if (type) url += `type=${type === 'tv' ? 'episode' : type}&`;
+                        const fetchOpenSubUrl = async (paramStr) => {
+                            let url = `https://api.opensubtitles.com/api/v1/subtitles?${paramStr}&`;
+                            if (languages && languages !== 'all') url += `languages=${languages}&`;
+                            if (order_by) url += `order_by=${order_by}&`;
+                            if (order_direction) url += `order_direction=${order_direction}&`;
+                            if (type) url += `type=${type === 'tv' ? 'episode' : type}&`;
+                            if (season_number) url += `season_number=${season_number}&`;
+                            if (episode_number) url += `episode_number=${episode_number}&`;
 
-                        // Prefer numeric imdb_id, fall back to tmdb_id
-                        if (cleanImdbNum) {
-                            url += `imdb_id=${encodeURIComponent(cleanImdbNum)}&`;
-                        } else if (tmdb_id) {
-                            url += `tmdb_id=${encodeURIComponent(tmdb_id)}&`;
-                        }
+                            const response = await fetch(url, {
+                                method: 'GET',
+                                headers: {
+                                    'Api-Key': key,
+                                    'User-Agent': USER_AGENT,
+                                    'Accept': 'application/json'
+                                }
+                            });
 
-                        if (season_number) url += `season_number=${season_number}&`;
-                        if (episode_number) url += `episode_number=${episode_number}&`;
-
-                        const response = await fetch(url, {
-                            method: 'GET',
-                            headers: {
-                                'Api-Key': key,
-                                'User-Agent': USER_AGENT,
-                                'Accept': 'application/json'
+                            if (response.ok) {
+                                const data = await response.json();
+                                return data.data || [];
                             }
-                        });
+                            return [];
+                        };
 
-                        if (response.ok || response.status === 404) {
-                            const data = await response.json();
-                            openSubsResults = data.data || [];
-                            lastError = null;
-                            break; // Stop key rotation on success
+                        // Tier 1: Query by IMDb ID
+                        if (cleanImdbNum) {
+                            openSubsResults = await fetchOpenSubUrl(`imdb_id=${encodeURIComponent(cleanImdbNum)}`);
                         }
-                        lastError = await response.json().catch(() => ({ error: `Status ${response.status}` }));
+
+                        // Tier 2: Query by TMDb ID if Tier 1 returned 0 results
+                        if (openSubsResults.length === 0 && effectiveTmdbId) {
+                            openSubsResults = await fetchOpenSubUrl(`tmdb_id=${encodeURIComponent(effectiveTmdbId)}`);
+                        }
+
+                        // Tier 3: Query by Movie Title if Tier 1 & 2 returned 0 results
+                        if (openSubsResults.length === 0 && movieTitle) {
+                            openSubsResults = await fetchOpenSubUrl(`query=${encodeURIComponent(movieTitle)}`);
+                        }
+
+                        if (openSubsResults.length > 0) {
+                            lastError = null;
+                            break;
+                        }
                     } catch (e) {
                         lastError = e;
                     }

@@ -169,7 +169,9 @@ export const subtitleService = {
     },
 
     async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
-        const cleanImdbId = imdbId ? (imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`) : '';
+        const isRawImdb = imdbId && String(imdbId).startsWith('tt');
+        const cleanImdbId = isRawImdb ? imdbId : '';
+        const effectiveTmdbId = tmdbId || (!isRawImdb && imdbId ? String(imdbId) : undefined);
         const promises: Promise<SubtitleResult[]>[] = [];
 
         // 1. Stremio Addon Proxy Strategy (if imdbId present)
@@ -231,7 +233,7 @@ export const subtitleService = {
             try {
                 let query = `?languages=all`;
                 if (cleanImdbId) query += `&imdb_id=${encodeURIComponent(cleanImdbId)}`;
-                if (tmdbId) query += `&tmdb_id=${encodeURIComponent(tmdbId)}`;
+                if (effectiveTmdbId) query += `&tmdb_id=${encodeURIComponent(effectiveTmdbId)}`;
                 if (type) query += `&type=${type}`;
                 if (type === 'tv' && season && episode) {
                     query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
