@@ -166,73 +166,74 @@ export const subtitleService = {
         }
 
         throw new Error("CRITICAL: All network routes failed. The subtitle server might be down.");
-    },
-
-    async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false) {
-        const cleanImdbId = imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`;
+      async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
+        const cleanImdbId = imdbId ? (imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`) : '';
         const promises: Promise<SubtitleResult[]>[] = [];
 
-        // 1. Stremio Addon Proxy Strategy
-        const fetchStremio = async (): Promise<SubtitleResult[]> => {
-            try {
-                const stremioPath = (type === 'tv' && season && episode) 
-                    ? `${cleanImdbId}:${season}:${episode}` 
-                    : cleanImdbId;
-                const stremioType = type === 'tv' ? 'series' : 'movie';
-                const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${stremioType}/${stremioPath}.json`;
-                console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
-                
-                const response = await this.fetchWithFallback(stremioUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                     if (data.subtitles && data.subtitles.length > 0) {
-                         return data.subtitles
-                             .filter((s: any) => {
-                                 const lang = (s.lang || '').toLowerCase();
-                                 return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
-                             })
-                             .map((s: any) => ({
-                                 id: s.id || `stremio-${Math.random()}`,
-                                 attributes: {
-                                     language: s.lang,
-                                     display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
-                                     url: s.url,
-                                     file_id: s.file_id || 0
-                                 }
-                             }));
+        // 1. Stremio Addon Proxy Strategy (if imdbId present)
+        if (cleanImdbId) {
+            const fetchStremio = async (): Promise<SubtitleResult[]> => {
+                try {
+                    const stremioPath = (type === 'tv' && season && episode) 
+                        ? `${cleanImdbId}:${season}:${episode}` 
+                        : cleanImdbId;
+                    const stremioType = type === 'tv' ? 'series' : 'movie';
+                    const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${stremioType}/${stremioPath}.json`;
+                    console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
+                    
+                    const response = await this.fetchWithFallback(stremioUrl);
+                    if (response.ok) {
+                        const data = await response.json();
+                         if (data.subtitles && data.subtitles.length > 0) {
+                             return data.subtitles
+                                 .filter((s: any) => {
+                                     const lang = (s.lang || '').toLowerCase();
+                                     return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
+                                 })
+                                 .map((s: any) => ({
+                                     id: s.id || `stremio-${Math.random()}`,
+                                     attributes: {
+                                         language: s.lang,
+                                         display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
+                                         url: s.url,
+                                         file_id: s.file_id || 0
+                                     }
+                                 }));
+                         }
                      }
-                 }
-             } catch (e) {
-                 console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
-             }
-             return [];
-         };
-         promises.push(fetchStremio());
- 
-         // 2. SubDL Discovery Strategy
-         if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
-             const fetchSubDL = async (): Promise<SubtitleResult[]> => {
-                 try {
-                     const queryLangs = 'all';
-                     const results = await this.searchSubDL(imdbId, type, season, episode, queryLangs);
-                     return results;
                  } catch (e) {
-                     console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
+                     console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
                  }
                  return [];
              };
-             promises.push(fetchSubDL());
-         }
- 
-         // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
-         const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
-             try {
-                 let query = `?imdb_id=${encodeURIComponent(cleanImdbId)}`;
-                 const langCodes = 'all';
-                 query += `&languages=${encodeURIComponent(langCodes)}`;
-                 if (type === 'tv' && season && episode) {
-                     query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
-                 }
+             promises.push(fetchStremio());
+        }
+
+        // 2. SubDL Discovery Strategy
+        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+            const fetchSubDL = async (): Promise<SubtitleResult[]> => {
+                try {
+                    const queryLangs = 'all';
+                    const results = await this.searchSubDL(imdbId, type, season, episode, queryLangs);
+                    return results;
+                } catch (e) {
+                    console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
+                }
+                return [];
+            };
+            promises.push(fetchSubDL());
+        }
+
+        // 3. OpenSubtitles REST API Strategy via Secure Vercel Proxy
+        const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
+            try {
+                let query = `?languages=all`;
+                if (cleanImdbId) query += `&imdb_id=${encodeURIComponent(cleanImdbId)}`;
+                if (tmdbId) query += `&tmdb_id=${encodeURIComponent(tmdbId)}`;
+                if (type) query += `&type=${type}`;
+                if (type === 'tv' && season && episode) {
+                    query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
+                }     }
 
                 const baseUrl = getSubApiBase();
                 const apiUrl = `${baseUrl}/api/subtitle${query}`;
