@@ -1183,15 +1183,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     });
                 });
 
-                let query = supabase
-                    .from('custom_subtitles')
-                    .select('*')
-                    .in('tmdb_id', targetIds)
-                    .eq('media_type', contentType || 'movie')
-                    .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
-                    .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
+                let dbSubs: any[] = [];
+                try {
+                    const supabasePromise = supabase
+                        .from('custom_subtitles')
+                        .select('*')
+                        .in('tmdb_id', targetIds)
+                        .eq('media_type', contentType || 'movie')
+                        .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
+                        .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
-                const { data: dbSubs } = await query;
+                    const timeoutPromise = new Promise<{ data: any[] }>((res) => setTimeout(() => res({ data: [] }), 1000));
+                    const res: any = await Promise.race([supabasePromise, timeoutPromise]);
+                    dbSubs = res?.data || [];
+                } catch (spErr) {
+                    console.warn("[UNIVERSAL-PLAYER] Supabase query bypassed gracefully:", spErr);
+                }
 
                 if (dbSubs && dbSubs.length > 0) {
                     dbSubs.forEach(dbSub => {
@@ -1270,11 +1277,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     finalSubs = [...customSubsList, ...safeResults];
                 }
 
+                let loadedText: string | null = null;
+
                 if (customSub) {
                     console.log("[UNIVERSAL-PLAYER] Automatically applying custom uploaded/translated subtitle:", customSub.attributes.url);
                     try {
-                        let text: string | null = null;
-
                         // Fast path: if this subtitle came from localStorage, read srtContent directly
                         if (customSub.id.startsWith('custom-local-')) {
                             const parts = customSub.id.replace('custom-local-', '').split('-');
@@ -1285,18 +1292,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             if (raw) {
                                 try {
                                     const parsed = JSON.parse(raw);
-                                    if (parsed?.srtContent) text = parsed.srtContent;
+                                    if (parsed?.srtContent) loadedText = parsed.srtContent;
                                 } catch (e) {}
                             }
                         }
 
                         // If this is a local-saved subtitle (data URI from localStorage), use directly
-                        if (!text && customSub.attributes.url?.startsWith('data:')) {
+                        if (!loadedText && customSub.attributes.url?.startsWith('data:')) {
                             const base64Part = customSub.attributes.url.split(',')[1] || '';
-                            try { text = decodeURIComponent(escape(atob(base64Part))); } catch { text = atob(base64Part); }
-                        } else if (!text) {
+                            try { loadedText = decodeURIComponent(escape(atob(base64Part))); } catch { loadedText = atob(base64Part); }
+                        } else if (!loadedText) {
                             try {
-                                text = await subtitleService.downloadSubtitle(customSub);
+                                const downloadPromise = subtitleService.downloadSubtitle(customSub);
+                                const timeoutPromise = new Promise<string | null>((res) => setTimeout(() => res(null), 1500));
+                                loadedText = await Promise.race([downloadPromise, timeoutPromise]);
                             } catch (downloadErr) {
                                 // Supabase Storage quota blocked (402) — try localStorage fallback
                                 const targetIdList = Array.from(new Set([String(tmdbId || ''), String(imdbId || '')].filter(Boolean)));
@@ -1307,14 +1316,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         if (raw) {
                                             try {
                                                 const parsed = JSON.parse(raw);
-                                                // Prefer raw srtContent if available
                                                 if (parsed?.srtContent) {
-                                                    text = parsed.srtContent;
+                                                    loadedText = parsed.srtContent;
                                                     break outerLoop;
                                                 } else if (parsed?.url?.startsWith('data:')) {
                                                     const b64 = parsed.url.split(',')[1] || '';
-                                                    try { text = decodeURIComponent(escape(atob(b64))); } catch { text = atob(b64); }
-                                                    if (text) break outerLoop;
+                                                    try { loadedText = decodeURIComponent(escape(atob(b64))); } catch { loadedText = atob(b64); }
+                                                    if (loadedText) break outerLoop;
                                                 }
                                             } catch (e) {}
                                         }
@@ -1323,8 +1331,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }
                         }
 
-                        if (text) {
-                            const processedText = cleanAndFormatVtt(text);
+                        if (loadedText) {
+                            const processedText = cleanAndFormatVtt(loadedText);
                             const blob = new Blob([processedText], { type: 'text/vtt' });
                             setLocalSubtitleUrl(URL.createObjectURL(blob));
                             setKurdishSub(customSub);
@@ -1335,16 +1343,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     } catch (err) {
                         console.warn("Failed to auto-apply custom subtitle:", err);
                     }
-                } else if (safeResults.length > 0) {
+                }
+
+                // If Supabase failed, returned empty text, or customSub couldn't be loaded, auto-translate OpenSubtitles/Stremio base CC!
+                if ((!customSub || !loadedText) && safeResults.length > 0) {
                     const foundEn = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
                         return lang === 'en' || lang === 'eng';
                     }) || safeResults[0];
 
                     if (foundEn) {
-                        // [AUTO APPLY] Automatically translate default base CC to Kurdish if not already loaded!
                         if (!subtitleUrl && !localSubtitleUrl) {
-                            console.log("[UNIVERSAL-PLAYER] Automatically translating default base CC to Kurdish...");
+                            console.log("[UNIVERSAL-PLAYER] Supabase fallback: Automatically translating default base CC to Kurdish...");
                             const targetLang = (language === 'badini') ? 'badini' : 'ku';
                             handleStartTranslation(foundEn, targetLang);
                         }
