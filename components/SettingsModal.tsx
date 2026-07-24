@@ -13,6 +13,7 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import EnableNotificationsModal from './EnableNotificationsModal';
 import { AdminBroadcastModal } from './AdminBroadcastModal';
+import BackendHealthInspectorModal from './BackendHealthInspectorModal';
 import Portal from './Portal';
 import { LiquidButton } from './ui/liquid-glass-button';
 import { updateService, UpdateCheckResult } from '../services/updateService';
@@ -507,6 +508,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+
   useEffect(() => {
     if ('Notification' in window) setPermission(Notification.permission);
   }, [isOpen]);
@@ -647,9 +650,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                    </Card>
                 </div>
                 
-                <Card className="p-5 mt-4 flex items-center justify-between border-red-500/20 bg-red-500/5">
+                <Card className="p-5 mt-4 flex items-center justify-between border-red-500/30 bg-red-600/10">
                     <div>
-                        <span className="text-[8px] font-black text-red-400 uppercase tracking-widest block mb-1">System Memory</span>
+                        <span className="text-[8px] font-black text-red-400 uppercase tracking-widest block mb-1">
+                          {(language === 'ku' || language === 'badini') ? 'پشکنینی ئۆتۆماتیکیی باکێند' : 'Backend Diagnostics'}
+                        </span>
+                        <span className="text-sm font-[1000] text-white uppercase tracking-wider">
+                          {(language === 'ku' || language === 'badini') ? 'تستکردنی سێرڤەر و ژێرنووسکان' : 'Backend Health Inspector'}
+                        </span>
+                    </div>
+                    <button 
+                        onClick={() => setIsInspectorOpen(true)}
+                        className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-red-600/30 flex items-center gap-1.5"
+                    >
+                        <Activity size={13} className="animate-pulse" />
+                        {(language === 'ku' || language === 'badini') ? 'پشکنین' : 'Run Inspector'}
+                    </button>
+                </Card>
+
+                <Card className="p-5 mt-3 flex items-center justify-between border-white/10 bg-white/5">
+                    <div>
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">System Memory</span>
                         <span className="text-sm font-[1000] text-white uppercase tracking-wider">Cache Purge</span>
                     </div>
                     <button 
@@ -2680,6 +2701,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     <AdminBroadcastModal
       isOpen={showBroadcastModal}
       onClose={() => setShowBroadcastModal(false)}
+    />
+    <BackendHealthInspectorModal
+      isOpen={isInspectorOpen}
+      onClose={() => setIsInspectorOpen(false)}
     />
     </div>
     </Portal>
