@@ -1025,25 +1025,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const handleIframeLoad = () => {
         setLoading(false);
         setIframeBlocked(false); // Reset blocked state on every new load
+        setIsPlaying(true);      // Enable active playhead state so timer advances currentTime for subtitle rendering
+
         if (onLoad) onLoad();
 
         // --- Iframe Block Detection ---
-        // When X-Frame-Options: DENY or CSP frame-ancestors blocks an embed,
-        // the iframe fires onLoad but the contentDocument is either null or an error page.
-        // We use a 4-second timeout: if no postMessage heartbeat arrives, we mark it blocked.
         if (iframeBlockedTimerRef.current) clearTimeout(iframeBlockedTimerRef.current);
         iframeBlockedTimerRef.current = setTimeout(() => {
             try {
                 const doc = iframeRef.current?.contentDocument;
-                // If we can access contentDocument but it has no body or a blank title — it's blocked
                 if (doc && (!doc.body || doc.body.innerHTML.trim() === '' || doc.title.toLowerCase().includes('refused'))) {
                     console.warn('[PLAYER] Iframe appears blocked (empty document detected). Marking as blocked.');
                     setIframeBlocked(true);
                 }
             } catch (e) {
                 // Cross-origin access throws — means it loaded from a different origin, which is NORMAL.
-                // Only flag as blocked if no postMessage heartbeat arrived in 4s.
-                // We let this silently pass — most valid embeds cross-origin.
             }
         }, 4000);
 
@@ -1140,7 +1136,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const customSubsList: SubtitleResult[] = [];
                 const activeLanguageCode = (language === 'badini') ? 'badini' : 'ku';
 
-                const targetIds = Array.from(new Set([String(tmdbId || ''), String(imdbId || ''), String(idToQuery || '')].filter(Boolean)));
+                const rawImdb = imdbId ? String(imdbId).replace(/^tt/, '') : '';
+                const cleanImdb = imdbId ? (String(imdbId).startsWith('tt') ? String(imdbId) : `tt${imdbId}`) : '';
+                const targetIds = Array.from(new Set([
+                    String(tmdbId || ''),
+                    String(imdbId || ''),
+                    cleanImdb,
+                    rawImdb,
+                    String(idToQuery || '')
+                ].filter(Boolean)));
 
                 // 0. Check localStorage for locally translated subtitle backup on this device
                 targetIds.forEach(tId => {
@@ -1576,12 +1580,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const text = await subtitleService.downloadSubtitle(sub);
 
             if (text) {
-                // Just create blob for native track fallback (HLS) and set localSubtitleUrl.
-                // The new unified useEffect will automatically fetch/parse/shift cues from this URL.
                 const processedText = cleanAndFormatVtt(text);
-                const blob = new Blob([processedText], { type: 'text/vtt' });
-                setLocalSubtitleUrl(URL.createObjectURL(blob));
+                const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                setLocalSubtitleUrl(blobUrl);
+                const cues = subtitleService.parseVtt(processedText);
+                if (cues && cues.length > 0) {
+                    setSubtitleCues(cues);
+                }
                 setCurrentSubId(sub.id);
+                setShowSubtitles(true);
                 setShowSubSettings(false);
             }
         } finally {
