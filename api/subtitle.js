@@ -2,7 +2,7 @@
 // It proxies all subtitle requests (Kurdish Scraper, OpenSubtitles, and SubDL) to bypass CORS and Cloudflare blocks.
 
 const TMDB_API_KEY = process.env.VITE_TMDB_API_KEY;
-const USER_AGENT = 'flkrd_movies_v1';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const OPENSUBTITLES_KEYS = process.env.VITE_OPENSUBTITLES_API_KEY
     ? process.env.VITE_OPENSUBTITLES_API_KEY.split(',').map(k => k.trim())

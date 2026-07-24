@@ -668,7 +668,20 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     episode: number = 0,
     targetLang: 'ku' | 'badini' = 'ku'
   ) => {
-    // Abort any existing translation first
+    // If translation for the EXACT SAME subtitle track is ALREADY running, ignore duplicate start call!
+    if (
+      activeTranslation.isTranslating &&
+      String(activeTranslation.tmdbId) === String(tmdbId) &&
+      activeTranslation.mediaType === mediaType &&
+      activeTranslation.season === season &&
+      activeTranslation.episode === episode &&
+      (activeTranslation.sub?.id === sub?.id || activeTranslation.sub?.attributes?.url === sub?.attributes?.url)
+    ) {
+      console.log("[UI CONTEXT] Translation already actively running for this track — reusing pipeline.");
+      return;
+    }
+
+    // Abort any existing translation first if switching to a different movie or track
     if (translationControllerRef.current) {
       translationControllerRef.current.abort();
     }

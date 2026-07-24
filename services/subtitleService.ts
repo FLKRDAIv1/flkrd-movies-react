@@ -467,13 +467,22 @@ export const subtitleService = {
 
             console.log("[SUBTITLE SERVICE] Downloading subtitle from resolved link:", link);
             let response: Response | null = null;
+            
+            // Stremio, SubDL, and OpenSubtitles external CDNs block browser CORS — route directly via secure Vercel proxy!
+            const isExternalCdn = link.includes('strem.io') || link.includes('subdl') || link.includes('opensubtitles') || link.includes('kurdsubtitle');
+            
             try {
-                response = await fetch(link);
-                if (!response || !response.ok) {
+                if (isExternalCdn) {
+                    console.log("[SUBTITLE SERVICE] Auto-routing external CDN link via secure Vercel proxy:", link);
                     response = await this.fetchWithFallback(link);
+                } else {
+                    response = await fetch(link);
+                    if (!response || !response.ok) {
+                        response = await this.fetchWithFallback(link);
+                    }
                 }
             } catch (netErr) {
-                console.warn("[SUBTITLE SERVICE] Direct fetch failed, trying proxy fallback:", netErr);
+                console.warn("[SUBTITLE SERVICE] Primary fetch failed, trying fallback proxy:", netErr);
                 response = await this.fetchWithFallback(link);
             }
 
