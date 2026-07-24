@@ -1342,20 +1342,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }) || safeResults[0];
 
                     if (foundEn) {
-                        // [AUTO APPLY] Automatically download and apply the default English base subtitle if not already loaded!
+                        // [AUTO APPLY] Automatically translate default base CC to Kurdish if not already loaded!
                         if (!subtitleUrl && !localSubtitleUrl) {
-                            console.log("[UNIVERSAL-PLAYER] Automatically downloading default English base CC...");
-                            try {
-                                const text = await subtitleService.downloadSubtitle(foundEn);
-                                if (text) {
-                                    const processedText = cleanAndFormatVtt(text);
-                                    const blob = new Blob([processedText], { type: 'text/vtt' });
-                                    setLocalSubtitleUrl(URL.createObjectURL(blob));
-                                    setKuCCNotificationVisible(false); // No banner for English base
-                                }
-                            } catch (err: any) {
-                                console.warn("[UNIVERSAL-PLAYER] Base English CC auto-apply failed:", err?.message || err);
-                            }
+                            console.log("[UNIVERSAL-PLAYER] Automatically translating default base CC to Kurdish...");
+                            const targetLang = (language === 'badini') ? 'badini' : 'ku';
+                            handleStartTranslation(foundEn, targetLang);
                         }
                     }
                 }
@@ -1589,17 +1580,27 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const text = await subtitleService.downloadSubtitle(sub);
 
             if (text) {
-                const processedText = cleanAndFormatVtt(text);
-                const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
-                const blobUrl = URL.createObjectURL(blob);
-                setLocalSubtitleUrl(blobUrl);
-                const cues = subtitleService.parseVtt(processedText);
-                if (cues && cues.length > 0) {
-                    setSubtitleCues(cues);
+                const lang = (sub.attributes?.language || '').toLowerCase();
+                const isKurdish = lang === 'ku' || lang === 'ckb' || lang === 'badini' || lang.includes('kurd');
+
+                if (isKurdish) {
+                    const processedText = cleanAndFormatVtt(text);
+                    const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    setLocalSubtitleUrl(blobUrl);
+                    const cues = subtitleService.parseVtt(processedText);
+                    if (cues && cues.length > 0) {
+                        setSubtitleCues(cues);
+                    }
+                    setCurrentSubId(sub.id);
+                    setShowSubtitles(true);
+                    setShowSubSettings(false);
+                } else {
+                    // Automatically trigger translation to Kurdish for non-Kurdish subtitles!
+                    setShowSubSettings(false);
+                    const targetLang = (language === 'badini') ? 'badini' : 'ku';
+                    await handleStartTranslation(sub, targetLang);
                 }
-                setCurrentSubId(sub.id);
-                setShowSubtitles(true);
-                setShowSubSettings(false);
             }
         } finally {
             setIsSearchingSubs(false);
@@ -1941,7 +1942,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     // Source-independent smooth playhead timer — ensures custom subtitles render 100% reliably regardless of embed source
     useEffect(() => {
-        if (!isIframe || !isPlaying) return;
+        if (!isIframe) return;
 
         playStartTimeRef.current = performance.now();
         playStartCurrentTimeRef.current = currentTimeRef.current;
@@ -1960,7 +1961,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }, 250);
 
         return () => clearInterval(interval);
-    }, [isIframe, isPlaying]);
+    }, [isIframe]);
 
     // Fullscreen change listener to sync state and redirect iframe fullscreen to container
     useEffect(() => {
