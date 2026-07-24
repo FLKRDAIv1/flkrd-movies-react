@@ -252,7 +252,7 @@ export default async function handler(req, res) {
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 5000);
+            const timer = setTimeout(() => ctrl.abort(), 6000);
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
@@ -264,7 +264,10 @@ export default async function handler(req, res) {
                 clearTimeout(timer);
                 if (response.ok) {
                     const data = await response.json();
-                    return (data && data.translation) ? data.translation : null;
+                    if (data && data.status === 'success') {
+                        return data.translations || data.translation || null;
+                    }
+                    return data ? (data.translations || data.translation || null) : null;
                 }
             } catch (err) {
                 clearTimeout(timer);
