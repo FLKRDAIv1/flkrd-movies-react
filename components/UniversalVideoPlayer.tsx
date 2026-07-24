@@ -3318,6 +3318,37 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     <span className="text-[10px] font-black uppercase hidden sm:inline">CC</span>
                 </button>
 
+                {/* ⚡ Subtitle ON/OFF Quick Toggle */}
+                {(subtitleCues.length > 0 || localSubtitleUrl) && (
+                    <button
+                        onClick={() => {
+                            setShowSubtitles(prev => !prev);
+                        }}
+                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubtitles
+                                ? 'bg-emerald-600/90 border-emerald-500 text-white shadow-emerald-600/40'
+                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/70'
+                            }`}
+                        title={(language === 'ku' || language === 'badini')
+                            ? (showSubtitles ? 'داخستنی ژێرنووس' : 'کردنەوەی ژێرنووس')
+                            : (showSubtitles ? 'Disable Subtitles' : 'Enable Subtitles')}
+                    >
+                        {showSubtitles ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/><line x1="4" y1="22" x2="20" y2="2"/>
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/>
+                            </svg>
+                        )}
+                        <span className="text-[10px] font-black uppercase hidden sm:inline">
+                            {showSubtitles
+                                ? ((language === 'ku' || language === 'badini') ? 'داخستن' : 'Sub On')
+                                : ((language === 'ku' || language === 'badini') ? 'کردنەوە' : 'Sub Off')}
+                        </span>
+                    </button>
+                )}
+
                 {/* Relink / Source Switcher — always show, even during loading */}
                 {sources && sources.length > 0 && (
                     <button
