@@ -248,7 +248,7 @@ export default async function handler(req, res) {
         // Helper: call Google Apps Script with 5s timeout (non-blocking fallback only)
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
-                       "https://script.google.com/macros/s/AKfycbxde4VzWWNB5_X_3U4e_7604PkI-02xFurowcP0fAqLpyZVzGpBbZN_PSIatZTj6f49nQ/exec";
+                       "https://script.google.com/macros/s/AKfycbz8iIzETpuRSOfxET24WLlvVTXHGJsWWVWhyVqGhY62fu_SDl4-J3PN2cqUMWO30cHRLQ/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
