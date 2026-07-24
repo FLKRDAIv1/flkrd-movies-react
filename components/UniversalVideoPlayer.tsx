@@ -1936,21 +1936,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => window.removeEventListener('message', handlePlayerMessages);
     }, [handlePlayerMessages]);
 
-    // Fallback playhead timer when iframe doesn't send postMessage events continuously
+    const playStartTimeRef = useRef<number>(0);
+    const playStartCurrentTimeRef = useRef<number>(0);
+
+    // Source-independent smooth playhead timer — ensures custom subtitles render 100% reliably regardless of embed source
     useEffect(() => {
         if (!isIframe || !isPlaying) return;
 
+        playStartTimeRef.current = performance.now();
+        playStartCurrentTimeRef.current = currentTimeRef.current;
+
         const interval = setInterval(() => {
             const now = performance.now();
-            // Only advance local currentTime if player is actively playing AND no postMessage timeupdate received in last 1200ms
-            if (isPlaying && (now - lastMessageTimeRef.current > 1200)) {
-                setCurrentTime(prev => {
-                    const next = prev + 1;
-                    lastReceivedTimeRef.current = next;
-                    return next;
-                });
+            const timeSinceLastMsg = now - lastMessageTimeRef.current;
+
+            // If an exact postMessage time update arrived in the last 1500ms, use postMessage time.
+            // Otherwise, advance local currentTime smoothly using elapsed wall-clock time!
+            if (timeSinceLastMsg > 1500) {
+                const elapsedSec = (now - playStartTimeRef.current) / 1000;
+                const nextTime = Math.max(0, playStartCurrentTimeRef.current + elapsedSec);
+                setCurrentTime(nextTime);
             }
-        }, 1000);
+        }, 250);
 
         return () => clearInterval(interval);
     }, [isIframe, isPlaying]);
