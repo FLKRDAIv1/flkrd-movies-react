@@ -147,14 +147,14 @@ export async function translateCuesToKurdish(
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 40;
+  const chunkSize = 30;
   const chunks: SubtitleCue[][] = [];
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 5;
+  const concurrency = 3;
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
@@ -176,22 +176,24 @@ export async function translateCuesToKurdish(
     }
 
     const batch = chunks.slice(i, i + concurrency);
-    const batchPromises = batch.map((chunk, batchIdx) => {
+    const batchPromises = batch.map(async (chunk, batchIdx) => {
+      if (batchIdx > 0) {
+        await new Promise(r => setTimeout(r, batchIdx * 30));
+      }
       const chunkIndex = i + batchIdx;
-      return translateChunkWithFallback(chunk, sourceLang, targetLang).then((translatedTexts) => {
-        if (signal?.aborted) return;
-        const offset = chunkIndex * chunkSize;
-        for (let j = 0; j < chunk.length; j++) {
-          const translated = translatedTexts[j] ?? chunk[j].text;
-          translatedCues[offset + j].text = translated.replace(/\s*\/\s*/g, '\n');
-        }
-        completedCount += chunk.length;
-        if (onProgress) {
-          const progressPct = Math.round((completedCount / cues.length) * 100);
-          const statusText = `Translating dialogue lines (${Math.min(completedCount, cues.length)} / ${cues.length})...`;
-          onProgress(progressPct, statusText, translatedCues);
-        }
-      });
+      const translatedTexts = await translateChunkWithFallback(chunk, sourceLang, targetLang);
+      if (signal?.aborted) return;
+      const offset = chunkIndex * chunkSize;
+      for (let j = 0; j < chunk.length; j++) {
+        const translated = translatedTexts[j] ?? chunk[j].text;
+        translatedCues[offset + j].text = translated.replace(/\s*\/\s*/g, '\n');
+      }
+      completedCount += chunk.length;
+      if (onProgress) {
+        const progressPct = Math.round((completedCount / cues.length) * 100);
+        const statusText = `Translating dialogue lines (${Math.min(completedCount, cues.length)} / ${cues.length})...`;
+        onProgress(progressPct, statusText, translatedCues);
+      }
     });
 
     await Promise.all(batchPromises);

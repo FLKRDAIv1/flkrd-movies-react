@@ -110,7 +110,7 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
-        // ⚡ Ultra-fast Multi-Q Google GTX POST Array Translator (~100ms response time, zero indexing overhead)
+        // ⚡ Multi-Q Google GTX POST Array Translator (8s timeout)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
             try {
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
                 const bodyParams = chunkItems.map(t => `q=${encodeURIComponent((t || '').replace(/\n/g, ' ')).slice(0, 1000)}`).join('&');
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -144,18 +144,20 @@ export default async function handler(req, res) {
                     }
                 }
             } catch (err) {
-                console.warn("[SERVER TRANSLATE] Multi-Q POST failed:", err.message);
+                // Silent fallback on abort/fetch failure
             }
             return null;
         };
 
-        // Primary single string Google Translate Web API fetcher using POST
+        // Primary single string Google Translate API fetcher (POST with GET fallback, 8s timeout)
         const translateWithGoogleAPI = async (t, src, tgt) => {
             if (!t || !t.trim()) return t || '';
+
+            // 1. Try POST first
             try {
                 const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t`;
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -174,8 +176,28 @@ export default async function handler(req, res) {
                         return data[0].map(x => x[0] || '').join('');
                     }
                 }
-            } catch (err) {
-                console.warn("[SERVER TRANSLATE] Google Translate POST failed:", err.message);
+            } catch (err) {}
+
+            // 2. Try GET fallback if text is under 1500 chars
+            if (t.length < 1500) {
+                try {
+                    const getUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(t)}`;
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+                    const response = await fetch(getUrl, {
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data && data[0]) {
+                            return data[0].map(x => x[0] || '').join('');
+                        }
+                    }
+                } catch (err) {}
             }
             return null;
         };
@@ -184,7 +206,7 @@ export default async function handler(req, res) {
         const translateSingle = async (t) => {
             if (!t || !t.trim()) return t || '';
             
-            // 0. Try Google Translate Free API first (ultra-fast)
+            // 0. Try Google Translate Free API first
             const googleRes = await translateWithGoogleAPI(t, source, actualTarget);
             if (googleRes) return googleRes;
 
@@ -223,14 +245,14 @@ export default async function handler(req, res) {
             return t; // Return original text if all translation engines fail
         };
 
-        // Helper: call Google Apps Script with tight 1.5s timeout (non-blocking fallback only)
+        // Helper: call Google Apps Script with 5s timeout (non-blocking fallback only)
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
                        "https://script.google.com/macros/s/AKfycbxde4VzWWNB5_X_3U4e_7604PkI-02xFurowcP0fAqLpyZVzGpBbZN_PSIatZTj6f49nQ/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 1500);
+            const timer = setTimeout(() => ctrl.abort(), 5000);
             try {
                 const response = await fetch(gasUrl, {
                     method: 'POST',
