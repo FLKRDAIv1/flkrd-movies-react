@@ -75,18 +75,35 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     };
   }, [user]);
 
-  // Fetch comments
+  // Fetch comments safely with fallback
   const fetchComments = async () => {
     try {
+      const searchId = String(cleanId);
       const { data, error } = await supabase
         .from('comments')
         .select('*')
-        .eq('movie_id', cleanId)
+        .eq('movie_id', searchId)
         .eq('media_type', mediaType)
         .order('created_at', { ascending: true });
-      if (!error && data) setComments(data as Comment[]);
+
+      if (!error && data) {
+        setComments(data as Comment[]);
+      } else {
+        // Fallback: search by movie_id alone if media_type column fails
+        const fallback = await supabase
+          .from('comments')
+          .select('*')
+          .eq('movie_id', searchId)
+          .order('created_at', { ascending: true });
+
+        if (!fallback.error && fallback.data) {
+          setComments(fallback.data as Comment[]);
+        } else {
+          setComments([]);
+        }
+      }
     } catch (e) {
-      // silent
+      setComments([]);
     } finally {
       setLoading(false);
     }
@@ -95,16 +112,20 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   useEffect(() => {
     fetchComments();
 
-    const channel = supabase
-      .channel(`comments_sync_${cleanId}_${mediaType}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${cleanId}` },
-        () => { fetchComments(); }
-      )
-      .subscribe();
+    try {
+      const channel = supabase
+        .channel(`comments_sync_${cleanId}_${mediaType}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${cleanId}` },
+          () => { fetchComments(); }
+        )
+        .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+      return () => { supabase.removeChannel(channel); };
+    } catch (err) {
+      // Ignore channel setup errors if real-time disabled
+    }
   }, [cleanId, mediaType]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
