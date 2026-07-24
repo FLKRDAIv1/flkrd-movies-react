@@ -811,6 +811,40 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           </div>
                         ) : layoutStyle === 'list' ? (
                           <div className="flex flex-col gap-2 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar" onPointerDownCapture={e => e.stopPropagation()}>
+                            {/* ⚡ Prominent Subtitle OFF Option */}
+                            <motion.div
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              onClick={() => {
+                                onSelectSub?.({ id: 'off', attributes: { language: 'off', display_name: 'Off', url: '', file_id: 0 } });
+                              }}
+                              role="button"
+                              tabIndex={0}
+                              className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                                currentSubId === 'off' || !showSubtitles
+                                  ? 'bg-red-600/20 border-red-500/50 text-white shadow-lg shadow-red-600/20'
+                                  : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 text-zinc-400'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+                                  currentSubId === 'off' || !showSubtitles ? 'bg-red-500/30 border-red-400/40 text-red-300' : 'bg-white/5 border-white/10 text-zinc-500'
+                                }`}>
+                                  <VolumeX size={15} />
+                                </div>
+                                <div className="flex flex-col text-left">
+                                  <span className="text-[13px] font-[1000] tracking-wide text-white" style={{ fontFamily: "'Zain', sans-serif" }}>
+                                    {isKu ? 'کوژاندنەوەی ژێرنووس (Off)' : 'Turn Off Subtitles (Off)'}
+                                  </span>
+                                  <span className="text-[10px] text-zinc-400">
+                                    {isKu ? 'داخستن و سڕینەوەی ژێرنووس لەسەر پلەیەرەکە' : 'Disable all subtitles on video player'}
+                                  </span>
+                                </div>
+                              </div>
+                              {(currentSubId === 'off' || !showSubtitles) && (
+                                <CheckCircle2 size={16} className="text-red-400 shrink-0" />
+                              )}
+                            </motion.div>
                             {availableSubs.filter(sub => sub.id !== 'prop-kurdish-auto').filter(sub =>
                                 (sub.attributes?.display_name || '').toLowerCase().includes(subSearchQuery.toLowerCase()) ||
                                 (sub.attributes?.language || '').toLowerCase().includes(subSearchQuery.toLowerCase())

@@ -96,8 +96,8 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        const isBadini = target === 'badini' || target === 'ku' || target === 'kmr';
-        const actualTarget = isBadini ? 'ku' : (target === 'sorani' ? 'ckb' : target);
+        const isBadini = target === 'badini' || target === 'kmr';
+        const actualTarget = (target === 'badini' || target === 'ku' || target === 'ckb' || target === 'sorani') ? 'ku' : target;
 
         const isArray = Array.isArray(text);
         const textArray = isArray ? text : [text];

@@ -1603,6 +1603,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
 
     const handleSelectSub = async (sub: SubtitleResult) => {
+        if (sub.id === 'off' || sub.attributes?.language === 'off') {
+            console.log("[UNIVERSAL-PLAYER] User selected OFF - disabling subtitles on player.");
+            setCurrentSubId('off');
+            setShowSubtitles(false);
+            setSubtitleCues([]);
+            setLocalSubtitleUrl(null);
+            setShowSubSettings(false);
+            return;
+        }
+
         setIsSearchingSubs(true);
         try {
             const text = await subtitleService.downloadSubtitle(sub);
