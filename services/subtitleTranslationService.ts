@@ -147,14 +147,14 @@ export async function translateCuesToKurdish(
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 30;
+  const chunkSize = 50;
   const chunks: SubtitleCue[][] = [];
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 3;
+  const concurrency = 6;
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
@@ -177,9 +177,6 @@ export async function translateCuesToKurdish(
 
     const batch = chunks.slice(i, i + concurrency);
     const batchPromises = batch.map(async (chunk, batchIdx) => {
-      if (batchIdx > 0) {
-        await new Promise(r => setTimeout(r, batchIdx * 30));
-      }
       const chunkIndex = i + batchIdx;
       const translatedTexts = await translateChunkWithFallback(chunk, sourceLang, targetLang);
       if (signal?.aborted) return;

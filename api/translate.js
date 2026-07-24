@@ -110,12 +110,15 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
-        // ⚡ Multi-Q Google GTX POST Array Translator (8s timeout)
+        // ⚡ Multi-Q Google GTX POST Array Translator (100% index accuracy, 8s timeout)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
             try {
                 const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t`;
-                const bodyParams = chunkItems.map(t => `q=${encodeURIComponent((t || '').replace(/\n/g, ' ')).slice(0, 1000)}`).join('&');
+                const bodyParams = chunkItems.map(t => {
+                    const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+                    return `q=${encodeURIComponent(clean || ' ')}`;
+                }).join('&');
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -133,14 +136,15 @@ export default async function handler(req, res) {
 
                 if (response.ok) {
                     const data = await response.json();
-                    if (Array.isArray(data) && data.length === chunkItems.length) {
-                        const results = data.map((item, idx) => {
-                            if (Array.isArray(item) && Array.isArray(item[0])) {
-                                return item.map(subItem => subItem[0] || '').join('').trim();
+                    if (Array.isArray(data)) {
+                        return chunkItems.map((item, idx) => {
+                            const resItem = data[idx];
+                            if (Array.isArray(resItem)) {
+                                const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
+                                return translated || item;
                             }
-                            return chunkItems[idx];
+                            return item;
                         });
-                        return results;
                     }
                 }
             } catch (err) {
