@@ -166,7 +166,9 @@ export const subtitleService = {
         }
 
         throw new Error("CRITICAL: All network routes failed. The subtitle server might be down.");
-      async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
+    },
+
+    async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
         const cleanImdbId = imdbId ? (imdbId.startsWith('tt') ? imdbId : `tt${imdbId}`) : '';
         const promises: Promise<SubtitleResult[]>[] = [];
 
