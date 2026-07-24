@@ -29,6 +29,8 @@ import {
   Play,
   Pause,
   RotateCcw,
+  VolumeX,
+  CheckCircle2,
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 
@@ -96,6 +98,7 @@ export interface SubtitleManagerPanelProps {
   subSearchQuery: string;
   setSubSearchQuery: (v: string) => void;
   availableSubs: SubtitleTrack[];
+  showSubtitles?: boolean;
   currentSubId?: string | number | null;
   isSearchingSubs?: boolean;
   onSelectSub?: (sub: SubtitleTrack) => void;
@@ -235,6 +238,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   subSearchQuery,
   setSubSearchQuery,
   availableSubs,
+  showSubtitles = true,
   currentSubId,
   isSearchingSubs,
   onSelectSub,

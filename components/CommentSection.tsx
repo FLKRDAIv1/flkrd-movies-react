@@ -78,29 +78,31 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
   // Fetch comments safely with fallback
   const fetchComments = async () => {
     try {
-      const searchId = String(cleanId);
-      const { data, error } = await supabase
+      const numId = Number(cleanId);
+      const isNum = !isNaN(numId) && cleanId !== '' && cleanId !== null;
+
+      // Stage 1: Query with string movie_id
+      let { data, error } = await supabase
         .from('comments')
         .select('*')
-        .eq('movie_id', searchId)
-        .eq('media_type', mediaType)
+        .eq('movie_id', String(cleanId))
         .order('created_at', { ascending: true });
+
+      // Stage 2: If PostgREST 400 or type error occurs, try numeric movie_id
+      if (error && isNum) {
+        const numRes = await supabase
+          .from('comments')
+          .select('*')
+          .eq('movie_id', numId)
+          .order('created_at', { ascending: true });
+        data = numRes.data;
+        error = numRes.error;
+      }
 
       if (!error && data) {
         setComments(data as Comment[]);
       } else {
-        // Fallback: search by movie_id alone if media_type column fails
-        const fallback = await supabase
-          .from('comments')
-          .select('*')
-          .eq('movie_id', searchId)
-          .order('created_at', { ascending: true });
-
-        if (!fallback.error && fallback.data) {
-          setComments(fallback.data as Comment[]);
-        } else {
-          setComments([]);
-        }
+        setComments([]);
       }
     } catch (e) {
       setComments([]);

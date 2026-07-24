@@ -4000,6 +4000,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         subSearchQuery={subSearchQuery}
                         setSubSearchQuery={setSubSearchQuery}
                         availableSubs={availableSubs}
+                        showSubtitles={showSubtitles}
                         currentSubId={currentSubId}
                         isSearchingSubs={isSearchingSubs}
                         onSelectSub={handleSelectSub}
