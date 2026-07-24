@@ -723,8 +723,9 @@ export const subtitleService = {
         if (!hasZanaIntro && cues.length > 0) {
             const intro1 = { start: 1.5, end: 5.5, text: 'ئەم بەرهەمە ژێرنووسکرایە لەلایەن زانا فارۆقەوە' };
             const intro2 = { start: 6.0, end: 10.0, text: '⚡ POWERED BY FLKRD STUDIO ⚡' };
-            const filteredOriginal = cues.filter(c => c.end > 10.2 || c.start >= 10.2);
-            return [intro1, intro2, ...filteredOriginal];
+            const merged = [intro1, intro2, ...cues];
+            merged.sort((a, b) => a.start - b.start);
+            return merged;
         }
 
         return cues;
