@@ -125,8 +125,14 @@ export default async function handler(req, res) {
             
             if (engine === 'subdl') {
                 try {
-                    const cleanImdbId = imdb_id ? (imdb_id.startsWith('tt') ? imdb_id : `tt${imdb_id}`) : '';
-                    let url = `https://api.subdl.com/api/v1/subtitles?api_key=${SUBDL_KEYS[0]}&imdb_id=${cleanImdbId}&languages=${languages || 'Kurdish'}`;
+                    const cleanImdbWithTt = imdb_id ? (String(imdb_id).startsWith('tt') ? imdb_id : `tt${imdb_id}`) : '';
+                    let url = `https://api.subdl.com/api/v1/subtitles?api_key=${SUBDL_KEYS[0]}&languages=${languages || 'Kurdish'}`;
+                    if (cleanImdbWithTt) {
+                        url += `&imdb_id=${encodeURIComponent(cleanImdbWithTt)}`;
+                    } else if (tmdb_id) {
+                        url += `&tmdb_id=${encodeURIComponent(tmdb_id)}`;
+                    }
+
                     if (season_number && episode_number) {
                         url += `&season_number=${season_number}&episode_number=${episode_number}&type=tv`;
                     } else {
@@ -154,21 +160,26 @@ export default async function handler(req, res) {
                     console.warn("[BACKEND SUBTITLE PROXY] Scraper failed:", err.message);
                 }
 
-                // OpenSubtitles GET with Key Rotation Fallback
+                // OpenSubtitles GET with Key Rotation Fallback (OpenSubtitles API requires numeric imdb_id without 'tt')
                 let openSubsResults = [];
                 let lastError = null;
+                const cleanImdbNum = imdb_id ? String(imdb_id).replace(/^tt/i, '') : '';
+
                 for (const key of OPENSUBTITLES_KEYS) {
                     try {
                         let url = `https://api.opensubtitles.com/api/v1/subtitles?`;
                         if (languages && languages !== 'all') url += `languages=${languages}&`;
                         if (order_by) url += `order_by=${order_by}&`;
                         if (order_direction) url += `order_direction=${order_direction}&`;
-                        if (tmdb_id) url += `tmdb_id=${tmdb_id}&`;
                         if (type) url += `type=${type === 'tv' ? 'episode' : type}&`;
-                        if (imdb_id) {
-                            const cleanImdb = imdb_id.startsWith('tt') ? imdb_id : `tt${imdb_id}`;
-                            url += `imdb_id=${cleanImdb}&`;
+
+                        // Prefer numeric imdb_id, fall back to tmdb_id
+                        if (cleanImdbNum) {
+                            url += `imdb_id=${encodeURIComponent(cleanImdbNum)}&`;
+                        } else if (tmdb_id) {
+                            url += `tmdb_id=${encodeURIComponent(tmdb_id)}&`;
                         }
+
                         if (season_number) url += `season_number=${season_number}&`;
                         if (episode_number) url += `episode_number=${episode_number}&`;
 
