@@ -170,20 +170,33 @@ export const subtitleService = {
 
     async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
         const isRawImdb = imdbId && String(imdbId).startsWith('tt');
-        const cleanImdbId = isRawImdb ? imdbId : '';
+        let targetImdbId = isRawImdb ? imdbId : '';
         const effectiveTmdbId = tmdbId || (!isRawImdb && imdbId ? String(imdbId) : undefined);
+
+        // Auto-resolve IMDb ID from TMDB ID if missing to guarantee 100% engine discovery for all movies & TV shows
+        if (!targetImdbId && effectiveTmdbId) {
+            try {
+                const { fetchExternalIds } = await import('./tmdbService');
+                const ext = await fetchExternalIds(effectiveTmdbId, type);
+                if (ext && ext.imdb_id) {
+                    targetImdbId = ext.imdb_id;
+                }
+            } catch (e) {}
+        }
+
         const promises: Promise<SubtitleResult[]>[] = [];
 
-        // 1. Stremio Addon Proxy Strategy (if imdbId present)
-        if (cleanImdbId) {
+        // 1. Stremio Addon Proxy Strategy (if IMDb ID present or resolved)
+        if (targetImdbId) {
             const fetchStremio = async (): Promise<SubtitleResult[]> => {
                 try {
                     const stremioPath = (type === 'tv' && season && episode) 
-                        ? `${cleanImdbId}:${season}:${episode}` 
-                        : cleanImdbId;
+                        ? `${targetImdbId}:${season}:${episode}` 
+                        : targetImdbId;
                     const stremioType = type === 'tv' ? 'series' : 'movie';
                     const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${stremioType}/${stremioPath}.json`;
                     console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
+
                     
                     const response = await this.fetchWithFallback(stremioUrl);
                     if (response.ok) {
@@ -214,11 +227,11 @@ export const subtitleService = {
         }
 
         // 2. SubDL Discovery Strategy
-        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY')) {
+        if (SUBDL_API_KEY && !SUBDL_API_KEY.includes('YOUR_API_KEY') && targetImdbId) {
             const fetchSubDL = async (): Promise<SubtitleResult[]> => {
                 try {
                     const queryLangs = 'all';
-                    const results = await this.searchSubDL(imdbId, type, season, episode, queryLangs);
+                    const results = await this.searchSubDL(targetImdbId, type, season, episode, queryLangs);
                     return results;
                 } catch (e) {
                     console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
@@ -232,8 +245,9 @@ export const subtitleService = {
         const fetchOpenSubs = async (): Promise<SubtitleResult[]> => {
             try {
                 let query = `?languages=all`;
-                if (cleanImdbId) query += `&imdb_id=${encodeURIComponent(cleanImdbId)}`;
+                if (targetImdbId) query += `&imdb_id=${encodeURIComponent(targetImdbId)}`;
                 if (effectiveTmdbId) query += `&tmdb_id=${encodeURIComponent(effectiveTmdbId)}`;
+
                 if (type) query += `&type=${type}`;
                 if (type === 'tv' && season && episode) {
                     query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
