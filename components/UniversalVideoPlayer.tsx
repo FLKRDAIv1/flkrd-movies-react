@@ -1185,32 +1185,51 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 ].filter(Boolean)));
 
                 // 0. Check localStorage for locally translated subtitle backup on this device
-                targetIds.forEach(tId => {
-                    ['ku', 'badini'].forEach(l => {
+                // 0. Check IndexedDB & LocalStorage for locally translated subtitle backup on this device
+                const { db } = await import('../utils/db');
+                for (const tId of targetIds) {
+                    for (const l of ['ku', 'badini']) {
                         const localKey = `flkrd_translated_sub_${tId}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${l}`;
-                        const rawLocal = localStorage.getItem(localKey);
-                        if (rawLocal) {
-                            try {
-                                const parsed = JSON.parse(rawLocal);
-                                if (parsed.url) {
-                                    const isBadini = l === 'badini';
-                                    const labelSuffix = isBadini ? 'بادینی' : 'سۆرانی';
-                                    customSubsList.push({
-                                        id: `custom-local-${tId}-${l}`,
-                                        attributes: {
-                                            language: l,
-                                            display_name: parsed.fileName 
-                                                ? `[ژێرنووسی وەرگێڕدراو - ئامێرەکەت] ${parsed.fileName.replace(/(_ku\.srt|\.srt)/gi, '')}` 
-                                                : `[ژێرنووسی کوردی ${labelSuffix}] (Local Saved)`,
-                                            url: parsed.url,
-                                            file_id: 0
-                                        }
-                                    });
+                        try {
+                            // Check IndexedDB first (unlimited high-capacity storage)
+                            let idbSub = await db.getSubtitle(localKey);
+                            let subUrl = idbSub?.url;
+                            let srtContent = idbSub?.srtContent;
+
+                            if (!subUrl) {
+                                const rawLocal = localStorage.getItem(localKey);
+                                if (rawLocal) {
+                                    const parsed = JSON.parse(rawLocal);
+                                    subUrl = parsed.url;
                                 }
-                            } catch (e) {}
-                        }
-                    });
-                });
+                            }
+
+                            if (subUrl) {
+                                const isBadini = l === 'badini';
+                                const labelSuffix = isBadini ? 'بادینی' : 'سۆرانی';
+                                const customTrack: SubtitleResult = {
+                                    id: `custom-local-${tId}-${l}`,
+                                    attributes: {
+                                        language: l,
+                                        display_name: `[ژێرنووسی کوردی ${labelSuffix}] (Local Saved)`,
+                                        url: subUrl,
+                                        file_id: 0
+                                    }
+                                };
+                                customSubsList.push(customTrack);
+
+                                if (srtContent) {
+                                    const cues = subtitleService.parseVtt(srtContent);
+                                    if (cues && cues.length > 0) {
+                                        console.log("[UNIVERSAL-PLAYER] Found local SRT in IndexedDB, cues count:", cues.length);
+                                        setSubtitleCues(cues);
+                                    }
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+
 
                 let dbSubs: any[] = [];
                 try {

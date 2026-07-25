@@ -399,10 +399,11 @@ export async function translateAndSavePipeline(
       resolvedPublicUrl = `data:text/plain;base64,${base64Srt}`;
     }
 
-    // Save to localStorage so translator device ALWAYS keeps a local backup copy on device
+    // Save subtitle to IndexedDB (Unlimited storage capacity) and lightweight metadata to LocalStorage
     try {
+      const { db } = await import('../utils/db');
       const localKey = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
-      localStorage.setItem(localKey, JSON.stringify({
+      const subPayload = {
         url: resolvedPublicUrl,
         srtContent: srtContent,
         timestamp: Date.now(),
@@ -412,10 +413,29 @@ export async function translateAndSavePipeline(
         episode: episode || 0,
         language: targetLang,
         fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
-      }));
+      };
+
+      // 1. Store full text in IndexedDB (NO 5MB quota limit)
+      await db.saveSubtitle(localKey, subPayload);
+
+      // 2. Store lightweight metadata only in LocalStorage (<0.2KB)
+      try {
+        localStorage.setItem(localKey, JSON.stringify({
+          url: resolvedPublicUrl,
+          timestamp: Date.now(),
+          tmdbId: String(tmdbId),
+          mediaType: mediaType || 'movie',
+          season: season || 0,
+          episode: episode || 0,
+          language: targetLang
+        }));
+      } catch (lsErr) {
+        console.warn("[SUBTITLE-PIPELINE] LocalStorage quota reached, safely using IndexedDB:", lsErr);
+      }
     } catch (e) {
-      console.warn("[SUBTITLE-PIPELINE] LocalStorage save warning:", e);
+      console.warn("[SUBTITLE-PIPELINE] Local storage save warning:", e);
     }
+
 
     // Registering subtitle in Supabase Postgres registry using upsert
     try {

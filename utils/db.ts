@@ -5,14 +5,40 @@
  */
 
 const DB_NAME = 'FLKRD_QUANTUM_CORE';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'dubbed_movies';
+
+export const sanitizeLocalStorageQuota = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('flkrd_translated_sub_') || key.startsWith('flkrd_sub_blob_'))) {
+                try {
+                    const val = localStorage.getItem(key);
+                    if (val && val.length > 5000) { // Large subtitle text blob (>5KB)
+                        keysToRemove.push(key);
+                    }
+                } catch (e) {}
+            }
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        if (keysToRemove.length > 0) {
+            console.log(`[STORAGE] Purged ${keysToRemove.length} heavy subtitle items from LocalStorage to reclaim quota.`);
+        }
+    } catch (e) {}
+};
+
+// Execute quota cleanup on module import
+sanitizeLocalStorageQuota();
 
 // Fallback In-Memory and LocalStorage Cache
 const fallbackStore: Record<string, Record<string, any>> = {
     [STORE_NAME]: {},
     tmdb_cache: {},
-    user_avatars: {}
+    user_avatars: {},
+    subtitles_store: {}
 };
 
 // Try to pre-populate fallback store from localStorage for maximum persistence
@@ -59,7 +85,11 @@ export const initDB = (): Promise<IDBDatabase | null> => {
                 if (!dbInstance.objectStoreNames.contains('user_avatars')) {
                     dbInstance.createObjectStore('user_avatars', { keyPath: 'key' });
                 }
+                if (!dbInstance.objectStoreNames.contains('subtitles_store')) {
+                    dbInstance.createObjectStore('subtitles_store', { keyPath: 'key' });
+                }
             };
+
 
             request.onsuccess = (event: any) => resolve(event.target.result);
             request.onerror = (event: any) => {
@@ -273,5 +303,45 @@ export const db = {
                 resolve(null);
             }
         });
+    },
+
+    async saveSubtitle(key: string, subData: any): Promise<void> {
+        const database = await initDB();
+        if (useFallback || !database) {
+            fallbackStore.subtitles_store[key] = { key, ...subData };
+            return;
+        }
+
+        return new Promise((resolve) => {
+            try {
+                const transaction = database.transaction('subtitles_store', 'readwrite');
+                const store = transaction.objectStore('subtitles_store');
+                store.put({ key, ...subData });
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => resolve();
+            } catch (e) {
+                resolve();
+            }
+        });
+    },
+
+    async getSubtitle(key: string): Promise<any | null> {
+        const database = await initDB();
+        if (useFallback || !database) {
+            return fallbackStore.subtitles_store[key] || null;
+        }
+
+        return new Promise((resolve) => {
+            try {
+                const transaction = database.transaction('subtitles_store', 'readonly');
+                const store = transaction.objectStore('subtitles_store');
+                const request = store.get(key);
+                request.onsuccess = () => resolve(request.result || null);
+                request.onerror = () => resolve(null);
+            } catch (e) {
+                resolve(null);
+            }
+        });
     }
 };
+
