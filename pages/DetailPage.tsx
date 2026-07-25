@@ -568,17 +568,17 @@ const DetailPage: React.FC = () => {
             // Check Supabase custom_subtitles first (ranking by preferred language)
             let supabaseSubUrl = null;
             try {
-              const { data } = await supabase
+              const targetIds = [String(id), String(activeImdbId || ''), String(data.imdb_id || '')].filter(Boolean);
+              const { data: dbData } = await supabase
                 .from('custom_subtitles')
                 .select('subtitle_url, language')
-                .eq('tmdb_id', String(id))
-                .eq('media_type', 'movie')
+                .in('tmdb_id', targetIds)
                 .eq('season', 0)
                 .eq('episode', 0);
 
-              if (data && data.length > 0) {
+              if (dbData && dbData.length > 0) {
                 const activeLang = language === 'badini' ? 'badini' : 'ku';
-                const sorted = [...data].sort((a, b) => {
+                const sorted = [...dbData].sort((a, b) => {
                   const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
                   return score(b.language) - score(a.language);
                 });
@@ -590,6 +590,7 @@ const DetailPage: React.FC = () => {
             } catch (dbErr) {
               console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);
             }
+
 
             if (supabaseSubUrl) {
               console.log("[SUBTITLE SYNC] Kurdish Custom Track Established from Supabase:", supabaseSubUrl);

@@ -622,17 +622,17 @@ const TVDetailPage: React.FC = () => {
     // Fetch Kurdish Subtitle first from Supabase to prevent asynchronous state lag
     let activeSubUrl = null;
     try {
-      const { data } = await supabase
+      const targetIds = [String(id), String(imdbId || ''), String(content?.external_ids?.imdb_id || '')].filter(Boolean);
+      const { data: dbData } = await supabase
         .from('custom_subtitles')
         .select('subtitle_url, language')
-        .eq('tmdb_id', String(id))
-        .eq('media_type', 'tv')
+        .in('tmdb_id', targetIds)
         .eq('season', targetSeason)
         .eq('episode', targetEpisode);
 
-      if (data && data.length > 0) {
+      if (dbData && dbData.length > 0) {
         const activeLang = language === 'badini' ? 'badini' : 'ku';
-        const sorted = [...data].sort((a, b) => {
+        const sorted = [...dbData].sort((a, b) => {
           const score = (l: string) => (l === activeLang ? 10 : (l === 'ku' ? 5 : (l === 'badini' ? 3 : 1)));
           return score(b.language) - score(a.language);
         });
@@ -644,6 +644,7 @@ const TVDetailPage: React.FC = () => {
     } catch (dbErr) {
       console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);
     }
+
 
     setSubtitleUrl(activeSubUrl);
 

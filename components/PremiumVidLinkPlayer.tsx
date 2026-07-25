@@ -792,9 +792,10 @@ export default function PremiumVidLinkPlayer({
             .select('*')
             .in('tmdb_id', targetIds);
 
-          if (type === 'tv' || type === 'series' || season || episode) {
+          if (type === 'tv' || (type as string) === 'series' || season || episode) {
             query = query.eq('season', season ?? 0).eq('episode', episode ?? 0);
           }
+
 
           const { data: dbSubs } = await query;
 
