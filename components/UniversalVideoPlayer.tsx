@@ -393,6 +393,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const lastReceivedTimeRef = useRef<number>(0);
     const [subtitleCues, setSubtitleCues] = useState<{ start: number, end: number, text: string }[]>([]);
     const [vttBlobUrl, setVttBlobUrl] = useState<string>('');
+    const [subSyncOpen, setSubSyncOpen] = useState(false);
+    // manualTime lets users set the subtitle playhead manually (for iframe players where seek isn't detectable)
+    const [manualSubTime, setManualSubTime] = useState<number | null>(null);
+    const manualSubTimeRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (!subtitleCues || subtitleCues.length === 0) {
@@ -430,7 +434,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, [subtitleCues]);
 
+    // Keep ref in sync and auto-tick manualSubTime forward when set (iframe subtitle sync)
+    useEffect(() => {
+        manualSubTimeRef.current = manualSubTime;
+    }, [manualSubTime]);
+
+    useEffect(() => {
+        if (manualSubTime === null) return;
+        const startWall = performance.now();
+        const startSub = manualSubTime;
+        const interval = setInterval(() => {
+            const elapsed = (performance.now() - startWall) / 1000;
+            setManualSubTime(startSub + elapsed);
+        }, 250);
+        return () => clearInterval(interval);
+    // Only restart when the user manually sets a new sync point (not every tick)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [manualSubTime === null ? null : Math.floor((manualSubTime ?? 0) / 5)]);
+
     // Ensure native video element text track is ALWAYS active and showing in Normal & Fullscreen modes
+
     useEffect(() => {
         if (!videoRef.current) return;
         const syncTracks = () => {
@@ -950,8 +973,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             console.log("[UNIVERSAL-PLAYER] Syncing activeTranslation subtitleUrl:", activeTranslation.subtitleUrl);
             setLocalSubtitleUrl(activeTranslation.subtitleUrl);
             setShowSubtitles(true);
+            if (activeTranslation.subtitleUrl.startsWith('data:')) {
+                const base64Part = activeTranslation.subtitleUrl.split(',')[1] || '';
+                try {
+                    const binString = atob(base64Part);
+                    const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+                    const text = new TextDecoder('utf-8').decode(bytes);
+                    const cues = subtitleService.parseVtt(text);
+                    if (cues && cues.length > 0) {
+                        setSubtitleCues(cues);
+                    }
+                } catch (e) {}
+            }
         }
     }, [activeTranslation?.subtitleUrl]);
+
 
     useEffect(() => {
         const handleTranslationEvent = (e: any) => {
@@ -971,11 +1007,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }
                 };
 
-                if (srtContent) {
-                    const cues = subtitleService.parseVtt(srtContent);
+                let decodedText = srtContent;
+                if (!decodedText && url && url.startsWith('data:')) {
+                    const base64Part = url.split(',')[1] || '';
+                    try {
+                        const binString = atob(base64Part);
+                        const bytes = Uint8Array.from(binString, (m) => m.codePointAt(0)!);
+                        decodedText = new TextDecoder('utf-8').decode(bytes);
+                    } catch {
+                        try { decodedText = decodeURIComponent(escape(atob(base64Part))); } catch { decodedText = atob(base64Part); }
+                    }
+                }
+
+                if (decodedText) {
+                    const cues = subtitleService.parseVtt(decodedText);
                     if (cues && cues.length > 0) {
-                        console.log("[UNIVERSAL-PLAYER] Applied translated SRT cues directly count:", cues.length);
+                        console.log("[UNIVERSAL-PLAYER] Applied translated SRT cues directly, count:", cues.length);
                         setSubtitleCues(cues);
+                        setShowSubtitles(true);
                     }
                 }
 
@@ -3032,11 +3081,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     >
                         {(() => {
                             const offsetSec = subtitleOffset / 1000;
+                            // Use manual sync time if the user has set it (for iframe players where seek isn't detectable)
+                            // otherwise fall back to the tracked currentTime
+                            const effectiveTime = manualSubTime !== null ? manualSubTime : currentTime;
                             // Find the active cue index (not just the cue object) so we can use it as edit key
                             const activeCueIndex = subtitleCues.findIndex(cue =>
-                                currentTime >= (cue.start + offsetSec - 0.1) && currentTime <= (cue.end + offsetSec + 0.1)
+                                effectiveTime >= (cue.start + offsetSec - 0.1) && effectiveTime <= (cue.end + offsetSec + 0.1)
                             );
                             if (activeCueIndex === -1) return null;
+
 
                             const activeCue = subtitleCues[activeCueIndex];
                             // Apply admin edit if one exists for this cue
@@ -3124,7 +3177,137 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 )}
             </AnimatePresence>
 
+            {/* ── CC Status Badge + Manual Subtitle Sync Panel ──────────────────
+                Shows when subtitleCues are loaded. Lets users manually set the
+                subtitle playhead for iframe sources where native seek isn't detectable.
+            ─────────────────────────────────────────────────────────────────── */}
+            {subtitleCues.length > 0 && showSubtitles && (
+                <div
+                    className="absolute top-3 right-3 z-[2147483646] flex flex-col items-end gap-2"
+                    style={{ pointerEvents: 'auto' }}
+                >
+                    {/* Badge button */}
+                    <button
+                        onClick={() => setSubSyncOpen(prev => !prev)}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider uppercase select-none transition-all duration-200 hover:scale-105 active:scale-95"
+                        style={{
+                            background: subSyncOpen ? 'rgba(139,92,246,0.85)' : 'rgba(0,0,0,0.65)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            color: subSyncOpen ? '#fff' : 'rgba(200,180,255,0.9)',
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+                        }}
+                        title="Kurdish subtitle sync — tap to adjust if subtitle is out of sync"
+                    >
+                        <span style={{ fontSize: 10 }}>🎬</span>
+                        <span>CC</span>
+                        <span style={{ opacity: 0.7 }}>•</span>
+                        <span style={{ color: '#a78bfa', fontWeight: 900 }}>{subtitleCues.length}</span>
+                    </button>
+
+                    {/* Sync Panel */}
+                    {subSyncOpen && (
+                        <div
+                            className="rounded-2xl px-3 py-3 flex flex-col gap-2.5 min-w-[220px]"
+                            style={{
+                                background: 'rgba(10,6,24,0.88)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                border: '1px solid rgba(139,92,246,0.3)',
+                                boxShadow: '0 8px 32px rgba(0,0,0,0.7)',
+                            }}
+                        >
+                            <div className="text-[10px] font-black uppercase tracking-widest text-purple-300/80 mb-0.5">
+                                ژێرنووس • Subtitle Sync
+                            </div>
+
+                            {/* Current effective time display */}
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] text-white/50 uppercase tracking-wider">Current</span>
+                                <span className="text-[13px] font-black text-white font-mono tabular-nums">
+                                    {(() => {
+                                        const t = manualSubTime !== null ? manualSubTime : currentTime;
+                                        const h = Math.floor(t / 3600);
+                                        const m = Math.floor((t % 3600) / 60);
+                                        const s = Math.floor(t % 60);
+                                        return `${h > 0 ? String(h).padStart(2,'0')+':' : ''}${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                                    })()}
+                                </span>
+                            </div>
+
+                            {/* Quick nudge buttons */}
+                            <div className="flex items-center gap-1.5 justify-center">
+                                {[-30, -10, -5, -1].map(d => (
+                                    <button
+                                        key={d}
+                                        onClick={() => {
+                                            const base = manualSubTime !== null ? manualSubTime : currentTime;
+                                            setManualSubTime(Math.max(0, base + d));
+                                        }}
+                                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white/80 hover:text-white transition-all hover:scale-105 active:scale-95"
+                                        style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.25)' }}
+                                    >
+                                        {d}s
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-1.5 justify-center">
+                                {[1, 5, 10, 30].map(d => (
+                                    <button
+                                        key={d}
+                                        onClick={() => {
+                                            const base = manualSubTime !== null ? manualSubTime : currentTime;
+                                            setManualSubTime(Math.max(0, base + d));
+                                        }}
+                                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white/80 hover:text-white transition-all hover:scale-105 active:scale-95"
+                                        style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.25)' }}
+                                    >
+                                        +{d}s
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Time slider — covers 0..max cue end */}
+                            <input
+                                type="range"
+                                min={0}
+                                max={subtitleCues.length > 0 ? Math.ceil(subtitleCues[subtitleCues.length - 1].end) : 7200}
+                                step={1}
+                                value={Math.round(manualSubTime !== null ? manualSubTime : currentTime)}
+                                onChange={e => setManualSubTime(Number(e.target.value))}
+                                className="w-full accent-purple-500 cursor-pointer"
+                                style={{ accentColor: '#8b5cf6' }}
+                            />
+
+                            {/* Reset to auto / reset to 0 */}
+                            <div className="flex gap-2 mt-0.5">
+                                <button
+                                    onClick={() => setManualSubTime(null)}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white transition-all"
+                                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                >
+                                    Auto (Reset)
+                                </button>
+                                <button
+                                    onClick={() => setManualSubTime(0)}
+                                    className="flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-purple-300 hover:text-white transition-all"
+                                    style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}
+                                >
+                                    ↺ Start
+                                </button>
+                            </div>
+
+                            <div className="text-[9px] text-white/30 text-center mt-0.5 leading-tight">
+                                {subtitleCues.length} lines loaded • drag slider or use ±s buttons
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* ═══════════════════════════════════════════════════════════
+
                  Admin Subtitle Line Edit Modal
                  Only visible to admins; backdrop prevents video interactions
             ═══════════════════════════════════════════════════════════ */}
