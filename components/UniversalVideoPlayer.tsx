@@ -1301,39 +1301,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }
                         }
 
-                        // If this is a local-saved subtitle (data URI from localStorage), use directly
+                        // Handle Base64 Data URIs directly without network calls
                         if (!loadedText && customSub.attributes.url?.startsWith('data:')) {
                             const base64Part = customSub.attributes.url.split(',')[1] || '';
                             try { loadedText = decodeURIComponent(escape(atob(base64Part))); } catch { loadedText = atob(base64Part); }
                         } else if (!loadedText) {
                             try {
                                 const downloadPromise = subtitleService.downloadSubtitle(customSub);
-                                const timeoutPromise = new Promise<string | null>((res) => setTimeout(() => res(null), 8000));
+                                const timeoutPromise = new Promise<string | null>((res) => setTimeout(() => res(null), 15000));
                                 loadedText = await Promise.race([downloadPromise, timeoutPromise]);
-                            } catch (downloadErr) {
-                                // Supabase Storage quota blocked (402) — try localStorage fallback
-                                const targetIdList = Array.from(new Set([String(tmdbId || ''), String(imdbId || '')].filter(Boolean)));
-                                outerLoop: for (const tid of targetIdList) {
-                                    for (const langKey of ['ku', 'badini']) {
-                                        const lk = `flkrd_translated_sub_${tid}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${langKey}`;
-                                        const raw = localStorage.getItem(lk);
-                                        if (raw) {
-                                            try {
-                                                const parsed = JSON.parse(raw);
-                                                if (parsed?.srtContent) {
-                                                    loadedText = parsed.srtContent;
-                                                    break outerLoop;
-                                                } else if (parsed?.url?.startsWith('data:')) {
-                                                    const b64 = parsed.url.split(',')[1] || '';
-                                                    try { loadedText = decodeURIComponent(escape(atob(b64))); } catch { loadedText = atob(b64); }
-                                                    if (loadedText) break outerLoop;
-                                                }
-                                            } catch (e) {}
-                                        }
+
+                                // Fallback to serverless proxy if direct download returned null
+                                if (!loadedText && customSub.attributes.url) {
+                                    console.log("[UNIVERSAL-PLAYER] Direct download timeout, retrying via Vercel Subtitle Proxy...");
+                                    const proxyUrl = `https://fkurd.pro/api/subtitle-proxy?url=${encodeURIComponent(customSub.attributes.url)}`;
+                                    const pRes = await fetch(proxyUrl);
+                                    if (pRes.ok) {
+                                        loadedText = await pRes.text();
                                     }
                                 }
+                            } catch (downloadErr) {
+                                console.warn("[UNIVERSAL-PLAYER] Subtitle download exception:", downloadErr);
                             }
                         }
+
 
                         if (loadedText) {
                             const processedText = cleanAndFormatVtt(loadedText);

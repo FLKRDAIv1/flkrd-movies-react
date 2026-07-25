@@ -88,13 +88,15 @@ export const subtitleService = {
 
         if (!isExternalBlockedService) {
             // --- STEP 2: BROWSER PROXY ROTATOR ---
+            const baseUrl = getSubApiBase();
             const proxies = [
                 { url: url, type: 'direct' },
-                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'codetabs' },
-                { url: `https://thingproxy.freeboard.io/fetch/${url}`, type: 'thingproxy' },
+                { url: `${baseUrl}/api/subtitle-proxy?url=${encodeURIComponent(url)}`, type: 'flkrd_proxy' },
                 { url: `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, type: 'allorigins' },
-                { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'corsproxy' }
+                { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'corsproxy' },
+                { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'codetabs' }
             ];
+
 
             for (const proxy of proxies) {
                 try {
