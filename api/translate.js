@@ -96,8 +96,14 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        const isBadini = target === 'badini' || target === 'kmr';
-        const actualTarget = (target === 'badini' || target === 'ku' || target === 'ckb' || target === 'sorani') ? 'ku' : target;
+        const isBadini = target === 'badini' || target === 'kmr' || target === 'ku';
+        // Google Translate language codes:
+        //   'ckb' = Central Kurdish / Sorani (Arabic script) ✅
+        //   'ku'  = Northern Kurdish / Kurmanji / Badini (Latin script) ✅
+        const actualTarget =
+            (target === 'ckb' || target === 'sorani') ? 'ckb' :   // Kurdish Sorani
+            (target === 'badini' || target === 'ku' || target === 'kmr') ? 'ku' : // Kurdish Badini/Kurmanji
+            target; // pass-through for all other languages (en, ar, tr, etc.)
 
         const isArray = Array.isArray(text);
         const textArray = isArray ? text : [text];
@@ -289,82 +295,89 @@ export default async function handler(req, res) {
 
         // Helper to translate a chunk of text items
         const translateChunk = async (chunkItems) => {
-            // 0. Primary Fast Path: Try Google GTX Multi-Q POST (~100ms)
-            const gtxMultiResults = await translateArrayWithGoogleGTX(chunkItems, source, actualTarget);
-            if (gtxMultiResults && gtxMultiResults.length === chunkItems.length) {
-                return gtxMultiResults;
-            }
+            if (!chunkItems || chunkItems.length === 0) return [];
 
-            // 1. Secondary Path: Try Joined Text Google Translate API POST
-            const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
-            let translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
+            // 0. Primary High-Reliability Path: Try Google Apps Script Array POST (runs on Google infrastructure, 0 rate limit)
+            try {
+                const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
+                if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
+                    const validCount = gasArrayRes.filter((t, i) => t && t !== chunkItems[i]).length;
+                    if (validCount > 0) {
+                        return gasArrayRes;
+                    }
+                }
+            } catch (err) {}
 
-            // 2. Non-blocking GAS Fallback
-            if (!translatedJoined) {
-                translatedJoined = await callGAS({ text: joinedText, source, target: actualTarget });
-            }
+            // 1. Secondary Fast Path: Clean Delimiter-Based Joined Google Translate API POST
+            try {
+                const delimiter = '\n\n:::\n\n';
+                const joinedText = chunkItems.map((t) => (t || '').replace(/\n/g, ' {n} ')).join(delimiter);
+                const translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
 
-            if (translatedJoined) {
-                const rawLines = translatedJoined.split('\n').map(l => l.trim()).filter(Boolean);
-                const results = new Array(chunkItems.length);
-                let matchedCount = 0;
+                if (translatedJoined) {
+                    const splitResults = translatedJoined.split(/[\r\n]*:::[\r\n]*/);
+                    if (splitResults.length === chunkItems.length) {
+                        return splitResults.map((item, idx) => {
+                            const cleaned = item.replace(/\{n\}/gi, '\n').trim();
+                            return cleaned || chunkItems[idx];
+                        });
+                    }
+                }
+            } catch (err) {}
 
-                const normalizeDigits = (str) => {
-                    if (!str) return '';
-                    return str
-                        .replace(/٠/g, '0')
-                        .replace(/١/g, '1')
-                        .replace(/٢/g, '2')
-                        .replace(/٣/g, '3')
-                        .replace(/٤/g, '4')
-                        .replace(/٥/g, '5')
-                        .replace(/٦/g, '6')
-                        .replace(/٧/g, '7')
-                        .replace(/٨/g, '8')
-                        .replace(/٩/g, '9');
-                };
+            // 2. Tertiary Path: Index-Based Joined Text Google Translate API POST with digit normalization
+            try {
+                const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
+                const translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
 
-                for (const line of rawLines) {
-                    const normLine = normalizeDigits(line);
-                    const match = normLine.match(/^[\[\(\s]*(\d+)[\]\)\s.:\-]*\s*(.*)$/);
-                    if (match) {
-                        const idx = parseInt(match[1], 10);
-                        if (idx >= 0 && idx < chunkItems.length && !results[idx]) {
-                            const cleanText = match[2].replace(/^[:.\-\s]+/, '').replace(/\{n\}/gi, '\n').trim();
-                            results[idx] = cleanText;
-                            matchedCount++;
+                if (translatedJoined) {
+                    const rawLines = translatedJoined.split('\n').map(l => l.trim()).filter(Boolean);
+                    const results = new Array(chunkItems.length);
+                    let matchedCount = 0;
+
+                    const normalizeDigits = (str) => {
+                        if (!str) return '';
+                        return str
+                            .replace(/٠/g, '0').replace(/١/g, '1').replace(/٢/g, '2').replace(/٣/g, '3').replace(/٤/g, '4')
+                            .replace(/٥/g, '5').replace(/٦/g, '6').replace(/٧/g, '7').replace(/٨/g, '8').replace(/٩/g, '9');
+                    };
+
+                    for (const line of rawLines) {
+                        const normLine = normalizeDigits(line);
+                        const match = normLine.match(/^[\[\(\s]*(\d+)[\]\)\s.:\-]*\s*(.*)$/);
+                        if (match) {
+                            const idx = parseInt(match[1], 10);
+                            if (idx >= 0 && idx < chunkItems.length && !results[idx]) {
+                                const cleanText = match[2].replace(/^[:.\-\s]+/, '').replace(/\{n\}/gi, '\n').trim();
+                                results[idx] = cleanText;
+                                matchedCount++;
+                            }
                         }
                     }
-                }
 
-                // If at least 30% of indexed lines matched, fill remaining gaps in parallel
-                if (matchedCount >= Math.floor(chunkItems.length * 0.3)) {
-                    const missingIndices = [];
-                    for (let i = 0; i < chunkItems.length; i++) {
-                        if (!results[i]) missingIndices.push(i);
+                    if (matchedCount >= Math.floor(chunkItems.length * 0.5)) {
+                        for (let i = 0; i < chunkItems.length; i++) {
+                            if (!results[i]) results[i] = chunkItems[i];
+                        }
+                        return results;
                     }
-                    if (missingIndices.length > 0) {
-                        await Promise.all(missingIndices.map(async (i) => {
-                            const singleTrans = await translateSingle(chunkItems[i]);
-                            results[i] = singleTrans || chunkItems[i];
-                        }));
-                    }
-                    return results;
                 }
+            } catch (err) {}
 
-                // 1-to-1 Positional Fallback: if line count matches input count exactly
-                if (rawLines.length === chunkItems.length) {
-                    return rawLines.map((line, i) => {
-                        const clean = normalizeDigits(line).replace(/^[\[\(\s]*\d+[\]\)\s.:\-]*\s*/, '').replace(/\{n\}/gi, '\n').trim();
-                        return clean || chunkItems[i];
-                    });
+            // 3. Fallback: Item-by-item translation with small concurrency batches to respect rate limits
+            const fallbackResults = [];
+            const BATCH_SIZE = 5;
+            for (let i = 0; i < chunkItems.length; i += BATCH_SIZE) {
+                const miniBatch = chunkItems.slice(i, i + BATCH_SIZE);
+                const miniResults = await Promise.all(miniBatch.map(item => translateSingle(item)));
+                fallbackResults.push(...miniResults.map((res, idx) => res || miniBatch[idx]));
+                if (i + BATCH_SIZE < chunkItems.length) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
             }
-
-            // Parallel item-by-item fallback for this chunk (Fast & Non-blocking)
-            const fallbackResults = await Promise.all(chunkItems.map(item => translateSingle(item)));
-            return fallbackResults.map((res, i) => res || chunkItems[i]);
+            return fallbackResults;
         };
+
 
         // 1. Array batch translation with sub-chunking (40 items per chunk for 100ms response)
         if (isArray) {

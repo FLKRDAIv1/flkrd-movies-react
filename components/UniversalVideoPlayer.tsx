@@ -1634,16 +1634,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     setShowSubtitles(true);
                     setShowSubSettings(false);
                 } else {
-                    // Automatically trigger translation to Kurdish for non-Kurdish subtitles!
+                    // ⚡ IMMEDIATE DISPLAY: show original subtitle while translation runs in background
+                    // This prevents blank screen during the translation wait period
+                    const processedText = cleanAndFormatVtt(text);
+                    const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
+                    const originalBlobUrl = URL.createObjectURL(blob);
+                    setLocalSubtitleUrl(originalBlobUrl);
+                    const originalCues = subtitleService.parseVtt(processedText);
+                    if (originalCues && originalCues.length > 0) {
+                        setSubtitleCues(originalCues);
+                    }
+                    setCurrentSubId(sub.id);
+                    setShowSubtitles(true);
                     setShowSubSettings(false);
+
+                    // Then trigger translation in background — translated URL will replace original live as it progresses
                     const targetLang = (language === 'badini') ? 'badini' : 'ku';
-                    await handleStartTranslation(sub, targetLang);
+                    handleStartTranslation(sub, targetLang);
                 }
             }
         } finally {
             setIsSearchingSubs(false);
         }
     };
+
 
     // Resume subtitle translation on reload if interrupted
     useEffect(() => {
@@ -1679,8 +1693,34 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const handleStartTranslation = async (sub: SubtitleResult, targetLang: 'ku' | 'badini') => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
+
+        // ⚡ If the user clicked the translate button from the SubtitleManagerPanel confirm dialog,
+        // we need to first show the original sub immediately, then start translation in background.
+        // (If handleSelectSub already set a localSubtitleUrl, we skip the pre-show step)
+        if (!localSubtitleUrl && sub.attributes?.url) {
+            try {
+                const text = await subtitleService.downloadSubtitle(sub);
+                if (text) {
+                    const processedText = cleanAndFormatVtt(text);
+                    const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
+                    const originalBlobUrl = URL.createObjectURL(blob);
+                    setLocalSubtitleUrl(originalBlobUrl);
+                    const originalCues = subtitleService.parseVtt(processedText);
+                    if (originalCues && originalCues.length > 0) {
+                        setSubtitleCues(originalCues);
+                    }
+                    setCurrentSubId(sub.id);
+                    setShowSubtitles(true);
+                }
+            } catch (e) {
+                console.warn('[UNIVERSAL-PLAYER] Could not pre-show original subtitle:', e);
+            }
+        }
+
+        // Now start the full translation pipeline in background
         startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0, targetLang);
     };
+
 
     // Sync with global background subtitle translator (applies live progressively at 20%, 40%, 60%, 100%)
     useEffect(() => {
