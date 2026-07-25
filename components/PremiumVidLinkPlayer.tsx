@@ -15,6 +15,20 @@ import { fetchSubtitleEdits, saveSubtitleLineEdit, deleteSubtitleLineEdit, subsc
 
 import { Season, SeasonDetails } from '../types';
 
+function cleanAndFormatVtt(text: string): string {
+  if (!text) return 'WEBVTT\n\n';
+  let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  cleaned = cleaned.replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '').replace(/\u00A0/g, ' ');
+  if (!cleaned.trim().startsWith('WEBVTT')) {
+    const vttBody = cleaned
+      .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
+      .replace(/(\d{1,2}:\d{2}),(\d{3})/g, '00:$1.$2')
+      .replace(/^\d+\s*$/gm, '');
+    cleaned = 'WEBVTT\n\n' + vttBody;
+  }
+  return cleaned;
+}
+
 interface PremiumVidLinkPlayerProps {
   tmdbId: string;
   type: 'movie' | 'tv';
@@ -818,26 +832,40 @@ export default function PremiumVidLinkPlayer({
   }, [tmdbId, imdbId, type, season, episode, hasSearchedCloud, setAvailableSubsWithVirtual]);
 
   const handleSelectSub = async (sub: any) => {
+    if (sub.id === 'off' || sub.attributes?.language === 'off') {
+      setCurrentSubId('off');
+      setShowSubtitles(false);
+      setVttContent(null);
+      setShowSubSettings(false);
+      return;
+    }
+
     setLoadingSubs(true);
     try {
-      const downloadLink = sub.attributes.file_id !== 0 
-        ? await subtitleService.getDownloadLink(sub.attributes.file_id)
-        : sub.attributes.url;
+      let text: string | null = null;
+      if (sub.attributes?.file_id && sub.attributes.file_id !== 0) {
+        const downloadLink = await subtitleService.getDownloadLink(sub.attributes.file_id);
+        if (downloadLink) {
+          text = await subtitleService.downloadSubtitle({ ...sub, attributes: { ...sub.attributes, url: downloadLink } });
+        }
+      }
+      if (!text && sub.attributes?.url) {
+        text = await subtitleService.downloadSubtitle(sub);
+      }
 
-      if (downloadLink) {
-        const result = await subtitleService.getSubtitleBlob(downloadLink);
-        if (result) {
-          // If it's a direct URL (proxied) or local Blob URL, fetch its text first for overlay
-          if (result.startsWith('http') || result.startsWith('blob:')) {
-            const res = await fetch(result);
-            const text = await res.text();
-            setVttContent(text);
-          } else {
-            setVttContent(result);
-          }
-          setCurrentSubId(sub.id);
-          setShowSubtitles(true);
-          setShowSubSettings(false);
+      if (text) {
+        const processedText = cleanAndFormatVtt(text);
+        setVttContent(processedText);
+        setCurrentSubId(sub.id);
+        setShowSubtitles(true);
+        setShowSubSettings(false);
+
+        const lang = (sub.attributes?.language || '').toLowerCase();
+        const isKurdish = lang === 'ku' || lang === 'ckb' || lang === 'badini' || lang.includes('kurd');
+
+        if (!isKurdish) {
+          const targetLang = (language === 'badini') ? 'badini' : 'ku';
+          handleStartTranslation(sub, targetLang);
         }
       }
     } catch (e) {
@@ -850,6 +878,21 @@ export default function PremiumVidLinkPlayer({
   const handleStartTranslation = async (sub: any, targetLang: 'ku' | 'badini' = 'ku') => {
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
+
+    if (!vttContent && sub.attributes?.url) {
+      try {
+        const text = await subtitleService.downloadSubtitle(sub);
+        if (text) {
+          const processedText = cleanAndFormatVtt(text);
+          setVttContent(processedText);
+          setCurrentSubId(sub.id);
+          setShowSubtitles(true);
+        }
+      } catch (e) {
+        console.warn('[VIP-PLAYER] Could not pre-show original subtitle:', e);
+      }
+    }
+
     startGlobalTranslation(sub, targetId, type || 'movie', season || 0, episode || 0, targetLang);
   };
 
@@ -858,7 +901,10 @@ export default function PremiumVidLinkPlayer({
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
-    if (activeTranslation.subtitleUrl && String(activeTranslation.tmdbId) === String(targetId)) {
+    const isSameMedia = String(activeTranslation.tmdbId) === String(targetId) &&
+      (type !== 'tv' || (activeTranslation.season === (season || 0) && activeTranslation.episode === (episode || 0)));
+
+    if (activeTranslation.subtitleUrl && isSameMedia) {
       const subUrl = activeTranslation.subtitleUrl;
       if (resolvedSubUrl !== subUrl) {
         setResolvedSubUrl(subUrl);
@@ -896,7 +942,7 @@ export default function PremiumVidLinkPlayer({
                 if (res.ok) text = await res.text();
               }
             }
-            if (text) setVttContent(text);
+            if (text) setVttContent(cleanAndFormatVtt(text));
           } catch (err) {
             console.error("[PLAYER] Error loading VTT text from subUrl:", err);
           }
@@ -912,7 +958,7 @@ export default function PremiumVidLinkPlayer({
             id: trackId,
             attributes: {
               language: 'ku',
-              display_name: `Kurdish Translation [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
+              display_name: `ژێرنووسی کوردی [${activeTranslation.sub?.attributes?.language?.toUpperCase() || 'EN'}] ${activeTranslation.isTranslating ? `(${activeTranslation.progress}%)` : '(100%)'}`,
               url: subUrl,
               file_id: 0
             }
@@ -929,17 +975,22 @@ export default function PremiumVidLinkPlayer({
         setShowSubtitles(true);
       }
     }
-  }, [activeTranslation, tmdbId, imdbId, resolvedTmdbId, resolvedSubUrl]);
+  }, [activeTranslation, tmdbId, imdbId, resolvedTmdbId, resolvedSubUrl, type, season, episode]);
 
   // --- Realtime Subtitle Sync Listener: Auto-injects & applies newly translated SRT live for all viewers ---
   useEffect(() => {
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
-    const syncChannel = supabase.channel(`subtitle_sync_${targetId}_${type || 'movie'}`);
+    const channelKey = type === 'tv'
+      ? `subtitle_sync_${targetId}_tv_${season || 0}_${episode || 0}`
+      : `subtitle_sync_${targetId}_${type || 'movie'}`;
+
+    const syncChannel = supabase.channel(channelKey);
     syncChannel
       .on('broadcast', { event: 'new_subtitle_available' }, ({ payload }) => {
         if (payload && payload.subtitleUrl) {
+          if (type === 'tv' && (payload.season !== (season || 0) || payload.episode !== (episode || 0))) return;
           const subUrl = payload.subtitleUrl;
           const trackId = `custom-db-${payload.tmdbId}`;
 
@@ -979,7 +1030,8 @@ export default function PremiumVidLinkPlayer({
     return () => {
       supabase.removeChannel(syncChannel);
     };
-  }, [tmdbId, imdbId, resolvedTmdbId, type, language, addNotification]);
+  }, [tmdbId, imdbId, resolvedTmdbId, type, season, episode, language, addNotification]);
+
 
   // Window event listener for global translation completion
   useEffect(() => {

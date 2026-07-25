@@ -1211,7 +1211,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
                         .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
 
-                    const timeoutPromise = new Promise<{ data: any[] }>((res) => setTimeout(() => res({ data: [] }), 1000));
+                    const timeoutPromise = new Promise<{ data: any[] }>((res) => setTimeout(() => res({ data: [] }), 8000));
                     const res: any = await Promise.race([supabasePromise, timeoutPromise]);
                     dbSubs = res?.data || [];
                 } catch (spErr) {
@@ -1322,7 +1322,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         } else if (!loadedText) {
                             try {
                                 const downloadPromise = subtitleService.downloadSubtitle(customSub);
-                                const timeoutPromise = new Promise<string | null>((res) => setTimeout(() => res(null), 1500));
+                                const timeoutPromise = new Promise<string | null>((res) => setTimeout(() => res(null), 8000));
                                 loadedText = await Promise.race([downloadPromise, timeoutPromise]);
                             } catch (downloadErr) {
                                 // Supabase Storage quota blocked (402) — try localStorage fallback
@@ -1727,7 +1727,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
 
-        if (activeTranslation.subtitleUrl && String(activeTranslation.tmdbId) === String(targetId)) {
+        const isSameMedia = String(activeTranslation.tmdbId) === String(targetId) &&
+            (contentType !== 'tv' || (activeTranslation.season === (season || 0) && activeTranslation.episode === (episode || 0)));
+
+        if (activeTranslation.subtitleUrl && isSameMedia) {
             const subUrl = activeTranslation.subtitleUrl;
             if (localSubtitleUrl !== subUrl) {
                 setLocalSubtitleUrl(subUrl);
@@ -1753,14 +1756,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 });
             }
         }
-    }, [activeTranslation, tmdbId, imdbId, localSubtitleUrl]);
+    }, [activeTranslation, tmdbId, imdbId, contentType, season, episode, localSubtitleUrl]);
 
     // --- Realtime Subtitle Sync Listener: Auto-injects & applies newly translated SRT live for all viewers ---
     useEffect(() => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
 
-        const syncChannel = supabase.channel(`subtitle_sync_${targetId}_${contentType || 'movie'}`);
+        const channelKey = contentType === 'tv'
+            ? `subtitle_sync_${targetId}_tv_${season || 0}_${episode || 0}`
+            : `subtitle_sync_${targetId}_${contentType || 'movie'}`;
+
+        const syncChannel = supabase.channel(channelKey);
         syncChannel
             .on('broadcast', { event: 'new_subtitle_available' }, ({ payload }) => {
                 if (payload && payload.subtitleUrl) {
