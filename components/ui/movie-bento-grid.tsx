@@ -76,11 +76,13 @@ export function Card1() {
     const steps: ActiveStep[] = ["request", "server", "decrypt", "subtitle", "render"];
     let idx = 0;
     const interval = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
       idx = (idx + 1) % steps.length;
       setStep(steps[idx]);
     }, 2000);
     return () => clearInterval(interval);
   }, []);
+
 
   return (
     <div className="w-full h-full relative overflow-hidden select-none bg-neutral-950/60 rounded-xl flex items-center justify-center p-2">

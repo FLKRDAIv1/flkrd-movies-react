@@ -159,16 +159,15 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
       mainEl.addEventListener('scroll', handleScroll, { passive: true });
     }
     window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('touchmove', handleScroll, { passive: true });
 
     return () => {
       if (mainEl) {
         mainEl.removeEventListener('scroll', handleScroll);
       }
       window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('touchmove', handleScroll);
     };
   }, []);
+
 
   useEffect(() => {
     const queryParam = new URLSearchParams(search).get('query') || '';

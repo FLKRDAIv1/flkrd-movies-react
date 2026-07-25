@@ -81,20 +81,14 @@ const ContinueWatchingPortal: React.FC = () => {
 
     window.addEventListener('visibilitychange', handleVisibility);
 
-    const interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-            loadProgressHistory();
-        }
-    }, 20000);
-
     return () => {
       window.removeEventListener('storage', syncHandler);
       window.removeEventListener('watchProgressUpdated', syncHandler);
       window.removeEventListener('flkrd_toggle_continue_watching', toggleHandler);
       window.removeEventListener('visibilitychange', handleVisibility);
-      clearInterval(interval);
     };
   }, [loadProgressHistory]);
+
 
   const handleRemove = (e: React.MouseEvent, targetItem: WatchProgress) => {
     e.stopPropagation();
