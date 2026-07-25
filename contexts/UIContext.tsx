@@ -749,21 +749,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             return next;
           });
 
-          // LIVE UPDATE: Dispatch custom event and update local device localStorage cache so active video player updates live
+          // LIVE UPDATE: Dispatch custom event so active video player updates live
           if (partialSubtitleUrl && typeof window !== 'undefined') {
-            try {
-              const lk = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
-              localStorage.setItem(lk, JSON.stringify({
-                url: partialSubtitleUrl,
-                timestamp: Date.now(),
-                tmdbId: String(tmdbId),
-                mediaType: mediaType || 'movie',
-                season: season || 0,
-                episode: episode || 0,
-                targetLang
-              }));
-            } catch (e) {}
-
             console.log(`[UI CONTEXT] Live progressive subtitle update (${progress}%):`, partialSubtitleUrl.substring(0, 50));
             window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
               detail: { subtitleUrl: partialSubtitleUrl, tmdbId } 
@@ -785,20 +772,6 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           subtitleUrl: result.subtitleUrl
         }));
 
-        // Store directly in localStorage for instant local reuse across all video players
-        try {
-          const lk = `flkrd_translated_sub_${tmdbId}_${mediaType || 'movie'}_${season || 0}_${episode || 0}_${targetLang}`;
-          localStorage.setItem(lk, JSON.stringify({
-            url: result.subtitleUrl,
-            timestamp: Date.now(),
-            tmdbId: String(tmdbId),
-            mediaType: mediaType || 'movie',
-            season: season || 0,
-            episode: episode || 0,
-            targetLang
-          }));
-        } catch (e) {}
-
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
             detail: { subtitleUrl: result.subtitleUrl, tmdbId } 
@@ -809,6 +782,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       } else {
         throw new Error(result.error || 'Translation pipeline failed');
       }
+
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message?.includes('cancelled')) {
         console.log("[UI CONTEXT] Translation cancelled by user.");

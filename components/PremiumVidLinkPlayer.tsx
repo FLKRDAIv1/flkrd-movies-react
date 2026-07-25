@@ -759,42 +759,7 @@ export default function PremiumVidLinkPlayer({
 
       const customSubsList: any[] = [];
       if (activeId) {
-        // 0. Check IndexedDB & LocalStorage for locally translated subtitle backup on this device
-        const { db } = await import('../utils/db');
-        for (const l of ['ku', 'badini']) {
-          const localKey = `flkrd_translated_sub_${activeId}_${type || 'movie'}_${season || 0}_${episode || 0}_${l}`;
-          try {
-            let idbSub = await db.getSubtitle(localKey);
-            let subUrl = idbSub?.url;
-            let srtContent = idbSub?.srtContent;
 
-            if (!subUrl) {
-              const rawLocal = localStorage.getItem(localKey);
-              if (rawLocal) {
-                const parsed = JSON.parse(rawLocal);
-                subUrl = parsed.url;
-              }
-            }
-
-            if (subUrl) {
-              const isBadini = l === 'badini';
-              const labelSuffix = isBadini ? 'Badini' : 'Sorani';
-              customSubsList.push({
-                id: `custom-local-${activeId}-${l}`,
-                attributes: {
-                  language: l,
-                  display_name: `[Kurdish Subtitle ${labelSuffix}] (Local Saved)`,
-                  url: subUrl,
-                  file_id: 0
-                }
-              });
-
-              if (srtContent) {
-                setVttContent(srtContent);
-              }
-            }
-          } catch (e) {}
-        }
 
 
         try {

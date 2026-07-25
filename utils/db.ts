@@ -15,20 +15,16 @@ export const sanitizeLocalStorageQuota = () => {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key && (key.startsWith('flkrd_translated_sub_') || key.startsWith('flkrd_sub_blob_'))) {
-                try {
-                    const val = localStorage.getItem(key);
-                    if (val && val.length > 5000) { // Large subtitle text blob (>5KB)
-                        keysToRemove.push(key);
-                    }
-                } catch (e) {}
+                keysToRemove.push(key);
             }
         }
         keysToRemove.forEach(k => localStorage.removeItem(k));
         if (keysToRemove.length > 0) {
-            console.log(`[STORAGE] Purged ${keysToRemove.length} heavy subtitle items from LocalStorage to reclaim quota.`);
+            console.log(`[STORAGE] Purged all ${keysToRemove.length} legacy subtitle items from LocalStorage. Relying 100% on Supabase Database.`);
         }
     } catch (e) {}
 };
+
 
 // Execute quota cleanup on module import
 sanitizeLocalStorageQuota();
