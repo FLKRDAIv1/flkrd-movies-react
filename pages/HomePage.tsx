@@ -232,13 +232,13 @@ const HomePage: React.FC = () => {
           return dateB - dateA;
         });
 
-        setDubbedItems(formatted.slice(0, 20));
+        setDubbedItems(formatted.slice(0, 10));
         db.saveMovies(rawItems).catch(() => {});
       } else {
         // Fallback to indexedDB if everything else failed
         const localItems = await db.getMovies();
         if (localItems && localItems.length > 0) {
-          setDubbedItems(localItems.slice(0, 20));
+          setDubbedItems(localItems.slice(0, 10));
         }
       }
     } catch (e) {

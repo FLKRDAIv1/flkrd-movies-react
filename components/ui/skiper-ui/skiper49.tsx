@@ -101,12 +101,7 @@ const Carousel_003 = ({
   }
 `;
   
-  let finalImages = images;
-  if (loop && images.length > 0 && finalImages.length < 16) {
-    while (finalImages.length < 16) {
-      finalImages = [...finalImages, ...images];
-    }
-  }
+  const finalImages = images;
 
   return (
     <motion.div
@@ -140,7 +135,7 @@ const Carousel_003 = ({
           grabCursor={true}
           slidesPerView="auto"
           centeredSlides={true}
-          loop={loop && finalImages.length >= 8}
+          loop={loop && finalImages.length >= 3}
           coverflowEffect={{
             rotate: 20,
             stretch: 0,

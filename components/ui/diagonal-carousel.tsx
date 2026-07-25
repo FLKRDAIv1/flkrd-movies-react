@@ -38,9 +38,9 @@ export interface DiagonalCarouselProps
 }
 
 const DEFAULT_TRANSITION: Transition = {
-  type: "spring",
-  bounce: 0.16,
-  duration: 0.85,
+  type: "tween",
+  ease: [0.16, 1, 0.3, 1],
+  duration: 0.38,
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
@@ -79,6 +79,10 @@ export function DiagonalCarousel({
   const safeSlideSize = Math.max(120, slideSize);
   const safeInactiveScale = clamp(inactiveScale, 0.35, 1);
 
+  // Touch Swipe Gesture State
+  const touchStartXRef = React.useRef<number | null>(null);
+  const touchStartYRef = React.useRef<number | null>(null);
+
   const selectSlide = React.useCallback(
     (nextIndex: number) => {
       if (!items.length) {
@@ -97,6 +101,32 @@ export function DiagonalCarousel({
     },
     [activeIndex, items.length, loop, maxIndex, onActiveIndexChange]
   );
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+
+    const diffX = touchStartXRef.current - touchEndX;
+    const diffY = touchStartYRef.current - touchEndY;
+
+    // Detect horizontal swipe if horizontal displacement > vertical displacement and > 30px
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 30) {
+      if (diffX > 0) {
+        selectSlide(currentIndex + 1);
+      } else {
+        selectSlide(currentIndex - 1);
+      }
+    }
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(event);
@@ -130,13 +160,15 @@ export function DiagonalCarousel({
       aria-label="Diagonal image carousel"
       tabIndex={tabIndex ?? 0}
       onKeyDown={handleKeyDown}
-      className={cn("relative isolate h-full w-full overflow-hidden", className)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      className={cn("relative isolate h-full w-full overflow-hidden touch-pan-y transform-gpu", className)}
       dir="ltr"
       {...props}
     >
       <div className={cn("absolute inset-0 overflow-hidden", viewportClassName)}>
         <motion.div
-          className="absolute left-1/2 top-1/2 flex w-fit items-center"
+          className="absolute left-1/2 top-1/2 flex w-fit items-center transform-gpu will-change-transform"
           animate={{ x: -(currentIndex * safeSlideSize + safeSlideSize / 2) }}
           style={{ y: "-50%", transformOrigin: "left center" }}
           transition={transition}
@@ -145,11 +177,23 @@ export function DiagonalCarousel({
             const isActive = currentIndex === index;
             const distance = index - currentIndex;
 
+            // Performance optimization: limit 3D calculations to nearby visible items
+            const isVisible = Math.abs(distance) <= 3;
+            if (!isVisible) {
+              return (
+                <div
+                  key={`${item.src}-${index}`}
+                  className="flex shrink-0 flex-col items-center justify-center opacity-0 pointer-events-none"
+                  style={{ width: safeSlideSize }}
+                />
+              );
+            }
+
             return (
               <motion.div
                 key={`${item.src}-${index}`}
                 className={cn(
-                  "flex shrink-0 flex-col items-center justify-center will-change-transform",
+                  "flex shrink-0 flex-col items-center justify-center transform-gpu will-change-transform",
                   slideClassName
                 )}
                 style={{ width: safeSlideSize }}
@@ -167,7 +211,7 @@ export function DiagonalCarousel({
                       opacity: isActive ? 1 : 0,
                       scale: isActive ? 1 : 0.7,
                     }}
-                    transition={{ duration: 0.3 }}
+                    transition={{ duration: 0.25 }}
                   >
                     {item.title}
                   </motion.p>
@@ -178,7 +222,7 @@ export function DiagonalCarousel({
                   aria-label={`Show ${item.title}`}
                   aria-current={isActive ? "true" : undefined}
                   className={cn(
-                    "w-full cursor-pointer overflow-hidden rounded-2xl shadow-2xl border border-white/10 active:scale-95 transition-transform duration-200",
+                    "w-full cursor-pointer overflow-hidden rounded-2xl shadow-2xl border border-white/10 active:scale-95 transition-transform duration-200 transform-gpu",
                     aspectRatio === "portrait" ? "aspect-[2/3]" : "aspect-square"
                   )}
                   onClick={() => {
@@ -193,6 +237,8 @@ export function DiagonalCarousel({
                     src={item.src}
                     alt={item.alt ?? item.title}
                     draggable={false}
+                    loading={isActive ? "eager" : "lazy"}
+                    decoding="async"
                     className={cn(
                       "h-full w-full select-none object-cover",
                       imageClassName
