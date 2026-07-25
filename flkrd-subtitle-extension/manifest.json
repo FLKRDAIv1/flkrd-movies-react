@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "FLKRD Subtitle Helper Plugin",
+  "version": "1.0.0",
+  "description": "Native subtitle track injector for FLKRD MOVIES embed iframe players.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}

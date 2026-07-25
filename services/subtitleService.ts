@@ -642,11 +642,20 @@ export const subtitleService = {
             console.error("[SUBTITLE SERVICE] Subtitle delivery error:", error);
         }
         
-        // Final fallback: return original URL
-        return url;
+        // Final fallback: return proxy URL
+        return this.getProxyUrl(url);
+    },
+
+    getProxyUrl(url: string): string {
+        if (!url) return '';
+        if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+        const baseUrl = getSubApiBase();
+        return `${baseUrl}/api/subtitle-proxy?url=${encodeURIComponent(url)}`;
     },
 
     async processSubtitleText(text: string, offset: number) {
+
+
         try {
             let processedText = text;
             // Remove BOM and directional marks before processing
