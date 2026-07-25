@@ -786,13 +786,18 @@ export default function PremiumVidLinkPlayer({
         });
 
         try {
-          const { data: dbSubs } = await supabase
+          const targetIds = [String(activeId || ''), String(tmdbId || ''), String(imdbId || '')].filter(id => id && id !== 'undefined');
+          let query = supabase
             .from('custom_subtitles')
             .select('*')
-            .eq('tmdb_id', String(activeId))
-            .eq('media_type', type || 'movie')
-            .eq('season', type === 'tv' ? (season ?? 0) : 0)
-            .eq('episode', type === 'tv' ? (episode ?? 0) : 0);
+            .in('tmdb_id', targetIds);
+
+          if (type === 'tv' || type === 'series' || season || episode) {
+            query = query.eq('season', season ?? 0).eq('episode', episode ?? 0);
+          }
+
+          const { data: dbSubs } = await query;
+
 
           if (dbSubs && dbSubs.length > 0) {
             dbSubs.forEach(dbSub => {
@@ -1036,15 +1041,21 @@ export default function PremiumVidLinkPlayer({
   // Window event listener for global translation completion
   useEffect(() => {
     const handleTranslationFinished = (e: any) => {
-      if (e.detail && e.detail.subtitleUrl) {
-        console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", e.detail.subtitleUrl);
-        setResolvedSubUrl(e.detail.subtitleUrl);
+      if (e.detail) {
+        if (e.detail.srtContent) {
+          setVttContent(e.detail.srtContent);
+        }
+        if (e.detail.subtitleUrl) {
+          console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", e.detail.subtitleUrl);
+          setResolvedSubUrl(e.detail.subtitleUrl);
+        }
         setShowSubtitles(true);
       }
     };
     window.addEventListener('flkrd-subtitle-translated', handleTranslationFinished);
     return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationFinished);
   }, []);
+
 
   // Flag Helper
   const getLanguageFlag = (langCode: string) => {

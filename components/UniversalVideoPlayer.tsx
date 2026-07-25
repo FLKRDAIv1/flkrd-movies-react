@@ -955,9 +955,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     useEffect(() => {
         const handleTranslationEvent = (e: any) => {
-            const url = e.detail?.subtitleUrl || e.detail;
+            const url = e.detail?.subtitleUrl || (typeof e.detail === 'string' ? e.detail : undefined);
+            const srtContent = e.detail?.srtContent;
             const eventTmdbId = e.detail?.tmdbId || tmdbId || imdbId;
-            if (url) {
+            if (url || srtContent) {
                 console.log("[UNIVERSAL-PLAYER] Received flkrd-subtitle-translated event - auto-applying to player:", url);
                 const trackId = `custom-db-${eventTmdbId}`;
                 const newTrack: SubtitleResult = {
@@ -965,11 +966,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     attributes: {
                         language: 'ku',
                         display_name: '[ژێرنووسی کوردی وەرگێڕدراو]',
-                        url: url,
+                        url: url || '',
                         file_id: 0
                     }
                 };
-                setLocalSubtitleUrl(url);
+
+                if (srtContent) {
+                    const cues = subtitleService.parseVtt(srtContent);
+                    if (cues && cues.length > 0) {
+                        console.log("[UNIVERSAL-PLAYER] Applied translated SRT cues directly count:", cues.length);
+                        setSubtitleCues(cues);
+                    }
+                }
+
+                if (url) setLocalSubtitleUrl(url);
                 setKurdishSub(newTrack);
                 setCurrentSubId(trackId);
                 setShowSubtitles(true);
@@ -983,6 +993,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         window.addEventListener('flkrd-subtitle-translated', handleTranslationEvent);
         return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationEvent);
     }, [tmdbId, imdbId]);
+
 
     // Fetch and parse VTT whenever localSubtitleUrl changes
     useEffect(() => {
@@ -1203,14 +1214,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 let dbSubs: any[] = [];
                 try {
-                    const supabasePromise = supabase
+                    const targetIds = [String(tmdbId || ''), String(imdbId || '')].filter(id => id && id !== 'undefined');
+                    let query = supabase
                         .from('custom_subtitles')
                         .select('*')
-                        .in('tmdb_id', targetIds)
-                        .eq('media_type', contentType || 'movie')
-                        .eq('season', contentType === 'tv' ? (season ?? 0) : 0)
-                        .eq('episode', contentType === 'tv' ? (episode ?? 0) : 0);
+                        .in('tmdb_id', targetIds);
 
+                    if (contentType === 'tv' || contentType === 'series' || season || episode) {
+                        query = query.eq('season', season ?? 0).eq('episode', episode ?? 0);
+                    }
+
+                    const supabasePromise = query;
                     const timeoutPromise = new Promise<{ data: any[] }>((res) => setTimeout(() => res({ data: [] }), 8000));
                     const res: any = await Promise.race([supabasePromise, timeoutPromise]);
                     dbSubs = res?.data || [];

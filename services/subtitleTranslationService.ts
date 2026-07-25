@@ -442,7 +442,11 @@ export async function translateAndSavePipeline(
 
     // Realtime Global Broadcast Event: Notify all active clients watching this content
     try {
-      const syncChannel = supabase.channel(`subtitle_sync_${tmdbId}_${mediaType || 'movie'}`);
+      const channelKey = (mediaType === 'tv' || mediaType === 'series')
+        ? `subtitle_sync_${tmdbId}_tv_${season || 0}_${episode || 0}`
+        : `subtitle_sync_${tmdbId}_movie`;
+
+      const syncChannel = supabase.channel(channelKey);
       syncChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await syncChannel.send({
@@ -455,6 +459,7 @@ export async function translateAndSavePipeline(
               episode: episode || 0,
               language: targetLang,
               subtitleUrl: resolvedPublicUrl,
+              srtContent: srtContent,
               fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
             }
           });
@@ -464,9 +469,27 @@ export async function translateAndSavePipeline(
       console.warn("[SUBTITLE-PIPELINE] Broadcast sync warning:", bErr);
     }
 
+    // Local Window Event Dispatch for immediate 0ms local player rendering
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
+          detail: {
+            subtitleUrl: resolvedPublicUrl,
+            srtContent: srtContent,
+            tmdbId: String(tmdbId),
+            mediaType: mediaType || 'movie',
+            season: season || 0,
+            episode: episode || 0,
+            language: targetLang
+          }
+        }));
+      }
+    } catch (e) {}
+
     if (onProgress) onProgress(100, "Subtitle fully registered and active!");
 
     return { success: true, subtitleUrl: resolvedPublicUrl };
+
   } catch (err: any) {
     console.error("[SubtitleTranslationService] Pipeline failed:", err);
     return { success: false, error: err.message || "Unknown error occurred" };
