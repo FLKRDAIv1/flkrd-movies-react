@@ -604,6 +604,37 @@ video::-webkit-media-controls-panel {
   }
 }
 
+/* ── iOS Safari & Mobile Thermal Performance Optimization ── */
+@media (max-width: 768px) {
+  /* Disable high-frequency continuous keyframe loops on mobile WebKit to prevent GPU overheating */
+  [class*="animate-[ios-glass-shine"],
+  [class*="animate-[mesh"],
+  [class*="glass-sheen-pan"] {
+    animation: none !important;
+  }
+
+  /* Replace heavy mix-blend-overlay with standard opacity on mobile GPU buffers */
+  [class*="mix-blend-overlay"] {
+    mix-blend-mode: normal !important;
+    opacity: 0.15 !important;
+  }
+
+  /* Cap maximum blur radius on mobile to 12px (saves 90% WebKit GPU shader load) */
+  .backdrop-blur-3xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-xl {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+}
+
+/* Pause all CSS animation execution when PWA/tab is hidden/minimized */
+body.tab-hidden *,
+.tab-hidden * {
+  animation-play-state: paused !important;
+}
+
+
 /* ── Glass Sheen Pan: gentle diagonal light sweep ── */
 @keyframes glass-sheen-pan {
   0% {

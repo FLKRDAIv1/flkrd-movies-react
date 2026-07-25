@@ -25,6 +25,14 @@ Node.prototype.removeChild = function <T extends Node>(child: T): T {
   return nativeRemoveChild.call(this, child) as T;
 };
 
+if (typeof document !== 'undefined') {
+  const handleVis = () => {
+    document.body.classList.toggle('tab-hidden', document.visibilityState === 'hidden');
+  };
+  document.addEventListener('visibilitychange', handleVis);
+  handleVis();
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
