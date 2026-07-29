@@ -12,6 +12,8 @@ import { useUI } from '../contexts/UIContext';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { fetchSubtitleEdits, saveSubtitleLineEdit, deleteSubtitleLineEdit, subscribeSubtitleEdits, type SubtitleEditKey } from '../services/subtitleEditService';
+import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
+import { usePlayerNavigationGuard } from '../hooks/usePlayerNavigationGuard';
 
 import { Season, SeasonDetails } from '../types';
 
@@ -129,6 +131,20 @@ export default function PremiumVidLinkPlayer({
   const [editingCue, setEditingCue] = useState<{ index: number; original: string; current: string } | null>(null);
   const [subEditSaving, setSubEditSaving] = useState(false);
   const [activeCues, setActiveCues] = useState<any[]>([]);
+  const activeCuesRef = React.useRef<any[]>([]);
+  const isPlayingRef = React.useRef(false);
+
+  const updateActiveCues = React.useCallback((next: any[]) => {
+    const prev = activeCuesRef.current;
+    if (
+      prev.length === next.length &&
+      prev.every((c, i) => c.index === next[i]?.index && c.text === next[i]?.text)
+    ) {
+      return;
+    }
+    activeCuesRef.current = next;
+    setActiveCues(next);
+  }, []);
   const [vttContent, setVttContent] = useState<string | null>(null);
   const [isUploadingSub, setIsUploadingSub] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -177,6 +193,12 @@ export default function PremiumVidLinkPlayer({
       Object.values(saveTimeoutRef.current).forEach(clearTimeout);
     };
   }, []);
+
+  // Quantum Ad Shield — block pop-ups / overlays injected by embed providers
+  useQuantumAdBlocker(true);
+
+  // Block history-based tab hijacks (no beforeunload — that lags every navigation)
+  usePlayerNavigationGuard();
 
   const handleBrightnessChange = (val: number) => {
     setBrightness(val);
@@ -1019,16 +1041,52 @@ export default function PremiumVidLinkPlayer({
   // Window event listener for global translation completion
   useEffect(() => {
     const handleTranslationFinished = (e: any) => {
-      if (e.detail) {
-        if (e.detail.srtContent) {
-          setVttContent(e.detail.srtContent);
+      if (!e.detail) return;
+
+      // 1. Prefer explicit SRT content when the pipeline includes it (final completion event)
+      let textToApply = e.detail.srtContent || null;
+
+      // 2. CRITICAL FIX: during live progress AND completion, the event often only carries
+      //    a `data:text/plain;base64,...` SRT URL (no srtContent field). The overlay depends
+      //    entirely on `vttContent` -> `parsedCues` -> `activeCues`. If we only set
+      //    `resolvedSubUrl` here, the separate `activeTranslation` effect is skipped
+      //    (its `resolvedSubUrl !== subUrl` guard is already false) and NO cues are parsed,
+      //    so `activeCues` stays empty and the overlay renders nothing.
+      //    Decode the data: URI ourselves so the event is self-sufficient in every browser/app.
+      if (!textToApply && e.detail.subtitleUrl && typeof e.detail.subtitleUrl === 'string') {
+        const url = e.detail.subtitleUrl;
+        if (url.startsWith('data:')) {
+          try {
+            const commaIdx = url.indexOf(',');
+            const base64Str = commaIdx >= 0 ? url.slice(commaIdx + 1) : '';
+            if (url.includes(';base64,')) {
+              const binaryStr = atob(base64Str);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+              }
+              textToApply = new TextDecoder('utf-8').decode(bytes);
+            } else {
+              textToApply = decodeURIComponent(base64Str || url);
+            }
+          } catch (err) {
+            console.error('[VIP-PLAYER] Failed to decode translated data: URI:', err);
+          }
+        } else if (url.startsWith('blob:')) {
+          // blob: URLs are async — let the activeTranslation effect handle full decoding.
+          // Just ensure we don't block here.
         }
-        if (e.detail.subtitleUrl) {
-          console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", e.detail.subtitleUrl);
-          setResolvedSubUrl(e.detail.subtitleUrl);
-        }
-        setShowSubtitles(true);
       }
+
+      if (textToApply) {
+        setVttContent(cleanAndFormatVtt(textToApply));
+      }
+
+      if (e.detail.subtitleUrl) {
+        console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", String(e.detail.subtitleUrl).substring(0, 60));
+        setResolvedSubUrl(e.detail.subtitleUrl);
+      }
+      setShowSubtitles(true);
     };
     window.addEventListener('flkrd-subtitle-translated', handleTranslationFinished);
     return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationFinished);
@@ -1436,15 +1494,21 @@ export default function PremiumVidLinkPlayer({
         lastReceivedTimeRef.current = extractedTime;
 
         if (eventType === 'pause' || eventType === 'paused') {
-          setIsPlaying(false);
-        } else {
-          setIsPlaying(true);
+          if (isPlayingRef.current) {
+            isPlayingRef.current = false;
+            setIsPlaying(false);
+          }
+        } else if (eventType === 'play' || eventType === 'playing' || eventType === 'timeupdate' || extractedTime !== undefined) {
+          if (!isPlayingRef.current) {
+            isPlayingRef.current = true;
+            setIsPlaying(true);
+          }
         }
 
         const offsetSec = subtitleOffsetRef.current / 1000;
         if (parsedCuesRef.current.length > 0) {
           const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec - 0.1) && extractedTime! <= (c.end + offsetSec + 0.1));
-          setActiveCues(active);
+          updateActiveCues(active);
         }
 
         if (onProgress) {
@@ -1459,7 +1523,7 @@ export default function PremiumVidLinkPlayer({
 
     window.addEventListener('message', handleIframeMessage);
     return () => window.removeEventListener('message', handleIframeMessage);
-  }, [onProgress]);
+  }, [onProgress, updateActiveCues]);
 
   // Universal Fallback Timer: Advances playhead second-by-second for iframe sources that do not emit continuous postMessages
   useEffect(() => {
@@ -1472,7 +1536,7 @@ export default function PremiumVidLinkPlayer({
         lastReceivedTimeRef.current = nextTime;
         const offsetSec = subtitleOffsetRef.current / 1000;
         const active = parsedCuesRef.current.filter(c => nextTime >= (c.start + offsetSec - 0.1) && nextTime <= (c.end + offsetSec + 0.1));
-        setActiveCues(active);
+        updateActiveCues(active);
       }
     }, 1000);
 
@@ -1568,9 +1632,9 @@ export default function PremiumVidLinkPlayer({
       const active = parsedCuesRef.current.filter(
         c => lastReceivedTimeRef.current >= (c.start + offsetSec) && lastReceivedTimeRef.current <= (c.end + offsetSec)
       );
-      setActiveCues(active);
+      updateActiveCues(active);
     }
-  }, [subtitleOffset]);
+  }, [subtitleOffset, updateActiveCues]);
 
   // 3. SUPPRESS TAURI NATIVE DIALOGS from VidLink's built-in subtitle failure alerts
   // Tauri intercepts window.alert/confirm/prompt as native macOS dialogs — block them
@@ -2897,10 +2961,8 @@ export default function PremiumVidLinkPlayer({
 
       {/* Top Controls — always visible and interactive, rendered after video element to sit on top of the iframe */}
       <div 
-        className="absolute z-[100] flex items-center gap-2 md:gap-3 pointer-events-auto"
+        className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 z-[100] flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto max-w-[calc(100vw-5rem)]"
         style={{
-          top: '1rem',
-          right: '1rem',
           transform: 'translate3d(0, 0, 0)',
           WebkitTransform: 'translate3d(0, 0, 0)'
         }}
@@ -2912,14 +2974,14 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowSourceSwitcher(false);
             }}
-            className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
               showEpisodesPortal 
                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
                 : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
             }`}
           >
-            <Tv size={16} />
-            <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+            <Tv size={13} className="sm:w-4 sm:h-4" />
+            <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
           </button>
         )}
 
@@ -2931,14 +2993,14 @@ export default function PremiumVidLinkPlayer({
             setShowEpisodesPortal(false);
             setShowSourceSwitcher(false);
           }}
-          className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+          className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
             showSubSettings 
               ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
               : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
           }`}
         >
-          <Subtitles size={16} />
-          <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'CC'}</span>
+          <Subtitles size={13} className="sm:w-4 sm:h-4" />
+          <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'CC'}</span>
         </button>
 
         {/* Relink Button */}
@@ -2949,28 +3011,28 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowEpisodesPortal(false);
             }}
-            className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
               showSourceSwitcher
                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
                 : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
             }`}
             title="Relink"
           >
-            <RefreshCcw size={16} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
-            <span className="text-[11px] font-black uppercase">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Relink'}</span>
+            <RefreshCcw size={13} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
+            <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Relink'}</span>
           </button>
         )}
 
         {/* Fullscreen Button */}
         <button 
           onClick={toggleFullscreen}
-          className="transition-all duration-300 backdrop-blur-md border px-3 py-2 rounded-xl flex items-center gap-1.5 shadow-2xl bg-black/70 border-white/20 text-white/95 hover:bg-white/20 active:scale-95"
+          className="transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl bg-black/70 border-white/20 text-white/95 hover:bg-white/20 active:scale-95"
           title={isFullscreen 
             ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
             : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
         >
-          {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-          <span className="text-[11px] font-black uppercase">
+          {isFullscreen ? <Minimize size={13} className="sm:w-4 sm:h-4" /> : <Maximize size={13} className="sm:w-4 sm:h-4" />}
+          <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">
             {isFullscreen 
               ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit') 
               : ((language === 'ku' || language === 'badini') ? 'شاشە' : 'Full')}

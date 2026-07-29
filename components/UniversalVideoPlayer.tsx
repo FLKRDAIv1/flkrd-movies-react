@@ -3274,7 +3274,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             ─────────────────────────────────────────────────────────────────── */}
             {subtitleCues.length > 0 && showSubtitles && (
                 <div
-                    className="absolute top-3 right-3 z-[2147483646] flex flex-col items-end gap-2"
+                    className="absolute top-11 sm:top-14 right-2.5 sm:right-4 z-[2147483646] flex flex-col items-end gap-2"
                     style={{ pointerEvents: 'auto' }}
                 >
                     {/* Badge button */}
@@ -3589,13 +3589,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 </div>
             </div>
 
-            {/* Action buttons (CC, Relink, Fullscreen, Episodes) with dynamic position styling managed by the admin customizer */}
+            {/* Action buttons (CC, Relink, Fullscreen, Episodes) cleanly positioned in top-right header */}
             <div 
-                className="absolute z-[100] flex items-center gap-2 md:gap-3 pointer-events-auto"
+                className="absolute top-2.5 sm:top-4 right-2.5 sm:right-4 z-[100] flex items-center gap-1.5 sm:gap-2.5 pointer-events-auto max-w-[calc(100vw-5rem)]"
                 style={{
-                    top: playerConfig.controlsAlign === 0 ? `${playerConfig.controlsOffset}px` : 'auto',
-                    bottom: playerConfig.controlsAlign === 1 ? `${playerConfig.controlsOffset}px` : 'auto',
-                    right: '1rem',
                     transform: 'translate3d(0, 0, 0)',
                     WebkitTransform: 'translate3d(0, 0, 0)'
                 }}
@@ -3603,28 +3600,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 {contentType === 'tv' && onEpisodeChange && (
                     <button
                         onClick={() => { startTransition(() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }); }}
-                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
+                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
                                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
-                                : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                                : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
                             }`}
                         title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
                     >
-                        <Tv size={14} />
-                        <span className="text-[10px] font-black uppercase hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+                        <Tv size={13} className="sm:w-3.5 sm:h-3.5" />
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
                     </button>
                 )}
 
                 {/* CC / Subtitle Studio */}
                 <button
                     onClick={() => { startTransition(() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }); }}
-                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubSettings
+                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showSubSettings
                             ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
-                            : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                            : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
                         }`}
                     title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                 >
-                    <Subtitles size={14} />
-                    <span className="text-[10px] font-black uppercase hidden sm:inline">CC</span>
+                    <Subtitles size={13} className="sm:w-3.5 sm:h-3.5" />
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">CC</span>
                 </button>
 
                 {/* ⚡ Subtitle ON/OFF Quick Toggle */}
@@ -3633,7 +3630,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onClick={() => {
                             setShowSubtitles(prev => !prev);
                         }}
-                        className={`transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSubtitles
+                        className={`transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showSubtitles
                                 ? 'bg-emerald-600/90 border-emerald-500 text-white shadow-emerald-600/40'
                                 : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/70'
                             }`}
@@ -3642,15 +3639,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             : (showSubtitles ? 'Disable Subtitles' : 'Enable Subtitles')}
                     >
                         {showSubtitles ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/><line x1="4" y1="22" x2="20" y2="2"/>
                             </svg>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/>
                             </svg>
                         )}
-                        <span className="text-[10px] font-black uppercase hidden sm:inline">
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">
                             {showSubtitles
                                 ? ((language === 'ku' || language === 'badini') ? 'داخستن' : 'Sub On')
                                 : ((language === 'ku' || language === 'badini') ? 'کردنەوە' : 'Sub Off')}
@@ -3658,31 +3655,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     </button>
                 )}
 
-                {/* Relink / Source Switcher — always show, even during loading */}
+                {/* Relink / Source Switcher */}
                 {sources && sources.length > 0 && (
                     <button
                         onClick={() => { startTransition(() => { setShowSourceSwitcher(!showSourceSwitcher); setShowSubSettings(false); setShowEpisodesPortal(false); }); }}
-                        className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
+                        className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showSourceSwitcher
                                 ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
-                                : 'bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
+                                : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
                             }`}
                         title="Relink"
                     >
-                        <RefreshCcw size={14} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
-                        <span className="text-[10px] font-black uppercase hidden sm:inline">Relink</span>
+                        <RefreshCcw size={13} className={showSourceSwitcher ? 'rotate-180 text-white transition-transform duration-500' : ''} />
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">Relink</span>
                     </button>
                 )}
 
                 {/* Fullscreen */}
                 <button
                     onClick={toggleFullscreen}
-                    className="transition-all duration-300 backdrop-blur-md border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xl bg-white/10 border-white/20 text-white/95 hover:bg-white/20 hover:text-white active:scale-95"
+                    className="transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white active:scale-95"
                     title={isFullscreen
                         ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen')
                         : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
                 >
-                    {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
-                    <span className="text-[10px] font-black uppercase hidden sm:inline">
+                    {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">
                         {isFullscreen
                             ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit')
                             : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Full')}
