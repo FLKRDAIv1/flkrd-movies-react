@@ -58,9 +58,51 @@ const getApiBaseUrl = (): string => {
 };
 
 /**
- * Translates an array of text strings via Vercel translation proxy.
- * Passes the array directly so the backend can manage line counts and fallbacks.
- * On any error, returns the original text array so the player never crashes.
+ * Direct client-side Google GTX POST array translator (runs directly in browser as secondary fail-safe)
+ */
+async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
+  if (!chunkItems || chunkItems.length === 0) return null;
+  const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+
+  const doFetch = async (sourceCode: string) => {
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
+      const bodyParams = chunkItems.map(t => `q=${encodeURIComponent((t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ') || ' ')}`).join('&');
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+        },
+        body: bodyParams
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          return chunkItems.map((item, idx) => {
+            const resItem = data[idx];
+            if (Array.isArray(resItem)) {
+              const translated = resItem.map((subItem: any) => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
+              return translated || item;
+            }
+            return item;
+          });
+        }
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  let res = await doFetch(effectiveSrc);
+  if (!res || (effectiveSrc !== 'auto' && !res.some((t, i) => t && t.trim() && t !== chunkItems[i]))) {
+    res = await doFetch('auto');
+  }
+  return res;
+}
+
+/**
+ * Translates an array of text strings via Vercel translation proxy with direct client fallback.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
   try {
@@ -73,17 +115,26 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
       body: JSON.stringify({ text, source: sourceLang, target: targetLang }),
     });
 
-    if (!response.ok) {
-      console.warn(`[TRANSLATE] HTTP ${response.status} — returning original text`);
-      return text;
+    if (response.ok) {
+      const data = await response.json();
+      if (data && Array.isArray(data.translation)) {
+        const validCount = data.translation.filter((t: string, i: number) => t && t.trim() && t !== text[i]).length;
+        if (validCount > 0) {
+          return data.translation;
+        }
+      }
     }
-
-    const data = await response.json();
-    return data.translation ?? text;
   } catch (err: any) {
-    console.warn(`[TRANSLATE] Fetch failed: ${err.message} — returning original text`);
-    return text;
+    console.warn(`[TRANSLATE] Server proxy fetch notice: ${err?.message || err} — trying direct client fallback...`);
   }
+
+  // Fail-Safe Fallback: Try direct browser client translation with Google GTX
+  const clientDirect = await translateArrayDirectClient(text, sourceLang, targetLang);
+  if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
+    return clientDirect;
+  }
+
+  return text;
 }
 
 /**

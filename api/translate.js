@@ -90,7 +90,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { text, source = 'en', target = 'ckb' } = req.body || {};
+        let bodyData = req.body || {};
+        if (typeof bodyData === 'string') {
+            try {
+                bodyData = JSON.parse(bodyData);
+            } catch (e) {}
+        }
+
+        const { text, source = 'auto', target = 'ckb' } = bodyData || {};
 
         if (!text) {
             return res.status(400).json({ error: 'Missing text in request body' });
