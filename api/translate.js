@@ -123,12 +123,12 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
-        // ⚡ Multi-Q Google GTX POST Array Translator (100% index accuracy, 20 items max per sub-batch to prevent Google API truncation)
+        // ⚡ Multi-Q Google GTX POST Array Translator (100% sentence-accurate index matching)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
             const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
             
-            const SUB_BATCH_SIZE = 20;
+            const SUB_BATCH_SIZE = 15;
             const allResults = [];
 
             for (let i = 0; i < chunkItems.length; i += SUB_BATCH_SIZE) {
@@ -158,12 +158,12 @@ export default async function handler(req, res) {
 
                         if (response.ok) {
                             const data = await response.json();
-                            if (Array.isArray(data)) {
+                            if (Array.isArray(data) && Array.isArray(data[0])) {
+                                const segments = data[0];
                                 return subChunk.map((item, idx) => {
-                                    const resItem = data[idx];
-                                    if (Array.isArray(resItem)) {
-                                        const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
-                                        return translated || item;
+                                    const seg = segments[idx];
+                                    if (Array.isArray(seg) && typeof seg[0] === 'string' && seg[0].trim()) {
+                                        return seg[0].trim();
                                     }
                                     return item;
                                 });
