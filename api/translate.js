@@ -459,9 +459,9 @@ CRITICAL TRANSLATION INSTRUCTIONS:
         };
 
 
-        // 1. Array batch translation with sub-chunking (40 items per chunk for 100ms response)
+        // 1. Array batch translation with sub-chunking (65 items per chunk for ultra-fast response)
         if (isArray) {
-            const CHUNK_SIZE = 40;
+            const CHUNK_SIZE = 65;
             const chunks = [];
             for (let i = 0; i < textArray.length; i += CHUNK_SIZE) {
                 chunks.push(textArray.slice(i, i + CHUNK_SIZE));

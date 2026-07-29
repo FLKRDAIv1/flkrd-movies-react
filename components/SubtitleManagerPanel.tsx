@@ -638,29 +638,31 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                             </motion.div>
                           </div>
 
-                          {/* Professional Terminal Output */}
-                          <div className={`w-full font-mono text-[9px] p-4 rounded-2xl max-h-[140px] overflow-y-auto custom-scrollbar flex flex-col gap-2 border shadow-inner ${
+                          {/* Special Modern Glassmorphic AI HUD Status Display */}
+                          <div className={`w-full p-4 rounded-2xl border shadow-lg flex flex-col gap-3 relative overflow-hidden backdrop-blur-xl ${
                             isDark 
-                              ? 'bg-black/90 border-white/10 text-emerald-400' 
-                              : 'bg-zinc-900 border-zinc-700 text-emerald-400'
+                              ? 'bg-gradient-to-r from-red-950/40 via-zinc-900/60 to-black/80 border-white/10 text-white' 
+                              : 'bg-gradient-to-r from-red-50/80 via-white to-zinc-50 border-zinc-200 text-zinc-900'
                           }`}>
-                            {terminalLogs.map((log, index) => (
-                              <div key={index} className="flex gap-2 items-start leading-relaxed">
-                                <span className="text-emerald-600/60 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                                <span className="text-emerald-500 select-none">&gt;</span>
-                                <span className="text-zinc-200 break-all">
-                                  {log.replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').replace(/&nbsp;/gi, ' ')}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                                <span className="text-[11px] font-black uppercase tracking-widest text-emerald-400">
+                                  {isKu ? '⚡ وەرگێڕانی زیرەکیی خێرا' : '⚡ FAST AI TRANSLATION'}
                                 </span>
                               </div>
-                            ))}
-                            {/* Loading cursor line */}
-                            <div className="flex gap-2 items-center leading-relaxed">
-                              <span className="text-emerald-600/60 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
-                              <span className="text-emerald-400 select-none">&gt;</span>
-                              <span className="text-emerald-300 animate-pulse font-bold">
-                                {isKu ? 'لە پڕۆسەدایە...' : 'Executing translation pipeline...'}
+                              <span className="text-[10px] font-bold opacity-60 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+                                {translationProgress}%
                               </span>
-                              <span className="w-1.5 h-3.5 bg-emerald-400 animate-pulse shrink-0"></span>
+                            </div>
+
+                            <p className="text-xs font-semibold leading-relaxed opacity-90">
+                              {translationStatus || (isKu ? 'لە پڕۆسەی داڕشتن و وەرگێڕانی ڕستەکاندایە...' : 'Processing dialogue lines...')}
+                            </p>
+
+                            <div className="flex items-center justify-between text-[10px] opacity-60 pt-1 border-t border-white/5">
+                              <span>{isKu ? 'زمان: سەرچاوە ➔ کوردی' : 'Language: Source ➔ Kurdish'}</span>
+                              <span className="animate-pulse">{isKu ? 'ڕاستەوخۆ لە کاردایە...' : 'Live active track...'}</span>
                             </div>
                           </div>
                         </motion.div>
