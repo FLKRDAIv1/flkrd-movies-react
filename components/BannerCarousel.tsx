@@ -68,6 +68,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
     if (!isMobile || items.length <= 1) return;
 
     const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
       setCurrentIndex((prev) => (prev + 1) % items.length);
     }, 4000);
 

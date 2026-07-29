@@ -3,7 +3,7 @@ import { HashRouter, BrowserRouter, Routes, Route, useLocation } from 'react-rou
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
 
-import HomePage from './pages/HomePage';
+const HomePage = lazy(() => import('./pages/HomePage'));
 const DetailPage = lazy(() => import('./pages/DetailPage'));
 const TVDetailPage = lazy(() => import('./pages/TVDetailPage'));
 const DubbedDetailPage = lazy(() => import('./pages/DubbedDetailPage'));
@@ -212,45 +212,26 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     );
 };
 
-const pageVariants = {
-    initial: {
-        opacity: 0,
-        y: 6
-    },
-    animate: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.2,
-            ease: "easeOut"
-        }
-    },
-    exit: {
-        opacity: 0,
-        y: -4,
-        transition: {
-            duration: 0.14,
-            ease: "easeIn"
-        }
-    }
-};
-
+/** Enter-only fade: previous route unmounts immediately (no stacked ghost pages). */
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const location = useLocation();
+
     useEffect(() => {
         const mainEl = document.querySelector('main');
         if (mainEl) {
             mainEl.scrollTop = 0;
         }
-    }, []);
+    }, [location.pathname, location.search]);
 
     return (
         <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            style={{ willChange: "transform, opacity" }}
-            className="flex-1 w-full h-full flex flex-col"
+            key={`${location.pathname}${location.search}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            layout={false}
+            style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
+            className="flex-1 w-full min-h-full flex flex-col bg-[var(--bg-primary)] relative z-[1] isolate"
         >
             {children}
         </motion.div>
@@ -259,22 +240,10 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
 const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const location = useLocation();
-    const [animatedLocation, setAnimatedLocation] = useState(location);
-
-    useEffect(() => {
-        if (location.pathname !== animatedLocation.pathname || location.search !== animatedLocation.search) {
-            setAnimatedLocation(location);
-        }
-    }, [location, animatedLocation]);
-
     return (
-        <AnimatePresence mode="wait">
-            <React.Fragment key={animatedLocation.pathname}>
-                <Routes location={animatedLocation}>
-                    {children}
-                </Routes>
-            </React.Fragment>
-        </AnimatePresence>
+        <Routes location={location}>
+            {children}
+        </Routes>
     );
 };
 
@@ -576,8 +545,10 @@ const AppContent: React.FC<{
         setGoogleTranslateCookie(language);
     }, [language]);
 
-    // ── Google Translate Dynamic Banner Destroyer ──
+    // ── Google Translate Dynamic Banner Destroyer (rAF-batched — no main-thread storm) ──
     useEffect(() => {
+        let rafId: number | null = null;
+
         const destroyTranslateUI = () => {
             const selectors = [
                 'iframe.goog-te-banner-frame',
@@ -601,7 +572,6 @@ const AppContent: React.FC<{
                 });
             });
 
-            // Prevent layout shifting
             if (document.body.style.top !== '0px' && document.body.style.top !== '') {
                 document.body.style.setProperty('top', '0px', 'important');
             }
@@ -610,13 +580,22 @@ const AppContent: React.FC<{
             }
         };
 
+        const scheduleDestroy = () => {
+            if (rafId !== null) return;
+            rafId = requestAnimationFrame(() => {
+                rafId = null;
+                destroyTranslateUI();
+            });
+        };
+
         destroyTranslateUI();
 
-        const observer = new MutationObserver(destroyTranslateUI);
+        const observer = new MutationObserver(scheduleDestroy);
         observer.observe(document.body, { childList: true, subtree: true });
 
         return () => {
             observer.disconnect();
+            if (rafId !== null) cancelAnimationFrame(rafId);
         };
     }, []);
 
@@ -679,7 +658,7 @@ const AppContent: React.FC<{
                           <SkeletonGrid count={12} />
                         </div>
                       }>
-                          <main ref={mainRef} className={`flex-1 ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container'}`}>
+                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]'}`}>
                               <ViewTransitionRoutes>
                                   <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
                                   <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
@@ -722,7 +701,7 @@ const AppContent: React.FC<{
 
 const App: React.FC = () => {
     const { language, t } = useTranslation();
-    const { theme, isPerformanceMode } = useUI();
+    const { theme } = useUI();
     const { addNotification } = useNotification();
     const [loading, setLoading] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -760,14 +739,20 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        let ticking = false;
         const handleScroll = () => {
-            if (mainRef.current) {
-                setScrolled(mainRef.current.scrollTop > 10);
-            }
+            if (ticking || !mainRef.current) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                ticking = false;
+                if (mainRef.current) {
+                    setScrolled(mainRef.current.scrollTop > 10);
+                }
+            });
         };
         const mainEl = mainRef.current;
         if (mainEl) {
-            mainEl.addEventListener('scroll', handleScroll);
+            mainEl.addEventListener('scroll', handleScroll, { passive: true });
         }
         return () => {
             if (mainEl) {
@@ -835,7 +820,11 @@ const App: React.FC = () => {
         };
 
         checkForNewContent();
-        const interval = setInterval(checkForNewContent, 300000); // Poll every 5 minutes for real-time feel
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                checkForNewContent();
+            }
+        }, 300000); // Poll every 5 minutes when tab is visible
         return () => clearInterval(interval);
     }, [t]);
 
@@ -884,7 +873,7 @@ const App: React.FC = () => {
     const Router = isTauri() ? HashRouter : BrowserRouter;
 
     return (
-        <MotionConfig reducedMotion={isPerformanceMode ? "always" : "user"}>
+        <MotionConfig reducedMotion="user">
             <div className={`h-screen w-screen overflow-hidden transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-black'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                 <AnimatePresence mode="wait">
                     {loading && <SplashScreen key="splash" onComplete={() => setLoading(false)} />}

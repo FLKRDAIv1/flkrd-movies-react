@@ -35,12 +35,10 @@ export const MovieCard = React.memo(
     aberrationIntensity: 0.5
   } } = useUI();
   const [isAdded, setIsAdded] = useState(false);
-  const [isClicked, setIsClicked] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
     setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
-    setIsClicked(false);
   }, [item.id]);
 
   const isCustom = String(item.id).startsWith('custom_');
@@ -112,13 +110,13 @@ export const MovieCard = React.memo(
     }
   };
 
+  const detailPath =
+    mediaType === 'dubbed' || isCustom
+      ? `/dubbed-details/${String(item.id).replace('custom_', '')}`
+      : `/details/${mediaType}/${item.id}`;
+
   const navigateToDetail = () => {
-    setIsClicked(true);
-    if (mediaType === 'dubbed' || isCustom) {
-      navigate(`/dubbed-details/${String(item.id).replace('custom_', '')}`, { state: { customData: item } });
-    } else {
-      navigate(`/details/${mediaType}/${item.id}`, { state: { customData: item } });
-    }
+    navigate(detailPath, { state: { customData: item } });
   };
 
   const handlePrefetch = () => {
@@ -149,7 +147,8 @@ export const MovieCard = React.memo(
       ref={ref}
       onClick={navigateToDetail}
       onMouseEnter={handlePrefetch}
-      className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform ${className || 'w-44 md:w-72'}`}
+      onPointerDown={handlePrefetch}
+      className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation ${className || 'w-44 md:w-72'}`}
       whileHover={{ scale: 1.04, y: -6 }}
       whileTap={{ scale: 0.96 }}
       transition={{

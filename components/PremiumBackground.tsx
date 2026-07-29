@@ -263,9 +263,15 @@ export const PremiumBackground: React.FC = () => {
             <style>
                 {`
                 @keyframes mesh {
-                    0%, 100% { transform: scale(1) translate(0, 0); }
-                    33% { transform: scale(1.1) translate(2%, 2%); }
-                    66% { transform: scale(1.05) translate(-1%, 3%); }
+                    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+                    33% { transform: translate3d(2%, 2%, 0) scale(1.05); }
+                    66% { transform: translate3d(-1%, 3%, 0) scale(1.02); }
+                }
+                @media (max-width: 768px) {
+                    .animate-\\[mesh_20s_ease-in-out_infinite\\] {
+                        animation-duration: 40s !important;
+                        will-change: transform;
+                    }
                 }
                 `}
             </style>

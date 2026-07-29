@@ -42,6 +42,14 @@ textarea,
   perspective: 1000px;
 }
 
+/* Player controls: instant tap response on mobile (no 300ms delay, GPU layer) */
+[class*="player-"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
 .light-mode {
   --brand-red: #ef4444;
   --brand-red-rgb: 239, 68, 68;
@@ -163,17 +171,19 @@ html.performance-mode {
   background: #000 !important;
 }
 
-html.performance-mode *:not(.motion-safe):not(.ui-overlay),
+html.performance-mode *:not(.motion-safe):not(.ui-overlay):not([class*="player-"]),
 html.performance-mode *::before,
 html.performance-mode *::after {
-  /* Kill all CSS animations for general elements */
-  animation: none !important;
-  transition: none !important;
+  /* Keep transform/opacity animations — only strip paint-heavy effects */
   scroll-behavior: auto !important;
-  /* Disable expensive composite layers */
   box-shadow: none !important;
   text-shadow: none !important;
-  filter: none !important;
+}
+
+/* Shorten non-transform transitions on mobile turbo (transform/opacity stay smooth) */
+html.performance-mode *:not(.motion-safe):not(.ui-overlay) {
+  transition-property: transform, opacity !important;
+  transition-duration: 0.15s !important;
 }
 
 /* Ensure motion-safe elements and UI overlays keep their logic but stay snappy */
@@ -331,11 +341,14 @@ html.console-mode-active .web-only {
   cursor: default;
 }
 
-/* ── Global Safari Backdrop Filter Support (iPhone XR / older iOS) ── */
-/* Tailwind v3 uses --tw-backdrop-blur via @apply, so we mirror it with -webkit- prefix */
+/* ── Global Safari & Mobile Hardware GPU Acceleration ── */
 [class*="backdrop-blur"] {
   backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-saturate, ) var(--tw-backdrop-brightness, ) !important;
   -webkit-backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-saturate, ) var(--tw-backdrop-brightness, ) !important;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .backdrop-blur-20 {
@@ -343,7 +356,6 @@ html.console-mode-active .web-only {
   -webkit-backdrop-filter: blur(20px) !important;
 }
 
-/* Common blur classes: explicit -webkit- mirror for iPhone XR Safari */
 .backdrop-blur-xl {
   backdrop-filter: blur(24px) !important;
   -webkit-backdrop-filter: blur(24px) !important;
@@ -360,6 +372,20 @@ html.console-mode-active .web-only {
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
 }
+
+/* ⚡ Mobile Thermal Optimization: Cap heavy GPU blur on small screens to prevent iPhone overheating */
+@media (max-width: 768px) {
+  .backdrop-blur-2xl,
+  .backdrop-blur-xl,
+  .backdrop-blur-20,
+  [class*="backdrop-blur-[100px]"],
+  [class*="backdrop-blur-[30px]"],
+  [class*="backdrop-blur-3xl"] {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+}
+
 
 /* ── Professional Scrolling for Safari ── */
 .scrollbar-hide, [class*="overflow-y-auto"] {
@@ -695,21 +721,10 @@ html {
 }
 
 /* ── Visual Suppression for 60 FPS Turbo Mode ── */
-.performance-mode * {
-  /* Disable all transitions and animations instantly */
-  animation: none !important;
-  transition: none !important;
-  transition-duration: 0s !important;
-  transition-property: none !important;
-
-  /* Disable blurs and backdrops (extremely heavy on rendering) */
+/* Animations stay ON — only disable paint-heavy filters that block the GPU compositor */
+html.performance-mode *:not(.motion-safe):not(.ui-overlay):not([class*="player-"]) {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-
-  /* Remove heavy box shadows and text shadows */
-  box-shadow: none !important;
-  text-shadow: none !important;
-  filter: none !important;
 }
 
 /* Simplify backgrounds to prevent expensive gradient and blur blends */
