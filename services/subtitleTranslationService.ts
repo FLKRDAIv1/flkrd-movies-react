@@ -11,6 +11,20 @@ export interface SubtitleCue {
  * Parses subtitle text into structured dialogue cues.
  * Supports VTT and SRT.
  */
+export function stripAllHtmlTags(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>?/g, '')
+    .replace(/><font/gi, '')
+    .replace(/<font/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .trim();
+}
+
 export function parseSubtitleToCues(text: string): SubtitleCue[] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
@@ -31,7 +45,7 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
         const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
         const textLines = lines.slice(timeIndex + 1);
         const filteredLines = textLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
-        const textContent = filteredLines.join('\n').trim();
+        const textContent = stripAllHtmlTags(filteredLines.join('\n').trim());
         if (textContent) {
           cues.push({ index, timestamp, text: textContent });
         }

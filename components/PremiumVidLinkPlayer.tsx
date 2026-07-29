@@ -19,8 +19,15 @@ import { Season, SeasonDetails } from '../types';
 
 function cleanAndFormatVtt(text: string): string {
   if (!text) return 'WEBVTT\n\n';
-  let cleaned = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  cleaned = cleaned.replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '').replace(/\u00A0/g, ' ');
+  let cleaned = text
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/[\uFEFF\u200E\u200F\u202A-\u202E]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/<[^>]*>?/g, '')
+    .replace(/><font/gi, '')
+    .replace(/<font/gi, '');
+
   if (!cleaned.trim().startsWith('WEBVTT')) {
     const vttBody = cleaned
       .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
