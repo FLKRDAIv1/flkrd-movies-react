@@ -136,28 +136,31 @@ export const subtitleService = {
             }
         }
 
-        // For Stremio URLs: go directly to our Vercel subtitle-proxy which injects
-        // the correct Origin/Referer/UA headers that subs5.strem.io requires.
-        if (isStremioDownload) {
+        const isOpenSubtitlesDownload = url.includes('opensubtitles.com') || url.includes('opensubtitles.org');
+
+        // For Stremio and OpenSubtitles URLs: go directly to our Vercel subtitle-proxy
+        // which injects the correct Origin/Referer/UA headers.
+        if (isStremioDownload || isOpenSubtitlesDownload) {
             try {
                 const baseUrl = getSubApiBase();
                 const proxyUrl = `${baseUrl}/api/subtitle-proxy?url=${encodeURIComponent(url)}`;
-                console.log('[SUBTITLE SERVICE] Routing Stremio URL via Vercel subtitle-proxy:', url);
+                console.log('[SUBTITLE SERVICE] Routing URL via Vercel subtitle-proxy:', url);
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 15000);
                 const proxyRes = await fetch(proxyUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
                 if (proxyRes.ok) {
                     const text = await proxyRes.text();
-                    // subtitle-proxy returns VTT; wrap as Response
-                    return new Response(text, {
-                        status: 200,
-                        headers: { 'Content-Type': 'text/vtt; charset=utf-8' }
-                    });
+                    if (text && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
+                        return new Response(text, {
+                            status: 200,
+                            headers: { 'Content-Type': 'text/vtt; charset=utf-8' }
+                        });
+                    }
                 }
-                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy returned', proxyRes.status, 'for Stremio URL');
+                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy returned', proxyRes.status, 'for URL:', url);
             } catch (e: any) {
-                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy failed for Stremio URL:', e?.message);
+                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy failed for URL:', e?.message);
             }
         }
 
@@ -232,29 +235,32 @@ export const subtitleService = {
                     
                     const response = await this.fetchWithFallback(stremioUrl);
                     if (response.ok) {
-                        const data = await response.json();
-                         if (data.subtitles && data.subtitles.length > 0) {
-                             return data.subtitles
-                                 .filter((s: any) => {
-                                     const lang = (s.lang || '').toLowerCase();
-                                     return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
-                                 })
-                                 .map((s: any) => ({
-                                     id: s.id || `stremio-${Math.random()}`,
-                                     attributes: {
-                                         language: s.lang,
-                                         display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
-                                         url: s.url,
-                                         file_id: s.file_id || 0
-                                     }
-                                 }));
-                         }
-                     }
-                 } catch (e) {
-                     console.warn("[SUBTITLE SERVICE] Stremio Discovery failed:", e);
-                 }
-                 return [];
-             };
+                        const rawText = await response.text();
+                        if (rawText && !rawText.trim().startsWith('<')) {
+                            const data = JSON.parse(rawText);
+                            if (data.subtitles && data.subtitles.length > 0) {
+                                return data.subtitles
+                                    .filter((s: any) => {
+                                        const lang = (s.lang || '').toLowerCase();
+                                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
+                                    })
+                                    .map((s: any) => ({
+                                        id: s.id || `stremio-${Math.random()}`,
+                                        attributes: {
+                                            language: s.lang,
+                                            display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
+                                            url: s.url,
+                                            file_id: s.file_id || 0
+                                        }
+                                    }));
+                            }
+                        }
+                    }
+                } catch (e: any) {
+                    console.warn("[SUBTITLE SERVICE] Stremio Discovery notice:", e?.message || e);
+                }
+                return [];
+            };
              promises.push(fetchStremio());
         }
 
@@ -785,10 +791,8 @@ export const subtitleService = {
             } else if (currentCue) {
                 if (!line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line)) {
                     const cleanedLine = line
-                        .replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '')
-                        .replace(/<[^>]*>?/gm, '')
+                        .replace(/<[^>]+>/g, '')
                         .replace(/\{[^}]+\}/g, '')
-                        .replace(/&nbsp;/gi, ' ')
                         .trim();
                     if (cleanedLine) {
                         currentCue.textLines.push(cleanedLine);
