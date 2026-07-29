@@ -294,7 +294,7 @@ const MobileNav: React.FC = () => {
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 className="fixed bottom-0 inset-x-0 bg-[#080809]/95 border-t border-white/10 rounded-t-[32px] p-6 pb-10 z-[99999] flex flex-col gap-4 shadow-[0_-15px_40px_rgba(0,0,0,0.8)]"
                 dir={isRtl ? 'rtl' : 'ltr'}
               >

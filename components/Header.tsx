@@ -645,11 +645,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
               animate={{ x: 0 }}
               exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
-              transition={{ 
-                type: 'spring', 
-                stiffness: 220 * (elasticity / 0.35), 
-                damping: 26 * (0.35 / elasticity) 
-              }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className={`fixed top-0 bottom-0 ${
                 (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
               } z-[160] w-[82%] max-w-sm flex flex-col p-6 shadow-2xl md:hidden overflow-hidden`}

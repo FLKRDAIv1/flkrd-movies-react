@@ -557,7 +557,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 15 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="relative w-full max-w-lg shadow-[0_40px_100px_rgba(0,0,0,0.4)] overflow-hidden z-10"
             style={{ borderRadius: `${glassConfig.cornerRadius}px` }}
             onClick={(e) => e.stopPropagation()}

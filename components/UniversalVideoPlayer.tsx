@@ -161,21 +161,20 @@ const containerVariants = {
     }
 };
 
-const cardVariants = {
-    hidden: { opacity: 0, x: 35, filter: 'blur(6px)', scale: 0.95 },
+const itemVariants = {
+    hidden: { opacity: 0, x: 20, scale: 0.96 },
     show: {
         opacity: 1,
         x: 0,
-        filter: 'blur(0px)',
         scale: 1,
         transition: {
-            type: 'spring',
-            stiffness: 90,
-            damping: 18,
-            mass: 0.8
+            duration: 0.18,
+            ease: [0.16, 1, 0.3, 1]
         }
     }
 };
+
+const cardVariants = itemVariants;
 
 
 function cleanAndFormatVtt(text: string): string {
@@ -3770,7 +3769,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
-                        transition={{ type: 'spring', damping: 24, stiffness: 100 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                         className="absolute top-0 left-0 right-0 h-[68%] border-b border-white/10 z-[200] flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
                         style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
@@ -4069,7 +4068,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             initial={{ x: '100%', opacity: 0 }}
                             animate={{ x: 0, opacity: 1 }}
                             exit={{ x: '100%', opacity: 0 }}
-                            transition={{ type: 'spring', damping: 30, stiffness: 250 }}
+                            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                             className="absolute top-0 right-0 bottom-0 w-80 md:w-96 z-[300] overflow-y-auto scrollbar-hide flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
                             style={{
                                 background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${activeGlass.redOpacity}), transparent 85%), rgba(10, 10, 10, ${activeGlass.darkOpacity})`,

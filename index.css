@@ -25,21 +25,19 @@
   }
 }
 
-/* GPU Hardware Acceleration for buttery-smooth 60fps clicks, transitions, and overlays */
-button, 
-a, 
-input, 
-select, 
-textarea,
+/* Optimized GPU Layer Promotion for 60fps rendering without iOS VRAM memory leaks */
+.gpu-layer,
 .motion-safe,
-.card, 
-.backdrop-blur,
-.modal-overlay,
 [class*="backdrop-blur"] {
-  will-change: transform, opacity;
   transform: translateZ(0);
   backface-visibility: hidden;
-  perspective: 1000px;
+}
+
+/* Fast button touch response without 300ms tap delay on iOS */
+button, a, input, select, textarea {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 /* Player controls: instant tap response on mobile (no 300ms delay, GPU layer) */
