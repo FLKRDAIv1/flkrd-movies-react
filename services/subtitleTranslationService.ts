@@ -31,9 +31,17 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
         const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
         const textLines = lines.slice(timeIndex + 1);
         const filteredLines = textLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
-        const textContent = filteredLines.join('\n').trim();
+        let textContent = filteredLines.join('\n').trim();
         if (textContent) {
-          cues.push({ index, timestamp, text: textContent });
+          // Strip HTML formatting tags (<font>, <b>, <i>, <u>, <c>, etc.) and stray angle brackets
+          textContent = textContent
+            .replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '')
+            .replace(/<[^>]*>?/gm, '')
+            .replace(/&nbsp;/gi, ' ')
+            .trim();
+          if (textContent) {
+            cues.push({ index, timestamp, text: textContent });
+          }
         }
       }
     }

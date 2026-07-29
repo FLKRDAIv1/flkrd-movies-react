@@ -17,12 +17,13 @@ function convertSrtToVtt(srtText) {
         return text;
     }
 
-    // Convert SRT timestamp format: 00:00:00,000 -> 00:00:00.000
+    // Convert SRT timestamp format: 00:00:00,000 -> 00:00:00.000 and strip HTML/font tags
     let vtt = text
         .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
         .replace(/^[ \t]*\d+[ \t]*$/gm, '')
-        .replace(/<font[^>]*>/gi, '')
-        .replace(/<\/font>/gi, '')
+        .replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '')
+        .replace(/<[^>]*>?/gm, '')
+        .replace(/&nbsp;/gi, ' ')
         .replace(/\n{3,}/g, '\n\n');
 
     return 'WEBVTT\n\n' + vtt.trimStart();

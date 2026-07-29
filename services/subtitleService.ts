@@ -785,8 +785,10 @@ export const subtitleService = {
             } else if (currentCue) {
                 if (!line.startsWith('WEBVTT') && !line.startsWith('NOTE') && !/^\d+$/.test(line)) {
                     const cleanedLine = line
-                        .replace(/<[^>]+>/g, '')
+                        .replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '')
+                        .replace(/<[^>]*>?/gm, '')
                         .replace(/\{[^}]+\}/g, '')
+                        .replace(/&nbsp;/gi, ' ')
                         .trim();
                     if (cleanedLine) {
                         currentCue.textLines.push(cleanedLine);

@@ -648,7 +648,9 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                               <div key={index} className="flex gap-2 items-start leading-relaxed">
                                 <span className="text-emerald-600/60 select-none">[{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
                                 <span className="text-emerald-500 select-none">&gt;</span>
-                                <span className="text-zinc-200 break-all">{log}</span>
+                                <span className="text-zinc-200 break-all">
+                                  {log.replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '').replace(/<[^>]*>?/gm, '').replace(/&nbsp;/gi, ' ')}
+                                </span>
                               </div>
                             ))}
                             {/* Loading cursor line */}
