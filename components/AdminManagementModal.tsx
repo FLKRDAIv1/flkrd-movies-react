@@ -71,6 +71,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('');
   const [role, setRole] = useState<'co_ceo' | 'manager' | 'editor' | 'moderator'>('manager');
   const [permissions, setPermissions] = useState<AdminPermission>(DEFAULT_PERMISSIONS);
   const [errorMsg, setErrorMsg] = useState('');
@@ -123,6 +124,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
             username,
             role,
             permissions,
+            avatarUrl: avatarUrl.trim() || admin.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
             ...(password ? { password } : {})
           };
         }
@@ -145,7 +147,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         permissions,
         createdAt: new Date().toISOString().split('T')[0],
         isActive: true,
-        avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`
+        avatarUrl: avatarUrl.trim() || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`
       };
 
       setAdmins(prev => [...prev, newAdmin]);
@@ -156,6 +158,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     setEmail('');
     setUsername('');
     setPassword('');
+    setAvatarUrl('');
     setPermissions(DEFAULT_PERMISSIONS);
     setEditingAdminId(null);
     setShowAddForm(false);
@@ -167,6 +170,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     setEmail(admin.email);
     setUsername(admin.username);
     setPassword(admin.password || '');
+    setAvatarUrl(admin.avatarUrl || '');
     setRole(admin.role as any);
     setPermissions(admin.permissions);
     setShowAddForm(true);
@@ -231,19 +235,23 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => {
-                  setShowAddForm(!showAddForm);
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowAddForm(prev => !prev);
                   if (showAddForm) setEditingAdminId(null);
                 }}
-                className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-red-600/20 active:scale-95"
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-lg shadow-red-600/20 active:scale-95 cursor-pointer relative z-50 pointer-events-auto"
               >
                 {showAddForm ? <X size={14} /> : <UserPlus size={14} />}
                 <span>{showAddForm ? (isKurdish ? 'داخستن' : 'Cancel') : (isKurdish ? 'زیادکردنی ئادمنی نوێ' : 'Add Sub-Admin')}</span>
               </button>
 
               <button
+                type="button"
                 onClick={onClose}
-                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all active:scale-90"
+                className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-all active:scale-90 cursor-pointer relative z-50 pointer-events-auto"
               >
                 <X size={18} />
               </button>

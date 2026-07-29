@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 
@@ -103,6 +103,7 @@ interface UIContextType {
 
   playerConfig: PlayerConfig;
   updatePlayerConfig: (config: PlayerConfig) => Promise<boolean>;
+  hasPermission: (permKey: string) => boolean;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -899,13 +900,33 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const hasPermission = useCallback((permKey: string): boolean => {
+    if (!isAdmin) return false;
+    const email = localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com';
+    if (email.toLowerCase() === 'flkrdstudio@gmail.com') return true;
+    
+    try {
+      const stored = localStorage.getItem('flkrd_sub_admins');
+      if (stored) {
+        const subAdmins = JSON.parse(stored);
+        const current = subAdmins.find((a: any) => a.email.toLowerCase() === email.toLowerCase());
+        if (current && current.permissions) {
+          return !!current.permissions[permKey];
+        }
+      }
+    } catch (e) {}
+    
+    return true;
+  }, [isAdmin]);
+
   return (
     <UIContext.Provider value={{ 
       theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
       activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
       mobileNavConfig, updateMobileNavConfig,
-      playerConfig, updatePlayerConfig
+      playerConfig, updatePlayerConfig,
+      hasPermission
     }}>
       {children}
     </UIContext.Provider>
