@@ -222,7 +222,7 @@ export async function translateCuesToKurdish(
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 65;
+  const chunkSize = 25;
   const chunks: SubtitleCue[][] = [];
   
   for (let i = 0; i < cues.length; i += chunkSize) {

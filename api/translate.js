@@ -123,59 +123,64 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
-        // ⚡ Multi-Q Google GTX POST Array Translator (100% index accuracy, 8s timeout)
+        // ⚡ Multi-Q Google GTX POST Array Translator (100% index accuracy, 20 items max per sub-batch to prevent Google API truncation)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
             const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
             
-            const doFetch = async (sourceCode) => {
-                try {
-                    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
-                    const bodyParams = chunkItems.map(t => {
-                        const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-                        return `q=${encodeURIComponent(clean || ' ')}`;
-                    }).join('&');
+            const SUB_BATCH_SIZE = 20;
+            const allResults = [];
 
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+            for (let i = 0; i < chunkItems.length; i += SUB_BATCH_SIZE) {
+                const subChunk = chunkItems.slice(i, i + SUB_BATCH_SIZE);
 
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                        },
-                        body: bodyParams,
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
+                const doFetch = async (sourceCode) => {
+                    try {
+                        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
+                        const bodyParams = subChunk.map(t => {
+                            const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+                            return `q=${encodeURIComponent(clean || ' ')}`;
+                        }).join('&');
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (Array.isArray(data)) {
-                            return chunkItems.map((item, idx) => {
-                                const resItem = data[idx];
-                                if (Array.isArray(resItem)) {
-                                    const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
-                                    return translated || item;
-                                }
-                                return item;
-                            });
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                            },
+                            body: bodyParams,
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (Array.isArray(data)) {
+                                return subChunk.map((item, idx) => {
+                                    const resItem = data[idx];
+                                    if (Array.isArray(resItem)) {
+                                        const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
+                                        return translated || item;
+                                    }
+                                    return item;
+                                });
+                            }
                         }
-                    }
-                } catch (err) {}
-                return null;
-            };
+                    } catch (err) {}
+                    return null;
+                };
 
-            // First attempt with specified source language (or auto)
-            let result = await doFetch(effectiveSrc);
-            
-            // If primary fetch failed or returned untranslated original text, retry with auto-detection
-            if (!result || (effectiveSrc !== 'auto' && !result.some((t, i) => t && t.trim() && t !== chunkItems[i]))) {
-                result = await doFetch('auto');
+                let subResult = await doFetch(effectiveSrc);
+                if (!subResult || (effectiveSrc !== 'auto' && !subResult.some((t, idx) => t && t.trim() && t !== subChunk[idx]))) {
+                    subResult = await doFetch('auto');
+                }
+                allResults.push(...(subResult || subChunk));
             }
 
-            return result;
+            return allResults;
         };
 
         // Primary single string Google Translate API fetcher (POST with GET fallback, 8s timeout)
@@ -407,9 +412,9 @@ export default async function handler(req, res) {
         };
 
 
-        // 1. Array batch translation with sub-chunking (65 items per chunk for ultra-fast response)
+        // 1. Array batch translation with sub-chunking (25 items per chunk for guaranteed 100% full translation)
         if (isArray) {
-            const CHUNK_SIZE = 65;
+            const CHUNK_SIZE = 25;
             const chunks = [];
             for (let i = 0; i < textArray.length; i += CHUNK_SIZE) {
                 chunks.push(textArray.slice(i, i + CHUNK_SIZE));
