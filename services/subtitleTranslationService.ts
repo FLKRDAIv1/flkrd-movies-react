@@ -72,77 +72,80 @@ const getApiBaseUrl = (): string => {
 };
 
 /**
- * Direct client-side Google GTX POST array translator (runs directly in browser as secondary fail-safe)
+ * Direct client-side Google GTX GET array translator (runs directly in browser as secondary fail-safe without CORS preflight issues)
  */
 async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
   if (!chunkItems || chunkItems.length === 0) return null;
   const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
 
-  const doFetch = async (sourceCode: string) => {
-    try {
-      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
-      const bodyParams = chunkItems.map(t => `q=${encodeURIComponent((t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ') || ' ')}`).join('&');
+  try {
+    const BATCH_SIZE = 10;
+    const results: string[] = [];
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
-        },
-        body: bodyParams
+    for (let i = 0; i < chunkItems.length; i += BATCH_SIZE) {
+      const batch = chunkItems.slice(i, i + BATCH_SIZE);
+      const batchPromises = batch.map(async (item) => {
+        if (!item || !item.trim()) return item || '';
+        try {
+          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(item)}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data[0] && Array.isArray(data[0])) {
+              const trans = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('').trim();
+              if (trans) return trans;
+            }
+          }
+        } catch (e) {}
+        return item;
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          return chunkItems.map((item, idx) => {
-            const resItem = data[idx];
-            if (Array.isArray(resItem)) {
-              const translated = resItem.map((subItem: any) => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
-              return translated || item;
-            }
-            return item;
-          });
-        }
-      }
-    } catch (e) {}
-    return null;
-  };
+      const translatedBatch = await Promise.all(batchPromises);
+      results.push(...translatedBatch);
+    }
 
-  let res = await doFetch(effectiveSrc);
-  if (!res || (effectiveSrc !== 'auto' && !res.some((t, i) => t && t.trim() && t !== chunkItems[i]))) {
-    res = await doFetch('auto');
-  }
-  return res;
+    if (results.length === chunkItems.length) {
+      return results;
+    }
+  } catch (e) {}
+  return null;
 }
 
 /**
  * Translates an array of text strings via Vercel translation proxy with direct client fallback.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
-  try {
-    const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/translate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text, source: sourceLang, target: targetLang }),
-    });
+  const currentBase = getApiBaseUrl();
+  const endpoints = Array.from(new Set([
+    `${currentBase}/api/translate`,
+    'https://fkurd.pro/api/translate'
+  ])).filter(Boolean);
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data && Array.isArray(data.translation)) {
-        const validCount = data.translation.filter((t: string, i: number) => t && t.trim() && t !== text[i]).length;
-        if (validCount > 0) {
-          return data.translation;
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text, source: sourceLang, target: targetLang }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && Array.isArray(data.translation) && data.translation.length === text.length) {
+          const validCount = data.translation.filter((t: string, i: number) => t && t.trim() && t !== text[i]).length;
+          if (validCount > 0) {
+            return data.translation;
+          }
         }
       }
+    } catch (err: any) {
+      console.warn(`[TRANSLATE] Notice for ${endpoint}:`, err?.message || err);
     }
-  } catch (err: any) {
-    console.warn(`[TRANSLATE] Server proxy fetch notice: ${err?.message || err} — trying direct client fallback...`);
   }
 
-  // Fail-Safe Fallback: Try direct browser client translation with Google GTX
+  // Fail-Safe Fallback: Try direct browser client translation with Google GTX GET
   const clientDirect = await translateArrayDirectClient(text, sourceLang, targetLang);
   if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
     return clientDirect;
