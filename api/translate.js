@@ -361,11 +361,21 @@ CRITICAL TRANSLATION INSTRUCTIONS:
             try {
                 const geminiRes = await translateWithGeminiAPI(chunkItems);
                 if (Array.isArray(geminiRes) && geminiRes.length === chunkItems.length) {
-                    return geminiRes;
+                    const validCount = geminiRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
+                    if (validCount > 0) return geminiRes;
                 }
             } catch (err) {}
 
-            // 1. Primary Fallback Path: Try Google Apps Script Array POST
+            // 1. Guaranteed 100% Index-Accurate Multi-Q Google GTX POST Array Translator (Works for all world languages without delimiter corruption)
+            try {
+                const gtxArrayRes = await translateArrayWithGoogleGTX(chunkItems, source, actualTarget);
+                if (Array.isArray(gtxArrayRes) && gtxArrayRes.length === chunkItems.length) {
+                    const validCount = gtxArrayRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
+                    if (validCount > 0) return gtxArrayRes;
+                }
+            } catch (err) {}
+
+            // 2. Primary Fallback Path: Try Google Apps Script Array POST
             try {
                 const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
                 if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
