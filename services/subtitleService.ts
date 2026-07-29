@@ -553,16 +553,31 @@ export const subtitleService = {
                 ) as any[];
                 const srtFile = subFiles.sort((a: any, b: any) => b._data?.uncompressedSize - a._data?.uncompressedSize)[0];
                 if (srtFile) {
-                    // CRITICAL: Use Uint8Array + TextDecoder('utf-8') to preserve Kurdish/Arabic glyphs
                     const bytes = await srtFile.async('uint8array');
-                    text = new TextDecoder('utf-8').decode(bytes);
+                    try {
+                        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+                    } catch (decErr) {
+                        try {
+                            text = new TextDecoder('windows-1256').decode(bytes);
+                        } catch (e2) {
+                            text = new TextDecoder('utf-8').decode(bytes);
+                        }
+                    }
                 } else {
                     throw new Error('No .srt/.vtt file found inside ZIP archive');
                 }
             } else {
-                // Force UTF-8 decode from raw bytes to prevent mojibake on Kurdish characters
                 const buffer = await response.arrayBuffer();
-                text = new TextDecoder('utf-8').decode(new Uint8Array(buffer));
+                const bytes = new Uint8Array(buffer);
+                try {
+                    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+                } catch (decErr) {
+                    try {
+                        text = new TextDecoder('windows-1256').decode(bytes);
+                    } catch (e2) {
+                        text = new TextDecoder('utf-8').decode(bytes);
+                    }
+                }
             }
 
             return text;

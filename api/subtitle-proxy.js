@@ -17,13 +17,12 @@ function convertSrtToVtt(srtText) {
         return text;
     }
 
-    // Convert SRT timestamp format: 00:00:00,000 -> 00:00:00.000 and strip HTML/font tags
+    // Convert SRT timestamp format: 00:00:00,000 -> 00:00:00.000
     let vtt = text
         .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
         .replace(/^[ \t]*\d+[ \t]*$/gm, '')
-        .replace(/<\/?[a-z][a-z0-9]*[^>]*>/gi, '')
-        .replace(/<[^>]*>?/gm, '')
-        .replace(/&nbsp;/gi, ' ')
+        .replace(/<font[^>]*>/gi, '')
+        .replace(/<\/font>/gi, '')
         .replace(/\n{3,}/g, '\n\n');
 
     return 'WEBVTT\n\n' + vtt.trimStart();
@@ -116,7 +115,18 @@ export default async function handler(req, res) {
             return res.status(502).send(`WEBVTT\n\nNOTE Upstream Error ${fetchRes.status}: ${fetchRes.statusText} — ${rawUrl}`);
         }
 
-        const rawText = await fetchRes.text();
+        const arrayBuf = await fetchRes.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+        let rawText = '';
+        try {
+            rawText = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+        } catch (decErr) {
+            try {
+                rawText = new TextDecoder('windows-1256').decode(bytes);
+            } catch (decErr2) {
+                rawText = new TextDecoder('utf-8').decode(bytes);
+            }
+        }
 
         // Sanity-check: if the response looks like an HTML error page, reject it
         if (rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html')) {
