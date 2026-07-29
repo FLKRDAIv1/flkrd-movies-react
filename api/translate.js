@@ -321,23 +321,21 @@ export default async function handler(req, res) {
         const translateChunk = async (chunkItems) => {
             if (!chunkItems || chunkItems.length === 0) return [];
 
-            // 0. Guaranteed 100% Index-Accurate Multi-Q Google GTX POST Array Translator (Works for all world languages without delimiter corruption)
+            // 0. Primary High-Reliability Path: Try Google Apps Script Array POST
+            try {
+                const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
+                if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
+                    const validCount = gasArrayRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
+                    if (validCount > 0) return gasArrayRes;
+                }
+            } catch (err) {}
+
+            // 1. Secondary Path: Multi-Q Google GTX POST Array Translator
             try {
                 const gtxArrayRes = await translateArrayWithGoogleGTX(chunkItems, source, actualTarget);
                 if (Array.isArray(gtxArrayRes) && gtxArrayRes.length === chunkItems.length) {
                     const validCount = gtxArrayRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
                     if (validCount > 0) return gtxArrayRes;
-                }
-            } catch (err) {}
-
-            // 1. Primary Fallback Path: Try Google Apps Script Array POST
-            try {
-                const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
-                if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
-                    const validCount = gasArrayRes.filter((t, i) => t && t !== chunkItems[i]).length;
-                    if (validCount > 0) {
-                        return gasArrayRes;
-                    }
                 }
             } catch (err) {}
 
