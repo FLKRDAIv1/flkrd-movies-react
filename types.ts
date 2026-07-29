@@ -125,3 +125,25 @@ export interface PlayerSource {
   name: string;
   score: number;
 }
+
+export interface AdminPermission {
+  canManageMovies: boolean;
+  canManageSubtitles: boolean;
+  canSendBroadcasts: boolean;
+  canViewAnalytics: boolean;
+  canClearSystemCache: boolean;
+  canManageAdmins: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  password?: string;
+  role: 'owner' | 'co_ceo' | 'manager' | 'editor' | 'moderator';
+  permissions: AdminPermission;
+  createdAt: string;
+  lastLoginAt?: string;
+  isActive: boolean;
+  avatarUrl?: string;
+}
