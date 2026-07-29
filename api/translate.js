@@ -293,11 +293,79 @@ export default async function handler(req, res) {
             return transliterateHawarToArabic(t);
         };
 
+        // ⚡ Gemini High-Intelligence Context-Aware Kurdish Translation Engine
+        const translateWithGeminiAPI = async (chunkItems) => {
+            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+            if (!apiKey || !chunkItems || chunkItems.length === 0) return null;
+
+            const isBadiniTarget = target === 'badini' || target === 'kmr' || target === 'ku';
+            const targetLangDescription = isBadiniTarget 
+                ? "Kurdish Badini (Kurmanji dialect, written in Kurdish Arabic script)" 
+                : "Kurdish Sorani (Central Kurdish dialect, written in Kurdish Arabic script)";
+
+            const systemPrompt = `You are a professional movie & TV dialogue translator specializing in fluent, natural, idiomatic ${targetLangDescription}.
+CRITICAL TRANSLATION INSTRUCTIONS:
+1. Translate each subtitle line into ${targetLangDescription}.
+2. DO NOT translate word-by-word literally! Produce natural, fluent, spoken Kurdish dialogue that flows logically and sounds authentic.
+3. Automatically correct any typos, spelling mistakes, or broken grammatical structures present in the source subtitle line.
+4. Output MUST be a strict JSON array of strings containing EXACTLY ${chunkItems.length} elements (matching 1-to-1 with the input array).
+5. Do NOT include markdown codeblocks (\`\`\`json), index numbers, or explanation text. Return ONLY the raw JSON array of strings.`;
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                role: 'user',
+                                parts: [
+                                    { text: systemPrompt },
+                                    { text: JSON.stringify(chunkItems) }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            temperature: 0.2,
+                            responseMimeType: "application/json"
+                        }
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (textResult) {
+                        const parsed = JSON.parse(textResult);
+                        if (Array.isArray(parsed) && parsed.length === chunkItems.length) {
+                            return parsed;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('[TRANSLATE] Gemini translation engine notice:', err.message);
+            }
+            return null;
+        };
+
         // Helper to translate a chunk of text items
         const translateChunk = async (chunkItems) => {
             if (!chunkItems || chunkItems.length === 0) return [];
 
-            // 0. Primary High-Reliability Path: Try Google Apps Script Array POST (runs on Google infrastructure, 0 rate limit)
+            // 0. High-Intelligence Primary Path: Try Gemini AI for natural fluent Kurdish (Sorani/Badini)
+            try {
+                const geminiRes = await translateWithGeminiAPI(chunkItems);
+                if (Array.isArray(geminiRes) && geminiRes.length === chunkItems.length) {
+                    return geminiRes;
+                }
+            } catch (err) {}
+
+            // 1. Primary Fallback Path: Try Google Apps Script Array POST
             try {
                 const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
                 if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
@@ -393,7 +461,9 @@ export default async function handler(req, res) {
             return res.status(200).json({ translation: applyBadiniTransliteration(finalResults) });
         } else {
             // Single translation — try Google Translate POST first, then fall back
-            const singleTranslation = await translateWithGoogleAPI(textArray[0], source, actualTarget) ||
+            const geminiSingle = await translateWithGeminiAPI([textArray[0]]);
+            const singleTranslation = (geminiSingle && geminiSingle[0]) ||
+                                      await translateWithGoogleAPI(textArray[0], source, actualTarget) ||
                                       await callGAS({ text: textArray[0], source, target: actualTarget }) ||
                                       await translateSingle(textArray[0]);
             return res.status(200).json({ translation: applyBadiniTransliteration(singleTranslation) });
