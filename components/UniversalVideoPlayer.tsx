@@ -3152,13 +3152,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 )}
             </div>
 
-            {/* Custom Subtitle Overlay */}
-            <AnimatePresence mode="wait">
+            {/* Custom Subtitle Overlay — 60 FPS Hardware GPU Accelerated */}
+            <AnimatePresence>
                 {showSubtitles && subtitleCues.length > 0 && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
+                        initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
                         className="absolute bottom-[12%] md:bottom-[16%] left-0 right-0 z-[2147483647] flex justify-center px-4 md:px-6 w-full pointer-events-none custom-subtitle-overlay"
                         style={{
                             fontSize: `clamp(18px, ${subtitleSize}px, 6.5vw)`,
@@ -3422,11 +3423,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         }}
                     >
                         <motion.div
-                            initial={{ y: 40, opacity: 0, scale: 0.97 }}
+                            initial={{ y: 15, opacity: 0, scale: 0.98 }}
                             animate={{ y: 0, opacity: 1, scale: 1 }}
-                            exit={{ y: 40, opacity: 0, scale: 0.97 }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                            className="w-full max-w-xl bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-3xl rounded-3xl p-5 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] relative shadow-red-500/5"
+                            exit={{ y: 15, opacity: 0, scale: 0.98 }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            style={{ transform: 'translateZ(0)', willChange: 'transform, opacity' }}
+                            className="w-full max-w-xl bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-xl rounded-3xl p-5 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] relative shadow-red-500/5"
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Header */}
