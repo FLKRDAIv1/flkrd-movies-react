@@ -337,50 +337,47 @@ export async function translateAndSavePipeline(
   pauseState?: { isPaused: boolean }
 ): Promise<{ success: boolean; subtitleUrl?: string; error?: string }> {
   try {
-    // Detect source language for all world languages
-    const subLangRaw = (sub.attributes?.language || 'en').toLowerCase().trim();
+    // Detect source language for all world languages from sub.lang, sub.label, or sub.attributes
+    const rawLangStr = (sub.lang || sub.label || sub.attributes?.language || 'auto').toLowerCase().trim();
     const langMap: Record<string, string> = {
-      'en': 'en', 'eng': 'en', 'english': 'en',
-      'ar': 'ar', 'ara': 'ar', 'arabic': 'ar',
-      'fa': 'fa', 'fas': 'fa', 'per': 'fa', 'persian': 'fa', 'farsi': 'fa',
-      'fr': 'fr', 'fra': 'fr', 'fre': 'fr', 'french': 'fr',
-      'es': 'es', 'spa': 'es', 'spanish': 'es',
-      'tr': 'tr', 'tur': 'tr', 'turkish': 'tr',
-      'de': 'de', 'deu': 'de', 'ger': 'de', 'german': 'de',
-      'it': 'it', 'ita': 'it', 'italian': 'it',
-      'ru': 'ru', 'rus': 'ru', 'russian': 'ru',
-      'zh': 'zh-CN', 'zho': 'zh-CN', 'chi': 'zh-CN', 'zh-cn': 'zh-CN', 'zh-tw': 'zh-TW', 'chinese': 'zh-CN',
-      'ja': 'ja', 'jpn': 'ja', 'japanese': 'ja',
-      'ko': 'ko', 'kor': 'ko', 'korean': 'ko',
-      'hi': 'hi', 'hin': 'hi', 'hindi': 'hi',
-      'pt': 'pt', 'por': 'pt', 'pt-br': 'pt', 'portuguese': 'pt',
-      'vi': 'vi', 'vie': 'vi', 'vietnamese': 'vi',
-      'th': 'th', 'tha': 'th', 'thai': 'th',
-      'id': 'id', 'ind': 'id', 'indonesian': 'id',
-      'nl': 'nl', 'nld': 'nl', 'dut': 'nl', 'dutch': 'nl',
-      'pl': 'pl', 'pol': 'pl', 'polish': 'pl',
-      'sv': 'sv', 'swe': 'sv', 'swedish': 'sv',
-      'no': 'no', 'nor': 'no', 'norwegian': 'no',
-      'da': 'da', 'dan': 'da', 'danish': 'da',
-      'fi': 'fi', 'fin': 'fi', 'finnish': 'fi',
-      'cs': 'cs', 'ces': 'cs', 'cze': 'cs', 'czech': 'cs',
-      'sk': 'sk', 'slk': 'sk', 'slo': 'sk', 'slovak': 'sk',
-      'hu': 'hu', 'hun': 'hu', 'hungarian': 'hu',
-      'ro': 'ro', 'ron': 'ro', 'rum': 'ro', 'romanian': 'ro',
-      'el': 'el', 'ell': 'el', 'gre': 'el', 'greek': 'el',
-      'he': 'he', 'heb': 'he', 'hebrew': 'he',
-      'uk': 'uk', 'ukr': 'uk', 'ukrainian': 'uk',
-      'bg': 'bg', 'bul': 'bg', 'bulgarian': 'bg'
+      'arabic': 'ar', 'ara': 'ar', 'ar': 'ar',
+      'english': 'en', 'eng': 'en', 'en': 'en',
+      'persian': 'fa', 'farsi': 'fa', 'per': 'fa', 'fas': 'fa', 'fa': 'fa',
+      'french': 'fr', 'fra': 'fr', 'fre': 'fr', 'fr': 'fr',
+      'spanish': 'es', 'spa': 'es', 'es': 'es',
+      'turkish': 'tr', 'tur': 'tr', 'tr': 'tr',
+      'german': 'de', 'ger': 'de', 'deu': 'de', 'de': 'de',
+      'italian': 'it', 'ita': 'it', 'it': 'it',
+      'russian': 'ru', 'rus': 'ru', 'ru': 'ru',
+      'chinese': 'zh-CN', 'chi': 'zh-CN', 'zho': 'zh-CN', 'zh': 'zh-CN',
+      'japanese': 'ja', 'jpn': 'ja', 'ja': 'ja',
+      'korean': 'ko', 'kor': 'ko', 'ko': 'ko',
+      'hindi': 'hi', 'hin': 'hi', 'hi': 'hi',
+      'portuguese': 'pt', 'por': 'pt', 'pt': 'pt',
+      'vietnamese': 'vi', 'vie': 'vi', 'vi': 'vi',
+      'thai': 'th', 'tha': 'th', 'th': 'th',
+      'indonesian': 'id', 'ind': 'id', 'id': 'id',
+      'dutch': 'nl', 'nld': 'nl', 'dut': 'nl', 'nl': 'nl',
+      'polish': 'pl', 'pol': 'pl', 'pl': 'pl',
+      'swedish': 'sv', 'swe': 'sv', 'sv': 'sv',
+      'norwegian': 'no', 'nor': 'no', 'no': 'no',
+      'danish': 'da', 'dan': 'da', 'da': 'da',
+      'finnish': 'fi', 'fin': 'fi', 'fi': 'fi',
+      'czech': 'cs', 'ces': 'cs', 'cze': 'cs', 'cs': 'cs',
+      'slovak': 'sk', 'slk': 'sk', 'slo': 'sk', 'sk': 'sk',
+      'hungarian': 'hu', 'hun': 'hu', 'hu': 'hu',
+      'romanian': 'ro', 'ron': 'ro', 'rum': 'ro', 'ro': 'ro',
+      'greek': 'el', 'ell': 'el', 'gre': 'el', 'el': 'el',
+      'hebrew': 'he', 'heb': 'he', 'he': 'he',
+      'ukrainian': 'uk', 'ukr': 'uk', 'uk': 'uk',
+      'bulgarian': 'bg', 'bul': 'bg', 'bg': 'bg'
     };
 
-    let sourceLang = langMap[subLangRaw];
-    if (!sourceLang) {
-      if (subLangRaw.length === 2) {
-        sourceLang = subLangRaw;
-      } else if (subLangRaw.length === 3) {
-        sourceLang = subLangRaw.substring(0, 2);
-      } else {
-        sourceLang = 'auto';
+    let sourceLang = 'auto';
+    for (const [key, val] of Object.entries(langMap)) {
+      if (rawLangStr === key || rawLangStr.startsWith(key) || rawLangStr.includes(` ${key}`) || rawLangStr.includes(`${key} `)) {
+        sourceLang = val;
+        break;
       }
     }
 
