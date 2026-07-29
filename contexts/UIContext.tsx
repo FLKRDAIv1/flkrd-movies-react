@@ -122,7 +122,30 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [scale, setScaleState] = useState(() =>
     Number(localStorage.getItem('flkrd_scale')) || 1
   );
-  const [isPerformanceMode, setIsPerformanceModeState] = useState(false);
+  const [isPerformanceMode, setIsPerformanceModeState] = useState<boolean>(() => {
+    // Honor a previously saved user preference first…
+    try {
+      const saved = localStorage.getItem('flkrd_performance_turbo');
+      if (saved !== null) return saved === 'true';
+    } catch (e) {}
+    // …otherwise auto-enable on mobile / low-power devices so the existing
+    // `performance-mode` CSS (which kills box-shadow animations & forces
+    // reduced motion) is active by default where it matters most.
+    try {
+      if (typeof navigator !== 'undefined' && typeof window !== 'undefined') {
+        const isTouch = (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
+        const smallScreen = Math.min(window.innerWidth, window.innerHeight) <= 820;
+        const lowCores = (navigator as any).hardwareConcurrency
+          ? (navigator as any).hardwareConcurrency <= 4
+          : false;
+        const lowMem = (navigator as any).deviceMemory
+          ? (navigator as any).deviceMemory <= 4
+          : false;
+        return isTouch && (smallScreen || lowCores || lowMem);
+      }
+    } catch (e) {}
+    return false;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
     try {
@@ -592,6 +615,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       if (upsertError) throw upsertError;
 
       setPlayerConfig(config);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flkrd-player-config-updated', { detail: config }));
+      }
       return true;
     } catch (err) {
       console.error('[UI CONTEXT] Failed to update player config:', err);
@@ -862,7 +888,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const setTheme = (t: Theme) => setThemeState(t);
   const setAccentColor = (c: string) => setAccentColorState(c);
   const setScale = (s: number) => setScaleState(s);
-  const setIsPerformanceMode = (p: boolean) => {};
+  const setIsPerformanceMode = (p: boolean) => setIsPerformanceModeState(p);
   const setIsAdmin = (a: boolean) => {
     setIsAdminState(a);
     localStorage.setItem('isFlkrdAdmin', a.toString());
