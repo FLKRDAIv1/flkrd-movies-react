@@ -85,9 +85,13 @@ export const subtitleService = {
         }
 
         const isExternalBlockedService = url.includes('opensubtitles');
+        // subs5.strem.io requires Stremio-specific headers (Origin, Referer, UA).
+        // Public CORS proxies cannot inject those — they always get 469.
+        // Go straight to our Vercel proxy which has the correct headers.
+        const isStremioDownload = url.includes('strem.io') || url.includes('stremio');
 
-        if (!isExternalBlockedService) {
-            // --- STEP 2: BROWSER PROXY ROTATOR ---
+        if (!isExternalBlockedService && !isStremioDownload) {
+            // --- STEP 2: BROWSER PROXY ROTATOR (non-Stremio sources only) ---
             const baseUrl = getSubApiBase();
             const proxies = [
                 { url: url, type: 'direct' },
@@ -96,7 +100,6 @@ export const subtitleService = {
                 { url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'corsproxy' },
                 { url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'codetabs' }
             ];
-
 
             for (const proxy of proxies) {
                 try {
@@ -132,6 +135,33 @@ export const subtitleService = {
                 }
             }
         }
+
+        // For Stremio URLs: go directly to our Vercel subtitle-proxy which injects
+        // the correct Origin/Referer/UA headers that subs5.strem.io requires.
+        if (isStremioDownload) {
+            try {
+                const baseUrl = getSubApiBase();
+                const proxyUrl = `${baseUrl}/api/subtitle-proxy?url=${encodeURIComponent(url)}`;
+                console.log('[SUBTITLE SERVICE] Routing Stremio URL via Vercel subtitle-proxy:', url);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
+                const proxyRes = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (proxyRes.ok) {
+                    const text = await proxyRes.text();
+                    // subtitle-proxy returns VTT; wrap as Response
+                    return new Response(text, {
+                        status: 200,
+                        headers: { 'Content-Type': 'text/vtt; charset=utf-8' }
+                    });
+                }
+                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy returned', proxyRes.status, 'for Stremio URL');
+            } catch (e: any) {
+                console.warn('[SUBTITLE SERVICE] Vercel subtitle-proxy failed for Stremio URL:', e?.message);
+            }
+        }
+
+
 
         // Ultimate fallback (or direct path for blocked services): Proxy via our own secure Vercel backend
         try {
