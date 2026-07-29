@@ -670,20 +670,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
                 <Card className="p-5 mt-3 flex items-center justify-between border-white/10 bg-white/5">
                     <div>
-                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">System Memory</span>
-                        <span className="text-sm font-[1000] text-white uppercase tracking-wider">Cache Purge</span>
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">
+                          {(language === 'ku' || language === 'badini') ? 'بیرگەی مۆبایل و سیستەم' : 'System Memory'}
+                        </span>
+                        <span className="text-sm font-[1000] text-white uppercase tracking-wider">
+                          {(language === 'ku' || language === 'badini') ? 'پاککردنەوەی کاش (Purge Cache)' : 'Cache Purge'}
+                        </span>
                     </div>
                     <button 
-                        onClick={() => {
-                            if(window.confirm('Are you sure you want to clear system cache? This will reset local data.')) {
-                                localStorage.clear();
-                                sessionStorage.clear();
-                                window.location.reload();
+                        onClick={async () => {
+                            if (window.confirm((language === 'ku' || language === 'badini') ? 'ئایا دڵنیایت لە پاککردنەوەی کاشی سیستەم و فایلی کاتی؟' : 'Are you sure you want to clear system cache?')) {
+                                try {
+                                    const { db } = await import('../utils/db');
+                                    await db.clearCache();
+                                    const preserveKeys = ['flkrd_theme', 'flkrd_language', 'flkrd_avatar_url', 'flkrd_user_token', 'flkrd_performance_turbo'];
+                                    const allKeys = Object.keys(localStorage);
+                                    allKeys.forEach(k => {
+                                        if (!preserveKeys.includes(k) && (k.startsWith('flkrd_') || k.includes('cache') || k.includes('sub'))) {
+                                            localStorage.removeItem(k);
+                                        }
+                                    });
+                                    sessionStorage.clear();
+                                    alert((language === 'ku' || language === 'badini') ? 'کاشی سیستەم بە سەرکەوتوویی پاککرایەوە!' : 'System cache purged successfully!');
+                                    window.location.reload();
+                                } catch (e) {
+                                    console.error('Clear cache error:', e);
+                                }
                             }
                         }}
                         className="px-4 py-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-red-500/30"
                     >
-                        Execute
+                        {(language === 'ku' || language === 'badini') ? 'پاککردنەوە' : 'Execute'}
                     </button>
                 </Card>
               </Section>

@@ -731,6 +731,34 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               {/* Drawer Quick Controls */}
               <div className="mt-6 space-y-3">
 
+                {/* Turbo 60 FPS Performance Mode row */}
+                <div className="flex items-center justify-between p-3.5 bg-box-bg border border-border-color rounded-2.5xl">
+                  <div className="flex items-center gap-3">
+                    <Zap className={`w-4.5 h-4.5 ${isPerformanceMode ? 'text-amber-500 animate-pulse' : 'text-sec-text'}`} />
+                    <div>
+                      <span className="text-[11px] font-black uppercase tracking-wider text-main-text block">
+                        {(language === 'ku' || language === 'badini') ? 'تۆربۆ 60 FPS' : 'Turbo 60 FPS'}
+                      </span>
+                      <span className="text-[8px] font-bold uppercase tracking-widest text-sec-text">
+                        {isPerformanceMode 
+                          ? ((language === 'ku' || language === 'badini') ? 'چالاککراوە (60 FPS)' : 'Active (60 FPS)')
+                          : ((language === 'ku' || language === 'badini') ? 'ناچالاکە' : 'Off')}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPerformanceMode(!isPerformanceMode)}
+                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${
+                      isPerformanceMode 
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-lg shadow-amber-500/20' 
+                        : 'bg-white/5 text-sec-text border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    {isPerformanceMode ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
                 {/* Theme Toggler row */}
                 <div className="flex items-center justify-between p-3.5 bg-box-bg border border-border-color rounded-2.5xl">
                   <div className="flex items-center gap-3">
