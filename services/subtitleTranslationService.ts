@@ -120,17 +120,24 @@ async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: stri
   if (chunk.length === 1) {
     const singleText = chunk[0].text;
     try {
-      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(singleText)}`;
-      const res = await fetch(gtxUrl);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data[0]) {
-          const trans = data[0].map((x: any) => x[0]).join('');
-          if (trans && trans.trim()) {
-            return [trans];
+      const fetchSingle = async (srcCode: string) => {
+        const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(srcCode)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(singleText)}`;
+        const res = await fetch(gtxUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data[0]) {
+            const trans = data[0].map((x: any) => x[0]).join('');
+            if (trans && trans.trim()) return trans;
           }
         }
-      }
+        return null;
+      };
+
+      const primary = await fetchSingle(sourceLang);
+      if (primary && primary !== singleText) return [primary];
+
+      const autoRes = await fetchSingle('auto');
+      if (autoRes) return [autoRes];
     } catch (gErr) {}
     return [singleText];
   }

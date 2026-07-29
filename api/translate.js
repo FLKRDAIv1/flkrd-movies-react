@@ -119,44 +119,56 @@ export default async function handler(req, res) {
         // ⚡ Multi-Q Google GTX POST Array Translator (100% index accuracy, 8s timeout)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
-            try {
-                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(src)}&tl=${encodeURIComponent(tgt)}&dt=t`;
-                const bodyParams = chunkItems.map(t => {
-                    const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-                    return `q=${encodeURIComponent(clean || ' ')}`;
-                }).join('&');
+            const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+            
+            const doFetch = async (sourceCode) => {
+                try {
+                    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
+                    const bodyParams = chunkItems.map(t => {
+                        const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
+                        return `q=${encodeURIComponent(clean || ' ')}`;
+                    }).join('&');
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    },
-                    body: bodyParams,
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                        },
+                        body: bodyParams,
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        return chunkItems.map((item, idx) => {
-                            const resItem = data[idx];
-                            if (Array.isArray(resItem)) {
-                                const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
-                                return translated || item;
-                            }
-                            return item;
-                        });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (Array.isArray(data)) {
+                            return chunkItems.map((item, idx) => {
+                                const resItem = data[idx];
+                                if (Array.isArray(resItem)) {
+                                    const translated = resItem.map(subItem => (Array.isArray(subItem) ? (subItem[0] || '') : '')).join('').trim();
+                                    return translated || item;
+                                }
+                                return item;
+                            });
+                        }
                     }
-                }
-            } catch (err) {
-                // Silent fallback on abort/fetch failure
+                } catch (err) {}
+                return null;
+            };
+
+            // First attempt with specified source language (or auto)
+            let result = await doFetch(effectiveSrc);
+            
+            // If primary fetch failed or returned untranslated original text, retry with auto-detection
+            if (!result || (effectiveSrc !== 'auto' && !result.some((t, i) => t && t.trim() && t !== chunkItems[i]))) {
+                result = await doFetch('auto');
             }
-            return null;
+
+            return result;
         };
 
         // Primary single string Google Translate API fetcher (POST with GET fallback, 8s timeout)
