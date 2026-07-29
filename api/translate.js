@@ -123,6 +123,53 @@ export default async function handler(req, res) {
             "https://lingva.recepty.it"
         ];
 
+        function cleanPersianToKurdish(text) {
+            if (!text || typeof text !== 'string') return text || '';
+            let cleaned = text;
+
+            const replacements = [
+                [/\bشروع کرد\b/g, 'دەستی پێکرد'],
+                [/\bشروع می کند\b/g, 'دەست پێدەکات'],
+                [/\bشروع می‌کند\b/g, 'دەست پێدەکات'],
+                [/\bشروع به\b/g, 'دەست بە'],
+                [/\bشروع\b/g, 'دەستپێک'],
+                [/\bغرش کردن\b/g, 'نەڕاندن'],
+                [/\bغرش\b/g, 'نەڕە'],
+                [/\bلرزیدن\b/g, 'لەرزین'],
+                [/\bمی کند\b/g, 'دەکات'],
+                [/\bمی‌کند\b/g, 'دەکات'],
+                [/\bمی کنم\b/g, 'دەکەم'],
+                [/\bمی‌کنم\b/g, 'دەکەم'],
+                [/\bمی کنیم\b/g, 'دەکەین'],
+                [/\bمی‌کنیم\b/g, 'دەکەین'],
+                [/\bمی کنند\b/g, 'دەکەن'],
+                [/\bمی‌کنند\b/g, 'دەکەن'],
+                [/\bمی شود\b/g, 'دەبێت'],
+                [/\bمی‌شود\b/g, 'دەبێت'],
+                [/\bمی گوید\b/g, 'دەڵێت'],
+                [/\bمی‌گوید\b/g, 'دەڵێت'],
+                [/\bمی داند\b/g, 'دەزانێت'],
+                [/\bمی‌داند\b/g, 'دەزانێت'],
+                [/\bمی بیند\b/g, 'دەبینێت'],
+                [/\bمی‌بیند\b/g, 'دەبینێت'],
+                [/\bمی تواند\b/g, 'دەتوانێت'],
+                [/\bمی‌تواند\b/g, 'دەتوانێت'],
+                [/\bمی آید\b/g, 'دێت'],
+                [/\bمی‌آید\b/g, 'دێت'],
+                [/\bمی رود\b/g, 'دەچێت'],
+                [/\bمی‌رود\b/g, 'دەچێت'],
+                [/\bبرای\b/g, 'بۆ'],
+                [/\bاگر\b/g, 'ئەگەر'],
+                [/\bاین\b/g, 'ئەم'],
+                [/\bآن\b/g, 'ئەو']
+            ];
+
+            for (const [pattern, replacement] of replacements) {
+                cleaned = cleaned.replace(pattern, replacement);
+            }
+            return cleaned;
+        }
+
         // ⚡ Multi-Q Google GTX POST Array Translator (100% sentence-accurate index matching)
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
@@ -163,7 +210,8 @@ export default async function handler(req, res) {
                                 return subChunk.map((item, idx) => {
                                     const seg = segments[idx];
                                     if (Array.isArray(seg) && typeof seg[0] === 'string' && seg[0].trim()) {
-                                        return seg[0].trim();
+                                        const resStr = seg[0].trim();
+                                        return cleanPersianToKurdish(resStr);
                                     }
                                     return item;
                                 });

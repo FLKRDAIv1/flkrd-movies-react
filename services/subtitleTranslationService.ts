@@ -11,9 +11,56 @@ export interface SubtitleCue {
  * Parses subtitle text into structured dialogue cues.
  * Supports VTT and SRT.
  */
+export function cleanPersianToKurdish(text: string): string {
+  if (!text || typeof text !== 'string') return text || '';
+  let cleaned = text;
+
+  const replacements: [RegExp, string][] = [
+    [/\bشروع کرد\b/g, 'دەستی پێکرد'],
+    [/\bشروع می کند\b/g, 'دەست پێدەکات'],
+    [/\bشروع می‌کند\b/g, 'دەست پێدەکات'],
+    [/\bشروع به\b/g, 'دەست بە'],
+    [/\bشروع\b/g, 'دەستپێک'],
+    [/\bغرش کردن\b/g, 'نەڕاندن'],
+    [/\bغرش\b/g, 'نەڕە'],
+    [/\bلرزیدن\b/g, 'لەرزین'],
+    [/\bمی کند\b/g, 'دەکات'],
+    [/\bمی‌کند\b/g, 'دەکات'],
+    [/\bمی کنم\b/g, 'دەکەم'],
+    [/\bمی‌کنم\b/g, 'دەکەم'],
+    [/\bمی کنیم\b/g, 'دەکەین'],
+    [/\bمی‌کنیم\b/g, 'دەکەین'],
+    [/\bمی کنند\b/g, 'دەکەن'],
+    [/\bمی‌کنند\b/g, 'دەکەن'],
+    [/\bمی شود\b/g, 'دەبێت'],
+    [/\bمی‌شود\b/g, 'دەبێت'],
+    [/\bمی گوید\b/g, 'دەڵێت'],
+    [/\bمی‌گوید\b/g, 'دەڵێت'],
+    [/\bمی داند\b/g, 'دەزانێت'],
+    [/\bمی‌داند\b/g, 'دەزانێت'],
+    [/\bمی بیند\b/g, 'دەبینێت'],
+    [/\bمی‌بیند\b/g, 'دەبینێت'],
+    [/\bمی تواند\b/g, 'دەتوانێت'],
+    [/\bمی‌تواند\b/g, 'دەتوانێت'],
+    [/\bمی آید\b/g, 'دێت'],
+    [/\bمی‌آید\b/g, 'دێت'],
+    [/\bمی رود\b/g, 'دەچێت'],
+    [/\bمی‌رود\b/g, 'دەچێت'],
+    [/\bبرای\b/g, 'بۆ'],
+    [/\bاگر\b/g, 'ئەگەر'],
+    [/\bاین\b/g, 'ئەم'],
+    [/\bآن\b/g, 'ئەو']
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+  return cleaned;
+}
+
 export function stripAllHtmlTags(text: string): string {
   if (!text) return '';
-  return text
+  const stripped = text
     .replace(/<[^>]*>?/g, '')
     .replace(/><font/gi, '')
     .replace(/<font/gi, '')
@@ -23,6 +70,8 @@ export function stripAllHtmlTags(text: string): string {
     .replace(/&gt;/gi, '>')
     .replace(/&quot;/gi, '"')
     .trim();
+
+  return cleanPersianToKurdish(stripped);
 }
 
 export function parseSubtitleToCues(text: string): SubtitleCue[] {
@@ -257,8 +306,8 @@ export async function translateCuesToKurdish(
       if (signal?.aborted) return;
       const offset = chunkIndex * chunkSize;
       for (let j = 0; j < chunk.length; j++) {
-        const translated = translatedTexts[j] ?? chunk[j].text;
-        translatedCues[offset + j].text = translated.replace(/\s*\/\s*/g, '\n');
+        const rawTrans = translatedTexts[j] ?? chunk[j].text;
+        translatedCues[offset + j].text = cleanPersianToKurdish(rawTrans.replace(/\s*\/\s*/g, '\n'));
       }
       completedCount += chunk.length;
       if (onProgress) {
