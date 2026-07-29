@@ -295,8 +295,10 @@ export default async function handler(req, res) {
 
         // ⚡ Gemini High-Intelligence Context-Aware Kurdish Translation Engine
         const translateWithGeminiAPI = async (chunkItems) => {
-            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-            if (!apiKey || !chunkItems || chunkItems.length === 0) return null;
+            const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY || process.env.VITE_GEMINI_API_KEY;
+            if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim() || apiKey === 'undefined' || apiKey === 'null') {
+                return null;
+            }
 
             const isBadiniTarget = target === 'badini' || target === 'kmr' || target === 'ku';
             const targetLangDescription = isBadiniTarget 
