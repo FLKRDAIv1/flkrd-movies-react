@@ -482,7 +482,7 @@ const ProfilePage: React.FC = () => {
                 <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[420px] bg-black/25 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_80px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] relative z-10"
+                    className="w-full max-w-[420px] bg-white/[0.05] backdrop-blur-[12px] border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)] relative z-10"
                 >
                     {/* Top brand accent */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
@@ -549,7 +549,7 @@ const ProfilePage: React.FC = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[430px] bg-black/25 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_80px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(255,255,255,0.15)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
+                    className="w-full max-w-[430px] bg-white/[0.05] backdrop-blur-[12px] border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
                 >
                     {/* Back Button Pill */}
                     <button

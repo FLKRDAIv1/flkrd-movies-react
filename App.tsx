@@ -423,12 +423,12 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
 
     if (isPasswordRecovery) {
         videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
-        opacity = 0.9;
-        filter = theme === 'dark' ? 'brightness(0.55)' : 'brightness(0.7)';
+        opacity = 0.95;
+        filter = theme === 'dark' ? 'brightness(0.80)' : 'brightness(0.9)';
     } else if (!user) {
         videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
-        opacity = 0.9;
-        filter = theme === 'dark' ? 'brightness(0.60) saturate(1.15)' : 'brightness(0.72) saturate(1.0)';
+        opacity = 0.95;
+        filter = theme === 'dark' ? 'brightness(0.85) saturate(1.15)' : 'brightness(0.90) saturate(1.0)';
     } else {
         videoSrc = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
         opacity = theme === 'dark' ? 0.85 : 0.70;
@@ -473,13 +473,10 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
                 style={{ opacity, filter }}
             />
             {isPasswordRecovery && (
-                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
+                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%)' }} />
             )}
             {!isPasswordRecovery && !user && (
-                <>
-                    <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.60) 100%)' }} />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/60" />
-                </>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
             )}
             {!isPasswordRecovery && user && (
                 <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
