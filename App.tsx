@@ -409,6 +409,8 @@ const logVisit = async (path: string) => {
 
 const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
     const { user, isPasswordRecovery } = useAuth();
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Video URLs
     const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';
@@ -434,18 +436,60 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
         filter = theme === 'dark' ? 'brightness(0.45) saturate(1.1)' : 'brightness(0.65) saturate(0.9)';
     }
 
+    // Programmatic play — required for iOS Safari autoplay policy
+    useEffect(() => {
+        const vid = videoRef.current;
+        if (!vid) return;
+
+        // Update src only if it changed (avoids full remount)
+        if (vid.getAttribute('data-src') !== videoSrc) {
+            vid.setAttribute('data-src', videoSrc);
+            vid.src = videoSrc;
+            vid.load();
+        }
+
+        const tryPlay = () => {
+            vid.play().catch(() => {
+                // Retry once on user gesture — also attach to first touch/click
+                const retry = () => { vid.play().catch(() => {}); document.removeEventListener('touchstart', retry); document.removeEventListener('click', retry); };
+                document.addEventListener('touchstart', retry, { once: true });
+                document.addEventListener('click', retry, { once: true });
+            });
+        };
+
+        const onCanPlay = () => { setIsLoaded(true); tryPlay(); };
+        const onError = () => { setIsLoaded(true); }; // show fallback gradient on error
+
+        vid.addEventListener('canplaythrough', onCanPlay, { once: true });
+        vid.addEventListener('error', onError, { once: true });
+
+        // If already ready (cached), play immediately
+        if (vid.readyState >= 3) { setIsLoaded(true); tryPlay(); }
+
+        return () => {
+            vid.removeEventListener('canplaythrough', onCanPlay);
+            vid.removeEventListener('error', onError);
+        };
+    }, [videoSrc]);
+
     return (
         <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none w-screen h-screen">
             <video
-                key={videoSrc}
-                src={videoSrc}
+                ref={videoRef}
                 autoPlay
                 muted
                 loop
                 playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-                style={{ opacity, filter }}
+                preload="auto"
+                x-webkit-airplay="deny"
+                disablePictureInPicture
+                className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700"
+                style={{ opacity: isLoaded ? opacity : 0, filter, willChange: 'opacity' }}
             />
+            {/* Fallback gradient while video loads */}
+            {!isLoaded && (
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950" />
+            )}
             {isPasswordRecovery && (
                 <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.65) 100%)' }} />
             )}
