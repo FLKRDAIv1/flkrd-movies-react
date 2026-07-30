@@ -248,26 +248,67 @@ const ViewTransitionRoutes: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 };
 
-const getCountryInfo = async (): Promise<string> => {
+interface GeoLocationDetails {
+    country: string;
+    city: string;
+    district: string;
+}
+
+const getGeoLocationDetails = async (): Promise<GeoLocationDetails> => {
     try {
-        const cached = sessionStorage.getItem('flkrd_visitor_country');
-        if (cached) return cached;
-        const res = await fetch('https://ipapi.co/json/');
-        if (!res.ok) throw new Error('Failed to fetch country');
-        const data = await res.json();
-        const country = data.country_name || data.country || 'Unknown';
-        sessionStorage.setItem('flkrd_visitor_country', country);
-        return country;
-    } catch (e) {
-        console.warn("GeoIP check failed, falling back:", e);
-        try {
-            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (tz && (tz.includes('Baghdad') || tz.includes('Erbil') || tz.includes('Asia/Baghdad'))) {
-                return 'Iraq';
+        const cached = sessionStorage.getItem('flkrd_geo_details');
+        if (cached) return JSON.parse(cached);
+
+        // Primary GeoIP API (ipwho.is)
+        const res = await fetch('https://ipwho.is/', { cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success !== false) {
+                const info: GeoLocationDetails = {
+                    country: data.country || 'Unknown',
+                    city: data.city || data.region || 'Unknown City',
+                    district: data.region || data.city || 'Central District'
+                };
+                sessionStorage.setItem('flkrd_geo_details', JSON.stringify(info));
+                return info;
             }
-        } catch (err) {}
-        return 'Unknown';
+        }
+
+        // Secondary GeoIP API (ipapi.co)
+        const res2 = await fetch('https://ipapi.co/json/');
+        if (res2.ok) {
+            const data2 = await res2.json();
+            const info2: GeoLocationDetails = {
+                country: data2.country_name || data2.country || 'Unknown',
+                city: data2.city || 'Unknown City',
+                district: data2.region || data2.city || 'Central District'
+            };
+            sessionStorage.setItem('flkrd_geo_details', JSON.stringify(info2));
+            return info2;
+        }
+    } catch (e) {
+        console.warn("[GEOIP] Failed to fetch live location details:", e);
     }
+
+    try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz && (tz.includes('Baghdad') || tz.includes('Erbil') || tz.includes('Asia/Baghdad'))) {
+            const fallback: GeoLocationDetails = {
+                country: 'Iraq',
+                city: 'Erbil / Hewlêr',
+                district: 'Kurdistan Region'
+            };
+            sessionStorage.setItem('flkrd_geo_details', JSON.stringify(fallback));
+            return fallback;
+        }
+    } catch (err) {}
+
+    return { country: 'Unknown', city: 'Unknown City', district: 'Online Session' };
+};
+
+const getCountryInfo = async (): Promise<string> => {
+    const geo = await getGeoLocationDetails();
+    return geo.country;
 };
 
 const startPerformanceObserver = (visitId: string) => {
@@ -302,40 +343,25 @@ const startPerformanceObserver = (visitId: string) => {
         }, 1500);
     };
 
-    // 1. FCP (Paint)
-    const paintEntries = performance.getEntriesByType('paint');
-    const fcpEntry = paintEntries.find(e => e.name === 'first-contentful-paint');
-    if (fcpEntry) {
-        fcp = fcpEntry.startTime;
-        queueUpdate();
-    } else {
-        try {
-            const paintObserver = new PerformanceObserver((entryList) => {
-                const entries = entryList.getEntries();
-                const fcpE = entries.find(e => e.name === 'first-contentful-paint');
-                if (fcpE) {
-                    fcp = fcpE.startTime;
-                    queueUpdate();
-                    paintObserver.disconnect();
-                }
-            });
-            paintObserver.observe({ type: 'paint', buffered: true });
-        } catch (e) {}
-    }
-
-    // 2. LCP
     try {
+        const fcpObserver = new PerformanceObserver((entryList) => {
+            const entries = entryList.getEntriesByName('first-contentful-paint');
+            if (entries.length > 0) {
+                fcp = entries[0].startTime;
+                queueUpdate();
+            }
+        });
+        fcpObserver.observe({ type: 'paint', buffered: true });
+
         const lcpObserver = new PerformanceObserver((entryList) => {
             const entries = entryList.getEntries();
-            const lastEntry = entries[entries.length - 1];
-            lcp = lastEntry.startTime;
-            queueUpdate();
+            if (entries.length > 0) {
+                lcp = entries[entries.length - 1].startTime;
+                queueUpdate();
+            }
         });
         lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
-    } catch (e) {}
 
-    // 3. CLS
-    try {
         const clsObserver = new PerformanceObserver((entryList) => {
             for (const entry of entryList.getEntries() as any[]) {
                 if (!entry.hadRecentInput) {
@@ -345,15 +371,11 @@ const startPerformanceObserver = (visitId: string) => {
             }
         });
         clsObserver.observe({ type: 'layout-shift', buffered: true });
-    } catch (e) {}
 
-    // 4. FID/INP
-    try {
         const fidObserver = new PerformanceObserver((entryList) => {
             const entries = entryList.getEntries();
-            const firstInput = entries[0] as any;
-            if (firstInput) {
-                inp = firstInput.processingStart - firstInput.startTime;
+            if (entries.length > 0) {
+                inp = (entries[0] as any).duration;
                 queueUpdate();
             }
         });
@@ -372,13 +394,13 @@ const logVisit = async (path: string) => {
             sessionStorage.setItem('flkrd_visitor_session', sessionId);
         }
 
-        let country = 'Unknown';
+        let geo: GeoLocationDetails = { country: 'Unknown', city: 'Unknown', district: 'Unknown' };
         if (isLocalHost) {
-            country = 'Local Dev';
+            geo = { country: 'Local Dev', city: 'Development Node', district: 'Localhost' };
         } else if (isTauriEnv) {
-            country = 'Tauri App';
+            geo = { country: 'Desktop App', city: 'Tauri Client', district: 'Desktop Application' };
         } else {
-            country = await getCountryInfo();
+            geo = await getGeoLocationDetails();
         }
 
         let deviceType = 'Desktop';
@@ -397,7 +419,9 @@ const logVisit = async (path: string) => {
 
         await supabase.from('site_analytics').insert([{
             session_id: sessionId,
-            country: country,
+            country: geo.country,
+            city: geo.city,
+            district: geo.district,
             device_type: deviceType,
             page_path: path,
             referrer: document.referrer || 'Direct',

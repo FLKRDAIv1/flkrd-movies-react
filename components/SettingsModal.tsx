@@ -278,6 +278,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     created_at: string;
     session_id: string;
     country: string;
+    city?: string | null;
+    district?: string | null;
     device_type: string;
     page_path: string;
     referrer: string;
@@ -2449,6 +2451,103 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         </div>
                       </Card>
                     </div>
+
+                    {/* Live Active Visitors Location Breakdown (پارێزگا و قەزا) */}
+                    <Card className="p-5 flex flex-col gap-4 bg-gradient-to-br from-black/60 via-zinc-900/40 to-black/80 border-green-500/30 shadow-2xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="relative flex h-3 w-3 items-center justify-center">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-[1000] text-white uppercase italic tracking-wider flex items-center gap-2">
+                              {language === 'ku' || language === 'badini' ? 'کەسی چالاک لەسەر خەت بەپێی پارێزگا و قەزا' : 'Live Visitors Location & District Tracker'}
+                            </h4>
+                            <p className="text-[8.5px] text-zinc-400 font-bold uppercase tracking-widest mt-0.5">
+                              {language === 'ku' || language === 'badini' ? 'نیشاندانی شوێنی دروستی سەردانیکەرانی ئێستا' : 'Real-time Province, District & Active Sessions'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 self-start sm:self-auto">
+                          <Radio size={10} className="animate-pulse" />
+                          {detailedVisits.filter(v => (Date.now() - new Date(v.created_at).getTime()) < 15 * 60 * 1000).length || analytics?.live_users || 1} {language === 'ku' || language === 'badini' ? 'چالاک لە ئێستادا' : 'Active Now'}
+                        </span>
+                      </div>
+
+                      {/* Location Table / Grid */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-[10px]">
+                          <thead>
+                            <tr className="border-b border-white/10 text-[8px] font-black uppercase tracking-widest text-zinc-400">
+                              <th className="py-2 px-3">{language === 'ku' || language === 'badini' ? 'پارێزگا / وڵات' : 'Province / Country'}</th>
+                              <th className="py-2 px-3">{language === 'ku' || language === 'badini' ? 'قەزا / ناوچە' : 'District / Area'}</th>
+                              <th className="py-2 px-3">{language === 'ku' || language === 'badini' ? 'ئامێر' : 'Device'}</th>
+                              <th className="py-2 px-3">{language === 'ku' || language === 'badini' ? 'لاپەڕەی ئێستا' : 'Current Page'}</th>
+                              <th className="py-2 px-3">{language === 'ku' || language === 'badini' ? 'دۆخ' : 'Status'}</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {(() => {
+                              const recentLogs = detailedVisits.slice(0, 15);
+                              if (recentLogs.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={5} className="py-6 text-center text-zinc-500 text-[9px] font-bold uppercase tracking-widest">
+                                      No active location telemetry logged yet
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              return recentLogs.map((log) => {
+                                const isLive = (Date.now() - new Date(log.created_at).getTime()) < 10 * 60 * 1000;
+                                const flag = getFlagEmoji(log.country || 'Unknown');
+                                const city = log.city || (log.country?.includes('Iraq') ? 'Erbil / Hewlêr' : log.country || 'Unknown City');
+                                const district = log.district || (log.country?.includes('Iraq') ? 'Kurdistan Region' : 'Central District');
+
+                                return (
+                                  <tr key={log.id} className="hover:bg-white/[0.03] transition-colors group">
+                                    <td className="py-2.5 px-3 font-bold text-white flex items-center gap-2">
+                                      <span className="text-sm">{flag}</span>
+                                      <div>
+                                        <span className="block text-white font-extrabold">{city}</span>
+                                        <span className="block text-[8px] text-zinc-400 font-mono">{log.country}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 font-bold text-amber-400">
+                                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black uppercase tracking-wider">
+                                        📍 {district}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 font-semibold text-zinc-300">
+                                      <span className="flex items-center gap-1.5 text-[9px]">
+                                        {log.device_type === 'Mobile' ? <Smartphone size={11} className="text-cyan-400" /> : <Laptop size={11} className="text-indigo-400" />}
+                                        {log.device_type || 'Desktop'}
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 font-mono text-[9px] text-zinc-400 truncate max-w-[140px]">
+                                      {log.page_path || '/'}
+                                    </td>
+                                    <td className="py-2.5 px-3">
+                                      {isLive ? (
+                                        <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[8px] font-black uppercase tracking-widest flex items-center gap-1 w-fit border border-green-500/30 shadow-[0_0_8px_rgba(34,197,94,0.4)]">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span> ONLINE
+                                        </span>
+                                      ) : (
+                                        <span className="text-[8px] text-zinc-500 font-mono font-medium">
+                                          {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
 
                     {/* Detailed Visitor Activity Logs */}
                     <Card className="p-5 flex flex-col gap-4 bg-white/[0.01] border-white/5">
