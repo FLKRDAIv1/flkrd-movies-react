@@ -58,6 +58,7 @@ export const AdminBroadcastModal: React.FC<AdminBroadcastModalProps> = ({ isOpen
             event: 'admin_notification',
             payload,
           });
+          setTimeout(() => supabase.removeChannel(channel), 1000);
         }
       });
 
@@ -72,11 +73,16 @@ export const AdminBroadcastModal: React.FC<AdminBroadcastModalProps> = ({ isOpen
           duration: payload.duration,
           created_at: new Date().toISOString(),
         }]);
-      } catch (e) {
-        // Fallback if table is not provisioned
+      } catch (e) {}
+
+      // 3. Trigger native notification on local admin browser as well if permitted
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(payload.title, { body: payload.message, icon: payload.image || '/favicon.ico' });
+        } catch (e) {}
       }
 
-      // 3. Admin local preview feedback
+      // 4. Admin local preview feedback
       addNotification({
         type: 'success',
         title: 'Broadcast Dispatched!',

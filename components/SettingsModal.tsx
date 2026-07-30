@@ -392,6 +392,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
     setLoadingAnalytics(true);
     fetchAnalytics().finally(() => setLoadingAnalytics(false));
+
+    // Real-time visitor log listener — updates live active users and total visits dynamically
+    const realtimeChannel = supabase
+      .channel('site_analytics_realtime_modal')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'site_analytics' },
+        (payload) => {
+          if (payload.new) {
+            setDetailedVisits(prev => [payload.new as RawVisitLog, ...prev]);
+            setAnalytics(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                total_visits: (prev.total_visits || 0) + 1,
+                live_users: Math.max(1, (prev.live_users || 0) + 1)
+              };
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(realtimeChannel);
+    };
   }, [isOpen]);
 
   // System update checking states
@@ -1973,14 +1999,27 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                             // 1. Generate range dataset
                             const getAggregatedData = () => {
                               if (timeRange === '7d') {
-                                return daily.map(d => ({
-                                  date: d.date,
-                                  label: new Date(d.date).toLocaleDateString(
+                                const res = [];
+                                const today = new Date();
+                                for (let i = 6; i >= 0; i--) {
+                                  const dayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+                                  const dateStr = dayDate.toISOString().split('T')[0];
+                                  
+                                  const dayVisits = detailedVisits.filter(v => {
+                                    if (!v.created_at) return false;
+                                    return v.created_at.startsWith(dateStr);
+                                  }).length;
+
+                                  const rpcDaily = daily.find(d => d.date === dateStr);
+                                  const count = Math.max(dayVisits, rpcDaily ? rpcDaily.count : 0);
+
+                                  const label = dayDate.toLocaleDateString(
                                     language === 'ku' || language === 'badini' ? 'ku-IQ' : 'en-US', 
                                     { weekday: 'short' }
-                                  ),
-                                  count: d.count
-                                }));
+                                  );
+                                  res.push({ date: dateStr, label, count });
+                                }
+                                return res;
                               }
 
                               if (timeRange === '4h') {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { Notification } from '../types';
+import type { Notification } from '../types';
 import NotificationItem from '../components/NotificationItem';
 import { notificationEmitter } from '../utils/notificationEmitter';
 import Portal from '../components/Portal';
@@ -45,14 +45,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     let broadcastChannel: any = null;
     let dbChannel: any = null;
 
-    import('../utils/supabaseClient').then(async ({ supabase }) => {
-      // Guard: only subscribe to realtime if Supabase is not quota-blocked
-      try {
-        const { error: probeError } = await supabase.from('admin_broadcasts').select('id').limit(1);
-        if (probeError) return; // 402 quota or other error — skip realtime silently
-      } catch (e) {
-        return; // Network error — skip realtime silently
-      }
+    import('../utils/supabaseClient').then(({ supabase }) => {
+      // Helper function to trigger native browser notification if granted
+      const triggerNativeNotification = (title: string, message: string, image?: string) => {
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(title, {
+              body: message,
+              icon: image || '/favicon.ico',
+              tag: 'flkrd-admin-broadcast-' + Date.now(),
+            });
+          } catch (e) {
+            console.warn('[PUSH NOTIFICATION] Native notification failed:', e);
+          }
+        }
+      };
 
       // 1. Listen to Realtime Broadcast channel
       broadcastChannel = supabase.channel('global_admin_broadcast');
@@ -65,13 +72,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
               message: payload.message,
               image: payload.image,
               actionUrl: payload.actionUrl,
-              duration: payload.duration || 4000,
+              duration: payload.duration || 5000,
             });
+            triggerNativeNotification(payload.title, payload.message, payload.image);
           }
         })
         .subscribe();
 
-      // 2. Listen to Database INSERTS on admin_broadcasts table
+      // 2. Listen to Database INSERTS on admin_broadcasts table for persistent sync
       dbChannel = supabase
         .channel('admin_broadcasts_db_sync')
         .on(
@@ -86,8 +94,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                 message: item.message,
                 image: item.image,
                 actionUrl: item.action_url,
-                duration: item.duration || 4000,
+                duration: item.duration || 5000,
               });
+              triggerNativeNotification(item.title, item.message, item.image);
             }
           }
         )
