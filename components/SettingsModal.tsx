@@ -420,6 +420,251 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const [inp, setInp] = useState(55);
   const [cls, setCls] = useState(0.03);
 
+  const handleExportPDFReport = () => {
+    try {
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        addNotification({ type: 'error', title: 'Export Failed', message: 'Popup blocked. Please allow popups to generate PDF report.' });
+        return;
+      }
+
+      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const liveCount = detailedVisits.filter(v => (Date.now() - new Date(v.created_at).getTime()) < 15 * 60 * 1000).length || analytics?.live_users || 1;
+      const totalVisits = analytics?.total_visits || detailedVisits.length || 0;
+
+      const countryRows = (analytics?.country_stats || []).map(c => `
+        <tr>
+          <td style="padding: 10px; border-bottom: 1px solid #222; font-weight: bold; color: #fff;">${getFlagEmoji(c.country)} ${c.country}</td>
+          <td style="padding: 10px; border-bottom: 1px solid #222; font-family: monospace; color: #e50914; font-weight: bold; text-align: right;">${c.cnt} visits</td>
+        </tr>
+      `).join('');
+
+      const visitorRows = detailedVisits.slice(0, 35).map(v => {
+        const res = resolveKurdistanDistrict(v.city || '', v.district || '', v.country || '');
+        const city = v.city || res.city;
+        const district = v.district || res.district;
+        const isLive = (Date.now() - new Date(v.created_at).getTime()) < 10 * 60 * 1000;
+        return `
+          <tr>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-weight: bold; color: #fff;">${getFlagEmoji(v.country || 'Iraq')} ${city}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #f59e0b; font-weight: bold;">📍 ${district}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #ccc;">${v.device_type || 'Desktop'}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-family: monospace; color: #888; font-size: 11px;">${v.page_path || '/'}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; text-align: right;">
+              ${isLive 
+                ? '<span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 900;">ONLINE</span>' 
+                : `<span style="color: #666; font-size: 10px;">${new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>FLKRD MOVIES - Executive Telemetry & Visitor Analytics PDF Report</title>
+          <style>
+            @page { size: A4; margin: 12mm; }
+            body {
+              background-color: #050505;
+              color: #ffffff;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              border-bottom: 2px solid #e50914;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+            .brand {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+            }
+            .brand h1 {
+              font-size: 24px;
+              font-weight: 1000;
+              font-style: italic;
+              letter-spacing: -1px;
+              margin: 0;
+              color: #ffffff;
+              text-transform: uppercase;
+            }
+            .meta-box {
+              background: #111111;
+              border: 1px solid #222222;
+              border-radius: 16px;
+              padding: 16px;
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 15px;
+              margin-bottom: 20px;
+            }
+            .meta-label {
+              font-size: 8.5px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              color: #777;
+              margin-bottom: 4px;
+            }
+            .meta-value {
+              font-size: 14px;
+              font-weight: 900;
+              color: #fff;
+            }
+            .section-title {
+              font-size: 13px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              color: #e50914;
+              margin-top: 20px;
+              margin-bottom: 10px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              background: #0d0d0d;
+              border-radius: 12px;
+              overflow: hidden;
+              border: 1px solid #222;
+            }
+            th {
+              background: #181818;
+              color: #888;
+              font-size: 9px;
+              font-weight: 900;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              padding: 9px;
+              text-align: left;
+              border-bottom: 1px solid #252525;
+            }
+            .footer {
+              margin-top: 30px;
+              padding-top: 15px;
+              border-top: 1px solid #222;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              color: #666;
+              font-size: 10px;
+              font-weight: 700;
+            }
+            .watermark {
+              position: fixed;
+              bottom: 40px;
+              right: 40px;
+              font-size: 50px;
+              font-weight: 1000;
+              color: rgba(229, 9, 20, 0.05);
+              letter-spacing: -2px;
+              pointer-events: none;
+              user-select: none;
+              transform: rotate(-15deg);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="watermark">FLKRD OFFICIAL REPORT</div>
+          
+          <div class="header">
+            <div class="brand">
+              <div style="width: 36px; height: 36px; background: #e50914; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 1000; font-size: 18px; color: #fff;">F</div>
+              <div>
+                <h1>FLKRD MOVIES</h1>
+                <div style="font-size: 9px; font-weight: 800; color: #888; letter-spacing: 2px; text-transform: uppercase;">Official Visitor Analytics & Telemetry Executive PDF Report</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; font-weight: 900; color: #4ade80;">● VERIFIED REAL-TIME TELEMETRY</div>
+              <div style="font-size: 10px; color: #666; font-family: monospace; margin-top: 2px;">Report ID: #${Math.floor(100000 + Math.random() * 900000)}</div>
+            </div>
+          </div>
+
+          <div class="meta-box">
+            <div>
+              <div class="meta-label">DEVELOPER & FOUNDER</div>
+              <div class="meta-value" style="color: #f59e0b;">Zana Faroq (FLKRD CEO)</div>
+            </div>
+            <div>
+              <div class="meta-label">TOTAL VISITS LOGGED</div>
+              <div class="meta-value">${totalVisits}</div>
+            </div>
+            <div>
+              <div class="meta-label">LIVE ACTIVE VISITORS</div>
+              <div class="meta-value" style="color: #4ade80;">${liveCount} ONLINE</div>
+            </div>
+            <div>
+              <div class="meta-label">GENERATED TIMESTAMP</div>
+              <div class="meta-value" style="font-size: 11px;">${dateStr}</div>
+            </div>
+          </div>
+
+          <div class="section-title">🌐 KURDISTAN REGION & INTERNATIONAL LIVE VISITORS TELEMETRY</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Province / City</th>
+                <th>District / Area (قەزا)</th>
+                <th>Device Platform</th>
+                <th>Active Page Path</th>
+                <th style="text-align: right;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${visitorRows}
+            </tbody>
+          </table>
+
+          <div class="section-title" style="margin-top: 25px;">📊 INTERNATIONAL GEOGRAPHIC DISTRIBUTION</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Country Name</th>
+                <th style="text-align: right;">Total Visitors Logged</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${countryRows || '<tr><td colSpan="2" style="padding: 10px; color: #666;">No international country logs</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <div>CONFIDENTIAL • FOR AUTHORIZED FLKRD MOVIES ADMIN SYSTEM ONLY</div>
+            <div>CREATED & SIGNED BY ZANA FAROQ • FLKRD ENGINE v5.5.1</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      addNotification({ type: 'success', title: 'PDF Generator Ready', message: 'Opening print & PDF save window...' });
+    } catch (err: any) {
+      console.error("[PDF EXPORT] Error generating report:", err);
+      addNotification({ type: 'error', title: 'PDF Export Failed', message: err?.message || 'Could not generate PDF.' });
+    }
+  };
+
   const parseUserAgent = (ua: string) => {
     if (!ua) return { browser: 'Unknown', os: 'Unknown' };
     let browser = 'Other';
@@ -1885,6 +2130,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleExportPDFReport}
+                    className="h-10 px-4 rounded-full bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white text-[9px] font-[1000] uppercase tracking-widest transition-all shadow-md flex items-center gap-2 active:scale-95 border border-white/20"
+                    title="Export Official Executive Analytics PDF Report by Zana Faroq"
+                  >
+                    <FileText size={14} />
+                    <span>{language === 'ku' || language === 'badini' ? 'داگرتنی PDF ڕاپۆرت' : 'Export PDF Report'}</span>
+                  </button>
                   <button 
                     onClick={() => setIsFullscreen(!isFullscreen)}
                     className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-all active:scale-90"
