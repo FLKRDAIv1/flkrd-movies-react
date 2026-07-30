@@ -126,27 +126,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     Number(localStorage.getItem('flkrd_scale')) || 1
   );
   const [isPerformanceMode, setIsPerformanceModeState] = useState<boolean>(() => {
-    // Honor a previously saved user preference first…
+    // Only use explicitly saved user preference — never auto-enable
     try {
       const saved = localStorage.getItem('flkrd_performance_turbo');
       if (saved !== null) return saved === 'true';
     } catch (e) {}
-    // …otherwise auto-enable on mobile / low-power devices so the existing
-    // `performance-mode` CSS (which kills box-shadow animations & forces
-    // reduced motion) is active by default where it matters most.
-    try {
-      if (typeof navigator !== 'undefined' && typeof window !== 'undefined') {
-        const isTouch = (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
-        const smallScreen = Math.min(window.innerWidth, window.innerHeight) <= 820;
-        const lowCores = (navigator as any).hardwareConcurrency
-          ? (navigator as any).hardwareConcurrency <= 4
-          : false;
-        const lowMem = (navigator as any).deviceMemory
-          ? (navigator as any).deviceMemory <= 4
-          : false;
-        return isTouch && (smallScreen || lowCores || lowMem);
-      }
-    } catch (e) {}
+    // Default OFF — user must opt-in from Settings
     return false;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

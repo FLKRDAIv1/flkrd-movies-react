@@ -725,14 +725,11 @@ html.performance-mode *:not(.motion-safe):not(.ui-overlay):not([class*="player-"
   -webkit-backdrop-filter: none !important;
 }
 
-/* Simplify backgrounds to prevent expensive gradient and blur blends */
-.performance-mode body,
-.performance-mode .fixed,
-.performance-mode .absolute,
-.performance-mode .relative {
+/* Simplify ONLY decorative gradient overlays — NOT all positioned elements (that causes white screen) */
+.performance-mode .pointer-events-none[class*="bg-gradient"],
+.performance-mode .pointer-events-none[style*="background:"],
+.performance-mode .pointer-events-none[style*="background-image:"] {
   background-image: none !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
 }
 
 /* Hide performance-heavy shine and glow overlay components completely */
