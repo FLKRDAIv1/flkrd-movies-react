@@ -930,7 +930,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     
     // Master Owner Check
     if (cleanEmail === 'flkrdstudio@gmail.com') {
-      if (pass === 'Zanabarzani1919@' || pass.length >= 6) {
+      if (pass === 'Zanabarzani1919@') {
         localStorage.setItem('flkrd_admin_email', 'flkrdstudio@gmail.com');
         setCurrentAdminEmail('flkrdstudio@gmail.com');
         setIsAdmin(true);
@@ -944,6 +944,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             isActive: true
           }
         };
+      } else {
+        return { success: false, message: 'پاسپۆردەکەت هەڵەیە!' };
       }
     }
 
@@ -958,7 +960,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           if (!match.isActive) {
             return { success: false, message: 'ئەم ئەکاونتەی ئادمن ناچالاک کراوە!' };
           }
-          if (match.password === pass || pass.length >= 6) {
+          if (match.password === pass) {
             localStorage.setItem('flkrd_admin_email', match.email);
             setCurrentAdminEmail(match.email);
             setIsAdmin(true);
