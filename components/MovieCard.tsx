@@ -167,35 +167,23 @@ export const MovieCard = React.memo(
           `
         }}
       >
-        {/* Holographic shimmer sheen sweep overlay — GPU-composited via transform, not background-position */}
-        <div 
-          className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none z-20 mix-blend-overlay overflow-hidden"
-        >
+        {/* Holographic shimmer sheen — desktop only, skipped on touch to save GPU/DOM */}
+        {!isTouchDevice && (
           <div
-            className="holographic-sheen"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.25) 50%, transparent 80%)',
-              transform: 'translateX(-100%)',
-              willChange: 'transform',
-            }}
-          />
-        </div>
-        <style>
-          {`
-            @keyframes holographic-sweep {
-              0%   { transform: translateX(-100%); }
-              100% { transform: translateX(200%); }
-            }
-            .holographic-sheen {
-              animation: none;
-            }
-            .group\\/card:hover .holographic-sheen {
-              animation: holographic-sweep 3s linear infinite;
-            }
-          `}
-        </style>
+            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none z-20 mix-blend-overlay overflow-hidden"
+          >
+            <div
+              className="holographic-sheen"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.25) 50%, transparent 80%)',
+                transform: 'translateX(-100%)',
+                willChange: 'transform',
+              }}
+            />
+          </div>
+        )}
 
         {/* Poster artwork window with inner border */}
         <div className="relative flex-1 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">

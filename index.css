@@ -851,6 +851,17 @@ a,
 
 }
 
+@keyframes holographic-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.holographic-sheen {
+  animation: none;
+}
+.group\/card:hover .holographic-sheen {
+  animation: holographic-sweep 3s linear infinite;
+}
+
 /* ── High-Performance Card Entrance Animation (Bypasses JS/Framer-Motion main thread overhead) ── */
 @keyframes card-fade-in {
   from {
@@ -953,5 +964,81 @@ a,
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+  }
+}
+
+/* ════════════════════════════════════════════════
+   📱 MOBILE PERFORMANCE OPTIMIZATIONS
+   Targets: pointer:coarse = touch devices (Android, iPhone, iPad)
+   Safe: zero effect on desktop mouse users
+   ════════════════════════════════════════════════ */
+
+@media (pointer: coarse) {
+
+  /* ── 1. Disable hover-only visual effects on touch (they never trigger on mobile) ── */
+  .holographic-sheen,
+  [class*="group-hover"],
+  .group\/card:hover .holographic-sheen {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  /* ── 2. Reduce backdrop-filter blur cost on mobile GPU ── */
+  [class*="backdrop-blur-xl"],
+  [class*="backdrop-blur-2xl"],
+  [class*="backdrop-blur-3xl"] {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  [class*="backdrop-blur-md"],
+  [class*="backdrop-blur-lg"] {
+    backdrop-filter: blur(6px) !important;
+    -webkit-backdrop-filter: blur(6px) !important;
+  }
+
+  /* ── 3. Faster transitions on mobile (half the duration) ── */
+  .transition-all,
+  .transition,
+  .transition-colors,
+  .transition-opacity,
+  .transition-transform {
+    transition-duration: 120ms !important;
+  }
+
+  /* ── 4. Contain paint on scroll rows to skip off-screen layout work ── */
+  .movie-row-container,
+  [class*="overflow-x-auto"],
+  [class*="overflow-x-scroll"] {
+    contain: layout style;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 320px;
+  }
+
+  /* ── 5. Kill expensive box-shadows on card hover (mobile never gets hover) ── */
+  .group\/card,
+  [class*="group-hover/card"] {
+    box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+  }
+
+  /* ── 6. Reduce card entrance animation delay on mobile (feel snappier) ── */
+  .card-entrance {
+    animation-duration: 0.25s !important;
+  }
+  .card-entrance:nth-child(n) {
+    animation-delay: 0ms !important;
+  }
+
+  /* ── 7. Snap scroll for horizontal rows (native momentum scrolling) ── */
+  [class*="overflow-x-auto"],
+  [class*="overflow-x-scroll"] {
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── 8. Reduce Framer Motion spring overhead on touch devices ── */
+  .card-entrance,
+  [data-framer-appear-id] {
+    will-change: opacity, transform;
   }
 }
