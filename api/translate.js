@@ -302,7 +302,10 @@ export default async function handler(req, res) {
                 if (!subResult || (effectiveSrc !== 'auto' && !subResult.some((t, idx) => t && t.trim() && t !== subChunk[idx]))) {
                     subResult = await doFetch('auto');
                 }
-                allResults.push(...(subResult || subChunk));
+                if (!subResult) {
+                    throw new Error("GTX sub-chunk translation failed");
+                }
+                allResults.push(...subResult);
             }
 
             return allResults;

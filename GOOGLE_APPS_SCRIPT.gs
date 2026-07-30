@@ -99,9 +99,13 @@ function processTranslation(text, source, target) {
 function translateViaGTX(text, source, target) {
   var url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + 
             encodeURIComponent(source) + "&tl=" + encodeURIComponent(target) + 
-            "&dt=t&q=" + encodeURIComponent(text);
+            "&dt=t";
   
-  var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  var response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    payload: { q: text },
+    muteHttpExceptions: true
+  });
   if (response.getResponseCode() === 200) {
     var data = JSON.parse(response.getContentText());
     if (data && data[0]) {
