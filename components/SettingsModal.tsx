@@ -432,6 +432,75 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const liveCount = detailedVisits.filter(v => (Date.now() - new Date(v.created_at).getTime()) < 15 * 60 * 1000).length || analytics?.live_users || 1;
       const totalVisits = analytics?.total_visits || detailedVisits.length || 0;
 
+      // 1. Generate 7-day SVG Traffic Chart for PDF
+      const chartWidth = 580;
+      const chartHeight = 150;
+      const chartPadding = 25;
+
+      const daysList = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+        const dateStrKey = d.toISOString().split('T')[0];
+        const dayCount = detailedVisits.filter(v => v.created_at && v.created_at.startsWith(dateStrKey)).length;
+        const rpcData = (analytics?.daily_traffic || []).find(dt => dt.date === dateStrKey);
+        const count = Math.max(dayCount, rpcData ? rpcData.count : 0);
+        const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+        daysList.push({ label, count, dateStrKey });
+      }
+
+      const maxVal = Math.max(...daysList.map(d => d.count), 1);
+      const points = daysList.map((d, idx) => {
+        const x = chartPadding + (idx / 6) * (chartWidth - 2 * chartPadding);
+        const y = chartHeight - chartPadding - (d.count / maxVal) * (chartHeight - 2 * chartPadding);
+        return { x, y, count: d.count, label: d.label };
+      });
+
+      const pathD = points.reduce((acc, p, idx, arr) => {
+        if (idx === 0) return `M ${p.x} ${p.y}`;
+        const prev = arr[idx - 1];
+        const cpX1 = prev.x + (p.x - prev.x) / 3;
+        const cpY1 = prev.y;
+        const cpX2 = prev.x + 2 * (p.x - prev.x) / 3;
+        const cpY2 = p.y;
+        return `${acc} C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${p.x} ${p.y}`;
+      }, '');
+
+      const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - chartPadding} L ${points[0].x} ${chartHeight - chartPadding} Z`;
+
+      const chartSvg = `
+        <div style="background: #0e0e0e; border: 1px solid #222; border-radius: 16px; padding: 18px; margin-bottom: 25px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #e50914;">
+              📈 WEEKLY & DAILY TRAFFIC TREND CHART
+            </div>
+            <div style="font-size: 9px; font-weight: 800; color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); padding: 3px 10px; border-radius: 12px; font-family: monospace;">
+              7-DAY LIVE TRAFFIC ANALYTICS
+            </div>
+          </div>
+          <svg width="100%" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="overflow: visible;">
+            <defs>
+              <linearGradient id="pdfChartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#e50914" stop-opacity="0.35" />
+                <stop offset="100%" stop-color="#e50914" stop-opacity="0.0" />
+              </linearGradient>
+            </defs>
+            <line x1="${chartPadding}" y1="${chartPadding}" x2="${chartWidth - chartPadding}" y2="${chartPadding}" stroke="#1f1f1f" stroke-width="1" />
+            <line x1="${chartPadding}" y1="${chartHeight / 2}" x2="${chartWidth - chartPadding}" y2="${chartHeight / 2}" stroke="#1f1f1f" stroke-width="1" />
+            <line x1="${chartPadding}" y1="${chartHeight - chartPadding}" x2="${chartWidth - chartPadding}" y2="${chartHeight - chartPadding}" stroke="#333333" stroke-width="1" />
+            
+            <path d="${areaD}" fill="url(#pdfChartGrad)" />
+            <path d="${pathD}" fill="none" stroke="#e50914" stroke-width="3" />
+            
+            ${points.map(p => `
+              <circle cx="${p.x}" cy="${p.y}" r="4" fill="#ffffff" stroke="#e50914" stroke-width="2" />
+              <text x="${p.x}" y="${p.y - 8}" fill="#ffffff" font-size="9" font-weight="900" text-anchor="middle" font-family="monospace">${p.count}</text>
+              <text x="${p.x}" y="${chartHeight - 6}" fill="#777777" font-size="9" font-weight="800" text-anchor="middle">${p.label}</text>
+            `).join('')}
+          </svg>
+        </div>
+      `;
+
       const countryRows = (analytics?.country_stats || []).map(c => `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #222; font-weight: bold; color: #fff;">${getFlagEmoji(c.country)} ${c.country}</td>
@@ -610,6 +679,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
+          ${chartSvg}
+
           <div class="section-title">🌐 KURDISTAN REGION & INTERNATIONAL LIVE VISITORS TELEMETRY</div>
           <table>
             <thead>
@@ -658,7 +729,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       printWindow.document.open();
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      addNotification({ type: 'success', title: 'PDF Generator Ready', message: 'Opening print & PDF save window...' });
+      addNotification({ type: 'success', title: 'PDF Generator Ready', message: 'Opening print & PDF save window with Charts...' });
     } catch (err: any) {
       console.error("[PDF EXPORT] Error generating report:", err);
       addNotification({ type: 'error', title: 'PDF Export Failed', message: err?.message || 'Could not generate PDF.' });
