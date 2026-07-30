@@ -8,6 +8,7 @@ import {
 import { AdminUser, AdminPermission } from '../types';
 import { useUI } from '../contexts/UIContext';
 import { useTranslation } from '../contexts/LanguageContext';
+import Portal from './Portal';
 
 interface AdminManagementModalProps {
   isOpen: boolean;
@@ -191,26 +192,28 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 md:p-6 overflow-y-auto">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/80 backdrop-blur-xl"
-        />
+    <Portal>
+      <AnimatePresence>
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 md:p-6 overflow-y-auto">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/85 backdrop-blur-xl z-0"
+          />
 
-        {/* Modal Window */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-4xl bg-[#09090b]/95 border border-white/10 rounded-[32px] shadow-[0_32px_90px_rgba(0,0,0,0.9)] overflow-hidden z-10 flex flex-col max-h-[90vh]"
-          dir={isKurdish ? 'rtl' : 'ltr'}
-        >
+          {/* Modal Window */}
+          <motion.div
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-full max-w-4xl bg-[#09090b]/95 border border-white/10 rounded-[32px] shadow-[0_32px_90px_rgba(0,0,0,0.95)] overflow-hidden z-10 flex flex-col max-h-[90vh] pointer-events-auto"
+            dir={isKurdish ? 'rtl' : 'ltr'}
+          >
           {/* Header Bar */}
           <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02] shrink-0">
             <div className="flex items-center gap-3.5">
@@ -561,5 +564,6 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         </motion.div>
       </div>
     </AnimatePresence>
-  );
+  </Portal>
+);
 };
