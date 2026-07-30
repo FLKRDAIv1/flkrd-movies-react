@@ -673,6 +673,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const translationControllerRef = useRef<AbortController | null>(null);
   const pauseStateRef = useRef<{ isPaused: boolean }>({ isPaused: false });
+  // Ref-based lock: prevents race where React state hasn't updated yet on a 2nd startGlobalTranslation call
+  const activeTranslationKeyRef = useRef<string>('');
 
   const startGlobalTranslation = async (
     sub: any,
@@ -695,10 +697,22 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       return;
     }
 
-    // Abort any existing translation first if switching to a different movie or track
-    if (translationControllerRef.current) {
+    // Build a unique fingerprint for this translation request
+    const requestKey = `${String(tmdbId)}|${mediaType}|${season}|${episode}|${sub?.id || sub?.attributes?.url || ''}|${targetLang}`;
+
+    // REF-BASED dedup guard (avoids React async state lag on rapid double calls)
+    if (activeTranslationKeyRef.current === requestKey && translationControllerRef.current && !translationControllerRef.current.signal.aborted) {
+      console.log("[UI CONTEXT] Translation already actively running for this exact track (ref guard) — ignoring duplicate call.");
+      return;
+    }
+
+    // Abort previous translation ONLY if it's a genuinely DIFFERENT content/track
+    if (translationControllerRef.current && activeTranslationKeyRef.current !== requestKey) {
+      console.log("[UI CONTEXT] Aborting previous translation (different track):", activeTranslationKeyRef.current, '→', requestKey);
       translationControllerRef.current.abort();
     }
+
+    activeTranslationKeyRef.current = requestKey;
     translationControllerRef.current = new AbortController();
     pauseStateRef.current = { isPaused: false };
 
@@ -766,8 +780,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           // LIVE UPDATE: Dispatch custom event so active video player updates live
           if (partialSubtitleUrl && typeof window !== 'undefined') {
             console.log(`[UI CONTEXT] Live progressive subtitle update (${progress}%):`, partialSubtitleUrl.substring(0, 50));
-            window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
-              detail: { subtitleUrl: partialSubtitleUrl, tmdbId } 
+            window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
+              detail: { subtitleUrl: partialSubtitleUrl, tmdbId, progress, isFinal: false }
             }));
           }
         },
@@ -776,6 +790,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       );
 
       if (result.success && result.subtitleUrl) {
+        activeTranslationKeyRef.current = ''; // clear ref lock on success
         setActiveTranslation(prev => ({
           ...prev,
           isTranslating: false,
@@ -786,11 +801,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           subtitleUrl: result.subtitleUrl
         }));
 
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', { 
-            detail: { subtitleUrl: result.subtitleUrl, tmdbId } 
-          }));
-        }
+        // Final event already dispatched by translateAndSavePipeline with isFinal:true + srtContent
+        // — no need for a redundant duplicate dispatch here.
         // Update global subtitle coverage Set
         await refreshTranslatedMovieIds();
       } else {
@@ -800,6 +812,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     } catch (err: any) {
       if (err.name === 'AbortError' || err.message?.includes('cancelled')) {
         console.log("[UI CONTEXT] Translation cancelled by user.");
+        activeTranslationKeyRef.current = ''; // clear lock so next attempt can start fresh
         setActiveTranslation(prev => ({
           ...prev,
           isTranslating: false,
@@ -808,6 +821,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         }));
       } else {
         console.error("[UI CONTEXT] Subtitle translation pipeline exception:", err);
+        activeTranslationKeyRef.current = ''; // clear lock on failure
         setActiveTranslation(prev => ({
           ...prev,
           isTranslating: false,
@@ -842,6 +856,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       translationControllerRef.current.abort();
       translationControllerRef.current = null;
     }
+    activeTranslationKeyRef.current = ''; // clear ref lock on cancel
     pauseStateRef.current.isPaused = false;
 
     setActiveTranslation({
