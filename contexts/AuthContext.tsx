@@ -63,21 +63,34 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (data?.session) {
+      setSession(data.session);
+      setUser(data.session.user);
+      localStorage.setItem('flkrd_username', data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || 'Guest');
+    }
     return { error };
   };
 
   const signUp = async (email: string, password: string, userName: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { user_name: userName } }
     });
+    if (data?.session) {
+      setSession(data.session);
+      setUser(data.session.user);
+      localStorage.setItem('flkrd_username', userName || 'Guest');
+    }
     return { error };
   };
 
   const signOut = async () => {
     setIsPasswordRecovery(false);
+    setUser(null);
+    setSession(null);
+    localStorage.removeItem('flkrd_username');
     const { error } = await supabase.auth.signOut();
     return { error };
   };

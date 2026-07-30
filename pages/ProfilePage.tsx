@@ -26,7 +26,7 @@ import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfi
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
-    const { theme, toggleTheme, accentColor, setIsSettingsOpen, loginAsAdmin } = useUI();
+    const { theme, toggleTheme, accentColor, setIsSettingsOpen, loginAsAdmin, isAdmin } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -200,6 +200,7 @@ const ProfilePage: React.FC = () => {
         // Check Sub-Admin / Master Admin login credentials
         const adminRes = loginAsAdmin(email, password);
         if (adminRes.success && adminRes.admin) {
+            await signIn(email, password);
             setFormSubmitting(false);
             addNotification({ 
                 type: 'success', 
@@ -536,7 +537,7 @@ const ProfilePage: React.FC = () => {
     }
 
     // ─── UNAUTHENTICATED GUEST AUTHENTICATION VIEW (LIQUID GLASS) ──────────────────────
-    if (!user) {
+    if (!user && !isAdmin) {
         const isRTL = language === 'ku' || language === 'badini';
 
         const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';

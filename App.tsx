@@ -482,7 +482,7 @@ const AppContent: React.FC<{
     mainRef: React.RefObject<HTMLElement | null>;
 }> = ({ scrolled, mainRef }) => {
     const { language, t } = useTranslation();
-    const { isSettingsOpen, setIsSettingsOpen, glassConfig, theme } = useUI();
+    const { isSettingsOpen, setIsSettingsOpen, glassConfig, theme, isAdmin } = useUI();
     const location = useLocation();
     const { user } = useAuth();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
@@ -674,7 +674,7 @@ const AppContent: React.FC<{
                           <SkeletonGrid count={12} />
                         </div>
                       }>
-                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]'))}`}>
+                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && !isAdmin && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]'))}`}>
                               <ViewTransitionRoutes>
                                   <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
                                   <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
