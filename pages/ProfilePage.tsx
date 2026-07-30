@@ -4,7 +4,7 @@ import {
     User, Shield, Zap, Bell, Moon, Sun, Languages,
     Save, Edit3, Camera, Clock, Activity, Award,
     ChevronRight, ArrowLeft, Check, Sparkles, Monitor, Smartphone, Download,
-    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2
+    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2, Crown, CheckCircle2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -1102,19 +1102,110 @@ const ProfilePage: React.FC = () => {
                             <MovieBentoGrid />
                         </motion.div>
 
+                        {/* System Privilege & Gamified XP Card */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-gradient-to-br from-black/50 via-zinc-900/40 to-black/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden"
+                        >
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles size={18} className="text-amber-400" />
+                                    <span className="text-[11px] font-[1000] uppercase tracking-wider text-white">
+                                        {language === 'ku' || language === 'badini' ? 'پلەی ئادمن و ئەزموونی ئاست' : 'System Privilege & Level XP'}
+                                    </span>
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                                    Lvl {Math.floor((watchedHistory.length * 120 + 350) / 500) + 1}
+                                </span>
+                            </div>
+
+                            {/* Level Progress Bar */}
+                            <div className="space-y-2 mb-6">
+                                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                                    <span>XP Progress</span>
+                                    <span className="text-amber-400 font-mono">
+                                        {((watchedHistory.length * 120 + 350) % 500)} / 500 XP
+                                    </span>
+                                </div>
+                                <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden p-0.5 border border-white/10 shadow-inner">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-amber-500 via-red-500 to-rose-600 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                                        style={{ width: `${Math.min(100, Math.round((((watchedHistory.length * 120 + 350) % 500) / 500) * 100))}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Daily Cinephile Quests / Tasks */}
+                            <div className="space-y-2 mb-6">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block text-left mb-2">
+                                    {language === 'ku' || language === 'badini' ? 'تاسک و ئەرکەکانی ڕۆژانە (Daily Quests)' : 'Cinephile Daily Tasks'}
+                                </span>
+
+                                {[
+                                    { id: 1, title: language === 'ku' || language === 'badini' ? 'سەیرکردنی 🎬 فیلم یان زنجیرەیەک' : 'Watch 1 Movie or Episode', xp: 100, done: watchedHistory.length > 0 },
+                                    { id: 2, title: language === 'ku' || language === 'badini' ? 'تۆمارکردنی 💬 بۆچوون / کامێنت' : 'Post a Cinephile Review', xp: 50, done: true },
+                                    { id: 3, title: language === 'ku' || language === 'badini' ? 'نیشانەکردنی 🔖 ٣ فیلم لە لیستەکەت' : 'Bookmark 3 Favorites', xp: 50, done: watchedHistory.length >= 3 },
+                                    { id: 4, title: language === 'ku' || language === 'badini' ? 'چوونەژوورەوەی رۆژانە ⚡ Daily Check-In' : 'Daily System Check-In', xp: 25, done: true }
+                                ].map((task) => (
+                                    <div key={task.id} className="flex items-center justify-between p-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-[10px] font-bold text-zinc-300">
+                                        <div className="flex items-center gap-2">
+                                            <span className={task.done ? "text-emerald-400" : "text-zinc-500"}>
+                                                {task.done ? <CheckCircle2 size={14} /> : <Zap size={14} />}
+                                            </span>
+                                            <span className={task.done ? "line-through opacity-70" : ""}>{task.title}</span>
+                                        </div>
+                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${task.done ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
+                                            +{task.xp} XP
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Achievement Badges Grid */}
+                            <div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block text-left mb-2.5">
+                                    {language === 'ku' || language === 'badini' ? 'مەدالیا و دەستکەوتەکان (Badges & Achievements)' : 'Cinephile Achievements'}
+                                </span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { icon: '🏆', title: 'Pioneer Member', desc: 'FLKRD Founder' },
+                                        { icon: '🎬', title: 'Film Marathoner', desc: `${watchedHistory.length}+ Streamed` },
+                                        { icon: '⚡', title: '60 FPS Engine', desc: 'Ultra Fast Mode' },
+                                        { icon: '👑', title: 'System Elite', desc: 'Privileged Rank' }
+                                    ].map((b, i) => (
+                                        <div key={i} className="p-2.5 bg-white/[0.03] border border-white/10 rounded-2xl flex items-center gap-2.5 text-left hover:bg-white/[0.07] transition-all">
+                                            <span className="text-xl shrink-0">{b.icon}</span>
+                                            <div className="min-w-0">
+                                                <span className="text-[9px] font-black text-white block truncate uppercase">{b.title}</span>
+                                                <span className="text-[8px] text-zinc-400 font-medium block truncate">{b.desc}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </motion.div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-gradient-to-r from-[var(--brand-red)] to-black rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
+                            <div className="bg-gradient-to-r from-[var(--brand-red)] via-red-800 to-black rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
                                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-xl md:blur-[60px] group-hover:scale-150 transition-transform duration-[2s]" />
                                 <div className="relative z-10 flex flex-col justify-between h-full">
                                     <div>
                                         <div className="flex items-center gap-2 mb-2">
-                                            <Sparkles size={20} className="text-yellow-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">System Privilege</span>
+                                            <Crown size={20} className="text-amber-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/70">System Privilege</span>
                                         </div>
-                                        <h4 className="text-2xl font-[1000] text-white uppercase italic tracking-tighter">Elite Member</h4>
+                                        <h4 className="text-2xl font-[1000] text-white uppercase italic tracking-tighter">
+                                            {(user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' || tempUserName.toLowerCase().includes('zana faroq') || tempUserName.toLowerCase().includes('zana barzani')) 
+                                                ? 'CREATOR & CEO (ZANA BARZANI)' 
+                                                : (isAdmin ? 'SYSTEM PRIVILEGE: MASTER ADMIN' : `ELITE MEMBER (LVL ${Math.floor((watchedHistory.length * 120 + 350) / 500) + 1})`)}
+                                        </h4>
                                     </div>
-                                    <div className="mt-8">
-                                        <Award size={48} className="text-white/20" />
+                                    <div className="mt-8 flex items-center justify-between">
+                                        <Award size={44} className="text-white/30" />
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-300 bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 backdrop-blur-md">
+                                            VERIFIED CINEPHILE
+                                        </span>
                                     </div>
                                 </div>
                             </div>
