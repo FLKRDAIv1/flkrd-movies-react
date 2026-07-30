@@ -310,6 +310,28 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
             if (row.server_name === 'player_controls_align') newPlayerConfig.controlsAlign = row.priority;
             if (row.server_name === 'player_controls_offset') newPlayerConfig.controlsOffset = row.priority;
           });
+
+          // Sync remote sub-admins from server_config
+          const remoteSubAdmins: any[] = [];
+          data.forEach(row => {
+            if (row.server_name && row.server_name.startsWith('subadmin:')) {
+              try {
+                const jsonStr = row.server_name.replace(/^subadmin:/, '');
+                const parsed = JSON.parse(jsonStr);
+                if (parsed && parsed.email) {
+                  parsed.isActive = row.priority > 0;
+                  remoteSubAdmins.push(parsed);
+                }
+              } catch (e) {}
+            }
+          });
+
+          if (remoteSubAdmins.length > 0) {
+            localStorage.setItem('flkrd_sub_admins', JSON.stringify(remoteSubAdmins));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('flkrd-subadmins-updated'));
+            }
+          }
           
           if (Object.keys(newConfig).length > 0) {
             setGlassConfig(prev => ({ ...prev, ...newConfig }));
@@ -355,6 +377,69 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
     return () => {
       if (serverConfigChannel) serverConfigChannel.unsubscribe();
+    };
+  }, []);
+
+  // 🔴 AUTO-ADMIN AUTHORIZATION: Automatically detect if logged-in user is CEO or active Sub-Admin
+  useEffect(() => {
+    const checkAndAuthorizeAdmin = (emailStr?: string | null) => {
+      if (!emailStr) return;
+      const cleanEmail = emailStr.trim().toLowerCase();
+
+      // 1. CEO Master Check
+      if (cleanEmail === 'flkrdstudio@gmail.com') {
+        setIsAdmin(true);
+        setCurrentAdminEmail('flkrdstudio@gmail.com');
+        return;
+      }
+
+      // 2. Sub-Admin Check
+      try {
+        const stored = localStorage.getItem('flkrd_sub_admins');
+        if (stored) {
+          const subAdmins = JSON.parse(stored);
+          const match = subAdmins.find((a: any) => a.email && a.email.toLowerCase() === cleanEmail);
+          if (match && match.isActive) {
+            setIsAdmin(true);
+            setCurrentAdminEmail(match.email);
+            return;
+          }
+        }
+      } catch (e) {}
+    };
+
+    // Check active session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.email) {
+        checkAndAuthorizeAdmin(session.user.email);
+      }
+    });
+
+    // Listen to real-time auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email) {
+        checkAndAuthorizeAdmin(session.user.email);
+      }
+    });
+
+    // Listen for custom sub-admin list updates from AdminManagementModal or Supabase sync
+    const handleSubAdminsUpdated = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          checkAndAuthorizeAdmin(session.user.email);
+        }
+      });
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('flkrd-subadmins-updated', handleSubAdminsUpdated);
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('flkrd-subadmins-updated', handleSubAdminsUpdated);
+      }
     };
   }, []);
 

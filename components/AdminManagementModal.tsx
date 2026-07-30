@@ -8,6 +8,7 @@ import {
 import { AdminUser, AdminPermission } from '../types';
 import { useUI } from '../contexts/UIContext';
 import { useTranslation } from '../contexts/LanguageContext';
+import { supabase } from '../utils/supabaseClient';
 import Portal from './Portal';
 
 interface AdminManagementModalProps {
@@ -78,12 +79,71 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Persist Sub-Admins
+  // Sync Sub-Admins to Supabase & LocalStorage
   useEffect(() => {
+    const subAdminsOnly = admins.filter(a => a.id !== MASTER_OWNER.id);
     try {
-      const subAdminsOnly = admins.filter(a => a.id !== MASTER_OWNER.id);
       localStorage.setItem('flkrd_sub_admins', JSON.stringify(subAdminsOnly));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flkrd-subadmins-updated'));
+      }
     } catch (e) {}
+
+    // Async push to Supabase server_config
+    (async () => {
+      try {
+        const { data: currentRows } = await supabase
+          .from('server_config')
+          .select('id, server_name');
+
+        let maxId = 0;
+        const existingSubAdminRows: { id: number; server_name: string }[] = [];
+        if (currentRows) {
+          currentRows.forEach(row => {
+            if (row.id > maxId) maxId = row.id;
+            if (row.server_name && row.server_name.startsWith('subadmin:')) {
+              existingSubAdminRows.push(row);
+            }
+          });
+        }
+
+        let nextId = maxId + 1;
+        const upserts = subAdminsOnly.map(admin => {
+          const jsonStr = JSON.stringify(admin);
+          const serverName = `subadmin:${jsonStr}`;
+
+          const emailMatch = existingSubAdminRows.find(r => {
+            try {
+              const parsed = JSON.parse(r.server_name.replace(/^subadmin:/, ''));
+              return parsed.email?.toLowerCase() === admin.email?.toLowerCase();
+            } catch { return false; }
+          });
+
+          if (emailMatch) {
+            return { id: emailMatch.id, server_name: serverName, priority: admin.isActive ? 1 : 0 };
+          } else {
+            const assignedId = nextId;
+            nextId++;
+            return { id: assignedId, server_name: serverName, priority: admin.isActive ? 1 : 0 };
+          }
+        });
+
+        const activeServerNames = new Set(upserts.map(u => u.server_name));
+        const idsToDelete = existingSubAdminRows
+          .filter(r => !activeServerNames.has(r.server_name))
+          .map(r => r.id);
+
+        if (idsToDelete.length > 0) {
+          await supabase.from('server_config').delete().in('id', idsToDelete);
+        }
+
+        if (upserts.length > 0) {
+          await supabase.from('server_config').upsert(upserts);
+        }
+      } catch (err) {
+        console.warn('[ADMIN SYNC] Failed to sync sub-admins to Supabase:', err);
+      }
+    })();
   }, [admins]);
 
   const generateRandomPassword = () => {

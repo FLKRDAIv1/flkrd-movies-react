@@ -188,7 +188,6 @@ const ProfilePage: React.FC = () => {
         addNotification({ type: 'info', title: 'Language Sync', message: `Interface language set to ${langName}.` });
     };
 
-    // Authentication Handlers
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email || !password) {
@@ -196,11 +195,12 @@ const ProfilePage: React.FC = () => {
             return;
         }
         setFormSubmitting(true);
+        const cleanEmail = email.trim().toLowerCase();
 
         // Check Sub-Admin / Master Admin login credentials
-        const adminRes = loginAsAdmin(email, password);
+        const adminRes = loginAsAdmin(cleanEmail, password);
         if (adminRes.success && adminRes.admin) {
-            await signIn(email, password);
+            signIn(cleanEmail, password).catch(() => {});
             setFormSubmitting(false);
             addNotification({ 
                 type: 'success', 
@@ -210,7 +210,7 @@ const ProfilePage: React.FC = () => {
             return;
         }
 
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(cleanEmail, password);
         setFormSubmitting(false);
         if (error) {
             addNotification({ type: 'error', title: 'Login Failed', message: error.message });

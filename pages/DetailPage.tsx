@@ -63,7 +63,7 @@ const DetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { theme, accentColor } = useUI();
+  const { theme, accentColor, isAdmin: uiIsAdmin } = useUI();
   const { addNotification } = useNotification();
   const location = useLocation();
   const [content, setContent] = useState<any>(location.state?.customData || null);
@@ -73,6 +73,10 @@ const DetailPage: React.FC = () => {
   const [recommendations, setRecommendations] = useState<Content[]>([]);
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
+
+  const isAdmin = useMemo(() => {
+    return uiIsAdmin || (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true');
+  }, [uiIsAdmin]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { activeVideo, setActiveVideo, isPipActive, setIsPipActive, pipTime, setPipTime, setIsPaused } = usePlayer();
   const isPlayingRef = useRef(false);
@@ -112,16 +116,6 @@ const DetailPage: React.FC = () => {
     const rDate = new Date(content.release_date);
     return rDate > today;
   }, [content?.release_date]);
-
-  const isAdmin = useMemo(() => {
-    try {
-      const storedName = localStorage.getItem('flkrd_username') || '';
-      const storedRole = localStorage.getItem('flkrd_role') || '';
-      return storedName.toLowerCase().includes('admin') || storedRole.toLowerCase() === 'admin';
-    } catch (e) {
-      return false;
-    }
-  }, []);
 
   const handleUnlockUpcoming = () => {
     if (isUnlocking || isUpcomingUnlocked) return;
