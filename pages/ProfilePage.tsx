@@ -549,7 +549,7 @@ const ProfilePage: React.FC = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[430px] bg-white/[0.05] backdrop-blur-[12px] border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
+                    className="w-full max-w-[430px] bg-white/[0.04] backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
                 >
                     {/* Back Button Pill */}
                     <button

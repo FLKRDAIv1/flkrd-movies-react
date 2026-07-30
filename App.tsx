@@ -215,6 +215,7 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 /** Enter-only fade: previous route unmounts immediately (no stacked ghost pages). */
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const location = useLocation();
+    const isProfile = location.pathname === '/profile';
 
     useEffect(() => {
         const mainEl = document.querySelector('main');
@@ -231,7 +232,7 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             transition={{ duration: 0.12, ease: 'easeOut' }}
             layout={false}
             style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
-            className="flex-1 w-full min-h-full flex flex-col bg-[var(--bg-primary)] relative z-[1] isolate"
+            className={`flex-1 w-full min-h-full flex flex-col ${isProfile ? 'bg-transparent' : 'bg-[var(--bg-primary)]'} relative z-[1] isolate`}
         >
             {children}
         </motion.div>
@@ -423,12 +424,12 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
 
     if (isPasswordRecovery) {
         videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
-        opacity = 0.95;
-        filter = theme === 'dark' ? 'brightness(0.80)' : 'brightness(0.9)';
+        opacity = 1;
+        filter = 'none';
     } else if (!user) {
         videoSrc = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
-        opacity = 0.95;
-        filter = theme === 'dark' ? 'brightness(0.85) saturate(1.15)' : 'brightness(0.90) saturate(1.0)';
+        opacity = 1;
+        filter = 'none';
     } else {
         videoSrc = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
         opacity = theme === 'dark' ? 0.85 : 0.70;
@@ -472,15 +473,6 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
                 className="absolute inset-0 w-full h-full object-cover"
                 style={{ opacity, filter }}
             />
-            {isPasswordRecovery && (
-                <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 75% 75% at 50% 40%, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.35) 100%)' }} />
-            )}
-            {!isPasswordRecovery && !user && (
-                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30 pointer-events-none" />
-            )}
-            {!isPasswordRecovery && user && (
-                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
-            )}
         </div>
     );
 };
