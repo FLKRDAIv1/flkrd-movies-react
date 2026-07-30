@@ -482,7 +482,7 @@ const ProfilePage: React.FC = () => {
                 <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[420px] bg-white/[0.05] backdrop-blur-[12px] border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.2)] relative z-10"
+                    className="w-full max-w-[420px] bg-black/40 backdrop-blur-[35px] backdrop-saturate-[1.8] border border-white/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.3)] relative z-10"
                 >
                     {/* Top brand accent */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
@@ -549,12 +549,12 @@ const ProfilePage: React.FC = () => {
                 <motion.div 
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className="w-full max-w-[430px] bg-white/[0.04] backdrop-blur-2xl border border-white/20 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_70px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.25)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
+                    className="w-full max-w-[430px] bg-black/45 backdrop-blur-[35px] backdrop-saturate-[1.8] border border-white/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_40px_100px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.3)] relative z-10 overflow-hidden flex flex-col min-h-[560px]"
                 >
                     {/* Back Button Pill */}
                     <button
                         onClick={() => navigate(-1)}
-                        className="absolute top-6 left-6 flex items-center gap-1.5 px-4 py-2 bg-white/5 border border-white/10 rounded-full text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/15 active:scale-95 transition-all shadow-md"
+                        className="absolute top-6 left-6 flex items-center gap-1.5 px-4 py-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/20 active:scale-95 transition-all shadow-md"
                     >
                         <ArrowLeft size={10} />
                         <span>{isRTL ? 'گەڕانەوە' : 'Back'}</span>
@@ -562,8 +562,8 @@ const ProfilePage: React.FC = () => {
 
                     {/* Logo & Header */}
                     <div className="text-center space-y-2 mt-10 mb-8 select-none">
-                        <span className="text-[14px] font-[1000] text-white tracking-widest italic block">FLKRD MOVIE</span>
-                        <h2 className="text-xl md:text-2xl font-[900] text-white tracking-tight uppercase leading-tight max-w-[280px] mx-auto opacity-95">
+                        <span className="text-[14px] font-[1000] text-white tracking-widest italic block drop-shadow-md">FLKRD MOVIE</span>
+                        <h2 className="text-xl md:text-2xl font-[900] text-white tracking-tight uppercase leading-tight max-w-[280px] mx-auto opacity-95 drop-shadow-md">
                             {authScreen === 'login' && (isRTL ? 'بچۆ ژوورەوە، گەشتەکەت دەستپێبکە' : 'Log In, Start Your AI Journey')}
                             {authScreen === 'signup' && (isRTL ? 'ئەکاونتت دروست بکە' : 'Start Here, Create Your Account')}
                             {authScreen === 'reset' && (isRTL ? 'دانانەوەی پاسوۆرد' : 'Reset Password To Continue Using')}
@@ -584,7 +584,7 @@ const ProfilePage: React.FC = () => {
                                     dir={isRTL ? 'rtl' : 'ltr'}
                                 >
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <div className="relative">
@@ -592,13 +592,13 @@ const ProfilePage: React.FC = () => {
                                                 type="email" required
                                                 value={email} onChange={e => setEmail(e.target.value)}
                                                 placeholder={isRTL ? 'ئیمەیڵەکەت بنووسە' : 'Enter your email'}
-                                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                                className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                             />
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پاسوۆرد' : 'Password'}
                                         </label>
                                         <div className="relative">
@@ -606,12 +606,12 @@ const ProfilePage: React.FC = () => {
                                                 type={showPassword ? "text" : "password"} required
                                                 value={password} onChange={e => setPassword(e.target.value)}
                                                 placeholder={isRTL ? 'پاسوۆردەکەت بنووسە' : 'Enter your password'}
-                                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                                className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                             />
                                             <button 
                                                 type="button"
                                                 onClick={() => setShowPassword(!showPassword)}
-                                                className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors`}
+                                                className={`absolute ${isRTL ? 'left-4' : 'right-4'} top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors`}
                                             >
                                                 {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
                                             </button>
@@ -619,11 +619,11 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between py-1 px-1">
-                                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 cursor-pointer select-none">
+                                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-300 cursor-pointer select-none">
                                             <input 
                                                 type="checkbox" 
                                                 checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
-                                                className="rounded border-white/10 accent-brand w-3.5 h-3.5 bg-transparent"
+                                                className="rounded border-white/20 accent-brand w-3.5 h-3.5 bg-transparent"
                                             />
                                             {isRTL ? 'بمھێڵەوە' : 'Remember me'}
                                         </label>
@@ -631,7 +631,7 @@ const ProfilePage: React.FC = () => {
 
                                     <button 
                                         type="submit" disabled={formSubmitting}
-                                        className="w-full py-4 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98"
+                                        className="w-full py-4 bg-gradient-to-r from-[var(--brand-red)] via-red-600 to-red-700 hover:brightness-110 border border-red-500/30 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(229,9,20,0.35)] active:scale-98"
                                     >
                                         {formSubmitting ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (isRTL ? 'چوونەژوورەوە' : 'Login')}
                                     </button>
@@ -649,56 +649,56 @@ const ProfilePage: React.FC = () => {
                                     dir={isRTL ? 'rtl' : 'ltr'}
                                 >
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ناوی بەکارهێنەر' : 'Username'}
                                         </label>
                                         <input 
                                             type="text" required
                                             value={regUserName} onChange={e => setRegUserName(e.target.value)}
                                             placeholder={isRTL ? 'ناو بنووسە' : 'Enter your username'}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <input 
                                             type="email" required
                                             value={email} onChange={e => setEmail(e.target.value)}
                                             placeholder={isRTL ? 'ئیمەیڵ بنووسە' : 'Enter your email'}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پاسوۆرد' : 'Password'}
                                         </label>
                                         <input 
                                             type="password" required
                                             value={password} onChange={e => setPassword(e.target.value)}
                                             placeholder={isRTL ? 'پاسوۆردێکی بەهێز بنووسە' : 'Enter your password'}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                         />
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پشتڕاستکردنەوەی پاسوۆرد' : 'Confirm password'}
                                         </label>
                                         <input 
                                             type="password" required
                                             value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                                             placeholder={isRTL ? 'پاسوۆرد دووبارە بکەرەوە' : 'Confirm your password'}
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                         />
                                     </div>
 
                                     <button 
                                         type="submit" disabled={formSubmitting}
-                                        className="w-full py-4 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98"
+                                        className="w-full py-4 bg-gradient-to-r from-[var(--brand-red)] via-red-600 to-red-700 hover:brightness-110 border border-red-500/30 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(229,9,20,0.35)] active:scale-98"
                                     >
                                         {formSubmitting ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (isRTL ? 'تۆماربوون' : 'Sign Up')}
                                     </button>
@@ -715,24 +715,24 @@ const ProfilePage: React.FC = () => {
                                     className="space-y-5 text-left"
                                     dir={isRTL ? 'rtl' : 'ltr'}
                                 >
-                                    <p className="text-[10px] text-gray-500 font-bold leading-relaxed mb-1 uppercase px-1">
+                                    <p className="text-[10px] text-gray-300 font-bold leading-relaxed mb-1 uppercase px-1 drop-shadow-sm">
                                         {isRTL ? 'ئیمەیڵەکەت بنووسە بۆ ناردنی کۆدی دانانەوەی پاسوۆرد.' : 'Enter your email to receive a password reset link.'}
                                     </p>
                                     <div className="space-y-2">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <input 
                                             type="email" required
                                             value={email} onChange={e => setEmail(e.target.value)}
                                             placeholder="Enter your email"
-                                            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                                            className="w-full bg-black/40 backdrop-blur-md border border-white/15 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/70 focus:bg-black/60 transition-all shadow-inner placeholder-gray-400"
                                         />
                                     </div>
 
                                     <button 
                                         type="submit" disabled={formSubmitting}
-                                        className="w-full py-4 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-lg active:scale-98"
+                                        className="w-full py-4 bg-gradient-to-r from-[var(--brand-red)] via-red-600 to-red-700 hover:brightness-110 border border-red-500/30 text-white font-black uppercase text-xs tracking-widest rounded-full transition-all flex items-center justify-center gap-2 shadow-[0_10px_30px_rgba(229,9,20,0.35)] active:scale-98"
                                     >
                                         {formSubmitting ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : (isRTL ? 'کۆد بنێرە' : 'Send Code')}
                                     </button>
@@ -745,16 +745,16 @@ const ProfilePage: React.FC = () => {
                     {authScreen === 'login' && (
                         <div className="space-y-5 mt-6">
                             <div className="flex items-center gap-3">
-                                <div className="h-px bg-white/10 flex-1" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Or continue with</span>
-                                <div className="h-px bg-white/10 flex-1" />
+                                <div className="h-px bg-white/20 flex-1" />
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-300 drop-shadow-sm">Or continue with</span>
+                                <div className="h-px bg-white/20 flex-1" />
                             </div>
 
                             <div className="w-full">
                                 <button 
                                     type="button"
                                     onClick={() => handleOAuth('google')}
-                                    className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all text-white active:scale-95 shadow-md"
+                                    className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all text-white active:scale-95 shadow-lg"
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                                     Google
