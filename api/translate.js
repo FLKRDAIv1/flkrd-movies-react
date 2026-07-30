@@ -404,10 +404,9 @@ export default async function handler(req, res) {
             return t; // Return original text if all translation engines fail
         };
 
-        // Helper: call Google Apps Script with 8s timeout (primary translation engine)
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
-                       "https://script.google.com/macros/s/AKfycbzYR_09EuHPOAx564oB3849ZHcWmLK5PF0flHaaHK6x644nqh1lHsDhsjbG4taX_VSUHQ/exec";
+                       "https://script.google.com/macros/s/AKfycbxxa9O888k2J1r3EhlTfQhOKGqm9yv5UIwAFcQZe7EFH13ElX3gQ9AE8HRkRfcJeDMkkg/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();

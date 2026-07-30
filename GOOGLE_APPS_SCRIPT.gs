@@ -72,20 +72,46 @@ function processTranslation(text, source, target) {
   if (!text || !String(text).trim()) return text;
   
   var isBadini = (target === 'badini');
-  // 'ckb' (Sorani Kurdish) is supported by LanguageApp since 2022.
-  // We only map 'badini' to 'ku' (Kurmanji) because Google Translate uses 'ku' for Kurmanji.
   var actualTarget = (target === 'badini') ? 'ku' : target;
   var actualSource = source || 'auto';
 
   try {
+    // If target is ckb (Sorani Kurdish), legacy LanguageApp does not support it.
+    // We fetch it directly from Google Translate's GTX API since Google servers aren't rate-limited.
+    if (actualTarget === 'ckb') {
+      return translateViaGTX(text, actualSource, 'ckb');
+    }
+
     var translated = LanguageApp.translate(text, actualSource, actualTarget);
-    if (actualTarget === 'ku' || actualTarget === 'ckb') {
+    if (actualTarget === 'ku') {
       return polishKurdishTranslation(translated, isBadini);
     }
     return translated;
   } catch (e) {
-    return text;
+    try {
+      return translateViaGTX(text, actualSource, actualTarget);
+    } catch (err) {
+      return text;
+    }
   }
+}
+
+function translateViaGTX(text, source, target) {
+  var url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + 
+            encodeURIComponent(source) + "&tl=" + encodeURIComponent(target) + 
+            "&dt=t&q=" + encodeURIComponent(text);
+  
+  var response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  if (response.getResponseCode() === 200) {
+    var data = JSON.parse(response.getContentText());
+    if (data && data[0]) {
+      var translatedText = data[0].map(function(x) { return x[0] || ''; }).join('');
+      if (translatedText) {
+        return polishKurdishTranslation(translatedText, target === 'badini');
+      }
+    }
+  }
+  throw new Error("GTX translation failed");
 }
 
 function doGet(e) {
