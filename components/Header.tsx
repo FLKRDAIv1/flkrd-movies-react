@@ -60,21 +60,27 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   }, []);
 
   const renderAvatar = () => {
-    if (user) {
+    const isLogged = user || isAdmin;
+    if (isLogged) {
       const localAvatar = headerAvatarUrl || localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url');
-      const avatarUrl = localAvatar || user.user_metadata?.avatar_url;
+      const avatarUrl = localAvatar || user?.user_metadata?.avatar_url;
       if (avatarUrl) {
         return (
           <img 
             src={avatarUrl} 
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = 'none';
+            }}
             alt="User Avatar" 
             className="w-full h-full object-cover rounded-full" 
           />
         );
       }
-      const initial = user.user_metadata?.user_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U';
+      const adminEmail = localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com';
+      const userName = user?.user_metadata?.user_name || user?.email?.split('@')[0] || localStorage.getItem('flkrd_username') || (isAdmin ? (adminEmail.includes('flkrd') ? 'CEO' : 'Admin') : 'User');
+      const initial = userName[0]?.toUpperCase() || 'A';
       return (
-        <div className="w-full h-full bg-red-600 text-white flex items-center justify-center font-black text-xs">
+        <div className="w-full h-full bg-gradient-to-tr from-red-600 via-red-500 to-amber-500 text-white flex items-center justify-center font-black text-xs shadow-inner select-none">
           {initial}
         </div>
       );
@@ -443,9 +449,9 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                      )}
                    >
                      <div className={cn(
-                       "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center",
-                       isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
-                     )}>
+                        "relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border shadow-md flex items-center justify-center transition-all",
+                        (user || isAdmin) ? "border-red-500/80 ring-2 ring-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.4)]" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-200")
+                      )}>
                        {renderAvatar()}
                      </div>
                    </div>
@@ -576,8 +582,8 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     <div 
                       onClick={() => navigate('/profile')}
                       className={cn(
-                        "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer",
-                        isDarkNavbar ? "border-zinc-800" : "border-zinc-200"
+                        "relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0",
+                        (user || isAdmin) ? "border-red-500/80 ring-2 ring-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.4)]" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-200")
                       )}
                     >
                       {renderAvatar()}
