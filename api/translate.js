@@ -406,7 +406,7 @@ export default async function handler(req, res) {
 
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
-                       "https://script.google.com/macros/s/AKfycbxxa9O888k2J1r3EhlTfQhOKGqm9yv5UIwAFcQZe7EFH13ElX3gQ9AE8HRkRfcJeDMkkg/exec";
+                       "https://script.google.com/macros/s/AKfycbx7eXAdDkkU6A13tvt92X63knC4alXBI9aDK7yYSm1GbqMXywTLVvFbLdLi2qiGj2Q/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
