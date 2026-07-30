@@ -471,9 +471,9 @@ export default async function handler(req, res) {
 
             return res.status(200).json({ translation: applyBadiniTransliteration(finalResults) });
         } else {
-            // Single translation — try Google Translate POST first, then fall back
-            const geminiSingle = await translateWithGeminiAPI([textArray[0]]);
-            const singleTranslation = (geminiSingle && geminiSingle[0]) ||
+            // Single translation — use translateChunk for unified high-accuracy path (GTX → GAS → Google POST → fallback)
+            const singleResults = await translateChunk([textArray[0]]);
+            const singleTranslation = (singleResults && singleResults[0]) ||
                                       await translateWithGoogleAPI(textArray[0], source, actualTarget) ||
                                       await callGAS({ text: textArray[0], source, target: actualTarget }) ||
                                       await translateSingle(textArray[0]);
