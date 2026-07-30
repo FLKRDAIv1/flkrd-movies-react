@@ -681,7 +681,7 @@ const AppContent: React.FC<{
                           <SkeletonGrid count={12} />
                         </div>
                       }>
-                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]'}`}>
+                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]')}`}>
                               <ViewTransitionRoutes>
                                   <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
                                   <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
