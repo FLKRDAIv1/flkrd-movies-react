@@ -146,6 +146,117 @@ const Card: React.FC<{ children: React.ReactNode; className?: string; glow?: str
   </div>
 );
 
+const resolveKurdistanDistrict = (rawCity: string = '', rawRegion: string = '', country: string = ''): { city: string; district: string } => {
+    const combined = `${rawCity} ${rawRegion}`.toLowerCase();
+
+    // 1. Mergasor / Barzan (قەزای مێرگەسۆر / بارزان)
+    if (combined.includes('mergasor') || combined.includes('barzan') || combined.includes('mergasur') || combined.includes('مێرگەسۆر') || combined.includes('شێروان')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای مێرگەسۆر (Mergasor / Barzan)' };
+    }
+    // 2. Soran (قەزای سۆران)
+    if (combined.includes('soran') || combined.includes('سۆران')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای سۆران (Soran City)' };
+    }
+    // 3. Rawanduz (قەزای ڕواندز)
+    if (combined.includes('rawanduz') || combined.includes('rewandiz') || combined.includes('ڕواندز')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای ڕواندز (Rawanduz)' };
+    }
+    // 4. Choman (قەزای چۆمان)
+    if (combined.includes('choman') || combined.includes('چۆمان') || combined.includes('حاجی ئۆمەران')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای چۆمان (Choman / Haji Omaran)' };
+    }
+    // 5. Shaqlawa / Harir (قەزای شەقڵاوە)
+    if (combined.includes('shaqlawa') || combined.includes('harir') || combined.includes('شەقڵاوە') || combined.includes('هەریر')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای شەقڵاوە (Shaqlawa / Harir)' };
+    }
+    // 6. Ankawa (قەزای عەنکاوە)
+    if (combined.includes('ankawa') || combined.includes('عەنکاوە')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای عەنکاوە (Ankawa)' };
+    }
+    // 7. Khabat (قەزای خەبات)
+    if (combined.includes('khabat') || combined.includes('kalak') || combined.includes('خەبات')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای خەبات (Khabat / Kalak)' };
+    }
+    // 8. Koya (قەزای کۆیە)
+    if (combined.includes('koya') || combined.includes('koy') || combined.includes('کۆیە') || combined.includes('تەقتەق')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای کۆیە (Koya / Taqtaq)' };
+    }
+    // 9. Zakho (قەزای زاخۆ)
+    if (combined.includes('zakho') || combined.includes('zaxu') || combined.includes('زاخۆ')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای زاخۆ (Zakho)' };
+    }
+    // 10. Akre (قەزای ئاکرێ)
+    if (combined.includes('akre') || combined.includes('aqrah') || combined.includes('ئاکرێ') || combined.includes('بجیل')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای ئاکرێ (Akre)' };
+    }
+    // 11. Amedi (قەزای ئامێدی)
+    if (combined.includes('amedi') || combined.includes('amadiya') || combined.includes('ئامێدی') || combined.includes('سەرسەنگ') || combined.includes('شێلادزێ')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای ئامێدی (Amedi / Sheladze)' };
+    }
+    // 12. Bardarash (قەزای بەردەڕەش)
+    if (combined.includes('bardarash') || combined.includes('بەردەڕەش')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای بەردەڕەش (Bardarash)' };
+    }
+    // 13. Shekhan (قەزای شێخان)
+    if (combined.includes('shekhan') || combined.includes('شێخان') || combined.includes('باعدرێ')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای شێخان (Shekhan)' };
+    }
+    // 14. Chamchamal (قەزای چەمچەماڵ)
+    if (combined.includes('chamchamal') || combined.includes('chemchemal') || combined.includes('چەمچەماڵ') || combined.includes('شوانی')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای چەمچەماڵ (Chamchamal)' };
+    }
+    // 15. Ranya / Raparin (قەزای ڕانیە)
+    if (combined.includes('ranya') || combined.includes('raparin') || combined.includes('ڕانیە') || combined.includes('چوارقوڕنە')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای ڕانیە (Ranya / Raparin)' };
+    }
+    // 16. Qaladiza (قەزای قەڵادزێ)
+    if (combined.includes('qaladiza') || combined.includes('qaladze') || combined.includes('قەڵادزێ') || combined.includes('پشدەر')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای قەڵادزێ (Qaladiza / Pshdar)' };
+    }
+    // 17. Kalar (قەزای کەلار)
+    if (combined.includes('kalar') || combined.includes('garmian') || combined.includes('کەلار') || combined.includes('گرمیان')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای کەلار (Kalar / Garmian)' };
+    }
+    // 18. Kifri (قەزای کفری)
+    if (combined.includes('kifri') || combined.includes('کفری')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای کفری (Kifri)' };
+    }
+    // 19. Penjwen (قەزای پێنجوێن)
+    if (combined.includes('penjwen') || combined.includes('پێنجوێن')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای پێنجوێن (Penjwen)' };
+    }
+    // 20. Darbandikhan (قەزای دەربەندیخان)
+    if (combined.includes('darbandikhan') || combined.includes('دەربەندیخان')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای دەربەندیخان (Darbandikhan)' };
+    }
+    // 21. Halabja (پارێزگای هەڵەبجە)
+    if (combined.includes('halabja') || combined.includes('هەڵەبجە') || combined.includes('خورماڵ') || combined.includes('سیروان')) {
+        return { city: 'هەڵەبجە (Halabja)', district: 'پارێزگای هەڵەبجە (Halabja Province)' };
+    }
+    // 22. Erbil / Hewlêr Default
+    if (combined.includes('erbil') || combined.includes('arbil') || combined.includes('hewler') || combined.includes('هەولێر')) {
+        return { city: 'هەولێر (Erbil)', district: 'قەزای مەرکەزی هەولێر (Erbil Central)' };
+    }
+    // 23. Sulaymaniyah Default
+    if (combined.includes('sulaymaniyah') || combined.includes('suleimani') || combined.includes('سلێمانی')) {
+        return { city: 'سلێمانی (Sulaymaniyah)', district: 'قەزای مەرکەزی سلێمانی (Sulaymaniyah Central)' };
+    }
+    // 24. Duhok Default
+    if (combined.includes('duhok') || combined.includes('dohuk') || combined.includes('dihok') || combined.includes('دهۆک')) {
+        return { city: 'دهۆک (Duhok)', district: 'قەزای مەرکەزی دهۆک (Duhok Central)' };
+    }
+    // 25. Kirkuk Default
+    if (combined.includes('kirkuk') || combined.includes('کەرکووک')) {
+        return { city: 'کەرکووک (Kirkuk)', district: 'قەزای کەرکووک (Kirkuk Central)' };
+    }
+
+    if (country === 'Iraq' || combined.includes('iraq')) {
+        return { city: rawCity || 'هەولێر (Erbil)', district: rawRegion || 'قەزای مەرکەزی (Central District)' };
+    }
+
+    return { city: rawCity || 'Unknown City', district: rawRegion || 'Central District' };
+};
+
 /* ─── Analytics Helpers ────────────────────────── */
 const AnimatedNumber: React.FC<{ value?: number }> = ({ value = 0 }) => {
   const safeVal = Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -2503,8 +2614,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                               return recentLogs.map((log) => {
                                 const isLive = (Date.now() - new Date(log.created_at).getTime()) < 10 * 60 * 1000;
                                 const flag = getFlagEmoji(log.country || 'Unknown');
-                                const city = log.city || (log.country?.includes('Iraq') ? 'Erbil / Hewlêr' : log.country || 'Unknown City');
-                                const district = log.district || (log.country?.includes('Iraq') ? 'Kurdistan Region' : 'Central District');
+                                const resLoc = resolveKurdistanDistrict(log.city || '', log.district || '', log.country || '');
+                                const city = log.city || resLoc.city;
+                                const district = log.district || resLoc.district;
 
                                 return (
                                   <tr key={log.id} className="hover:bg-white/[0.03] transition-colors group">
