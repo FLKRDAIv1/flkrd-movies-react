@@ -128,6 +128,7 @@ export default async function handler(req, res) {
             let cleaned = text;
 
             const replacements = [
+                // --- Present-habitual verbs (می + verb stem) ---
                 [/\bشروع کرد\b/g, 'دەستی پێکرد'],
                 [/\bشروع می کند\b/g, 'دەست پێدەکات'],
                 [/\bشروع می‌کند\b/g, 'دەست پێدەکات'],
@@ -158,6 +159,82 @@ export default async function handler(req, res) {
                 [/\bمی‌آید\b/g, 'دێت'],
                 [/\bمی رود\b/g, 'دەچێت'],
                 [/\bمی‌رود\b/g, 'دەچێت'],
+                // --- Negative present (نمی + verb stem) ---
+                [/\bنمی\u200Cکند\b/g, 'ناکات'],
+                [/\bنمی کند\b/g, 'ناکات'],
+                [/\bنمی\u200Cکنم\b/g, 'ناکەم'],
+                [/\bنمی کنم\b/g, 'ناکەم'],
+                [/\bنمی\u200Cکنیم\b/g, 'ناکەین'],
+                [/\bنمی کنیم\b/g, 'ناکەین'],
+                [/\bنمی\u200Cکنند\b/g, 'ناکەن'],
+                [/\bنمی کنند\b/g, 'ناکەن'],
+                [/\bنمی\u200Cشود\b/g, 'نابێت'],
+                [/\bنمی شود\b/g, 'نابێت'],
+                [/\bنمی\u200Cتوانم\b/g, 'ناتوانم'],
+                [/\bنمی توانم\b/g, 'ناتوانم'],
+                [/\bنمی\u200Cخواهم\b/g, 'نامەوێت'],
+                [/\bنمی خواهم\b/g, 'نامەوێت'],
+                [/\bنمی\u200Cدانم\b/g, 'نازانم'],
+                [/\bنمی دانم\b/g, 'نازانم'],
+                [/\bنمی\u200Cبینم\b/g, 'نابینم'],
+                [/\bنمی بینم\b/g, 'نابینم'],
+                [/\bنمی\u200Cتواند\b/g, 'ناتوانێت'],
+                [/\bنمی تواند\b/g, 'ناتوانێت'],
+                [/\bنمی\u200Cآید\b/g, 'نایێت'],
+                [/\bنمی آید\b/g, 'نایێت'],
+                [/\bنمی\u200Cرود\b/g, 'نایچێت'],
+                [/\bنمی رود\b/g, 'نایچێت'],
+                // --- Future tense (خواهد + verb stem) ---
+                [/\bخواهد کرد\b/g, 'دەکات'],
+                [/\bخواهد شد\b/g, 'دەبێت'],
+                [/\bخواهد رفت\b/g, 'دەچێت'],
+                [/\bخواهد آمد\b/g, 'دێت'],
+                [/\bخواهم کرد\b/g, 'دەکەم'],
+                [/\bخواهی کرد\b/g, 'دەکەیت'],
+                // --- Past habitual verbs (می + past stem) ---
+                [/\bمی\u200Cرفتم\b/g, 'چووم'],
+                [/\bمی رفتم\b/g, 'چووم'],
+                [/\bرفتم\b/g, 'چووم'],
+                [/\bمی\u200Cآمدم\b/g, 'هاتم'],
+                [/\bمی آمدم\b/g, 'هاتم'],
+                [/\bآمدم\b/g, 'هاتم'],
+                [/\bمی\u200Cدیدم\b/g, 'بینیم'],
+                [/\bمی دیدم\b/g, 'بینیم'],
+                [/\bدیدم\b/g, 'بینیم'],
+                [/\bمی\u200Cگفتم\b/g, 'گوتم'],
+                [/\bمی گفتم\b/g, 'گوتم'],
+                [/\bگفتم\b/g, 'گوتم'],
+                [/\bمی\u200Cخوردم\b/g, 'خواردم'],
+                [/\bمی خوردم\b/g, 'خواردم'],
+                [/\bمی\u200Cنشستم\b/g, 'نیشتم'],
+                [/\bمی نشستم\b/g, 'نیشتم'],
+                [/\bمی\u200Cخوابیدم\b/g, 'خەوتم'],
+                [/\bمی خوابیدم\b/g, 'خەوتم'],
+                [/\bمی\u200Cایستادم\b/g, 'وەستام'],
+                [/\bمی ایستادم\b/g, 'وەستام'],
+                [/\bمی\u200Cدویدم\b/g, 'ڕاوەدایم'],
+                [/\bمی دویدم\b/g, 'ڕاوەدایم'],
+                // --- Modal / auxiliary ---
+                [/\bباید\b/g, 'دەبێت'],
+                // --- Interrogative & common function words ---
+                [/\bچرا\b/g, 'بۆچی'],
+                [/\bچگونه\b/g, 'چۆن'],
+                [/\bکجا\b/g, 'لەکوێ'],
+                [/\bهنگام\b/g, 'کاتێک'],
+                [/\bتا\b/g, 'هەتا'],
+                [/\bاز\b/g, 'لە'],
+                [/\bبه\b/g, 'بە'],
+                [/\bهمچنین\b/g, 'هەروەها'],
+                [/\bچه\b/g, 'چی'],
+                // --- Intensifiers & adjectives ---
+                [/\bبسیار\b/g, 'زۆر'],
+                [/\bخیلی\b/g, 'زۆر'],
+                [/\bخوب\b/g, 'باش'],
+                [/\bبد\b/g, 'خراپ'],
+                // --- Affirmation / negation ---
+                [/\bبله\b/g, 'بەڵێ'],
+                [/\bنه\b/g, 'نەخێر'],
+                // --- Demonstratives & conjunctions (existing) ---
                 [/\bبرای\b/g, 'بۆ'],
                 [/\bاگر\b/g, 'ئەگەر'],
                 [/\bاین\b/g, 'ئەم'],
@@ -334,15 +411,26 @@ export default async function handler(req, res) {
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 6000);
+            const timer = setTimeout(() => ctrl.abort(), 8000);
             try {
-                const response = await fetch(gasUrl, {
+                let response = await fetch(gasUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify(payload),
-                    redirect: 'follow',
+                    redirect: 'manual',
                     signal: ctrl.signal
                 });
+
+                if (response.status === 302 || response.status === 301 || response.status === 307) {
+                    const redirectUrl = response.headers.get('location');
+                    if (redirectUrl) {
+                        response = await fetch(redirectUrl, {
+                            method: 'GET',
+                            signal: ctrl.signal
+                        });
+                    }
+                }
+
                 clearTimeout(timer);
                 if (response.ok) {
                     const data = await response.json();

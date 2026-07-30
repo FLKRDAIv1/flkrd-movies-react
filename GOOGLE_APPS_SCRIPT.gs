@@ -72,12 +72,14 @@ function processTranslation(text, source, target) {
   if (!text || !String(text).trim()) return text;
   
   var isBadini = (target === 'badini');
-  var actualTarget = (target === 'badini' || target === 'ckb') ? 'ku' : target;
+  // 'ckb' (Sorani Kurdish) is supported by LanguageApp since 2022.
+  // We only map 'badini' to 'ku' (Kurmanji) because Google Translate uses 'ku' for Kurmanji.
+  var actualTarget = (target === 'badini') ? 'ku' : target;
   var actualSource = source || 'auto';
 
   try {
     var translated = LanguageApp.translate(text, actualSource, actualTarget);
-    if (actualTarget === 'ku') {
+    if (actualTarget === 'ku' || actualTarget === 'ckb') {
       return polishKurdishTranslation(translated, isBadini);
     }
     return translated;
