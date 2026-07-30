@@ -178,6 +178,11 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        target: 'esnext',
+        cssCodeSplit: true,
+        esbuild: {
+          drop: mode === 'production' ? ['console', 'debugger'] : [],
+        },
         rollupOptions: {
           // These Tauri plugins are uninstalled from node_modules — they are only
           // provided at runtime inside the native Tauri app shell (not in web builds).
