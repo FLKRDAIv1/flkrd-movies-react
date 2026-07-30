@@ -26,7 +26,7 @@ import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfi
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
-    const { theme, toggleTheme, accentColor, setIsSettingsOpen } = useUI();
+    const { theme, toggleTheme, accentColor, setIsSettingsOpen, loginAsAdmin } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +196,19 @@ const ProfilePage: React.FC = () => {
             return;
         }
         setFormSubmitting(true);
+
+        // Check Sub-Admin / Master Admin login credentials
+        const adminRes = loginAsAdmin(email, password);
+        if (adminRes.success && adminRes.admin) {
+            setFormSubmitting(false);
+            addNotification({ 
+                type: 'success', 
+                title: (language === 'ku' || language === 'badini') ? 'بەخێربێیتەوە ئادمن' : 'Admin Authorized', 
+                message: (language === 'ku' || language === 'badini') ? `وەک ${adminRes.admin.username} چوویتە ژوورەوە` : `Logged in as ${adminRes.admin.username}` 
+            });
+            return;
+        }
+
         const { error } = await signIn(email, password);
         setFormSubmitting(false);
         if (error) {

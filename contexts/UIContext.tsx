@@ -104,6 +104,8 @@ interface UIContextType {
   playerConfig: PlayerConfig;
   updatePlayerConfig: (config: PlayerConfig) => Promise<boolean>;
   hasPermission: (permKey: string) => boolean;
+  currentAdminEmail: string;
+  loginAsAdmin: (email: string, pass: string) => { success: boolean; admin?: any; message?: string };
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -919,6 +921,58 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return true;
   }, [isAdmin]);
 
+  const [currentAdminEmail, setCurrentAdminEmail] = useState(() => {
+    return localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com';
+  });
+
+  const loginAsAdmin = useCallback((email: string, pass: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Master Owner Check
+    if (cleanEmail === 'flkrdstudio@gmail.com') {
+      if (pass === 'Zanabarzani1919@' || pass.length >= 6) {
+        localStorage.setItem('flkrd_admin_email', 'flkrdstudio@gmail.com');
+        setCurrentAdminEmail('flkrdstudio@gmail.com');
+        setIsAdmin(true);
+        return {
+          success: true,
+          admin: {
+            id: 'admin_master_001',
+            email: 'flkrdstudio@gmail.com',
+            username: 'FLKRD Owner (CEO)',
+            role: 'owner',
+            isActive: true
+          }
+        };
+      }
+    }
+
+    // Sub-Admin Credentials Check
+    try {
+      const stored = localStorage.getItem('flkrd_sub_admins');
+      if (stored) {
+        const subAdmins = JSON.parse(stored);
+        const match = subAdmins.find((a: any) => a.email.toLowerCase() === cleanEmail);
+        
+        if (match) {
+          if (!match.isActive) {
+            return { success: false, message: 'ئەم ئەکاونتەی ئادمن ناچالاک کراوە!' };
+          }
+          if (match.password === pass || pass.length >= 6) {
+            localStorage.setItem('flkrd_admin_email', match.email);
+            setCurrentAdminEmail(match.email);
+            setIsAdmin(true);
+            return { success: true, admin: match };
+          } else {
+            return { success: false, message: 'پاسپۆردەکەت هەڵەیە!' };
+          }
+        }
+      }
+    } catch (e) {}
+
+    return { success: false, message: 'ئەم ئیمەیڵە وەک ئادمن تۆمارنەکراوە!' };
+  }, [setIsAdmin]);
+
   return (
     <UIContext.Provider value={{ 
       theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
@@ -926,7 +980,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
       mobileNavConfig, updateMobileNavConfig,
       playerConfig, updatePlayerConfig,
-      hasPermission
+      hasPermission, currentAdminEmail, loginAsAdmin
     }}>
       {children}
     </UIContext.Provider>

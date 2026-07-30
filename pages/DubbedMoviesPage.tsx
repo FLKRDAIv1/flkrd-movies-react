@@ -242,7 +242,7 @@ const DubbedMoviesPage: React.FC = () => {
     const [scrollPosition, setScrollPosition] = useState(0);
 
     // Admin State - Pulled from Global UI Context
-    const { accentColor, isPerformanceMode, isAdmin, setIsAdmin, glassConfig = {
+    const { accentColor, isPerformanceMode, isAdmin, setIsAdmin, loginAsAdmin, glassConfig = {
         redOpacity: 0.15,
         darkOpacity: 0.85,
         blurAmount: 20,
@@ -1091,12 +1091,20 @@ const DubbedMoviesPage: React.FC = () => {
     // --- Admin Handlers ---
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
-        if (adminEmail === 'flkrdstudio@gmail.com' && adminPassword === 'Zanabarzani1919@') {
-            setIsAdmin(true);
+        const res = loginAsAdmin(adminEmail, adminPassword);
+        if (res.success && res.admin) {
             setShowLoginModal(false);
-            addNotification({ type: 'success', title: 'Admin Authorized', message: 'Welcome to the Admin Dashboard.' });
+            addNotification({ 
+                type: 'success', 
+                title: (language === 'ku' || language === 'badini') ? 'بەخێربێیتەوە ئادمن' : 'Admin Authorized', 
+                message: (language === 'ku' || language === 'badini') ? `وەک ${res.admin.username} چوویتە ژوورەوە` : `Logged in as ${res.admin.username}`
+            });
         } else {
-            addNotification({ type: 'error', title: 'Access Denied', message: 'Invalid credentials.' });
+            addNotification({ 
+                type: 'error', 
+                title: (language === 'ku' || language === 'badini') ? 'ڕێگەپێدان نەدرا' : 'Access Denied', 
+                message: res.message || 'Invalid credentials.' 
+            });
         }
     };
 
