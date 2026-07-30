@@ -1013,11 +1013,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     useEffect(() => {
         const handleTranslationEvent = (e: any) => {
+            if (!e.detail) return;
+
+            // tmdbId guard: only process events targeting the current content
+            const myId = String(tmdbId || imdbId || '');
+            const eventId = String(e.detail.tmdbId || '');
+            if (myId && eventId && myId !== eventId) return;
+
+            const isFinal = e.detail.isFinal === true || e.detail.progress === 100;
+
+            // FIX (Race Condition #3): Always process final events regardless of what is loaded.
+            // Only skip truly non-final partial events when a stable non-data URL is already loaded.
+            if (!isFinal && e.detail.progress < 100 && localSubtitleUrl && !localSubtitleUrl.startsWith('data:')) {
+                return;
+            }
+
             const url = e.detail?.subtitleUrl || (typeof e.detail === 'string' ? e.detail : undefined);
             const srtContent = e.detail?.srtContent;
             const eventTmdbId = e.detail?.tmdbId || tmdbId || imdbId;
             if (url || srtContent) {
-                console.log("[UNIVERSAL-PLAYER] Received flkrd-subtitle-translated event - auto-applying to player:", url);
+                console.log("[UNIVERSAL-PLAYER] ✅ flkrd-subtitle-translated received — applying CC track:", url?.substring(0, 60), isFinal ? '[FINAL]' : '[PARTIAL]');
                 const trackId = `custom-db-${eventTmdbId}`;
                 const newTrack: SubtitleResult = {
                     id: trackId,
@@ -1044,7 +1059,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (decodedText) {
                     const cues = subtitleService.parseVtt(decodedText);
                     if (cues && cues.length > 0) {
-                        console.log("[UNIVERSAL-PLAYER] Applied translated SRT cues directly, count:", cues.length);
+                        console.log("[UNIVERSAL-PLAYER] ✅ Applied translated SRT cues directly, count:", cues.length);
                         translatedCuesActiveRef.current = true;
                         setSubtitleCues(cues);
                         setShowSubtitles(true);
@@ -1060,11 +1075,26 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     const filtered = prev.filter(s => s.id !== trackId);
                     return [newTrack, ...filtered];
                 });
+
+                // FIX (Disconnect #2): For final events, schedule a guaranteed retry after
+                // 800ms to handle any async React state race that may have missed the first apply.
+                if (isFinal && decodedText) {
+                    const finalSrtText = decodedText;
+                    setTimeout(() => {
+                        const retryCues = subtitleService.parseVtt(finalSrtText);
+                        if (retryCues && retryCues.length > 0) {
+                            console.log("[UNIVERSAL-PLAYER] 🔁 Retry-apply final CC cues (race guard), count:", retryCues.length);
+                            translatedCuesActiveRef.current = true;
+                            setSubtitleCues(retryCues);
+                            setShowSubtitles(true);
+                        }
+                    }, 800);
+                }
             }
         };
         window.addEventListener('flkrd-subtitle-translated', handleTranslationEvent);
         return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationEvent);
-    }, [tmdbId, imdbId]);
+    }, [tmdbId, imdbId, localSubtitleUrl]);
 
 
     // Fetch and parse VTT whenever localSubtitleUrl changes.

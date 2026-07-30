@@ -240,6 +240,7 @@ export default function PremiumVidLinkPlayer({
   const lastMessageTimeRef = React.useRef<number>(performance.now());
   const lastReceivedTimeRef = React.useRef<number>(0);
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
+  const resolvedSubUrlRef = React.useRef<string | null>(null);
   const [resolvedSubDisplayName, setResolvedSubDisplayName] = useState<string>('Kurdish (Verified)');
   const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
   const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
@@ -920,6 +921,7 @@ export default function PremiumVidLinkPlayer({
       const subUrl = activeTranslation.subtitleUrl;
       if (resolvedSubUrl !== subUrl) {
         setResolvedSubUrl(subUrl);
+        resolvedSubUrlRef.current = subUrl;
 
         // Robust text decoding for base64 data URIs, blob URLs, and remote HTTP links
         const loadVttText = async (url: string) => {
@@ -1050,6 +1052,19 @@ export default function PremiumVidLinkPlayer({
     const handleTranslationFinished = (e: any) => {
       if (!e.detail) return;
 
+      // tmdbId guard: only process events targeting the current content
+      const myId = String(resolvedTmdbId || tmdbId || imdbId || '');
+      const eventId = String(e.detail.tmdbId || '');
+      if (myId && eventId && myId !== eventId) return;
+
+      const isFinalEvent = e.detail.isFinal === true || e.detail.progress === 100;
+
+      // FIX (Race Condition #3): Always process final events regardless of what is loaded.
+      // Only skip non-final partial events when a stable non-data URL is already loaded.
+      if (!isFinalEvent && e.detail.progress < 100 && resolvedSubUrlRef.current && !resolvedSubUrlRef.current.startsWith('data:')) {
+        return;
+      }
+
       // 1. Prefer explicit SRT content when the pipeline includes it (final completion event)
       let textToApply = e.detail.srtContent || null;
 
@@ -1087,17 +1102,29 @@ export default function PremiumVidLinkPlayer({
 
       if (textToApply) {
         setVttContent(cleanAndFormatVtt(textToApply));
+
+        // FIX (Disconnect #2): For final events, retry applying cues after 800ms
+        // to guarantee the CC track renders even if React state was mid-cycle.
+        if (isFinalEvent) {
+          const finalText = textToApply;
+          setTimeout(() => {
+            console.log('[VIP-PLAYER] 🔁 Retry-apply final CC vttContent (race guard)');
+            setVttContent(cleanAndFormatVtt(finalText));
+            setShowSubtitles(true);
+          }, 800);
+        }
       }
 
       if (e.detail.subtitleUrl) {
-        console.log("[VIP-PLAYER] Received flkrd-subtitle-translated event, applying URL:", String(e.detail.subtitleUrl).substring(0, 60));
+        console.log("[VIP-PLAYER] ✅ flkrd-subtitle-translated received — applying CC track:", String(e.detail.subtitleUrl).substring(0, 60), isFinalEvent ? '[FINAL]' : '[PARTIAL]');
         setResolvedSubUrl(e.detail.subtitleUrl);
+        resolvedSubUrlRef.current = e.detail.subtitleUrl;
       }
       setShowSubtitles(true);
     };
     window.addEventListener('flkrd-subtitle-translated', handleTranslationFinished);
     return () => window.removeEventListener('flkrd-subtitle-translated', handleTranslationFinished);
-  }, []);
+  }, [resolvedTmdbId, tmdbId, imdbId]);
 
 
   // Flag Helper
