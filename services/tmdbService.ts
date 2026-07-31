@@ -46,23 +46,47 @@ const filterContent = (data: any, language: 'en' | 'ku' | 'badini'): any => {
     return isForbidden(data, language) ? null : data;
 };
 
+const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promise<Response | null> => {
+  // Strategy 1: Primary configured URL (/api/tmdb or https://api.tmdb.org/3)
+  const primaryUrl = `${API_BASE_URL}${endpoint}`;
+  try {
+    const res = await fetch(primaryUrl, { signal });
+    if (res && res.ok) return res;
+  } catch (e) { }
+
+  // Strategy 2: Direct TMDB API endpoint fallback
+  if (API_BASE_URL !== "https://api.tmdb.org/3") {
+    try {
+      const res = await fetch(`https://api.tmdb.org/3${endpoint}`, { signal });
+      if (res && res.ok) return res;
+    } catch (e) { }
+  }
+
+  // Strategy 3: Public CORS proxy fallback for mobile PWAs / restricted physical mobile webviews
+  try {
+    const targetUrl = endpoint.startsWith('http') ? endpoint : `https://api.tmdb.org/3${endpoint}`;
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`, { signal });
+    if (res && res.ok) return res;
+  } catch (e) { }
+
+  return null;
+};
+
 export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // 1. Instant Memory Access + Purely In-Memory SWR (Stale-While-Revalidate)
   if (sessionCache.has(cacheKey)) {
-    // Only block if we have NEVER fetched the banned list before
     if (!bannedService.hasFetched()) {
       await bannedService.fetchBannedList();
     } else {
-      // Fire-and-forget background update
       bannedService.fetchBannedList().catch(() => {});
     }
 
     // Silently revalidate in the background
     (async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        const response = await fetchWithFallback(endpoint);
         if (response && response.ok) {
           const rawData = await response.json();
           const result = rawData.results || rawData;
@@ -73,7 +97,6 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
       }
     })();
 
-    // Instantly return the stale content from memory
     return filterContent(sessionCache.get(cacheKey), language);
   }
 
@@ -83,23 +106,32 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
   }
 
   const fetchPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for mobile
     try {
-      // 3. Network Fallback - Fetch TMDB data and Supabase blocked IDs simultaneously
+      // 3. Resilient Network Fetch - Fetch TMDB data with multi-strategy fallback and Supabase blocked IDs simultaneously
       const [response, _bannedList] = await Promise.all([
-        fetch(`${API_BASE_URL}${endpoint}`),
+        fetchWithFallback(endpoint, controller.signal),
         bannedService.fetchBannedList()
       ]);
 
-      if (!response || !response.ok) return null;
+      if (!response || !response.ok) {
+        console.warn(`[TMDB] All fetch strategies failed for ${endpoint}`);
+        return null;
+      }
       
       const rawData = await response.json();
       const result = rawData.results || rawData;
       
       sessionCache.set(cacheKey, result);
       return filterContent(result, language);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error(`[TMDB] Fetch failed for ${endpoint}:`, error?.message || error);
+      }
       return null;
     } finally {
+      clearTimeout(timeoutId);
       pendingRequests.delete(cacheKey);
     }
   })();
@@ -132,7 +164,7 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
     // Background revalidation
     (async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`);
+        const response = await fetchWithFallback(endpoint);
         if (response && response.ok) {
           const fresh = await response.json();
           sessionCache.set(cacheKey, fresh);
@@ -155,14 +187,19 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
   }
 
   const fetchPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for mobile
     try {
-      // 3. Network Fetch - Fetch TMDB data and Supabase blocked IDs simultaneously
+      // 3. Network Fetch - Fetch TMDB data with multi-strategy fallback and Supabase blocked IDs simultaneously
       const [response, _bannedList] = await Promise.all([
-        fetch(`${API_BASE_URL}${endpoint}`),
+        fetchWithFallback(endpoint, controller.signal),
         bannedService.fetchBannedList()
       ]);
 
-      if (!response || !response.ok) return null;
+      if (!response || !response.ok) {
+        console.warn(`[TMDB] All paginated fetch strategies failed for ${endpoint}`);
+        return null;
+      }
       
       const data = await response.json();
       sessionCache.set(cacheKey, data);
@@ -172,9 +209,13 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
         page: data.page,
         total_pages: data.total_pages,
       };
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name !== 'AbortError') {
+        console.error(`[TMDB] Paginated fetch failed for ${endpoint}:`, error?.message || error);
+      }
       return null;
     } finally {
+      clearTimeout(timeoutId);
       pendingRequests.delete(cacheKey);
     }
   })();

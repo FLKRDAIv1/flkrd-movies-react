@@ -888,7 +888,7 @@ export default function PremiumVidLinkPlayer({
     }
   };
 
-  const handleStartTranslation = async (sub: any, targetLang: 'ku' | 'badini' = 'ku') => {
+  const handleStartTranslation = async (sub: any, targetLang: string = 'ku') => {
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
@@ -1475,84 +1475,86 @@ export default function PremiumVidLinkPlayer({
     const handleIframeMessage = (event: MessageEvent) => {
       if (!event.data) return;
 
-      let extractedTime: number | undefined;
-      let eventType: string | undefined;
-      let duration: number | undefined;
+      setTimeout(() => {
+        let extractedTime: number | undefined;
+        let eventType: string | undefined;
+        let duration: number | undefined;
 
-      // 1. Handle VidLink PLAYER_EVENT or MEDIA_DATA
-      if (event.data?.type === 'PLAYER_EVENT' && event.data?.data) {
-        extractedTime = event.data.data.currentTime;
-        eventType = event.data.data.event;
-        duration = event.data.data.duration;
-      } else if (event.data?.type === 'MEDIA_DATA' && event.data?.data) {
-        extractedTime = event.data.data.currentTime;
-        eventType = event.data.data.event;
-        duration = event.data.data.duration;
-        try {
-          localStorage.setItem('vidLinkProgress', JSON.stringify(event.data.data));
-        } catch (e) {}
-      } else {
-        // 2. Generic postMessage format from Videasy, SuperEmbed, etc.
-        let payload = event.data;
-        if (typeof payload === 'string') {
+        // 1. Handle VidLink PLAYER_EVENT or MEDIA_DATA
+        if (event.data?.type === 'PLAYER_EVENT' && event.data?.data) {
+          extractedTime = event.data.data.currentTime;
+          eventType = event.data.data.event;
+          duration = event.data.data.duration;
+        } else if (event.data?.type === 'MEDIA_DATA' && event.data?.data) {
+          extractedTime = event.data.data.currentTime;
+          eventType = event.data.data.event;
+          duration = event.data.data.duration;
           try {
-            payload = JSON.parse(payload);
-          } catch (e) {
-            if (payload.includes(':')) {
-              const parts = payload.split(':');
-              const num = parseFloat(parts[1]);
-              if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
-            } else {
-              const num = parseFloat(payload);
-              if (!isNaN(num)) payload = { currentTime: num };
+            localStorage.setItem('vidLinkProgress', JSON.stringify(event.data.data));
+          } catch (e) {}
+        } else {
+          // 2. Generic postMessage format from Videasy, SuperEmbed, etc.
+          let payload = event.data;
+          if (typeof payload === 'string') {
+            try {
+              payload = JSON.parse(payload);
+            } catch (e) {
+              if (payload.includes(':')) {
+                const parts = payload.split(':');
+                const num = parseFloat(parts[1]);
+                if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
+              } else {
+                const num = parseFloat(payload);
+                if (!isNaN(num)) payload = { currentTime: num };
+              }
             }
           }
-        }
 
-        if (typeof payload === 'object' && payload !== null) {
-          if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
-          else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
-          else if (typeof payload.time === 'number') extractedTime = payload.time;
-          else if (typeof payload.position === 'number') extractedTime = payload.position;
-          else if (payload.data && typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
+          if (typeof payload === 'object' && payload !== null) {
+            if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
+            else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
+            else if (typeof payload.time === 'number') extractedTime = payload.time;
+            else if (typeof payload.position === 'number') extractedTime = payload.position;
+            else if (payload.data && typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
 
-          eventType = payload.event || payload.type;
-          duration = payload.duration;
-        } else if (typeof payload === 'number') {
-          extractedTime = payload;
-        }
-      }
-
-      if (extractedTime !== undefined && !isNaN(extractedTime) && extractedTime < 50000) {
-        lastMessageTimeRef.current = performance.now();
-        lastReceivedTimeRef.current = extractedTime;
-
-        if (eventType === 'pause' || eventType === 'paused') {
-          if (isPlayingRef.current) {
-            isPlayingRef.current = false;
-            setIsPlaying(false);
-          }
-        } else if (eventType === 'play' || eventType === 'playing' || eventType === 'timeupdate' || extractedTime !== undefined) {
-          if (!isPlayingRef.current) {
-            isPlayingRef.current = true;
-            setIsPlaying(true);
+            eventType = payload.event || payload.type;
+            duration = payload.duration;
+          } else if (typeof payload === 'number') {
+            extractedTime = payload;
           }
         }
 
-        const offsetSec = subtitleOffsetRef.current / 1000;
-        if (parsedCuesRef.current.length > 0) {
-          const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec - 0.1) && extractedTime! <= (c.end + offsetSec + 0.1));
-          updateActiveCues(active);
-        }
+        if (extractedTime !== undefined && !isNaN(extractedTime) && extractedTime < 50000) {
+          lastMessageTimeRef.current = performance.now();
+          lastReceivedTimeRef.current = extractedTime;
 
-        if (onProgress) {
-          onProgress({
-            event: eventType || 'timeupdate',
-            currentTime: extractedTime,
-            duration
-          });
+          if (eventType === 'pause' || eventType === 'paused') {
+            if (isPlayingRef.current) {
+              isPlayingRef.current = false;
+              setIsPlaying(false);
+            }
+          } else if (eventType === 'play' || eventType === 'playing' || eventType === 'timeupdate' || extractedTime !== undefined) {
+            if (!isPlayingRef.current) {
+              isPlayingRef.current = true;
+              setIsPlaying(true);
+            }
+          }
+
+          const offsetSec = subtitleOffsetRef.current / 1000;
+          if (parsedCuesRef.current.length > 0) {
+            const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec - 0.1) && extractedTime! <= (c.end + offsetSec + 0.1));
+            updateActiveCues(active);
+          }
+
+          if (onProgress) {
+            onProgress({
+              event: eventType || 'timeupdate',
+              currentTime: extractedTime,
+              duration
+            });
+          }
         }
-      }
+      }, 0);
     };
 
     window.addEventListener('message', handleIframeMessage);
@@ -3008,14 +3010,15 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowSourceSwitcher(false);
             }}
-            className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-episodes-trigger flex items-center gap-1.5 rounded-full border transition-all active:scale-90 ${
               showEpisodesPortal 
-                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
-                : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
+                ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_12px_rgba(220,38,38,0.4)]' 
+                : 'bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30'
             }`}
+            style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
           >
-            <Tv size={13} className="sm:w-4 sm:h-4" />
-            <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+            <Tv size={12} className="shrink-0" />
+            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'EP'}</span>
           </button>
         )}
 
@@ -3027,14 +3030,15 @@ export default function PremiumVidLinkPlayer({
             setShowEpisodesPortal(false);
             setShowSourceSwitcher(false);
           }}
-          className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
+          className={`player-cc-trigger flex items-center gap-1.5 rounded-full border transition-all active:scale-90 ${
             showSubSettings 
-              ? 'bg-red-600 border-red-500 text-white shadow-red-600/40' 
-              : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
+              ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_14px_rgba(220,38,38,0.45)]' 
+              : 'bg-black/60 border-white/15 text-white/90 px-3 py-1.5 hover:border-white/30'
           }`}
+          style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
         >
-          <Subtitles size={13} className="sm:w-4 sm:h-4" />
-          <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'CC'}</span>
+          <Subtitles size={12} className="shrink-0" />
+          <span className="text-[10px] font-bold uppercase tracking-wide">CC</span>
         </button>
 
         {/* Relink Button */}
@@ -3045,28 +3049,30 @@ export default function PremiumVidLinkPlayer({
               setShowSubSettings(false);
               setShowEpisodesPortal(false);
             }}
-            className={`player-relink-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl active:scale-95 ${
+            className={`player-relink-trigger flex items-center gap-1.5 rounded-full border transition-all active:scale-90 ${
               showSourceSwitcher
-                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40 animate-pulse'
-                : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20'
+                ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_12px_rgba(220,38,38,0.4)]'
+                : 'bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30'
             }`}
+            style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
             title="Relink"
           >
-            <RefreshCcw size={13} className={showSourceSwitcher ? 'text-white rotate-180 transition-transform duration-500' : ''} />
-            <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Relink'}</span>
+            <RefreshCcw size={12} className={`shrink-0 ${showSourceSwitcher ? 'rotate-180 transition-transform duration-500' : ''}`} />
+            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Link'}</span>
           </button>
         )}
 
         {/* Fullscreen Button */}
         <button 
           onClick={toggleFullscreen}
-          className="transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-2xl bg-black/70 border-white/20 text-white/95 hover:bg-white/20 active:scale-95"
+          className="flex items-center gap-1.5 rounded-full border bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30 transition-all active:scale-90"
+          style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
           title={isFullscreen 
             ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
             : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}
         >
-          {isFullscreen ? <Minimize size={13} className="sm:w-4 sm:h-4" /> : <Maximize size={13} className="sm:w-4 sm:h-4" />}
-          <span className="text-[9px] sm:text-[11px] font-black uppercase hidden xs:inline sm:inline">
+          {isFullscreen ? <Minimize size={12} className="shrink-0" /> : <Maximize size={12} className="shrink-0" />}
+          <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">
             {isFullscreen 
               ? ((language === 'ku' || language === 'badini') ? 'بچووککردن' : 'Exit') 
               : ((language === 'ku' || language === 'badini') ? 'شاشە' : 'Full')}

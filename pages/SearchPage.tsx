@@ -404,9 +404,18 @@ const SearchPage: React.FC = () => {
                         >
                           <div className="relative overflow-hidden rounded-xl shadow-xl border border-border-color w-14 h-20 flex-shrink-0 bg-box-bg">
                             <img 
-                              src={item.poster_path?.startsWith('data:') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
+                              src={
+                                (item.poster_path || (item as any).imageBase64)
+                                  ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
+                                      ? (item.poster_path || (item as any).imageBase64)
+                                      : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
+                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                              }
                               alt="" 
                               className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                              }}
                             />
                             {item.media_type === 'dubbed' && (
                               <div className="absolute top-1 right-1 bg-brand p-1 rounded-md shadow-lg">

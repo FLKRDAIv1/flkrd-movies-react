@@ -72,6 +72,7 @@ function processTranslation(text, source, target) {
   if (!text || !String(text).trim()) return text;
   
   var isBadini = (target === 'badini');
+  var isKurdish = (target === 'badini' || target === 'ku' || target === 'ckb' || target === 'sorani');
   var actualTarget = (target === 'badini') ? 'ku' : target;
   var actualSource = source || 'auto';
 
@@ -83,10 +84,10 @@ function processTranslation(text, source, target) {
     }
 
     var translated = LanguageApp.translate(text, actualSource, actualTarget);
-    if (actualTarget === 'ku') {
+    if (isKurdish) {
       return polishKurdishTranslation(translated, isBadini);
     }
-    return translated;
+    return String(translated || '').trim();
   } catch (e) {
     try {
       return translateViaGTX(text, actualSource, actualTarget);
@@ -111,7 +112,11 @@ function translateViaGTX(text, source, target) {
     if (data && data[0]) {
       var translatedText = data[0].map(function(x) { return x[0] || ''; }).join('');
       if (translatedText) {
-        return polishKurdishTranslation(translatedText, target === 'badini');
+        var isKurdish = (target === 'badini' || target === 'ku' || target === 'ckb' || target === 'sorani');
+        if (isKurdish) {
+          return polishKurdishTranslation(translatedText, target === 'badini');
+        }
+        return translatedText.trim();
       }
     }
   }

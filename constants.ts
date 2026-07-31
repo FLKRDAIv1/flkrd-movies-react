@@ -11,18 +11,16 @@ export const SUBDL_API_KEY = import.meta.env.VITE_SUBDL_API_KEY ? import.meta.en
 
 const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
 
-const isLocal = typeof window !== 'undefined' &&
-  !isTauri &&
-  (window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.hostname.startsWith('192.168.') ||
-    window.location.hostname.endsWith('.local'));
-
-export const API_BASE_URL = isLocal ? "/api/tmdb" : "https://api.tmdb.org/3";
+// Use Vite's built-in DEV flag — this is the correct and reliable way to detect local dev.
+// The old hostname-based check (192.168.*, localhost) was fragile: it could incorrectly
+// activate the /api/tmdb Vite proxy for users on a 192.168.x.x LAN in production,
+// where no serverless /api/tmdb function exists — causing all TMDB data to fail silently.
+export const API_BASE_URL = (!isTauri && import.meta.env.DEV) ? "/api/tmdb" : "https://api.tmdb.org/3";
 export const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 export const IMAGE_BASE_URL_POSTER = "https://image.tmdb.org/t/p/w500";
 export const IMAGE_BASE_URL_THUMB = "https://image.tmdb.org/t/p/w342"; // For card thumbnails — saves ~40% bandwidth vs w500
 export const IMAGE_BASE_URL_LOGO = "https://image.tmdb.org/t/p/w300";
+export const IMAGE_BASE_URL_PROFILE = "https://image.tmdb.org/t/p/w185"; // For actor/person profile portraits
 export const APP_VERSION = "1.8.1";
 
 export const requests = {

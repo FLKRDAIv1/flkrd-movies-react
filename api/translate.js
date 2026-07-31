@@ -247,68 +247,76 @@ export default async function handler(req, res) {
             return cleaned;
         }
 
-        // ⚡ Multi-Q Google GTX POST Array Translator (100% sentence-accurate index matching)
+        // ⚡ Multi-Q Google GTX POST Array Translator with Delimiter-Based Sentence Protection
         const translateArrayWithGoogleGTX = async (chunkItems, src, tgt) => {
             if (!chunkItems || chunkItems.length === 0) return [];
             const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
-            
-            const SUB_BATCH_SIZE = 15;
-            const allResults = [];
+            const isKurdishTarget = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani');
 
-            for (let i = 0; i < chunkItems.length; i += SUB_BATCH_SIZE) {
-                const subChunk = chunkItems.slice(i, i + SUB_BATCH_SIZE);
+            // 1. Delimiter-Based single-string POST translation (Guarantees 100% line alignment & sentence structure)
+            try {
+                const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
+                const joinedText = chunkItems.map((t) => (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ')).join(delimiter);
+                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&dt=t`;
 
-                const doFetch = async (sourceCode) => {
-                    try {
-                        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(tgt)}&dt=t`;
-                        const bodyParams = subChunk.map(t => {
-                            const clean = (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ');
-                            return `q=${encodeURIComponent(clean || ' ')}`;
-                        }).join('&');
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 6000);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    },
+                    body: `q=${encodeURIComponent(joinedText)}`,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
 
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                            },
-                            body: bodyParams,
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (Array.isArray(data) && Array.isArray(data[0])) {
-                                const segments = data[0];
-                                return subChunk.map((item, idx) => {
-                                    const seg = segments[idx];
-                                    if (Array.isArray(seg) && typeof seg[0] === 'string' && seg[0].trim()) {
-                                        const resStr = seg[0].trim();
-                                        return cleanPersianToKurdish(resStr);
-                                    }
-                                    return item;
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && Array.isArray(data[0])) {
+                        const translatedJoined = data[0].map(x => x[0] || '').join('');
+                        if (translatedJoined) {
+                            const splitResults = translatedJoined.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
+                            if (splitResults.length === chunkItems.length) {
+                                return splitResults.map((item, idx) => {
+                                    const cleaned = item.trim();
+                                    const finalStr = isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned;
+                                    return finalStr || chunkItems[idx];
                                 });
                             }
                         }
-                    } catch (err) {}
-                    return null;
-                };
-
-                let subResult = await doFetch(effectiveSrc);
-                if (!subResult || (effectiveSrc !== 'auto' && !subResult.some((t, idx) => t && t.trim() && t !== subChunk[idx]))) {
-                    subResult = await doFetch('auto');
+                    }
                 }
-                if (!subResult) {
-                    throw new Error("GTX sub-chunk translation failed");
-                }
-                allResults.push(...subResult);
-            }
+            } catch (err) {}
 
-            return allResults;
+            // 2. Parallel individual item translation with GTX GET/POST
+            try {
+                const SUB_BATCH_SIZE = 10;
+                const results = [];
+
+                for (let i = 0; i < chunkItems.length; i += SUB_BATCH_SIZE) {
+                    const subChunk = chunkItems.slice(i, i + SUB_BATCH_SIZE);
+                    const batchPromises = subChunk.map(async (item) => {
+                        if (!item || !item.trim()) return item || '';
+                        const trans = await translateWithGoogleAPI(item, effectiveSrc, tgt);
+                        if (trans && trans.trim()) {
+                            return isKurdishTarget ? cleanPersianToKurdish(trans.trim()) : trans.trim();
+                        }
+                        return item;
+                    });
+
+                    const translatedSubBatch = await Promise.all(batchPromises);
+                    results.push(...translatedSubBatch);
+                }
+
+                if (results.length === chunkItems.length) {
+                    return results;
+                }
+            } catch (err) {}
+
+            throw new Error("GTX array translation failed");
         };
 
         // Primary single string Google Translate API fetcher (POST with GET fallback, 8s timeout)

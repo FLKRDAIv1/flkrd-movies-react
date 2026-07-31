@@ -1788,7 +1788,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [tmdbId, imdbId, season, episode]);
 
-    const handleStartTranslation = async (sub: SubtitleResult, targetLang: 'ku' | 'badini') => {
+    const handleStartTranslation = async (sub: SubtitleResult, targetLang: string) => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
 
@@ -2009,111 +2009,111 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
-        try {
-            let payload = event.data;
-            if (typeof payload === 'string') {
-                try {
-                    payload = JSON.parse(payload);
-                } catch (e) {
-                    if (payload.includes(':')) {
-                        const parts = payload.split(':');
-                        const num = parseFloat(parts[1]);
-                        if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
-                    } else {
-                        const num = parseFloat(payload);
-                        if (!isNaN(num)) payload = { currentTime: num };
+        // Offload payload processing so the event listener finishes in 0ms synchronously
+        setTimeout(() => {
+            try {
+                let payload = event.data;
+                if (typeof payload === 'string') {
+                    try {
+                        payload = JSON.parse(payload);
+                    } catch (e) {
+                        if (payload.includes(':')) {
+                            const parts = payload.split(':');
+                            const num = parseFloat(parts[1]);
+                            if (!isNaN(num)) payload = { currentTime: num, event: parts[0] };
+                        } else {
+                            const num = parseFloat(payload);
+                            if (!isNaN(num)) payload = { currentTime: num };
+                        }
                     }
                 }
-            }
 
-            if (!payload) return;
+                if (!payload) return;
 
-            // Log time updates for debugging if needed
-            // console.log("[PLAYER MESSAGE]", payload);
+                let paused = undefined;
+                let eventName = undefined;
 
-            let newTime = undefined;
-            let paused = undefined;
-            let eventName = undefined;
+                const msgEvent = (payload.event || payload.type || payload.method || '').toLowerCase();
 
-            // Parse playback state / event type
-            const msgEvent = (payload.event || payload.type || payload.method || '').toLowerCase();
-
-            if (msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play') {
-                paused = false;
-                eventName = 'play';
-            }
-            else if (msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause') {
-                paused = true;
-                eventName = 'pause';
-            }
-            else if (msgEvent === 'seek' || msgEvent === 'seeking' || msgEvent === 'seeked' || msgEvent === 'vjs-seek') {
-                eventName = 'seek';
-            }
-
-            if (paused === true) {
-                setIsPlaying(false);
-            } else if (paused === false) {
-                setIsPlaying(true);
-            }
-
-            // Comprehensive postMessage event parser for all embed sources avoiding NaN Object conversion
-            let extractedTime: number | undefined = undefined;
-            
-            if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
-            else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
-            else if (typeof payload.time === 'number') extractedTime = payload.time;
-            else if (typeof payload.position === 'number') extractedTime = payload.position;
-            else if (typeof payload.value === 'number') extractedTime = payload.value;
-            else if (payload.data && typeof payload.data === 'object') {
-                if (typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
-                else if (typeof payload.data.seconds === 'number') extractedTime = payload.data.seconds;
-                else if (typeof payload.data.time === 'number') extractedTime = payload.data.time;
-                else if (typeof payload.data.position === 'number') extractedTime = payload.data.position;
-                else if (typeof payload.data.value === 'number') extractedTime = payload.data.value;
-            } else if (typeof payload.data === 'number') {
-                extractedTime = payload.data;
-            } else {
-                const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.position || payload.value;
-                if (strCandidate !== undefined) {
-                    const parsed = parseFloat(String(strCandidate));
-                    if (!isNaN(parsed)) extractedTime = parsed;
+                if (msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play') {
+                    paused = false;
+                    eventName = 'play';
                 }
-            }
+                else if (msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause') {
+                    paused = true;
+                    eventName = 'pause';
+                }
+                else if (msgEvent === 'seek' || msgEvent === 'seeking' || msgEvent === 'seeked' || msgEvent === 'vjs-seek') {
+                    eventName = 'seek';
+                }
 
-            const timeAsNum = extractedTime;
+                if (paused === true) {
+                    setIsPlaying(false);
+                } else if (paused === false) {
+                    setIsPlaying(true);
+                }
 
-            if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
-                // Prevent Unix timestamp overflow (we only accept actual playhead time < 13.8 hours)
-                if (timeAsNum < 50000) {
-                    setCurrentTime(timeAsNum);
-                    lastReceivedTimeRef.current = timeAsNum;
-                    lastMessageTimeRef.current = performance.now();
-                    if (paused !== true) {
-                        setIsPlaying(true);
+                let extractedTime: number | undefined = undefined;
+                
+                if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
+                else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
+                else if (typeof payload.time === 'number') extractedTime = payload.time;
+                else if (typeof payload.position === 'number') extractedTime = payload.position;
+                else if (typeof payload.value === 'number') extractedTime = payload.value;
+                else if (payload.data && typeof payload.data === 'object') {
+                    if (typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
+                    else if (typeof payload.data.seconds === 'number') extractedTime = payload.data.seconds;
+                    else if (typeof payload.data.time === 'number') extractedTime = payload.data.time;
+                    else if (typeof payload.data.position === 'number') extractedTime = payload.data.position;
+                    else if (typeof payload.data.value === 'number') extractedTime = payload.data.value;
+                } else if (typeof payload.data === 'number') {
+                    extractedTime = payload.data;
+                } else {
+                    const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.position || payload.value;
+                    if (strCandidate !== undefined) {
+                        const parsed = parseFloat(String(strCandidate));
+                        if (!isNaN(parsed)) extractedTime = parsed;
                     }
+                }
 
+                const timeAsNum = extractedTime;
+
+                if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
+                    if (timeAsNum < 50000) {
+                        // Only trigger React state re-render if the second actually changed
+                        if (Math.floor(timeAsNum) !== Math.floor(currentTimeRef.current)) {
+                            setCurrentTime(timeAsNum);
+                        }
+                        currentTimeRef.current = timeAsNum;
+                        lastReceivedTimeRef.current = timeAsNum;
+                        lastMessageTimeRef.current = performance.now();
+                        if (paused !== true) {
+                            setIsPlaying(true);
+                        }
+
+                        if (onProgressRef.current) {
+                            onProgressRef.current({
+                                currentTime: timeAsNum,
+                                paused: paused,
+                                event: eventName || 'timeupdate',
+                                duration: payload.duration !== undefined ? Number(payload.duration) : undefined
+                            });
+                        }
+                    }
+                } else if (eventName !== undefined) {
+                    if (eventName === 'seek') {
+                        lastMessageTimeRef.current = performance.now();
+                    }
                     if (onProgressRef.current) {
                         onProgressRef.current({
-                            currentTime: timeAsNum,
+                            currentTime: currentTimeRef.current,
                             paused: paused,
-                            event: eventName || 'timeupdate',
-                            duration: payload.duration !== undefined ? Number(payload.duration) : undefined
+                            event: eventName
                         });
                     }
                 }
-            } else if (eventName !== undefined) {
-                if (eventName === 'seek') {
-                    lastMessageTimeRef.current = performance.now();
-                }
-                if (onProgressRef.current) {
-                    onProgressRef.current({
-                        currentTime: currentTimeRef.current,
-                        paused: paused,
-                        event: eventName
-                    });
-                }
-            }
-        } catch (e) { }
+            } catch (e) { }
+        }, 0);
     }, []); // Listener is now absolutely stable
 
     useEffect(() => {
@@ -3634,58 +3634,57 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 {contentType === 'tv' && onEpisodeChange && (
                     <button
                         onClick={() => { startTransition(() => { setShowEpisodesPortal(!showEpisodesPortal); setShowSubSettings(false); setShowSourceSwitcher(false); }); }}
-                        className={`player-episodes-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showEpisodesPortal
-                                ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
-                                : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
-                            }`}
+                        className={`player-episodes-trigger flex items-center gap-1.5 rounded-full border transition-all active:scale-90 ${
+                            showEpisodesPortal
+                                ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_12px_rgba(220,38,38,0.4)]'
+                                : 'bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30'
+                        }`}
+                        style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
                         title={(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}
                     >
-                        <Tv size={13} className="sm:w-3.5 sm:h-3.5" />
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'Episodes'}</span>
+                        <Tv size={12} className="shrink-0" />
+                        <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'EP'}</span>
                     </button>
                 )}
 
                 {/* CC / Subtitle Studio */}
                 <button
                     onClick={() => { startTransition(() => { setShowSubSettings(!showSubSettings); if (!showSubSettings) handleSearchAllSubs(); setShowEpisodesPortal(false); setShowSourceSwitcher(false); }); }}
-                    className={`player-cc-trigger transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showSubSettings
-                            ? 'bg-red-600 border-red-500 text-white shadow-red-600/40'
-                            : 'bg-black/70 border-white/20 text-white/95 hover:bg-white/20 hover:text-white'
-                        }`}
+                    className={`player-cc-trigger flex items-center gap-1.5 rounded-full border transition-all active:scale-90 ${
+                        showSubSettings
+                            ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_14px_rgba(220,38,38,0.45)]'
+                            : 'bg-black/60 border-white/15 text-white/90 px-3 py-1.5 hover:border-white/30'
+                    }`}
+                    style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
                     title={(language === 'ku' || language === 'badini') ? 'ژێرنووس' : 'Subtitles'}
                 >
-                    <Subtitles size={13} className="sm:w-3.5 sm:h-3.5" />
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">CC</span>
+                    <Subtitles size={13} className="shrink-0" />
+                    <span className="text-[10px] font-bold uppercase tracking-wide">CC</span>
                 </button>
 
                 {/* ⚡ Subtitle ON/OFF Quick Toggle */}
                 {(subtitleCues.length > 0 || localSubtitleUrl) && (
                     <button
-                        onClick={() => {
-                            setShowSubtitles(prev => !prev);
-                        }}
-                        className={`transition-all duration-300 backdrop-blur-md border px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl flex items-center gap-1 sm:gap-1.5 shadow-xl active:scale-95 ${showSubtitles
-                                ? 'bg-emerald-600/90 border-emerald-500 text-white shadow-emerald-600/40'
-                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10 hover:text-white/70'
-                            }`}
+                        onClick={() => { setShowSubtitles(prev => !prev); }}
+                        className={`flex items-center gap-1.5 rounded-full border transition-all active:scale-90 px-2.5 py-1.5 ${
+                            showSubtitles
+                                ? 'bg-emerald-600/80 border-emerald-500/70 text-white shadow-[0_0_10px_rgba(5,150,105,0.3)]'
+                                : 'bg-black/50 border-white/10 text-white/40 hover:text-white/70 hover:border-white/20'
+                        }`}
+                        style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
                         title={(language === 'ku' || language === 'badini')
                             ? (showSubtitles ? 'داخستنی ژێرنووس' : 'کردنەوەی ژێرنووس')
                             : (showSubtitles ? 'Disable Subtitles' : 'Enable Subtitles')}
                     >
                         {showSubtitles ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                                 <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/><line x1="4" y1="22" x2="20" y2="2"/>
                             </svg>
                         ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                                 <path d="M10 9H4a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1"/><path d="M20 15h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2h-6"/><path d="M7 9v6"/><path d="M15 9v6"/><path d="M11 9v6"/>
                             </svg>
                         )}
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase hidden xs:inline sm:inline">
-                            {showSubtitles
-                                ? ((language === 'ku' || language === 'badini') ? 'داخستن' : 'Sub On')
-                                : ((language === 'ku' || language === 'badini') ? 'کردنەوە' : 'Sub Off')}
-                        </span>
                     </button>
                 )}
 

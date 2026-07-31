@@ -27,30 +27,13 @@ import { isTauri } from '../utils/tauriUtils';
 
 // Removed MeshGradientBackground to allow global PremiumBackground to handle theme rendering.
 
-const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string, placeholder?: string }> = ({ src, className, alt, placeholder }) => {
-    const [currentSrc, setCurrentSrc] = useState(placeholder || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=');
-    const [isLoaded, setIsLoaded] = useState(false);
-    const imgRef = useRef<HTMLImageElement>(null);
-
-    useEffect(() => {
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                setCurrentSrc(src);
-                observer.disconnect();
-            }
-        }, { threshold: 0.1 });
-
-        if (imgRef.current) observer.observe(imgRef.current);
-        return () => observer.disconnect();
-    }, [src]);
-
+const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string, placeholder?: string }> = ({ src, className, alt }) => {
     return (
         <img
-            ref={imgRef}
-            src={currentSrc}
-            className={`${className} transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            src={src}
+            className={className}
             alt={alt}
-            onLoad={() => setIsLoaded(true)}
+            decoding="async"
             onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
             }}

@@ -95,7 +95,7 @@ interface UIContextType {
   
   // Background Subtitle Translation System
   activeTranslation: ActiveTranslationState;
-  startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number, targetLang?: 'ku' | 'badini') => Promise<void>;
+  startGlobalTranslation: (sub: any, tmdbId: string | number, mediaType: string, season?: number, episode?: number, targetLang?: string) => Promise<void>;
   pauseGlobalTranslation: () => void;
   resumeGlobalTranslation: () => void;
   cancelGlobalTranslation: () => void;
@@ -113,10 +113,9 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     const saved = localStorage.getItem('flkrd_theme') as Theme;
-    if (saved) return saved;
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
+    // Always default to dark mode for cinematic streaming experience.
+    // If legacy auto-detected 'light' is stored, override to 'dark' unless user explicitly set it.
+    if (saved && saved !== 'light') return saved;
     return 'dark';
   });
   const [accentColor, setAccentColorState] = useState(() =>
@@ -444,18 +443,14 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
 
+  // Cinematic Experience Guard: Do NOT automatically switch to light mode on mobile emulation / system preference.
+  // The app remains in dark mode by default unless explicitly toggled by user in settings.
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      const newTheme: Theme = e.matches ? 'dark' : 'light';
-      setThemeState(newTheme);
-      localStorage.setItem('flkrd_theme', newTheme);
-    };
-    mediaQuery.addEventListener('change', handleChange);
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange);
-    };
+    // Keep theme set to dark if legacy 'light' was stored automatically
+    if (localStorage.getItem('flkrd_theme') === 'light') {
+      localStorage.setItem('flkrd_theme', 'dark');
+      setThemeState('dark');
+    }
   }, []);
 
   useEffect(() => {
@@ -767,7 +762,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     mediaType: string,
     season: number = 0,
     episode: number = 0,
-    targetLang: 'ku' | 'badini' = 'ku'
+    targetLang: string = 'ku'
   ) => {
     // If translation for the EXACT SAME subtitle track is ALREADY running, ignore duplicate start call!
     if (

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO } from '../constants';
+import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO, IMAGE_BASE_URL_PROFILE } from '../constants';
 import { SkeletonDetailPage } from '../components/Skeleton';
 import Row from '../components/Row';
 import Spinner from '../components/Spinner';
@@ -352,8 +352,14 @@ const DetailPage: React.FC = () => {
     }
   };
 
+  const lastProgressSaveRef = useRef<number>(0);
   const updateProgress = useCallback((time: number, duration: number) => {
     if (!content || !content.id) return;
+    const now = Date.now();
+    // Throttle: Only write to localStorage and dispatch events every 5 seconds
+    if (now - lastProgressSaveRef.current < 5000) return;
+    lastProgressSaveRef.current = now;
+
     try {
       const progressData = localStorage.getItem('watchProgress');
       let progress: WatchProgress[] = progressData ? JSON.parse(progressData) : [];
@@ -368,7 +374,7 @@ const DetailPage: React.FC = () => {
         vote_average: content.vote_average,
         progress: time,
         duration: duration || content.runtime * 60 || 7200,
-        lastWatched: Date.now()
+        lastWatched: now
       };
 
       if (index > -1) progress[index] = item;
@@ -376,8 +382,6 @@ const DetailPage: React.FC = () => {
 
       localStorage.setItem('watchProgress', JSON.stringify(progress));
       window.dispatchEvent(new Event('watchProgressUpdated'));
-
-      // Binge prompt removed as requested
       window.dispatchEvent(new Event('storage'));
     } catch (e) { }
   }, [content, bingeMode, showBingePrompt, recommendations]);
@@ -745,10 +749,19 @@ const DetailPage: React.FC = () => {
     <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
         <img 
-          src={`${IMAGE_BASE_URL}${content.backdrop_path}`} 
+          src={
+            content.backdrop_path || content.poster_path
+              ? ((content.backdrop_path || content.poster_path)?.startsWith('http') || (content.backdrop_path || content.poster_path)?.startsWith('data:')
+                  ? (content.backdrop_path || content.poster_path)!
+                  : `${IMAGE_BASE_URL}${content.backdrop_path || content.poster_path}`)
+              : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+          } 
           className="w-full h-full object-cover scale-110 opacity-70" 
           style={{ filter: 'blur(36px) saturate(1.4)' }} 
           alt="" 
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/30 to-[var(--bg-primary)]"></div>
       </div>
@@ -1019,13 +1032,19 @@ const DetailPage: React.FC = () => {
       {/* ── 3D Shaped Header Hero Card (Matching Home Banner Carousel Aesthetics) ── */}
       <div className="w-full relative px-4 md:px-12 pt-24 md:pt-28 pb-6 bg-transparent overflow-hidden isolate" dir="ltr">
         <div className="relative w-full h-[65vh] md:h-[80vh] rounded-[32px] md:rounded-[40px] overflow-hidden border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] bg-zinc-950/60 backdrop-blur-md group">
-          <motion.img 
-            initial={{ scale: 1.08 }} 
-            animate={{ scale: 1 }} 
-            transition={{ duration: 15, repeat: Infinity, repeatType: "reverse", ease: "linear" }} 
-            src={`${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path}`} 
+          <img 
+            src={
+              content.backdrop_path || content.poster_path
+                ? ((content.backdrop_path || content.poster_path)?.startsWith('http') || (content.backdrop_path || content.poster_path)?.startsWith('data:')
+                    ? (content.backdrop_path || content.poster_path)!
+                    : `${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path || content.poster_path}`)
+                : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+            } 
             alt="" 
             className="absolute inset-0 w-full h-full object-cover opacity-100" 
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+            }}
           />
           {/* Crystal Clear Gradient Overlay — Keeps image vibrant while maintaining text contrast */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-[2]" />
@@ -1206,11 +1225,12 @@ const DetailPage: React.FC = () => {
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
                       <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-[var(--border-color)] shadow-2xl relative">
                         <img 
-                          src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} 
+                          src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.png'} 
                           alt={person.name} 
                           width={150} 
                           height={225} 
-                          className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                          className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
                         />
                       </div>
                       <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-[var(--text-primary)]">{person.name}</p>
@@ -1279,7 +1299,8 @@ const DetailPage: React.FC = () => {
                   <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
                     <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
                       <img 
-                        src={actorDetails.profile_path ? `${IMAGE_BASE_URL}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                        src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
                         alt={actorDetails.name}
                         className="w-full h-full object-cover"
                       />

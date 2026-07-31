@@ -16,6 +16,7 @@ export function cleanPersianToKurdish(text: string): string {
   let cleaned = text;
 
   const replacements: [RegExp, string][] = [
+    // --- Present-habitual verbs (می + verb stem) ---
     [/\bشروع کرد\b/g, 'دەستی پێکرد'],
     [/\bشروع می کند\b/g, 'دەست پێدەکات'],
     [/\bشروع می‌کند\b/g, 'دەست پێدەکات'],
@@ -46,6 +47,82 @@ export function cleanPersianToKurdish(text: string): string {
     [/\bمی‌آید\b/g, 'دێت'],
     [/\bمی رود\b/g, 'دەچێت'],
     [/\bمی‌رود\b/g, 'دەچێت'],
+    // --- Negative present (نمی + verb stem) ---
+    [/\bنمی\u200Cکند\b/g, 'ناکات'],
+    [/\bنمی کند\b/g, 'ناکات'],
+    [/\bنمی\u200Cکنم\b/g, 'ناکەم'],
+    [/\bنمی کنم\b/g, 'ناکەم'],
+    [/\bنمی\u200Cکنیم\b/g, 'ناکەین'],
+    [/\bنمی کنیم\b/g, 'ناکەین'],
+    [/\bنمی\u200Cکنند\b/g, 'ناکەن'],
+    [/\bنمی کنند\b/g, 'ناکەن'],
+    [/\bنمی\u200Cشود\b/g, 'نابێت'],
+    [/\bنمی شود\b/g, 'نابێت'],
+    [/\bنمی\u200Cتوانم\b/g, 'ناتوانم'],
+    [/\bنمی توانم\b/g, 'ناتوانم'],
+    [/\bنمی\u200Cخواهم\b/g, 'نامەوێت'],
+    [/\bنمی خواهم\b/g, 'نامەوێت'],
+    [/\bنمی\u200Cدانم\b/g, 'نازانم'],
+    [/\bنمی دانم\b/g, 'نازانم'],
+    [/\bنمی\u200Cبینم\b/g, 'نابینم'],
+    [/\bنمی بینم\b/g, 'نابینم'],
+    [/\bنمی\u200Cتواند\b/g, 'ناتوانێت'],
+    [/\bنمی تواند\b/g, 'ناتوانێت'],
+    [/\bنمی\u200Cآید\b/g, 'نایێت'],
+    [/\bنمی آید\b/g, 'نایێت'],
+    [/\bنمی\u200Cرود\b/g, 'نایچێت'],
+    [/\bنمی رود\b/g, 'نایچێت'],
+    // --- Future tense (خواهد + verb stem) ---
+    [/\bخواهد کرد\b/g, 'دەکات'],
+    [/\bخواهد شد\b/g, 'دەبێت'],
+    [/\bخواهد رفت\b/g, 'دەچێت'],
+    [/\bخواهد آمد\b/g, 'دێت'],
+    [/\bخواهم کرد\b/g, 'دەکەم'],
+    [/\bخواهی کرد\b/g, 'دەکەیت'],
+    // --- Past habitual verbs (می + past stem) ---
+    [/\bمی\u200Cرفتم\b/g, 'چووم'],
+    [/\bمی رفتم\b/g, 'چووم'],
+    [/\bرفتم\b/g, 'چووم'],
+    [/\bمی\u200Cآمدم\b/g, 'هاتم'],
+    [/\bمی آمدم\b/g, 'هاتم'],
+    [/\bآمدم\b/g, 'هاتم'],
+    [/\bمی\u200Cدیدم\b/g, 'بینیم'],
+    [/\bمی دیدم\b/g, 'بینیم'],
+    [/\bدیدم\b/g, 'بینیم'],
+    [/\bمی\u200Cگفتم\b/g, 'گوتم'],
+    [/\bمی گفتم\b/g, 'گوتم'],
+    [/\bگفتم\b/g, 'گوتم'],
+    [/\bمی\u200Cخوردم\b/g, 'خواردم'],
+    [/\bمی خوردم\b/g, 'خواردم'],
+    [/\bمی\u200Cنشستم\b/g, 'نیشتم'],
+    [/\bمی نشستم\b/g, 'نیشتم'],
+    [/\bمی\u200Cخوابیدم\b/g, 'خەوتم'],
+    [/\bمی خوابیدم\b/g, 'خەوتم'],
+    [/\bمی\u200Cایستادم\b/g, 'وەستام'],
+    [/\bمی ایستادم\b/g, 'وەستام'],
+    [/\bمی\u200Cدویدم\b/g, 'ڕاوەدایم'],
+    [/\bمی دویدم\b/g, 'ڕاوەدایم'],
+    // --- Modal / auxiliary ---
+    [/\bباید\b/g, 'دەبێت'],
+    // --- Interrogative & common function words ---
+    [/\bچرا\b/g, 'بۆچی'],
+    [/\bچگونه\b/g, 'چۆن'],
+    [/\bکجا\b/g, 'لەکوێ'],
+    [/\bهنگام\b/g, 'کاتێک'],
+    [/\bتا\b/g, 'هەتا'],
+    [/\bاز\b/g, 'لە'],
+    [/\bبه\b/g, 'بە'],
+    [/\bهمچنین\b/g, 'هەروەها'],
+    [/\bچه\b/g, 'چی'],
+    // --- Intensifiers & adjectives ---
+    [/\bبسیار\b/g, 'زۆر'],
+    [/\bخیلی\b/g, 'زۆر'],
+    [/\bخوب\b/g, 'باش'],
+    [/\bبد\b/g, 'خراپ'],
+    // --- Affirmation / negation ---
+    [/\bبله\b/g, 'بەڵێ'],
+    [/\bنه\b/g, 'نەخێر'],
+    // --- Demonstratives & conjunctions (existing) ---
     [/\bبرای\b/g, 'بۆ'],
     [/\bاگر\b/g, 'ئەگەر'],
     [/\bاین\b/g, 'ئەم'],
@@ -58,7 +135,7 @@ export function cleanPersianToKurdish(text: string): string {
   return cleaned;
 }
 
-export function stripAllHtmlTags(text: string): string {
+export function stripAllHtmlTags(text: string, targetLang?: string): string {
   if (!text) return '';
   const stripped = text
     .replace(/<[^>]*>?/g, '')
@@ -71,10 +148,11 @@ export function stripAllHtmlTags(text: string): string {
     .replace(/&quot;/gi, '"')
     .trim();
 
-  return cleanPersianToKurdish(stripped);
+  const isKurdishTarget = targetLang ? ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang) : false;
+  return isKurdishTarget ? cleanPersianToKurdish(stripped) : stripped;
 }
 
-export function parseSubtitleToCues(text: string): SubtitleCue[] {
+export function parseSubtitleToCues(text: string, targetLang?: string): SubtitleCue[] {
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   let cleanText = normalized;
@@ -94,7 +172,7 @@ export function parseSubtitleToCues(text: string): SubtitleCue[] {
         const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
         const textLines = lines.slice(timeIndex + 1);
         const filteredLines = textLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
-        const textContent = stripAllHtmlTags(filteredLines.join('\n').trim());
+        const textContent = stripAllHtmlTags(filteredLines.join('\n').trim(), targetLang);
         if (textContent) {
           cues.push({ index, timestamp, text: textContent });
         }
@@ -126,7 +204,32 @@ const getApiBaseUrl = (): string => {
 async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
   if (!chunkItems || chunkItems.length === 0) return null;
   const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+  const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(tgt);
 
+  // 1. Try Delimiter-Based single-string fetch
+  try {
+    const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
+    const joined = chunkItems.map(t => (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ')).join(delimiter);
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(joined)}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && Array.isArray(data[0])) {
+        const transStr = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('');
+        if (transStr) {
+          const splitRes = transStr.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
+          if (splitRes.length === chunkItems.length) {
+            return splitRes.map((item, idx) => {
+              const cleaned = item.trim();
+              return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
+            });
+          }
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fallback to individual items in small concurrent batches
   try {
     const BATCH_SIZE = 10;
     const results: string[] = [];
@@ -142,7 +245,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
             const data = await res.json();
             if (data && data[0] && Array.isArray(data[0])) {
               const trans = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('').trim();
-              if (trans) return trans;
+              if (trans) return isKurdishTarget ? cleanPersianToKurdish(trans) : trans;
             }
           }
         } catch (e) {}
@@ -278,7 +381,8 @@ export async function translateCuesToKurdish(
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 8;
+  const concurrency = 12;
+  let consecutiveBadBatches = 0;
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
@@ -300,14 +404,24 @@ export async function translateCuesToKurdish(
     }
 
     const batch = chunks.slice(i, i + concurrency);
+    let batchHadFailure = false;
     const batchPromises = batch.map(async (chunk, batchIdx) => {
       const chunkIndex = i + batchIdx;
       const translatedTexts = await translateChunkWithFallback(chunk, sourceLang, targetLang);
       if (signal?.aborted) return;
+      // Detect a degraded chunk
+      if (Array.isArray(translatedTexts) && translatedTexts.length === chunk.length) {
+        const changed = translatedTexts.filter((t, idx) => t && t.trim() && t !== chunk[idx].text).length;
+        if (changed === 0) batchHadFailure = true;
+      } else {
+        batchHadFailure = true;
+      }
+      const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang);
       const offset = chunkIndex * chunkSize;
       for (let j = 0; j < chunk.length; j++) {
         const rawTrans = translatedTexts[j] ?? chunk[j].text;
-        translatedCues[offset + j].text = cleanPersianToKurdish(rawTrans.replace(/\s*\/\s*/g, '\n'));
+        const cleanedText = rawTrans.replace(/\s*\/\s*/g, '\n');
+        translatedCues[offset + j].text = isKurdishTarget ? cleanPersianToKurdish(cleanedText) : cleanedText;
       }
       completedCount += chunk.length;
       if (onProgress) {
@@ -318,6 +432,17 @@ export async function translateCuesToKurdish(
     });
 
     await Promise.all(batchPromises);
+
+    // Adaptive backoff between batch windows
+    if (batchHadFailure) {
+      consecutiveBadBatches++;
+      const backoffMs = Math.min(consecutiveBadBatches * 200, 800);
+      if (backoffMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
+    } else {
+      consecutiveBadBatches = 0;
+    }
   }
 
   return translatedCues;
@@ -383,7 +508,7 @@ export async function translateAndSavePipeline(
   mediaType: string,
   season: number = 0,
   episode: number = 0,
-  targetLang: 'ku' | 'badini' = 'ku',
+  targetLang: string = 'ku',
   onProgress?: (progress: number, statusText: string, partialSubtitleUrl?: string) => void,
   signal?: AbortSignal,
   pauseState?: { isPaused: boolean }
@@ -433,8 +558,11 @@ export async function translateAndSavePipeline(
       }
     }
 
-    // Google Translate target code: Sorani is 'ckb', Badini (Kurmanji) is 'ku'
-    const apiTargetLang = targetLang === 'badini' ? 'ku' : 'ckb';
+    // Google Translate target code: Sorani is 'ckb', Badini (Kurmanji) is 'ku', pass-through any other language
+    const apiTargetLang =
+      targetLang === 'badini' ? 'ku' :
+      (targetLang === 'ku' || targetLang === 'ckb' || targetLang === 'sorani') ? 'ckb' :
+      targetLang;
 
     if (onProgress) onProgress(2, `Downloading ${sourceLang.toUpperCase()} subtitle track...`);
     
@@ -445,11 +573,15 @@ export async function translateAndSavePipeline(
     if (signal?.aborted) throw new DOMException('Translation cancelled by user', 'AbortError');
     if (onProgress) onProgress(5, "Parsing dialogue cues...");
     
-    const cues = parseSubtitleToCues(text);
+    const cues = parseSubtitleToCues(text, apiTargetLang);
     if (cues.length === 0) throw new Error("No subtitle cues found.");
 
-    const targetNameKurdish = targetLang === 'badini' ? 'Kurdish Badini' : 'Kurdish Sorani';
-    if (onProgress) onProgress(7, `Translating from ${sourceLang.toUpperCase()} to ${targetNameKurdish}...`);
+    const targetName =
+      targetLang === 'badini' ? 'Kurdish Badini' :
+      targetLang === 'ku' || targetLang === 'ckb' ? 'Kurdish Sorani' :
+      targetLang.toUpperCase();
+
+    if (onProgress) onProgress(7, `Translating from ${sourceLang.toUpperCase()} to ${targetName}...`);
 
     let lastEmittedPct = 0;
     const translatedCues = await translateCuesToKurdish(
@@ -483,11 +615,15 @@ export async function translateAndSavePipeline(
     );
 
     if (onProgress) onProgress(86, "Compiling translated dialogue to SRT format...");
+    // Yield to the event loop so the 86% UI frame paints before synchronous SRT build.
+    await new Promise(r => setTimeout(r, 0));
 
     const srtContent = compileToSRT(translatedCues);
     const blob = new Blob([srtContent], { type: 'text/plain' });
 
-    if (onProgress) onProgress(90, "Uploading SRT subtitle to Supabase storage...");
+    if (onProgress) onProgress(88, "Preparing subtitle file for upload...");
+    // Yield before the network upload so the 88% frame paints.
+    await new Promise(r => setTimeout(r, 0));
 
     const timeStamp = Date.now();
     const filePath = mediaType === 'tv'
@@ -506,6 +642,10 @@ export async function translateAndSavePipeline(
 
       if (uploadErr) throw uploadErr;
 
+      if (onProgress) onProgress(92, "Upload complete, registering in database...");
+      // Yield so the 92% frame paints before the Postgres upsert.
+      await new Promise(r => setTimeout(r, 0));
+
       if (onProgress) onProgress(94, "Retrieving secure public Vtt URL...");
 
       const { data: { publicUrl } } = supabase.storage
@@ -518,6 +658,8 @@ export async function translateAndSavePipeline(
       }
     } catch (storageErr) {
       console.warn("[SUBTITLE-PIPELINE] Primary storage upload failed, using high-reliability base64 fallback:", storageErr);
+      if (onProgress) onProgress(90, "Storage upload failed, using high-reliability base64 fallback...");
+      await new Promise(r => setTimeout(r, 0));
       const base64Srt = btoa(unescape(encodeURIComponent(srtContent)));
       resolvedPublicUrl = `data:text/plain;base64,${base64Srt}`;
     }
@@ -554,6 +696,9 @@ export async function translateAndSavePipeline(
     }
 
     // Realtime Global Broadcast Event: Notify all active clients watching this content
+    if (onProgress) onProgress(97, "Broadcasting to all connected viewers...");
+    // Yield so the 97% frame paints before Supabase Realtime subscription overhead.
+    await new Promise(r => setTimeout(r, 0));
     try {
       const channelKey = (mediaType === 'tv' || mediaType === 'series')
         ? `subtitle_sync_${tmdbId}_tv_${season || 0}_${episode || 0}`
@@ -593,7 +738,9 @@ export async function translateAndSavePipeline(
             mediaType: mediaType || 'movie',
             season: season || 0,
             episode: episode || 0,
-            language: targetLang
+            language: targetLang,
+            progress: 100,
+            isFinal: true
           }
         }));
       }

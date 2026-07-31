@@ -198,9 +198,18 @@ const ContinueWatchingPortal: React.FC = () => {
                           {/* Poster card container */}
                           <div className="h-48 rounded-2xl overflow-hidden relative border border-white/5 shadow-lg bg-black">
                             <img 
-                              src={item.poster_path?.startsWith('http') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
+                              src={
+                                (item.poster_path || (item as any).imageBase64)
+                                  ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
+                                      ? (item.poster_path || (item as any).imageBase64)
+                                      : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
+                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                              }
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
                               alt={item.title} 
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                              }}
                             />
                             
                             {/* Hover Overlay */}
@@ -336,9 +345,18 @@ const ContinueWatchingPortal: React.FC = () => {
 
               <div className="absolute inset-1.5 md:inset-2 rounded-full overflow-hidden z-10 border border-white/20 bg-black">
                 <img 
-                  src={activeItem.poster_path?.startsWith('http') ? activeItem.poster_path : `${IMAGE_BASE_URL_POSTER}${activeItem.poster_path}`} 
+                  src={
+                    (activeItem.poster_path || (activeItem as any).imageBase64)
+                      ? ((activeItem.poster_path || (activeItem as any).imageBase64).startsWith('http') || (activeItem.poster_path || (activeItem as any).imageBase64).startsWith('data:')
+                          ? (activeItem.poster_path || (activeItem as any).imageBase64)
+                          : `${IMAGE_BASE_URL_POSTER}${activeItem.poster_path}`)
+                      : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                  }
                   className="w-full h-full object-cover opacity-50 transition-transform duration-500 group-hover:scale-110" 
                   alt="" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                  }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
                    <div 

@@ -224,7 +224,8 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
         >
           {content.map((item, index) => {
               const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
-              if (!item.poster_path || !mediaType) return null;
+              const imageSrc = item.poster_path || (item as any).imageBase64;
+              if (!imageSrc || !mediaType) return null;
               return (
                 <MovieCard
                   key={`${item.id}-${index}-${mediaType}`}

@@ -102,7 +102,7 @@ export interface SubtitleManagerPanelProps {
   currentSubId?: string | number | null;
   isSearchingSubs?: boolean;
   onSelectSub?: (sub: SubtitleTrack) => void;
-  onStartTranslation?: (sub: SubtitleTrack, targetLang: 'ku' | 'badini') => void;
+  onStartTranslation?: (sub: SubtitleTrack, targetLang: string) => void;
   onRetrySearch?: () => void;
   getLanguageFlag?: (lang: string) => any;
 
@@ -334,87 +334,85 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-6 pointer-events-none"
+      transition={{ duration: 0.15 }}
+      className="absolute inset-0 z-[200] flex items-end justify-center md:items-center md:justify-end p-0 md:p-4 pointer-events-none"
     >
           {/* Panel */}
           <motion.div
             ref={panelRef}
-            initial={{ y: '110%', opacity: 0 }}
+            initial={{ y: isMobile ? '100%' : 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '110%', opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ y: isMobile ? '100%' : 20, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             drag={isMobile ? "y" : false}
             dragControls={dragControls}
-            dragListener={true}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={{ top: 0, bottom: 0.8 }}
-            onDragEnd={(e, info) => {
-              if (info.offset.y > 120 || info.velocity.y > 400) {
+            dragElastic={{ top: 0, bottom: 0.6 }}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y > 100 || info.velocity.y > 350) {
                 onClose();
               }
             }}
-            className="subtitle-manager-panel relative pointer-events-auto w-full md:w-[420px] h-[80vh] md:h-[85vh]
-                       border-t md:border border-white/[0.08]
-                       rounded-t-[32px] md:rounded-[32px]
+            className="subtitle-manager-panel relative pointer-events-auto w-full md:w-[400px]
+                       h-[78vh] md:h-[82vh] max-h-[680px]
+                       border-t md:border rounded-t-[28px] md:rounded-[28px]
                        flex flex-col overflow-hidden"
             style={{
               fontFamily: "'Zain', 'Outfit', 'Inter', sans-serif",
-              background: `radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.12), transparent 70%), rgba(10, 10, 15, 0.85)`,
-              backdropFilter: isMobile ? `blur(16px) saturate(140%)` : `blur(28px) saturate(160%)`,
-              WebkitBackdropFilter: isMobile ? `blur(16px) saturate(140%)` : `blur(28px) saturate(160%)`,
+              background: 'rgba(9, 9, 12, 0.92)',
+              backdropFilter: isMobile ? 'blur(12px)' : 'blur(24px) saturate(150%)',
+              WebkitBackdropFilter: isMobile ? 'blur(12px)' : 'blur(24px) saturate(150%)',
+              willChange: 'transform',
               transform: 'translate3d(0,0,0)',
-              borderColor: 'rgba(255, 255, 255, 0.08)',
-              paddingLeft: 'env(safe-area-inset-left, 0px)',
-              paddingRight: 'env(safe-area-inset-right, 0px)',
+              borderColor: 'rgba(255,255,255,0.07)',
               paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-              boxShadow: `
-                inset 0 1px 0 0 rgba(255, 255, 255, 0.15),
-                inset 1.5px 0 0.5px rgba(255, 0, 80, 0.08),
-                inset -1.5px 0 0.5px rgba(0, 200, 255, 0.08),
-                0 30px 60px rgba(0,0,0,0.55)
-              `
+              boxShadow: '0 -2px 0 0 rgba(220,38,38,0.15), 0 24px 48px rgba(0,0,0,0.6)'
             }}
           >
-            {/* Dynamic liquid shine overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite] z-0"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                opacity: 0.8,
-              }}
-            />
+            {/* Top accent line */}
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500/40 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex flex-col h-full w-full overflow-hidden">
-              {/* Mobile drag handle */}
-              <div 
-                className="w-10 h-1 bg-white/10 rounded-full mx-auto mt-3 mb-1 shrink-0 md:hidden cursor-grab active:cursor-grabbing" 
-                style={{ touchAction: 'none' }}
-                onPointerDown={(e) => dragControls.start(e)}
+              {/* Mobile drag handle — pointer-down starts drag */}
+              <div
+                className="w-9 h-[3px] bg-white/15 rounded-full mx-auto mt-2.5 mb-0.5 shrink-0 md:hidden cursor-grab active:cursor-grabbing touch-none"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  dragControls.start(e);
+                }}
               />
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-3 pb-4 border-b border-white/[0.06] shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+            <div className="flex items-center justify-between px-5 pt-3 pb-3.5 border-b border-white/[0.06] shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-red-500/10 border border-red-500/15 flex items-center justify-center shrink-0">
                   <Subtitles size={14} className="text-red-400" />
                 </div>
-                <span className="text-sm font-black text-white tracking-tight">
-                  {isKu ? 'ڕێکخستنی ژێرنووس' : 'Subtitle Studio'}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-[13px] font-black text-white leading-tight tracking-tight">
+                    {isKu ? 'ژێرنووس' : 'Subtitles'}
+                  </span>
+                  <span className="text-[9px] text-zinc-500 font-medium uppercase tracking-widest leading-none">
+                    {isKu ? 'ستودیۆی CC' : 'CC Studio'}
+                  </span>
+                </div>
               </div>
-              <motion.button
+              <button
                 type="button"
                 onClick={onClose}
-                whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)' }}
-                whileTap={{ scale: 0.9 }}
-                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+                className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white active:scale-90 transition-all"
               >
-                <X size={15} />
-              </motion.button>
+                <X size={14} />
+              </button>
             </div>
 
-            {/* Scrollable body */}
-            <div className="flex-1 overflow-y-auto flex flex-col gap-5 p-5" onPointerDownCapture={e => e.stopPropagation()}>
+            {/* Scrollable body — overscroll-contain prevents page scroll bleed on mobile */}
+            <div
+              className="flex-1 overflow-y-auto flex flex-col gap-4 p-4"
+              style={{ overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
+              onPointerDownCapture={e => e.stopPropagation()}
+            >
 
               {/* ── Segmented Tabs ── */}
               <div className="relative flex bg-white/[0.03] border border-white/[0.06] rounded-2xl p-1 gap-1 shrink-0">
@@ -1475,12 +1473,12 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                   className="w-full max-w-sm bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-3xl rounded-3xl p-6 shadow-2xl relative shadow-red-500/5"
                 >
                   <h3 className="text-sm font-black text-white text-center mb-2 uppercase tracking-wide" style={{ fontFamily: "'Zain', sans-serif" }}>
-                    {isKu ? 'وەرگێڕانی ژێرنووس' : 'Translate Subtitle'}
+                    {isKu ? 'وەرگێڕانی ژێرنووس بۆ هەر زمانێک' : 'Translate Subtitle to Any Language'}
                   </h3>
-                  <p className="text-[14px] text-zinc-400 text-center mb-6 leading-relaxed" style={{ fontFamily: "'Zain', sans-serif" }}>
+                  <p className="text-[14px] text-zinc-400 text-center mb-5 leading-relaxed" style={{ fontFamily: "'Zain', sans-serif" }}>
                     {isKu
-                      ? 'ئایا دەتەوێت ئەم ژێرنووسە وەربگێڕیتە سەر زمانی کوردی یان بە زمانی بنەڕەتی بمێنیتەوە؟'
-                      : 'Do you want to translate this subtitle to Kurdish, or stay in the original language?'}
+                      ? 'دیاریبکە دەتەوێت ئەم ژێرنووسە وەربگێڕیتە سەر چ زمانێک:'
+                      : 'Choose the target language for full AI subtitle translation:'}
                   </p>
                   <div className="flex flex-col gap-2">
                     <button
@@ -1494,7 +1492,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       style={{ fontFamily: "'Zain', sans-serif" }}
                     >
                       <Sparkles size={13} className="text-yellow-300 animate-pulse" />
-                      {isKu ? 'وەرگێڕان بۆ سۆرانی (Sorani)' : 'Translate to Kurdish Sorani'}
+                      {isKu ? 'وەرگێڕان بۆ سۆرانی (Kurdish Sorani)' : 'Translate to Kurdish Sorani'}
                     </button>
                     <button
                       type="button"
@@ -1507,8 +1505,44 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       style={{ fontFamily: "'Zain', sans-serif" }}
                     >
                       <Globe size={13} className="text-emerald-300" />
-                      {isKu ? 'وەرگێڕان بۆ بادینی (Badini)' : 'Translate to Kurdish Badini'}
+                      {isKu ? 'وەرگێڕان بۆ بادینی (Kurdish Badini)' : 'Translate to Kurdish Badini'}
                     </button>
+
+                    {/* Selector for All World Languages */}
+                    <div className="relative my-1">
+                      <select
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            const sub = confirmTranslateSub;
+                            setConfirmTranslateSub(null);
+                            onStartTranslation?.(sub, val);
+                          }
+                        }}
+                        defaultValue=""
+                        className="w-full py-3 px-4 bg-white/5 hover:bg-white/10 border border-white/15 text-white rounded-2xl text-[12px] font-bold outline-none cursor-pointer transition-all appearance-none text-center"
+                        style={{ fontFamily: "'Zain', sans-serif" }}
+                      >
+                        <option value="" disabled className="bg-zinc-900 text-zinc-400">
+                          {isKu ? '🌐 زمانی تر هەڵبژێرە (More Languages)...' : '🌐 Select Other Target Language...'}
+                        </option>
+                        <option value="ar" className="bg-zinc-900 text-white">🇸🇦 Arabic (العربية)</option>
+                        <option value="en" className="bg-zinc-900 text-white">🇬🇧 English</option>
+                        <option value="tr" className="bg-zinc-900 text-white">🇹🇷 Turkish (Türkçe)</option>
+                        <option value="fa" className="bg-zinc-900 text-white">🇮🇷 Persian (فارسی)</option>
+                        <option value="de" className="bg-zinc-900 text-white">🇩🇪 German (Deutsch)</option>
+                        <option value="fr" className="bg-zinc-900 text-white">🇫🇷 French (Français)</option>
+                        <option value="es" className="bg-zinc-900 text-white">🇪🇸 Spanish (Español)</option>
+                        <option value="ru" className="bg-zinc-900 text-white">🇷🇺 Russian (Русский)</option>
+                        <option value="it" className="bg-zinc-900 text-white">🇮🇹 Italian (Italiano)</option>
+                        <option value="nl" className="bg-zinc-900 text-white">🇳🇱 Dutch (Nederlands)</option>
+                        <option value="zh-CN" className="bg-zinc-900 text-white">🇨🇳 Chinese (中文)</option>
+                        <option value="ja" className="bg-zinc-900 text-white">🇯🇵 Japanese (日本語)</option>
+                        <option value="ko" className="bg-zinc-900 text-white">🇰🇷 Korean (한국어)</option>
+                        <option value="hi" className="bg-zinc-900 text-white">🇮🇳 Hindi (हिन्दी)</option>
+                      </select>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -1516,7 +1550,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                         setConfirmTranslateSub(null);
                         onSelectSub?.(sub);
                       }}
-                      className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl text-[13px] font-black uppercase tracking-wider transition-all active:scale-95"
+                      className="w-full py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl text-[12px] font-black uppercase tracking-wider transition-all active:scale-95"
                       style={{ fontFamily: "'Zain', sans-serif" }}
                     >
                       {isKu ? 'مانەوە بە زمانی بنەڕەتی' : 'Stay in Original Language'}
@@ -1524,7 +1558,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => setConfirmTranslateSub(null)}
-                      className="w-full py-2.5 text-zinc-500 hover:text-zinc-300 text-[12px] font-bold uppercase transition-colors"
+                      className="w-full py-2 text-zinc-500 hover:text-zinc-300 text-[11px] font-bold uppercase transition-colors"
                       style={{ fontFamily: "'Zain', sans-serif" }}
                     >
                       {isKu ? 'پاشگەزبوونەوە' : 'Cancel'}

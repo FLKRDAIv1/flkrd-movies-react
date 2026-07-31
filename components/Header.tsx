@@ -831,9 +831,18 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                         >
                           <div className="w-10 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-box-bg border border-border-color relative">
                             <img 
-                              src={item.poster_path?.startsWith('http') ? item.poster_path : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`} 
+                              src={
+                                (item.poster_path || (item as any).imageBase64)
+                                  ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
+                                      ? (item.poster_path || (item as any).imageBase64)
+                                      : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
+                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                              }
                               alt="" 
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                              }}
                             />
                           </div>
                           

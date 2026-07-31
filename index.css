@@ -976,9 +976,7 @@ a,
 @media (pointer: coarse) {
 
   /* ── 1. Disable hover-only visual effects on touch (they never trigger on mobile) ── */
-  .holographic-sheen,
-  [class*="group-hover"],
-  .group\/card:hover .holographic-sheen {
+  .holographic-sheen {
     animation: none !important;
     opacity: 0 !important;
   }

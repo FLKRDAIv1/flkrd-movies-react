@@ -7,7 +7,7 @@ import {
 import { Content, WatchProgress } from '../types';
 import { fetchData } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
-import { API_KEY, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, CUSTOM_DUBBED_ARCHIVE } from '../constants';
+import { API_KEY, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_PROFILE, CUSTOM_DUBBED_ARCHIVE } from '../constants';
 import { SkeletonDetailPage } from '../components/Skeleton';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -161,8 +161,13 @@ const DubbedDetailPage: React.FC = () => {
         return extractEmbedSrc(source);
     }, [dubbedData]);
 
+    const lastProgressSaveRef = useRef<number>(0);
     const updateProgress = useCallback((time: number, duration: number) => {
         if (!dubbedData && !content) return;
+        const now = Date.now();
+        if (now - lastProgressSaveRef.current < 5000) return;
+        lastProgressSaveRef.current = now;
+
         const progressData = localStorage.getItem('watchProgress');
         let progress: WatchProgress[] = progressData ? JSON.parse(progressData) : [];
 
@@ -180,7 +185,7 @@ const DubbedDetailPage: React.FC = () => {
             vote_average: dubbedData?.vote_average || content?.vote_average,
             progress: time,
             duration: duration || 7200,
-            lastWatched: Date.now()
+            lastWatched: now
         };
 
         if (index > -1) progress[index] = item;
@@ -193,44 +198,46 @@ const DubbedDetailPage: React.FC = () => {
 
     useEffect(() => {
         const handlePlayerMessages = (event: MessageEvent) => {
-            try {
-                const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                if (!payload || typeof payload !== 'object') return;
+            setTimeout(() => {
+                try {
+                    const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                    if (!payload || typeof payload !== 'object') return;
 
-                let time = 0;
-                let duration = 0;
+                    let time = 0;
+                    let duration = 0;
 
-                // 1. Videasy format: { timestamp: number, duration: number, progress: number }
-                if (payload.timestamp !== undefined && payload.duration !== undefined) {
-                    time = Number(payload.timestamp);
-                    duration = Number(payload.duration);
-                }
-                // 2. VidLink Pro format: { type: 'PLAYER_EVENT', data: { currentTime, duration } }
-                else if (payload.type === 'PLAYER_EVENT' && payload.data) {
-                    time = payload.data.currentTime || payload.data.time || 0;
-                    duration = payload.data.duration || 0;
-                }
-                // 3. VidLink MEDIA_DATA format
-                else if (payload.type === 'MEDIA_DATA' && payload.data) {
-                    time = payload.data.currentTime || 0;
-                    duration = payload.data.duration || 0;
-                }
-                // 4. Standard timeupdate events (VidKing, others)
-                else if (payload.event === 'timeupdate' || payload.type === 'timeupdate' || payload.event === 'pause') {
-                    const d = payload.data || payload;
-                    time = d.currentTime || d.time || d.seconds || 0;
-                    duration = d.duration || 0;
-                }
-                // 5. Generic currentTime fallback
-                else if (payload.currentTime !== undefined) {
-                    time = Number(payload.currentTime);
-                    duration = payload.duration ? Number(payload.duration) : 0;
-                }
+                    // 1. Videasy format: { timestamp: number, duration: number, progress: number }
+                    if (payload.timestamp !== undefined && payload.duration !== undefined) {
+                        time = Number(payload.timestamp);
+                        duration = Number(payload.duration);
+                    }
+                    // 2. VidLink Pro format: { type: 'PLAYER_EVENT', data: { currentTime, duration } }
+                    else if (payload.type === 'PLAYER_EVENT' && payload.data) {
+                        time = payload.data.currentTime || payload.data.time || 0;
+                        duration = payload.data.duration || 0;
+                    }
+                    // 3. VidLink MEDIA_DATA format
+                    else if (payload.type === 'MEDIA_DATA' && payload.data) {
+                        time = payload.data.currentTime || 0;
+                        duration = payload.data.duration || 0;
+                    }
+                    // 4. Standard timeupdate events (VidKing, others)
+                    else if (payload.event === 'timeupdate' || payload.type === 'timeupdate' || payload.event === 'pause') {
+                        const d = payload.data || payload;
+                        time = d.currentTime || d.time || d.seconds || 0;
+                        duration = d.duration || 0;
+                    }
+                    // 5. Generic currentTime fallback
+                    else if (payload.currentTime !== undefined) {
+                        time = Number(payload.currentTime);
+                        duration = payload.duration ? Number(payload.duration) : 0;
+                    }
 
-                if (time > 0 && duration > 0) {
-                    updateProgress(time, duration);
-                }
-            } catch (e) { }
+                    if (time > 0 && duration > 0) {
+                        updateProgress(time, duration);
+                    }
+                } catch (e) { }
+            }, 0);
         };
         window.addEventListener('message', handlePlayerMessages);
         return () => window.removeEventListener('message', handlePlayerMessages);
@@ -433,7 +440,10 @@ if (loading && !dubbedData && !content) return <SkeletonDetailPage />;
 const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading...") as string;
 const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
 
-const backdropUrl = dubbedData?.bannerBase64 || (content?.backdrop_path ? `${IMAGE_BASE_URL}${content.backdrop_path}` : (dubbedData?.poster_path || ''));
+const backdropRaw = dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path || dubbedData?.poster_path || content?.poster_path || '';
+const backdropUrl = backdropRaw
+    ? (backdropRaw.startsWith('http') || backdropRaw.startsWith('data:') ? backdropRaw : `${IMAGE_BASE_URL}${backdropRaw}`)
+    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
 const isReady = !!(embedUrl || dubbedData || content);
 
 if (!isReady) return <SkeletonDetailPage />;
@@ -442,7 +452,16 @@ return (
     <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
-                {backdropUrl && <img src={backdropUrl} className="w-full h-full object-cover blur-[120px] scale-150" alt="" />}
+                {backdropUrl && (
+                    <img 
+                        src={backdropUrl} 
+                        className="w-full h-full object-cover blur-[120px] scale-150" 
+                        alt="" 
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                        }}
+                    />
+                )}
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
             </div>
 
@@ -565,9 +584,10 @@ return (
                                 <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
                                     <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative">
                                         <img 
-                                            src={person.profile_path ? `${IMAGE_BASE_URL}${person.profile_path}` : '/flkrd-icon.png'} 
+                                            src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.png'} 
                                             alt={person.name} 
-                                            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                                            className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
+                                            onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
                                         />
                                     </div>
                                     <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-main-text">{person.name}</p>
@@ -628,9 +648,10 @@ return (
                                     <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
                                         <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-border-color shadow-2xl relative bg-box-bg mx-auto">
                                             <img 
-                                                src={actorDetails.profile_path ? `${IMAGE_BASE_URL}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                                                src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
                                                 alt={actorDetails.name}
                                                 className="w-full h-full object-cover"
+                                                onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
                                             />
                                         </div>
                                         

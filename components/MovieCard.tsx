@@ -186,27 +186,24 @@ export const MovieCard = React.memo(
         )}
 
         {/* Poster artwork window with inner border */}
-        <div className="relative flex-1 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">
+        <div className="relative flex-1 min-h-0 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">
           <img
             src={
               (imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:')))
                 ? imageSrc
                 : (imageSrc
-                    ? `${IMAGE_BASE_URL_THUMB}${imageSrc}`
+                    ? `${IMAGE_BASE_URL_POSTER}${imageSrc}`
                     : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp')
             }
-            srcSet={
-              (imageSrc && !imageSrc.startsWith('http') && !imageSrc.startsWith('data:'))
-                ? `${IMAGE_BASE_URL_THUMB}${imageSrc} 342w, ${IMAGE_BASE_URL_POSTER}${imageSrc} 500w`
-                : undefined
-            }
-            sizes="(max-width: 768px) 176px, 288px"
             alt={title}
             width={342}
             height={513}
             className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
-            loading="lazy"
             decoding="async"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+            }}
           />
 
           {/* IMDb Rating Badge */}
