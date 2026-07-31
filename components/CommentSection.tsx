@@ -76,13 +76,15 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     };
   }, [user]);
 
-  // Fetch comments — uses correct column name 'movie_id' (text) matching DB schema
+  const numericTmdbId = parseInt(String(cleanId).replace(/[^0-9]/g, ''), 10) || 0;
+
+  // Fetch comments — queries by both movie_id and tmdb_id to support legacy and new DB schemas
   const fetchComments = async () => {
     try {
       const { data, error } = await supabase
         .from('comments')
         .select('*')
-        .eq('movie_id', String(cleanId))
+        .or(`movie_id.eq.${String(cleanId)},tmdb_id.eq.${numericTmdbId}`)
         .order('created_at', { ascending: true });
 
       if (!error && data) {
@@ -111,7 +113,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
         .channel(`comments_sync_${cleanId}_${mediaType}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'comments', filter: `movie_id=eq.${String(cleanId)}` },
+          { event: '*', schema: 'public', table: 'comments' },
           () => { fetchComments(); }
         )
         .subscribe();
@@ -128,6 +130,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     setSubmitting(true);
     try {
       const { error } = await supabase.from('comments').insert([{
+        tmdb_id: numericTmdbId,
         movie_id: String(cleanId),
         media_type: mediaType,
         user_id: user.id,
@@ -154,6 +157,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ movieId, mediaType }) =
     setSubmitting(true);
     try {
       const { error } = await supabase.from('comments').insert([{
+        tmdb_id: numericTmdbId,
         movie_id: String(cleanId),
         media_type: mediaType,
         user_id: user.id,
