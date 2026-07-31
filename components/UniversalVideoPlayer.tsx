@@ -1463,16 +1463,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 // If Supabase failed, returned empty text, or customSub couldn't be loaded, auto-translate OpenSubtitles/Stremio base CC!
                 if ((!customSub || !loadedText) && safeResults.length > 0) {
-                    const foundEn = safeResults.find(sub => {
+                    const foundBaseSub = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
                         return lang === 'en' || lang === 'eng';
+                    }) || safeResults.find(sub => {
+                        const lang = (sub?.attributes?.language || '').toLowerCase();
+                        return !['ku', 'ckb', 'kur', 'badini'].includes(lang);
                     }) || safeResults[0];
 
-                    if (foundEn) {
+                    if (foundBaseSub) {
                         if (!subtitleUrl && !localSubtitleUrl) {
-                            console.log("[UNIVERSAL-PLAYER] Supabase fallback: Automatically translating default base CC to Kurdish...");
+                            console.log("[UNIVERSAL-PLAYER] Supabase fallback: Automatically translating base CC track to Kurdish...", foundBaseSub.attributes?.language);
                             const targetLang = (language === 'badini') ? 'badini' : 'ku';
-                            handleStartTranslation(foundEn, targetLang);
+                            handleStartTranslation(foundBaseSub, targetLang);
                         }
                     }
                 }
