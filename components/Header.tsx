@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
-import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle, Maximize2, Minimize2, ShieldAlert } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import NotificationInbox from './NotificationInbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -437,6 +437,23 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
                   </button>
 
+                  {/* Dedicated Admin Panel Button if isAdmin is true */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => navigate('/dubbed?admin=true')}
+                      className={cn(
+                        "h-7 px-3.5 rounded-full flex items-center justify-center gap-1.5 border transition-all active:scale-[0.97] select-none shadow-sm shrink-0 font-black text-[9px] uppercase tracking-widest",
+                        isDarkNavbar 
+                          ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
+                          : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90 shadow-red-500/5 shadow-inner"
+                      )}
+                      title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
+                    >
+                      <ShieldAlert size={12} />
+                      <span>{language === 'ku' || language === 'badini' ? 'بەڕێوەبەر' : 'Admin'}</span>
+                    </button>
+                  )}
+
                  {/* Consolidated User Profile Capsule with Dropdown Menu */}
                  <div className="relative" ref={profileMenuRef}>
                    <div 
@@ -465,11 +482,24 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
                          className="absolute left-0 mt-2 w-44 bg-card-bg/95 border border-border-color rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-50 backdrop-blur-3xl p-2 flex flex-col gap-1 text-left"
                        >
-                         <button
-                           onClick={() => {
-                             setIsProfileDropdownOpen(false);
-                             navigate('/profile');
-                           }}
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                setIsProfileDropdownOpen(false);
+                                navigate('/dubbed?admin=true');
+                              }}
+                              className="w-full px-3 py-1.5 hover:bg-red-500/10 text-red-500 hover:text-red-400 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                            >
+                              <ShieldAlert size={14} className="text-red-500" />
+                              <span>{language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              navigate('/profile');
+                            }}
                            className="w-full px-3 py-1.5 hover:bg-box-bg text-sec-text hover:text-main-text rounded-xl text-xs font-bold transition-all flex items-center gap-2"
                          >
                            <User size={14} className="text-sec-text" />
@@ -577,6 +607,23 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     >
                       {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
                     </button>
+
+                    {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
+                    {isAdmin && (
+                      <button
+                        onClick={() => navigate('/dubbed?admin=true')}
+                        className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                          isDarkNavbar 
+                            ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
+                            : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90"
+                        )}
+                        title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
+                        aria-label="Admin Panel"
+                      >
+                        <ShieldAlert size={13} />
+                      </button>
+                    )}
 
                     {/* Avatar Link */}
                     <div 
@@ -732,6 +779,22 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
               {/* Drawer Quick Controls */}
               <div className="mt-6 space-y-3">
+
+                {/* Admin Panel row (Mobile Drawer) */}
+                {isAdmin && (
+                  <button
+                    onClick={() => { setIsDrawerOpen(false); navigate('/dubbed?admin=true'); }}
+                    className="w-full flex items-center justify-between p-3.5 bg-red-500/5 border border-red-500/25 rounded-2.5xl text-left hover:bg-red-500/10 transition-all focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ShieldAlert className="w-4.5 h-4.5 text-red-500" />
+                      <span className="text-[11px] font-black uppercase tracking-wider text-red-500">
+                        {language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
 
                 {/* Turbo 60 FPS Performance Mode row */}
                 <div className="flex items-center justify-between p-3.5 bg-box-bg border border-border-color rounded-2.5xl">

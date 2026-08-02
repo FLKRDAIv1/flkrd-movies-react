@@ -382,7 +382,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // 🔴 AUTO-ADMIN AUTHORIZATION: Automatically detect if logged-in user is CEO or active Sub-Admin
   useEffect(() => {
     const checkAndAuthorizeAdmin = (emailStr?: string | null) => {
-      if (!emailStr) return;
+      if (!emailStr) {
+        setIsAdmin(false);
+        setCurrentAdminEmail(null);
+        return;
+      }
       const cleanEmail = emailStr.trim().toLowerCase();
 
       // 1. CEO Master Check
@@ -405,28 +409,26 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           }
         }
       } catch (e) {}
+
+      // Default: clear admin state if not matching
+      setIsAdmin(false);
+      setCurrentAdminEmail(null);
     };
 
     // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user?.email) {
-        checkAndAuthorizeAdmin(session.user.email);
-      }
+      checkAndAuthorizeAdmin(session?.user?.email);
     });
 
     // Listen to real-time auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user?.email) {
-        checkAndAuthorizeAdmin(session.user.email);
-      }
+      checkAndAuthorizeAdmin(session?.user?.email);
     });
 
     // Listen for custom sub-admin list updates from AdminManagementModal or Supabase sync
     const handleSubAdminsUpdated = () => {
       supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user?.email) {
-          checkAndAuthorizeAdmin(session.user.email);
-        }
+        checkAndAuthorizeAdmin(session?.user?.email);
       });
     };
 

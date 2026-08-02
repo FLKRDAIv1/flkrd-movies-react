@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Mic2, Play, Zap, Share2, X, Send,
@@ -224,6 +224,8 @@ const DubbedMoviesPage: React.FC = () => {
 
     const [scrollPosition, setScrollPosition] = useState(0);
 
+    const location = useLocation();
+
     // Admin State - Pulled from Global UI Context
     const { accentColor, isPerformanceMode, isAdmin, setIsAdmin, loginAsAdmin, glassConfig = {
         redOpacity: 0.15,
@@ -235,6 +237,14 @@ const DubbedMoviesPage: React.FC = () => {
     } } = useUI();
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [showUploadModal, setShowUploadModal] = useState(false);
+
+    // Auto-open upload panel if url param admin=true and user is authorized
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        if (queryParams.get('admin') === 'true' && isAdmin) {
+            setShowUploadModal(true);
+        }
+    }, [location.search, isAdmin]);
     const [adminEmail, setAdminEmail] = useState('');
     const [adminPassword, setAdminPassword] = useState('');
 
