@@ -86,7 +86,30 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
     }
   };
 
+  const [isVisible, setIsVisible] = useState<boolean>(!fetchUrl || Boolean(items));
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
+    if (!fetchUrl || items) {
+      setIsVisible(true);
+      return;
+    }
+    if (!containerRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '450px 0px' }
+    );
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [fetchUrl, items]);
+
+  useEffect(() => {
+    if (!isVisible) return;
     loadInitialData();
     window.addEventListener('storage', updateMyListIds);
     window.addEventListener('banned-list-updated', loadInitialData);
@@ -94,7 +117,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
         window.removeEventListener('storage', updateMyListIds);
         window.removeEventListener('banned-list-updated', loadInitialData);
     };
-  }, [fetchUrl, items, language, updateMyListIds]);
+  }, [isVisible, fetchUrl, items, language, updateMyListIds]);
 
   const handleToggleMyList = (e: React.MouseEvent, item: any, mediaType: 'movie' | 'tv') => {
     e.stopPropagation();
@@ -199,6 +222,24 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
       navigate(`/details/${mType}/${item.id}`, { state: { customData: item } });
     }
   };
+
+  if (!isVisible && !items) {
+    return (
+      <div ref={containerRef} className="mb-10 md:mb-16 px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto relative z-20 min-h-[160px] md:min-h-[260px]">
+        {title && (
+          <div className="flex items-center justify-between mb-8">
+            <h2 className={`text-xl md:text-4xl font-[1000] flex items-center uppercase text-main-text ${language !== 'ku' ? 'italic tracking-tighter' : ''}`}>
+              <span className="w-1 md:w-2 h-8 md:h-12 bg-brand/30 rounded-full me-4 md:me-6" />
+              <span>{title}</span>
+            </h2>
+          </div>
+        )}
+        <div className="flex gap-4 md:gap-8 overflow-hidden py-4 px-1 opacity-25">
+          {[1,2,3,4,5].map(i => <div key={i} className="flex-shrink-0 w-32 md:w-56 aspect-[2/3] bg-main-text/5 rounded-[2rem]" />)}
+        </div>
+      </div>
+    );
+  }
 
   const isRowLoading = externalLoading !== undefined ? externalLoading : loading;
 

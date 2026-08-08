@@ -316,7 +316,7 @@ const HomePage: React.FC = () => {
     <div className="pb-40 relative">
       {/* Immersive full-screen ambient backdrop glow synced with active carousel item */}
       {activeItem && activeItem.backdrop_path && (
-        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-1000">
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none transition-all duration-1000 hidden md:block">
           <div 
             className="absolute inset-0 z-10 transition-all duration-1000" 
             style={{

@@ -17,8 +17,9 @@ interface MovieCardProps {
   item: any; // Can be Content, WatchProgress, or MyListItem
   type?: 'movie' | 'tv' | 'dubbed';
   isProgressRow?: boolean;
-  className?: string;
 }
+
+const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
 export const MovieCard = React.memo(
   React.forwardRef<HTMLDivElement, MovieCardProps>(
@@ -35,12 +36,6 @@ export const MovieCard = React.memo(
     aberrationIntensity: 0.5
   } } = useUI();
   const [isAdded, setIsAdded] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
-  }, [item.id]);
-
   const isCustom = String(item.id).startsWith('custom_');
   const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
 
@@ -149,8 +144,8 @@ export const MovieCard = React.memo(
       onMouseEnter={handlePrefetch}
       onPointerDown={handlePrefetch}
       className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation ${className || 'w-44 md:w-72'}`}
-      whileHover={!isTouchDevice ? { scale: 1.04, y: -6 } : undefined}
-      whileTap={!isTouchDevice ? { scale: 0.96 } : undefined}
+      whileHover={!IS_TOUCH_DEVICE ? { scale: 1.04, y: -6 } : undefined}
+      whileTap={!IS_TOUCH_DEVICE ? { scale: 0.96 } : undefined}
       transition={{
           type: "spring",
           stiffness: 260,
