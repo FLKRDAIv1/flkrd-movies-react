@@ -729,7 +729,7 @@ const TVDetailPage: React.FC = () => {
 
   return (
     <div className="pb-52 md:pb-40 bg-main-bg bg-[#050505] min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
-      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
+      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60 hidden md:block">
         <img 
           src={
             content.backdrop_path || content.poster_path

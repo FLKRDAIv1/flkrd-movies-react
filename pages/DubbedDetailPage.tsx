@@ -496,7 +496,7 @@ if (!isReady) return <SkeletonDetailPage />;
 return (
     <div className="min-h-screen bg-main-bg bg-[#050505] text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
-            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
+            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 hidden md:block ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
                 {backdropUrl && (
                     <img 
                         src={backdropUrl} 

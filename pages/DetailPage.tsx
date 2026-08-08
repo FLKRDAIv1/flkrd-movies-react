@@ -43,7 +43,7 @@ const ColorMixtureDivider: React.FC = () => {
           opacity: [0.2, 0.4, 0.2]
         }}
         transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="absolute -left-20 top-1/2 -translate-y-1/2 w-80 h-40 rounded-full blur-[80px]"
+        className="absolute -left-20 top-1/2 -translate-y-1/2 w-80 h-40 rounded-full blur-[80px] hidden md:block"
         style={{ backgroundColor: isMoon ? '#38bdf8' : accentColor + '44' }}
       />
       <motion.div
@@ -52,7 +52,7 @@ const ColorMixtureDivider: React.FC = () => {
           opacity: [0.1, 0.3, 0.1]
         }}
         transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-        className="absolute -right-20 top-1/2 -translate-y-1/2 w-96 h-48 bg-indigo-600/20 rounded-full blur-[100px]"
+        className="absolute -right-20 top-1/2 -translate-y-1/2 w-96 h-48 bg-indigo-600/20 rounded-full blur-[100px] hidden md:block"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
     </div>
@@ -747,7 +747,7 @@ const DetailPage: React.FC = () => {
 
   return (
     <div className="pb-52 md:pb-40 bg-main-bg bg-[#050505] min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
-      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
+      <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60 hidden md:block">
         <img 
           src={
             content.backdrop_path || content.poster_path
