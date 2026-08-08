@@ -149,8 +149,8 @@ export const MovieCard = React.memo(
       onMouseEnter={handlePrefetch}
       onPointerDown={handlePrefetch}
       className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation ${className || 'w-44 md:w-72'}`}
-      whileHover={{ scale: 1.04, y: -6 }}
-      whileTap={{ scale: 0.96 }}
+      whileHover={!isTouchDevice ? { scale: 1.04, y: -6 } : undefined}
+      whileTap={!isTouchDevice ? { scale: 0.96 } : undefined}
       transition={{
           type: "spring",
           stiffness: 260,
@@ -167,24 +167,6 @@ export const MovieCard = React.memo(
           `
         }}
       >
-        {/* Holographic shimmer sheen — desktop only, skipped on touch to save GPU/DOM */}
-        {!isTouchDevice && (
-          <div
-            className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-700 pointer-events-none z-20 mix-blend-overlay overflow-hidden"
-          >
-            <div
-              className="holographic-sheen"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.25) 50%, transparent 80%)',
-                transform: 'translateX(-100%)',
-                willChange: 'transform',
-              }}
-            />
-          </div>
-        )}
-
         {/* Poster artwork window with inner border */}
         <div className="relative flex-1 min-h-0 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">
           <img
@@ -198,8 +180,9 @@ export const MovieCard = React.memo(
             alt={title}
             width={342}
             height={513}
-            className="object-cover w-full h-full transition-transform duration-700 group-hover/card:scale-105"
+            loading="lazy"
             decoding="async"
+            className="object-cover w-full h-full transition-transform duration-500 transform-gpu backface-hidden group-hover/card:scale-105"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
@@ -302,7 +285,7 @@ export const MovieCard = React.memo(
           {/* Metadata Row */}
           <div className="flex items-center justify-between mt-0.5 text-[7px] md:text-[9px] font-bold text-sec-text px-0.5">
             {/* Card Subtitle/Brand */}
-            <span className="text-brand font-[1000] tracking-widest text-[6px] md:text-[8px] uppercase italic shimmer-text">
+            <span className="text-brand font-[1000] tracking-widest text-[6px] md:text-[8px] uppercase italic">
               FLKRD STUDIO
             </span>
 

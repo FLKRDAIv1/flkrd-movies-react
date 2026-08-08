@@ -179,16 +179,22 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('framer-motion')) {
                   return 'vendor-motion';
                 }
-                if (id.includes('@supabase') || id.includes('supabase-js')) {
+                if (id.includes('@supabase')) {
                   return 'vendor-supabase';
                 }
-                if (id.includes('@novu') || id.includes('novu')) {
+                if (id.includes('@novu')) {
                   return 'vendor-novu';
                 }
-                if (id.includes('@tauri-apps') || id.includes('tauri')) {
-                  return 'vendor-tauri';
-                }
-                return 'vendor-utils';
+              }
+              // Group heavy modals and video players into lazy chunks
+              if (id.includes('components/SettingsModal')) {
+                return 'modal-settings';
+              }
+              if (id.includes('components/AdminPanelModal')) {
+                return 'modal-admin';
+              }
+              if (id.includes('components/UniversalVideoPlayer') || id.includes('components/PremiumVidLinkPlayer')) {
+                return 'player-core';
               }
               // Group heavy detail/content pages into a single chunk (loaded on-demand)
               if (

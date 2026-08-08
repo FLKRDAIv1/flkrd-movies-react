@@ -35,6 +35,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   
   const navigate = useNavigate();
   const rowRef = useRef<HTMLDivElement>(null);
+  const scrollTicking = useRef(false);
   const { language, t } = useTranslation();
   const { theme, isAdmin, glassConfig = {
     redOpacity: 0.15,
@@ -153,29 +154,39 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
     }
   };
 
-  const handleScroll = useCallback(async () => {
-    if (rowRef.current && fetchUrl && hasMore && !loadingMore) {
-        const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-        const isNearEnd = scrollWidth - scrollLeft - clientWidth < 600;
+  const handleScroll = useCallback(() => {
+    if (scrollTicking.current) return;
+    scrollTicking.current = true;
+    requestAnimationFrame(async () => {
+      scrollTicking.current = false;
+      if (rowRef.current && fetchUrl && hasMore && !loadingMore) {
+          const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+          const isNearEnd = scrollWidth - scrollLeft - clientWidth < 600;
 
-        if (isNearEnd) {
-            setLoadingMore(true);
-            const nextPage = page + 1;
-            const data = await fetchData(getPagedUrl(fetchUrl, nextPage), language);
-            if (data && Array.isArray(data) && data.length > 0) {
-                setContent(prev => {
-                    const existingIds = new Set(prev.map(i => i.id));
-                    const uniqueNewItems = data.filter(i => !existingIds.has(i.id));
-                    return [...prev, ...uniqueNewItems];
-                });
-                setPage(nextPage);
-                if (data.length < 15) setHasMore(false);
-            } else {
-                setHasMore(false);
-            }
-            setLoadingMore(false);
-        }
-    }
+          if (isNearEnd) {
+              setLoadingMore(true);
+              const nextPage = page + 1;
+              try {
+                  const data = await fetchData(getPagedUrl(fetchUrl, nextPage), language);
+                  if (data && Array.isArray(data) && data.length > 0) {
+                      setContent(prev => {
+                          const existingIds = new Set(prev.map(i => i.id));
+                          const uniqueNewItems = data.filter(i => !existingIds.has(i.id));
+                          return [...prev, ...uniqueNewItems];
+                      });
+                      setPage(nextPage);
+                      if (data.length < 15) setHasMore(false);
+                  } else {
+                      setHasMore(false);
+                  }
+              } catch (e) {
+                  console.error(e);
+              } finally {
+                  setLoadingMore(false);
+              }
+          }
+      }
+    });
   }, [fetchUrl, hasMore, loadingMore, page, language]);
 
   const navigateToDetail = (item: any) => {
@@ -211,7 +222,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
         <div className="flex items-center justify-between mb-8">
             <h2 className={`text-xl md:text-4xl font-[1000] flex items-center uppercase text-main-text ${language !== 'ku' ? 'italic tracking-tighter' : ''}`}>
                 <span className="w-1 md:w-2 h-8 md:h-12 bg-brand rounded-full me-4 md:me-6 shadow-[0_0_15px_brand]" />
-                <span className="shimmer-text">{title}</span>
+                <span>{title}</span>
             </h2>
         </div>
       )}
@@ -228,7 +239,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
               if (!imageSrc || !mediaType) return null;
               return (
                 <MovieCard
-                  key={`${item.id}-${index}-${mediaType}`}
+                  key={`${item.id || 'item'}-${index}-${mediaType || 'media'}`}
                   item={item}
                   type={mediaType as 'movie' | 'tv' | 'dubbed'}
                   isProgressRow={isProgressRow}

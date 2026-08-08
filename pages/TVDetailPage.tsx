@@ -728,7 +728,7 @@ const TVDetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-52 md:pb-40 bg-transparent min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-main-bg bg-[#050505] min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60">
         <img 
           src={
@@ -904,7 +904,7 @@ const TVDetailPage: React.FC = () => {
 
                         return (
                           <motion.button 
-                            key={s.name}
+                            key={s.name || `server-${idx}`}
                             initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: idx * 0.04 }}
@@ -1038,7 +1038,6 @@ const TVDetailPage: React.FC = () => {
                 className="font-[1000] py-4 px-10 md:py-5 md:px-14 rounded-xl md:rounded-[1.5rem] shadow-2xl flex items-center gap-3 border border-red-500/20 hover:border-red-500/40 relative overflow-hidden group/lock"
               >
                 <span className="absolute inset-0 bg-red-600/5 animate-[pulse_2s_infinite] pointer-events-none" />
-                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/lock:animate-[shimmer_1.5s_infinite] pointer-events-none" />
 
                 <motion.div
                   animate={isUnlocking ? {

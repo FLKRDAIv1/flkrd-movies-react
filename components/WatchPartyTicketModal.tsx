@@ -173,21 +173,6 @@ export const WatchPartyTicketModal: React.FC<WatchPartyTicketModalProps> = ({
               </div>
             )}
 
-            {/* Holographic shimmer overlay */}
-            <AnimatePresence>
-              {shimmer && (
-                <motion.div
-                  initial={{ x: '-100%', opacity: 0 }}
-                  animate={{ x: '200%', opacity: [0, 0.4, 0] }}
-                  transition={{ duration: 1.6, ease: 'easeInOut', delay: 0.1 }}
-                  className="absolute inset-0 z-20 pointer-events-none"
-                  style={{
-                    background: 'linear-gradient(105deg, transparent 30%, rgba(255,200,80,0.18) 50%, rgba(255,140,0,0.12) 55%, transparent 70%)',
-                    transform: 'skewX(-15deg)',
-                  }}
-                />
-              )}
-            </AnimatePresence>
 
             {/* Noise texture */}
             <div

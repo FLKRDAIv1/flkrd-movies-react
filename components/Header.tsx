@@ -27,7 +27,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const transRef = useRef<HTMLDivElement>(null);
 
   const { 
-    theme, toggleTheme, accentColor, setIsSettingsOpen, glassConfig, isAdmin, isPerformanceMode, setIsPerformanceMode,
+    theme, toggleTheme, accentColor, setIsSettingsOpen, isAdminModalOpen, setIsAdminModalOpen, glassConfig, isAdmin, isPerformanceMode, setIsPerformanceMode,
     activeTranslation, startGlobalTranslation, cancelGlobalTranslation, dismissCelebration 
   } = useUI();
   const { user } = useAuth();
@@ -154,13 +154,19 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   }, [scrolled]);
 
   useEffect(() => {
+    const mainEl = document.querySelector('main');
+    let ticking = false;
+
     const handleScroll = () => {
-      const mainEl = document.querySelector('main');
-      const isScrolled = (mainEl?.scrollTop || 0) > 10 || window.scrollY > 10;
-      setLocalScrolled(isScrolled);
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const isScrolled = (mainEl?.scrollTop || 0) > 10 || window.scrollY > 10;
+        setLocalScrolled(prev => prev !== isScrolled ? isScrolled : prev);
+      });
     };
 
-    const mainEl = document.querySelector('main');
     if (mainEl) {
       mainEl.addEventListener('scroll', handleScroll, { passive: true });
     }
@@ -440,7 +446,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   {/* Dedicated Admin Panel Button if isAdmin is true */}
                   {isAdmin && (
                     <button
-                      onClick={() => navigate('/dubbed?admin=true')}
+                      onClick={() => setIsAdminModalOpen(true)}
                       className={cn(
                         "h-7 px-3.5 rounded-full flex items-center justify-center gap-1.5 border transition-all active:scale-[0.97] select-none shadow-sm shrink-0 font-black text-[9px] uppercase tracking-widest",
                         isDarkNavbar 
@@ -486,7 +492,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                             <button
                               onClick={() => {
                                 setIsProfileDropdownOpen(false);
-                                navigate('/dubbed?admin=true');
+                                setIsAdminModalOpen(true);
                               }}
                               className="w-full px-3 py-1.5 hover:bg-red-500/10 text-red-500 hover:text-red-400 rounded-xl text-xs font-bold transition-all flex items-center gap-2"
                             >
@@ -611,7 +617,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
                     {isAdmin && (
                       <button
-                        onClick={() => navigate('/dubbed?admin=true')}
+                        onClick={() => setIsAdminModalOpen(true)}
                         className={cn(
                           "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
                           isDarkNavbar 
@@ -783,7 +789,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 {/* Admin Panel row (Mobile Drawer) */}
                 {isAdmin && (
                   <button
-                    onClick={() => { setIsDrawerOpen(false); navigate('/dubbed?admin=true'); }}
+                    onClick={() => { setIsDrawerOpen(false); setIsAdminModalOpen(true); }}
                     className="w-full flex items-center justify-between p-3.5 bg-red-500/5 border border-red-500/25 rounded-2.5xl text-left hover:bg-red-500/10 transition-all focus:outline-none"
                   >
                     <div className="flex items-center gap-3">
@@ -884,11 +890,11 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   </div>
                   
                   <div className="flex-grow overflow-y-auto space-y-2.5 pr-1 scrollbar-hide">
-                    {recentItems.map((item) => {
+                    {recentItems.map((item, idx) => {
                       const progressPct = Math.min(100, (item.progress / (item.duration || 1)) * 100);
                       return (
                         <button
-                          key={`${item.id}-${item.type}`}
+                          key={`${item.id || 'rec'}-${item.type || 'type'}-${idx}`}
                           onClick={() => handleResume(item)}
                           className="w-full flex items-center gap-3 p-2.5 bg-box-bg border border-border-color rounded-2xl hover:bg-zinc-200/50 dark:hover:bg-white/10 transition-all text-start group focus:outline-none"
                         >

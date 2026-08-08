@@ -680,7 +680,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
         </div>
 
         <AnimatePresence initial={false}>
-          {messages.map((msg) => {
+          {messages.map((msg, idx) => {
             const isMe = msg.userId?.toLowerCase() === localUserId?.toLowerCase();
             const isHostUser = msg.sender === hostName;
 
@@ -688,7 +688,7 @@ export const WatchChatSidebar: React.FC<WatchChatSidebarProps> = ({
               // System highlight sync alert
               return (
                 <motion.div
-                  key={msg.id}
+                  key={msg.id || `sys-${idx}`}
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   className="w-full my-1 p-1 flex flex-col gap-0.5 text-left select-none shrink-0 bg-transparent border-0"

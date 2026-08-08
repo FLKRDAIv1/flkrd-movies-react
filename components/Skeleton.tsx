@@ -3,9 +3,7 @@ import React from 'react';
 // Single movie card placeholder
 export const SkeletonCard: React.FC = () => {
   return (
-    <div className="w-full aspect-[2/3] rounded-[2rem] md:rounded-[3.5rem] bg-zinc-900/60 border border-white/5 relative overflow-hidden animate-pulse shadow-xl">
-      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
-    </div>
+    <div className="w-full aspect-[2/3] rounded-[2rem] md:rounded-[3.5rem] bg-zinc-900/60 border border-white/5 relative overflow-hidden animate-pulse shadow-xl" />
   );
 };
 

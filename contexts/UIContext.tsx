@@ -79,6 +79,8 @@ interface UIContextType {
   setIsPerformanceMode: (isPerformanceMode: boolean) => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
+  isAdminModalOpen: boolean;
+  setIsAdminModalOpen: (isOpen: boolean) => void;
   toggleTheme: () => void;
   isConsoleMode: boolean;
   setIsConsoleMode: (isConsoleMode: boolean) => void;
@@ -134,6 +136,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return false;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
     try {
       const saved = localStorage.getItem('flkrd_glass_config');
@@ -1059,9 +1062,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   return (
     <UIContext.Provider value={{ 
-      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
+      theme, accentColor, scale, isPerformanceMode, isSettingsOpen, isAdminModalOpen, isConsoleMode, isControllerDetected, isAdmin, glassConfig, translatedMovieIds, refreshTranslatedMovieIds,
       activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration,
-      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
+      setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, setIsAdminModalOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
       mobileNavConfig, updateMobileNavConfig,
       playerConfig, updatePlayerConfig,
       hasPermission, currentAdminEmail, loginAsAdmin

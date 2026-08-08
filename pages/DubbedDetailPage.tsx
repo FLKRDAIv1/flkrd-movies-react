@@ -64,12 +64,31 @@ const DubbedDetailPage: React.FC = () => {
     }, [selectedActorId, language]);
 
     const dubbedData = useMemo(() => {
-        if (location.state?.customData) return location.state.customData;
-        if (supabaseData) return supabaseData;
+        if (!id) return null;
+        const cleanId = String(id).replace('custom_', '');
+        const dbId = String(id).startsWith('custom_') ? String(id) : `custom_${id}`;
+
+        // 1. Validate location.state matches current route ID
+        if (location.state?.customData) {
+            const locId = String(location.state.customData.id);
+            if (locId === id || locId === cleanId || locId === dbId || locId.replace('custom_', '') === cleanId) {
+                return location.state.customData;
+            }
+        }
+
+        // 2. Validate fetched supabaseData matches current route ID
+        if (supabaseData) {
+            const subId = String(supabaseData.id);
+            if (subId === id || subId === cleanId || subId === dbId || subId.replace('custom_', '') === cleanId) {
+                return supabaseData;
+            }
+        }
         
-        // Normalize searching in the local archive by stripping 'custom_' prefix if needed
-        const cleanId = id?.replace('custom_', '');
-        return CUSTOM_DUBBED_ARCHIVE.find(movie => String(movie.id) === String(cleanId) || String(movie.id) === String(id));
+        // 3. Fallback to local archive
+        return CUSTOM_DUBBED_ARCHIVE.find(movie => {
+            const mId = String(movie.id);
+            return mId === cleanId || mId === id || mId === dbId || mId.replace('custom_', '') === cleanId;
+        });
     }, [id, location.state, supabaseData]);
 
     // Smart iFrame Parser Engine
@@ -135,7 +154,19 @@ const DubbedDetailPage: React.FC = () => {
             }
         }
 
-        // 2. Professional Injection: Automatically fix Autoplay, VidKing, and others
+        // 2. Professional Injection: Automatically fix Autoplay, VidKing, and others for iframe embeds only
+        const isDirectMedia = (
+            finalUrl.toLowerCase().includes('.m3u8') ||
+            finalUrl.toLowerCase().includes('.mp4') ||
+            finalUrl.toLowerCase().includes('.webm') ||
+            finalUrl.toLowerCase().includes('/storage/v1/object/public/') ||
+            finalUrl.toLowerCase().includes('shortbox')
+        );
+
+        if (isDirectMedia) {
+            return finalUrl;
+        }
+
         try {
             const url = new URL(finalUrl);
             if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
@@ -147,7 +178,6 @@ const DubbedDetailPage: React.FC = () => {
             }
             finalUrl = url.toString();
         } catch (e) {
-            // Fallback for malformed URLs
             if (!finalUrl.includes('autoplay=')) {
                 finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'autoplay=1&play=1';
             }
@@ -245,6 +275,21 @@ const DubbedDetailPage: React.FC = () => {
 
 
     useEffect(() => {
+        return () => {
+            // Stop and cleanup any active background media on navigation
+            try {
+                const elements = document.querySelectorAll('video, audio');
+                elements.forEach((el: any) => {
+                    try {
+                        el.pause();
+                        el.src = '';
+                    } catch (e) {}
+                });
+            } catch (e) {}
+        };
+    }, [id]);
+
+    useEffect(() => {
         const handleBanUpdate = () => {
             const cleanId = id?.replace('custom_', '');
             if (cleanId && bannedService.isBanned(cleanId)) {
@@ -319,15 +364,15 @@ const DubbedDetailPage: React.FC = () => {
                         const { data, error } = await supabase
                             .from('dubbed_movies')
                             .select('*')
-                            .eq('id', dbId)
-                            .single();
+                            .or(`id.eq.${dbId},id.eq.${cleanId}`)
+                            .limit(1);
                         
                         if (error) {
                             console.error("[DUB DETAIL] Supabase error:", error);
                         }
-                        if (data && !error) {
-                            console.log("[DUB DETAIL] Supabase data fetched successfully:", data);
-                            return data;
+                        if (data && data.length > 0) {
+                            console.log("[DUB DETAIL] Supabase data fetched successfully:", data[0]);
+                            return data[0];
                         }
                         return null;
                     })(),
@@ -449,7 +494,7 @@ const isReady = !!(embedUrl || dubbedData || content);
 if (!isReady) return <SkeletonDetailPage />;
 
 return (
-    <div className="min-h-screen bg-transparent text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-main-bg bg-[#050505] text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
 
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
                 {backdropUrl && (
@@ -482,6 +527,7 @@ return (
                     <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-border-color shadow-2xl group aspect-video" dir="ltr">
                         {embedUrl ? (
                             <UniversalVideoPlayer
+                                key={id || dubbedData?.id || 'dubbed-player-key'}
                                 src={embedUrl}
                                 accentColor={accentColor}
                                 language={language}

@@ -322,16 +322,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const isSelectingFileRef = useRef(false);
     const wasFullscreenRef = useRef(false);
+    const checkDirectMediaUrl = useCallback((url: string) => {
+        if (!url) return false;
+        const cleanUrl = url.split('?')[0].toLowerCase();
+        const fullLower = url.toLowerCase();
+        return (
+            cleanUrl.endsWith('.m3u8') ||
+            cleanUrl.endsWith('.mp4') ||
+            cleanUrl.endsWith('.webm') ||
+            cleanUrl.endsWith('.m4v') ||
+            cleanUrl.endsWith('.mov') ||
+            fullLower.includes('.m3u8') ||
+            fullLower.includes('video.m3u8') ||
+            fullLower.includes('_av1.m3u8') ||
+            fullLower.includes('_h264.m3u8') ||
+            fullLower.includes('/storage/v1/object/public/') ||
+            fullLower.includes('shortbox')
+        );
+    }, []);
+
     const [isHls, setIsHls] = useState(() => {
         const activeSrc = src || '';
-        return (
-            activeSrc.toLowerCase().endsWith('.m3u8') ||
-            activeSrc.toLowerCase().endsWith('.mp4') ||
-            activeSrc.toLowerCase().endsWith('.webm') ||
-            activeSrc.includes('video.m3u8') ||
-            activeSrc.includes('_av1.m3u8') ||
-            activeSrc.includes('_h264.m3u8')
-        );
+        return checkDirectMediaUrl(activeSrc);
     });
     const [isIframe, setIsIframe] = useState(() => {
         const activeSrc = src || '';
@@ -339,15 +351,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
         const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
         if (isCinePro && isTauri) return false; // Let Tauri scraper handle it
-        const isDirect = (
-            activeSrc.toLowerCase().endsWith('.m3u8') ||
-            activeSrc.toLowerCase().endsWith('.mp4') ||
-            activeSrc.toLowerCase().endsWith('.webm') ||
-            activeSrc.includes('video.m3u8') ||
-            activeSrc.includes('_av1.m3u8') ||
-            activeSrc.includes('_h264.m3u8')
-        );
-        return !isDirect;
+        return !checkDirectMediaUrl(activeSrc);
     });
 
     useEffect(() => {
@@ -355,17 +359,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         if (!activeSrc) return;
         const isCinePro = activeSrc.includes('localhost:') || activeSrc.includes('127.0.0.1:') || activeSrc.includes('cinepro');
         const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__ !== undefined;
-        const isDirect = (
-            activeSrc.toLowerCase().endsWith('.m3u8') ||
-            activeSrc.toLowerCase().endsWith('.mp4') ||
-            activeSrc.toLowerCase().endsWith('.webm') ||
-            activeSrc.includes('video.m3u8') ||
-            activeSrc.includes('_av1.m3u8') ||
-            activeSrc.includes('_h264.m3u8')
-        );
-        setIsHls(isDirect && (activeSrc.includes('.m3u8') || activeSrc.includes('video.m3u8')));
+        const isDirect = checkDirectMediaUrl(activeSrc);
+        setIsHls(isDirect);
         setIsIframe(isCinePro && isTauri ? false : !isDirect);
-    }, [src]);
+    }, [src, checkDirectMediaUrl]);
     const [loading, setLoading] = useState(false);
     const [hlsError, setHlsError] = useState(false);
     const [showAdGuardOnboarding, setShowAdGuardOnboarding] = useState(false);
@@ -3020,7 +3017,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 : undefined
                         } as any}
                         controls={false}
-                        muted
                         autoPlay
                         playsInline
                         playsinline={true}
@@ -3106,31 +3102,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     </video>
                 )}
 
-                {/* Iframe Embed — key forces full remount ONLY on URL change (excluding start time) */}
-                {isIframe && iframeSrc && (
-                    <iframe
-                        ref={iframeRef}
-                        key={stableKey}
-                        src={iframeSrc}
-                        className="absolute inset-0 w-full h-full border-none"
-                        style={{
-                            display: 'block',
-                            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
-                        }}
-                        // NO sandbox — providers detect sandbox and refuse to load
-                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                        // @ts-ignore
-                        scrolling="no"
-                        // iOS Safari: prevent native video player takeover
-                        // @ts-ignore
-                        webkit-playsinline="true"
-                        // @ts-ignore
-                        x-webkit-airplay="deny"
-                        onLoad={handleIframeLoad}
-                        title="FLKRD Universal Player"
-                    />
-                )}
+                {/* NOTE: Do NOT render the iframe embed here. It is rendered exactly ONCE,
+                    at container level further below (search "Iframe Embed"). This spot used to
+                    hold a duplicate copy, so two iframes mounted and autoplayed the same stream.
+                    Both declared the same iframe ref, so the later one won it and this copy was
+                    left orphaned — unreachable by any pause/teardown code and audible behind the
+                    page. Keep a single iframe so the ref always points at the visible player. */}
 
                 {/* ── Iframe Blocked Overlay ─────────────────────────────── */}
                 {isIframe && iframeBlocked && (

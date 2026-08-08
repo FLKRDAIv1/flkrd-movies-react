@@ -272,12 +272,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
 
           {/* Info Panel - Sitting inside the bottom portion of the card */}
           <div className="absolute bottom-6 left-6 right-6 z-40 pointer-events-none text-left max-w-[calc(100%-1rem)] flex flex-col items-start gap-1">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex flex-col items-start gap-1 w-full"
-            >
+            <div className="flex flex-col items-start gap-1 w-full transition-opacity duration-300">
               <div className="flex flex-wrap items-center gap-2 mb-3 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-3xl">
                 <div className="bg-blue-500 rounded-full p-0.5 shadow-lg"><CheckCircle2 className="w-2 h-2 text-white" /></div>
                 <h3 className="font-black text-[8px] md:text-[9px] text-blue-400/90 uppercase tracking-[0.3em] font-mono">Official Trailer • FLKRD Cinema</h3>
@@ -338,7 +333,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
                   <span className="relative">STREAM FULL NODE</span>
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
 

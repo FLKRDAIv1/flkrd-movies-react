@@ -47,8 +47,15 @@ const filterContent = (data: any, language: 'en' | 'ku' | 'badini'): any => {
 };
 
 const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promise<Response | null> => {
+  const cleanEndpoint = (endpoint.startsWith('http://') || endpoint.startsWith('https://'))
+    ? endpoint.replace(/^https?:\/\/api\.themoviedb\.org\/3/, '')
+    : endpoint;
+
   // Strategy 1: Primary configured URL (/api/tmdb or https://api.tmdb.org/3)
-  const primaryUrl = `${API_BASE_URL}${endpoint}`;
+  const primaryUrl = (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://'))
+    ? cleanEndpoint
+    : `${API_BASE_URL}${cleanEndpoint}`;
+
   try {
     const res = await fetch(primaryUrl, { signal });
     if (res && res.ok) return res;
@@ -57,7 +64,10 @@ const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promis
   // Strategy 2: Direct TMDB API endpoint fallback
   if (API_BASE_URL !== "https://api.tmdb.org/3") {
     try {
-      const res = await fetch(`https://api.tmdb.org/3${endpoint}`, { signal });
+      const targetPath = (cleanEndpoint.startsWith('http://') || cleanEndpoint.startsWith('https://'))
+        ? cleanEndpoint
+        : `https://api.themoviedb.org/3${cleanEndpoint}`;
+      const res = await fetch(targetPath, { signal });
       if (res && res.ok) return res;
     } catch (e) { }
   }

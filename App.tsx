@@ -21,6 +21,9 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const WatchRoomPage = lazy(() => import('./pages/WatchRoomPage'));
 const DocPage = lazy(() => import('./pages/DocPage'));
 
+const SettingsModal = lazy(() => import('./components/SettingsModal'));
+const AdminPanelModal = lazy(() => import('./components/AdminPanelModal'));
+
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import MobileNav from './components/MobileNav';
@@ -34,7 +37,6 @@ import { useAuth } from './contexts/AuthContext';
 import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
 import OnboardingTour from './components/OnboardingTour';
-import SettingsModal from './components/SettingsModal';
 import { PremiumBackground } from './components/PremiumBackground';
 import Portal from './components/Portal';
 import DesktopTitleBar from './components/DesktopTitleBar';
@@ -811,7 +813,7 @@ const AppContent: React.FC<{
                           <SkeletonGrid count={12} />
                         </div>
                       }>
-                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && !isAdmin && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-[var(--bg-primary)]'))}`}>
+                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && !isAdmin && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-main-bg bg-[#050505]'))}`}>
                               <ViewTransitionRoutes>
                                   <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
                                   <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
@@ -843,7 +845,10 @@ const AppContent: React.FC<{
             <OnboardingTour />
             <WelcomeNotificationPrompt />
             <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
-            <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+            <React.Suspense fallback={null}>
+              {isSettingsOpen && <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
+              <AdminPanelModal />
+            </React.Suspense>
             <GamepadHints />
             <FloatingPipPlayer />
             {!isTauri() && import.meta.env.PROD && <SpeedInsights />}

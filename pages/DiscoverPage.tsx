@@ -104,8 +104,11 @@ const DiscoverPage: React.FC = () => {
     }, [urlSelection]);
 
     useEffect(() => {
-        const handleScroll = () => setIsSticky(window.scrollY > 120);
-        window.addEventListener('scroll', handleScroll);
+        const handleScroll = () => {
+            const nextSticky = window.scrollY > 120;
+            setIsSticky(prev => prev !== nextSticky ? nextSticky : prev);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -265,7 +268,7 @@ const DiscoverPage: React.FC = () => {
     return (
         <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8 relative pb-32 bg-main-bg">
             <AnimatePresence mode="wait">
-                <motion.div key={selection || activeCountry || 'selection'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
+                <motion.div key={selection || activeCountry || 'selection-root'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
                     {!selection && <SelectionScreen />}
                     {selection === 'country' && !activeCountry && (
                         <div className="absolute inset-0 bg-main-bg flex flex-col items-center justify-start p-8 pt-32 overflow-y-auto">
