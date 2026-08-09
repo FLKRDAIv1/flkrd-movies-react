@@ -108,12 +108,21 @@ export default defineConfig(({ mode }) => {
                     return this;
                   },
                   json(data: any) {
-                    res.setHeader('Content-Type', 'application/json');
-                    res.end(JSON.stringify(data));
+                    if (!res.writableEnded) {
+                      res.setHeader('Content-Type', 'application/json');
+                      res.end(JSON.stringify(data));
+                    }
                     return this;
                   },
                   end(data: any) {
-                    res.end(data);
+                    if (!res.writableEnded) {
+                      if (data !== undefined && typeof data === 'object' && !(data instanceof Buffer) && !(data instanceof Uint8Array)) {
+                        res.setHeader('Content-Type', 'application/json');
+                        res.end(JSON.stringify(data));
+                      } else {
+                        res.end(data);
+                      }
+                    }
                     return this;
                   }
                 };

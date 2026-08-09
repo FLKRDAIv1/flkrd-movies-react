@@ -82,10 +82,33 @@ const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promis
   return null;
 };
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 Hours
+
+const getPersistentCache = (key: string) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - (parsed.timestamp || 0) < CACHE_TTL_MS) {
+      return parsed.data;
+    }
+  } catch (e) {}
+  return null;
+};
+
+const setPersistentCache = (key: string, data: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      timestamp: Date.now(),
+      data
+    }));
+  } catch (e) {}
+};
+
 export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-  // 1. Instant Memory Access + Purely In-Memory SWR (Stale-While-Revalidate)
+  // 1. Instant In-Memory Access + Background SWR
   if (sessionCache.has(cacheKey)) {
     if (!bannedService.hasFetched()) {
       await bannedService.fetchBannedList();
@@ -93,7 +116,7 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
       bannedService.fetchBannedList().catch(() => {});
     }
 
-    // Silently revalidate in the background
+    // Silent background revalidation
     (async () => {
       try {
         const response = await fetchWithFallback(endpoint);
@@ -101,6 +124,7 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
           const rawData = await response.json();
           const result = rawData.results || rawData;
           sessionCache.set(cacheKey, result);
+          setPersistentCache(cacheKey, result);
         }
       } catch (e) {
         console.warn("[TMDB SWR] Silent revalidation failed:", e);
@@ -110,7 +134,29 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
     return filterContent(sessionCache.get(cacheKey), language);
   }
 
-  // 2. Request Deduplication
+  // 2. Instant Local Storage Persistent Cache Access + Background SWR
+  const persistentData = getPersistentCache(cacheKey);
+  if (persistentData) {
+    sessionCache.set(cacheKey, persistentData);
+    bannedService.fetchBannedList().catch(() => {});
+
+    // Silent background revalidation
+    (async () => {
+      try {
+        const response = await fetchWithFallback(endpoint);
+        if (response && response.ok) {
+          const rawData = await response.json();
+          const result = rawData.results || rawData;
+          sessionCache.set(cacheKey, result);
+          setPersistentCache(cacheKey, result);
+        }
+      } catch (e) {}
+    })();
+
+    return filterContent(persistentData, language);
+  }
+
+  // 3. Request Deduplication
   if (pendingRequests.has(cacheKey)) {
     return pendingRequests.get(cacheKey);
   }
@@ -119,7 +165,6 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout for mobile
     try {
-      // 3. Resilient Network Fetch - Fetch TMDB data with multi-strategy fallback and Supabase blocked IDs simultaneously
       const [response, _bannedList] = await Promise.all([
         fetchWithFallback(endpoint, controller.signal),
         bannedService.fetchBannedList()
@@ -134,6 +179,7 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
       const result = rawData.results || rawData;
       
       sessionCache.set(cacheKey, result);
+      setPersistentCache(cacheKey, result);
       return filterContent(result, language);
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
