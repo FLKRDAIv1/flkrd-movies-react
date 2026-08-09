@@ -145,11 +145,11 @@ export const MovieCard = React.memo(
       onPointerDown={handlePrefetch}
       className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation ${className || 'w-44 md:w-72'}`}
       whileHover={!IS_TOUCH_DEVICE ? { scale: 1.04, y: -6 } : undefined}
-      whileTap={!IS_TOUCH_DEVICE ? { scale: 0.96 } : undefined}
+      whileTap={{ scale: 0.96 }}
       transition={{
           type: "spring",
-          stiffness: 260,
-          damping: 20
+          stiffness: 400,
+          damping: 25
       }}
     >
       {/* Pokemon trading card frame */}
