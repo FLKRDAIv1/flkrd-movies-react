@@ -162,7 +162,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        target: 'esnext',
+        target: ['es2015', 'safari11'],
         cssCodeSplit: true,
         esbuild: {
           drop: mode === 'production' ? ['console', 'debugger'] : [],
@@ -220,7 +220,7 @@ export default defineConfig(({ mode }) => {
             }
           }
         },
-        chunkSizeWarningLimit: 1000
+        chunkSizeWarningLimit: 500
       }
 
     };
