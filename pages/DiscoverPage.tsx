@@ -13,6 +13,7 @@ import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import MovieCard from '../components/MovieCard';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
 
 type Selection = 'hollywood' | 'bollywood' | 'infinity' | 'country' | 'animations';
 
@@ -390,17 +391,30 @@ const DiscoverPage: React.FC = () => {
                             {loading ? (
                                 <SkeletonGrid count={12} />
                             ) : results.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
-                                    {results.map((item, index) => (
-                                        <MovieCard
-                                            ref={index === results.length - 1 ? loadMoreRef : null}
-                                            key={`${item.id}-${index}`}
-                                            item={item}
-                                            type={item.media_type as any}
-                                            className="w-full"
-                                        />
-                                    ))}
-                                </div>
+                                <>
+                                    <MovieLayoutManager items={results} />
+                                    {/* Sentinel element — IntersectionObserver target */}
+                                    <div
+                                        ref={loadMoreRef}
+                                        className="w-full flex items-center justify-center py-12"
+                                        aria-hidden="true"
+                                    >
+                                        {loadingMore ? (
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                                                <span className="text-xs font-black uppercase tracking-widest text-sec-text">
+                                                    {(language === 'ku' || language === 'badini') ? 'زیاتر بار دەکرێت...' : 'Loading more...'}
+                                                </span>
+                                            </div>
+                                        ) : hasMore ? (
+                                            <div className="w-2 h-2 rounded-full bg-brand/30" />
+                                        ) : (
+                                            <span className="text-xs font-black uppercase tracking-widest text-sec-text/40">
+                                                {(language === 'ku' || language === 'badini') ? 'کۆتایی هات' : 'End of results'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
                             ) : (
                                 <div className="text-center py-32 bg-box-bg border border-border-color rounded-[3rem] shadow-2xl">
                                     <h2 className="text-xl md:text-2xl font-black text-sec-text uppercase italic">{t('noResultsFor')}</h2>

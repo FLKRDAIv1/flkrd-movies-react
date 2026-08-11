@@ -294,6 +294,9 @@ const SearchPage: React.FC = () => {
               onFocus={() => inputValue.trim().length > 1 && setIsSuggestionsVisible(true)}
               onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 250)}
               placeholder={t('searchPlaceholder')}
+              autoCapitalize="off"
+              autoCorrect="off"
+              enterKeyHint="search"
               className="w-full bg-transparent focus:ring-0 text-main-text rounded-2xl py-5 pr-14 pl-16 text-xl transition-all outline-none font-medium z-10"
             />
 

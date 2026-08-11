@@ -38,6 +38,7 @@ import WelcomeNotificationPrompt from './components/WelcomeNotificationPrompt';
 import ContinueWatchingPortal from './components/ContinueWatchingPortal';
 import OnboardingTour from './components/OnboardingTour';
 import { PremiumBackground } from './components/PremiumBackground';
+import LayoutWrapper from './components/LayoutWrapper';
 import Portal from './components/Portal';
 import DesktopTitleBar from './components/DesktopTitleBar';
 import { fetchData } from './services/tmdbService';
@@ -236,7 +237,9 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
             style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
             className={`flex-1 w-full min-h-full flex flex-col ${isProfile ? 'bg-transparent' : 'bg-[var(--bg-primary)]'} relative z-[1] isolate`}
         >
-            {children}
+            <LayoutWrapper showPageLoadBeam={true}>
+                {children}
+            </LayoutWrapper>
         </motion.div>
     );
 };

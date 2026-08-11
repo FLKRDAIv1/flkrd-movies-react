@@ -8,6 +8,7 @@ import { Content } from '../types';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { useUI } from '../contexts/UIContext';
 import MovieCard from '../components/MovieCard';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
 
 const KurdishCCPage: React.FC = () => {
     const [items, setItems] = useState<Content[]>([]);
@@ -113,16 +114,7 @@ const KurdishCCPage: React.FC = () => {
                     <span className="text-sec-text font-black uppercase tracking-[0.5em] animate-pulse text-sm">Syncing with OpenSubtitles...</span>
                 </div>
             ) : items.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 relative z-10">
-                    {items.map((item, index) => (
-                        <MovieCard
-                            key={`${item.id}-${index}`}
-                            item={item}
-                            type={item.media_type as any}
-                            className="w-full"
-                        />
-                    ))}
-                </div>
+                <MovieLayoutManager items={items} />
             ) : (
                 <div className="text-center py-32 bg-box-bg border border-border-color rounded-[3rem] shadow-2xl relative z-10">
                     <Subtitles className="w-16 h-16 text-sec-text/50 mx-auto mb-6" />

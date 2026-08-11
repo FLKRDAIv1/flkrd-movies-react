@@ -388,7 +388,7 @@ const DetailPage: React.FC = () => {
 
   const handlePlayerProgress = useCallback((data: any) => {
     // Accept any event with a valid currentTime — covers VidKing, Videasy ({timestamp}), VidLink, etc.
-    const time = data.currentTime || data.time || 0;
+    const time = data.currentTime || data.time || data.timestamp || 0;
     if (data.duration && data.duration > 0) {
       lastResolvedDurationRef.current = data.duration;
     }
@@ -405,7 +405,7 @@ const DetailPage: React.FC = () => {
       updateProgress(time, duration);
     } else if (data.event === 'pause' || data.event === 'ended') {
       // Force save on pause/end even without duration
-      const t = data.currentTime || data.time || 0;
+      const t = data.currentTime || data.time || data.timestamp || 0;
       if (t > 0) updateProgress(t, duration);
       if (data.event === 'pause') {
         setIsPaused(true);

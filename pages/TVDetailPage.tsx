@@ -368,7 +368,7 @@ const TVDetailPage: React.FC = () => {
   const lastProgressSaveRef = useRef<number>(0);
   const updateProgress = useCallback((data: any) => {
     if (!content) return;
-    const time = data.currentTime || data.time;
+    const time = data.currentTime || data.time || data.timestamp || 0;
     if (data.duration && data.duration > 0) {
       lastResolvedDurationRef.current = data.duration;
     }
@@ -420,7 +420,7 @@ const TVDetailPage: React.FC = () => {
 
   const handlePlayerProgress = useCallback((data: any) => {
     // Accept any event with a valid currentTime — covers VidKing, Videasy, VidLink, etc.
-    const time = data.currentTime || data.time || 0;
+    const time = data.currentTime || data.time || data.timestamp || 0;
 
     // Sync global PiP state
     setPipTime(time);

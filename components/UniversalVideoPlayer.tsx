@@ -375,7 +375,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
-    const [subtitleOffset, setSubtitleOffset] = useState(0);
+    const [subtitleOffset, setSubtitleOffsetState] = useState(() => {
+        const key = tmdbId || title ? `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}` : null;
+        if (typeof window !== 'undefined' && key) {
+            const saved = localStorage.getItem(key);
+            if (saved !== null) {
+                const parsed = parseInt(saved, 10);
+                if (!isNaN(parsed)) return parsed;
+            }
+        }
+        return 0;
+    });
+
+    const setSubtitleOffset = useCallback((val: number | ((prev: number) => number)) => {
+        setSubtitleOffsetState((prev) => {
+            const next = typeof val === 'function' ? val(prev) : val;
+            const key = tmdbId || title ? `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}` : null;
+            if (typeof window !== 'undefined' && key) {
+                localStorage.setItem(key, String(next));
+            }
+            return next;
+        });
+    }, [tmdbId, title]);
     const [showSubSettings, setShowSubSettings] = useState(false);
     const [showSubtitles, setShowSubtitles] = useState(true);
     const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
@@ -2058,18 +2079,20 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
                 else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
                 else if (typeof payload.time === 'number') extractedTime = payload.time;
+                else if (typeof payload.timestamp === 'number') extractedTime = payload.timestamp;
                 else if (typeof payload.position === 'number') extractedTime = payload.position;
                 else if (typeof payload.value === 'number') extractedTime = payload.value;
                 else if (payload.data && typeof payload.data === 'object') {
                     if (typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
                     else if (typeof payload.data.seconds === 'number') extractedTime = payload.data.seconds;
                     else if (typeof payload.data.time === 'number') extractedTime = payload.data.time;
+                    else if (typeof payload.data.timestamp === 'number') extractedTime = payload.data.timestamp;
                     else if (typeof payload.data.position === 'number') extractedTime = payload.data.position;
                     else if (typeof payload.data.value === 'number') extractedTime = payload.data.value;
                 } else if (typeof payload.data === 'number') {
                     extractedTime = payload.data;
                 } else {
-                    const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.position || payload.value;
+                    const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.timestamp || payload.position || payload.value;
                     if (strCandidate !== undefined) {
                         const parsed = parseFloat(String(strCandidate));
                         if (!isNaN(parsed)) extractedTime = parsed;
@@ -2092,11 +2115,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         }
 
                         if (onProgressRef.current) {
+                            const extDuration = payload.duration !== undefined ? Number(payload.duration) : (payload.data && payload.data.duration !== undefined ? Number(payload.data.duration) : undefined);
                             onProgressRef.current({
                                 currentTime: timeAsNum,
                                 paused: paused,
                                 event: eventName || 'timeupdate',
-                                duration: payload.duration !== undefined ? Number(payload.duration) : undefined
+                                duration: extDuration
                             });
                         }
                     }

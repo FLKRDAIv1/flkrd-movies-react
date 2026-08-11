@@ -14,6 +14,7 @@ import { featuredBannerService, FeaturedBannerItem } from '../services/featuredB
 import { bannedService } from '../services/bannedService';
 import { API_KEY, API_BASE_URL } from '../constants';
 import Portal from './Portal';
+import { BorderBeam } from './ui/border-beam';
 
 const TABS = [
     { id: 'upload', label: 'Upload Movie', labelKu: 'بڵاوکردنەوەی فیلم', icon: PlusCircle, perm: 'canManageMovies' },
@@ -131,12 +132,21 @@ export const AdminPanelModal: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('dubbed_movies')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('id, title, description, level, videoUrl, created_at, imdb_id, tmdb_id, imageBase64')
+                .order('created_at', { ascending: false })
+                .limit(100);
             if (error) throw error;
             setArchiveContent(data || []);
         } catch (e) {
-            console.error(e);
+            console.error('Supabase fetch error fallback:', e);
+            // Fallback: load from local DB cache if remote statement times out
+            try {
+                const { db } = await import('../utils/db');
+                const cached = await db.getMovies();
+                if (cached && cached.length > 0) {
+                    setArchiveContent(cached);
+                }
+            } catch (err) {}
         } finally {
             setIsLoadingArchive(false);
         }
@@ -562,8 +572,10 @@ export const AdminPanelModal: React.FC = () => {
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 40, opacity: 0, scale: 0.96 }}
                             transition={{ type: "spring", duration: 0.5, bounce: 0.15 }}
-                            className="relative z-10 w-full max-w-5xl h-[85vh] bg-gradient-to-br from-[#0c0c11]/95 to-[#060609]/98 border border-white/[0.08] rounded-[2.5rem] shadow-[0_0_80px_rgba(229,9,20,0.15)] flex flex-col md:flex-row overflow-hidden backdrop-blur-xl"
+                            className="relative z-10 w-full max-w-5xl h-[85vh] bg-gradient-to-br from-[#0c0c11]/95 to-[#060609]/98 border border-transparent rounded-[2.5rem] shadow-[0_0_80px_rgba(229,9,20,0.15)] flex flex-col md:flex-row overflow-hidden backdrop-blur-xl"
                         >
+                            {/* Apple / Gemini AI Glowing Border Beam */}
+                            <BorderBeam size={380} duration={9} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
                             {/* Close Button */}
                             <button
                                 onClick={() => setIsAdminModalOpen(false)}

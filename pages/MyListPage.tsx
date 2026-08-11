@@ -13,6 +13,7 @@ import { SkeletonGrid } from '../components/Skeleton';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { isTauri } from '../utils/tauriUtils';
 import MovieCard from '../components/MovieCard';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
 
 const MyListPage: React.FC = () => {
     const [myListItems, setMyListItems] = useState<MyListItem[]>([]);
@@ -148,16 +149,7 @@ const MyListPage: React.FC = () => {
             </div>
 
             {myListItems.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
-                    {myListItems.map((item, index) => (
-                        <MovieCard
-                            key={`${item.id}-${index}`}
-                            item={item}
-                            type={item.media_type}
-                            className="w-full"
-                        />
-                    ))}
-                </div>
+                <MovieLayoutManager items={myListItems} />
             ) : (
                 <div className="text-center py-40 bg-white/[0.02] border border-white/5 rounded-[4rem] backdrop-blur-xl">
                     <Stars size={64} className="mx-auto text-gray-800 mb-8 animate-pulse" />

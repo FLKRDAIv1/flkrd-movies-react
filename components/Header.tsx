@@ -13,11 +13,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import { fetchData } from '../services/tmdbService';
 import GooeySearch from './ui/gooey-search';
+import { ViewToggle } from './ui/ViewToggle';
 
 
 const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [recentItems, setRecentItems] = useState<WatchProgress[]>([]);
   const historyRef = useRef<HTMLDivElement>(null);
@@ -427,6 +429,9 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
                   />
 
+                  {/* Header View Mode Toggle (Grid vs List) */}
+                  <ViewToggle size="sm" />
+
                   {/* Subtle Native Fullscreen Button (Desktop) */}
                   <button
                     onClick={toggleAppFullscreen}
@@ -550,110 +555,145 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                  </div>
                </div>
 
-               {/* 3. Mobile Layout (Hidden on Desktop) */}
-               <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-3">
-                 {/* Logo */}
-                 <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
-                   <img 
-                     src="/flkrd-logo.png" 
-                     alt="FLKRD" 
-                     className="h-7 w-auto object-contain" 
-                   />
-                 </Link>
+                {/* 3. Mobile Layout (Hidden on Desktop) */}
+               <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-1.5 overflow-hidden">
+                 {isMobileSearchOpen ? (
+                   /* Full-Width Mobile Overlay Search Bar */
+                   <div className="flex items-center gap-2 w-full animate-fadeIn">
+                     <button
+                       onClick={() => setIsMobileSearchOpen(false)}
+                       className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-white shrink-0 active:scale-90"
+                       aria-label="Close Search"
+                     >
+                       <X size={16} />
+                     </button>
+                     <div className="flex-1 min-w-0">
+                       <GooeySearch
+                         value={headerSearchQuery}
+                         onChange={(val) => {
+                           setHeaderSearchQuery(val);
+                           if (val.trim()) {
+                             navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
+                           } else {
+                             navigate('/search', { replace: true });
+                           }
+                         }}
+                         onSearch={async (query) => {
+                           if (!query.trim()) return [];
+                           try {
+                             const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
+                             const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
+                             const data = await fetchData(endpoint, language);
+                             if (data && Array.isArray(data)) {
+                               return data
+                                 .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.title || item.name))
+                                 .map((item: any) => item.title || item.name);
+                             }
+                           } catch (e) {
+                             console.error(e);
+                           }
+                           return [];
+                         }}
+                         onSelect={(item) => {
+                           setHeaderSearchQuery(item);
+                           setIsMobileSearchOpen(false);
+                           navigate(`/search?query=${encodeURIComponent(item)}`, { replace: true });
+                         }}
+                         placeholder={language === 'ku' || language === 'badini' ? 'گەڕان...' : 'Search...'}
+                         buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
+                       />
+                     </div>
+                   </div>
+                 ) : (
+                   /* Normal Mobile Header Row (Never overflows) */
+                   <>
+                     {/* Logo */}
+                     <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
+                       <img 
+                         src="/flkrd-logo.png" 
+                         alt="FLKRD" 
+                         className="h-6 sm:h-7 w-auto object-contain" 
+                       />
+                     </Link>
 
-                 {/* Mobile Search Input using GooeySearch */}
-                 <GooeySearch
-                    value={headerSearchQuery}
-                    onChange={(val) => {
-                      setHeaderSearchQuery(val);
-                      if (val.trim()) {
-                        navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
-                      } else {
-                        navigate('/search', { replace: true });
-                      }
-                    }}
-                    onSearch={async (query) => {
-                      if (!query.trim()) return [];
-                      try {
-                        const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
-                        const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
-                        const data = await fetchData(endpoint, language);
-                        if (data && Array.isArray(data)) {
-                          return data
-                            .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.title || item.name))
-                            .map((item: any) => item.title || item.name);
-                        }
-                      } catch (e) {
-                        console.error(e);
-                      }
-                      return [];
-                    }}
-                    onSelect={(item) => {
-                      setHeaderSearchQuery(item);
-                      navigate(`/search?query=${encodeURIComponent(item)}`, { replace: true });
-                    }}
-                    placeholder={language === 'ku' || language === 'badini' ? 'گەڕان...' : 'Search...'}
-                    buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
-                  />
+                     {/* Mobile Menu Action Triggers */}
+                     <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-auto">
+                        {/* Search Icon Trigger */}
+                        <button
+                          onClick={() => setIsMobileSearchOpen(true)}
+                          className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                            isDarkNavbar 
+                              ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white" 
+                              : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black"
+                          )}
+                          title={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
+                          aria-label="Open Search"
+                        >
+                          <Search size={13} />
+                        </button>
 
-                 {/* Mobile Menu Action Triggers */}
-                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Subtle Native Fullscreen Button (Mobile Header) */}
-                    <button
-                      onClick={toggleAppFullscreen}
-                      className={cn(
-                        "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm",
-                        isDarkNavbar 
-                          ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
-                          : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
-                        isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
-                      )}
-                      title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
-                      aria-label="Toggle Fullscreen"
-                    >
-                      {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                    </button>
+                        {/* Compact Header View Mode Toggle (Mobile) */}
+                        <ViewToggle size="sm" showText={false} />
 
-                    {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
-                    {isAdmin && (
-                      <button
-                        onClick={() => setIsAdminModalOpen(true)}
-                        className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
-                          isDarkNavbar 
-                            ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
-                            : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90"
+                        {/* Subtle Native Fullscreen Button (Mobile Header) */}
+                        <button
+                          onClick={toggleAppFullscreen}
+                          className={cn(
+                            "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                            isDarkNavbar 
+                              ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
+                              : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
+                            isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
+                          )}
+                          title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
+                          aria-label="Toggle Fullscreen"
+                        >
+                          {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                        </button>
+
+                        {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
+                        {isAdmin && (
+                          <button
+                            onClick={() => setIsAdminModalOpen(true)}
+                            className={cn(
+                              "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                              isDarkNavbar 
+                                ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
+                                : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90"
+                            )}
+                            title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
+                            aria-label="Admin Panel"
+                          >
+                            <ShieldAlert size={13} />
+                          </button>
                         )}
-                        title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
-                        aria-label="Admin Panel"
-                      >
-                        <ShieldAlert size={13} />
-                      </button>
-                    )}
 
-                    {/* Avatar Link */}
-                    <div 
-                      onClick={() => navigate('/profile')}
-                      className={cn(
-                        "relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0",
-                        (user || isAdmin) ? "border-red-500/80 ring-2 ring-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.4)]" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-200")
-                      )}
-                    >
-                      {renderAvatar()}
-                    </div>
+                        {/* Avatar Link */}
+                        <div 
+                          onClick={() => navigate('/profile')}
+                          className={cn(
+                            "relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0",
+                            (user || isAdmin) ? "border-red-500/80 ring-2 ring-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.4)]" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-200")
+                          )}
+                        >
+                          {renderAvatar()}
+                        </div>
 
-                    {/* Hamburger Menu Icon */}
-                    <button
-                      onClick={() => setIsDrawerOpen(true)}
-                      className={cn(
-                        "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90",
-                        isDarkNavbar ? "text-white" : "text-black"
-                      )}
-                      aria-label="Open Menu"
-                    >
-                      <Menu size={16} />
-                    </button>
-                 </div>
+                        {/* Hamburger Menu Icon */}
+                        <button
+                          onClick={() => setIsDrawerOpen(true)}
+                          className={cn(
+                            "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90 shrink-0",
+                            isDarkNavbar ? "text-white" : "text-black"
+                          )}
+                          aria-label="Open Menu"
+                        >
+                          <Menu size={20} />
+                        </button>
+                     </div>
+                   </>
+                 )}
                </div>
 
              </div>

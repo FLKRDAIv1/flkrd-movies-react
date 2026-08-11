@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, Plus, Check, X, Trash2, Mic2 } from 'lucide-react';
+import { Star, Plus, Check, X, Trash2, Mic2, Share2 } from 'lucide-react';
 import { MyListItem, WatchProgress } from '../types';
 import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
@@ -11,289 +11,395 @@ import { useUI } from '../contexts/UIContext';
 import KurdishCCBadge from './KurdishCCBadge';
 import { LiquidButton } from './ui/liquid-glass-button';
 import { fetchData } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_THUMB } from '../constants';
+import { API_KEY, IMAGE_BASE_URL_POSTER } from '../constants';
+import { BorderBeam } from './ui/border-beam';
 
 interface MovieCardProps {
   item: any; // Can be Content, WatchProgress, or MyListItem
   type?: 'movie' | 'tv' | 'dubbed';
   isProgressRow?: boolean;
+  className?: string;
 }
 
-const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
 export const MovieCard = React.memo(
   React.forwardRef<HTMLDivElement, MovieCardProps>(
     ({ item, type, isProgressRow, className }, ref) => {
-  const navigate = useNavigate();
-  const { language, t } = useTranslation();
-  const { addNotification } = useNotification();
-  const { isAdmin, glassConfig = {
-    redOpacity: 0.15,
-    darkOpacity: 0.85,
-    blurAmount: 20,
-    saturation: 120,
-    borderOpacity: 0.1,
-    aberrationIntensity: 0.5
-  } } = useUI();
-  const [isAdded, setIsAdded] = useState(false);
-  const isCustom = String(item.id).startsWith('custom_');
-  const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
+      const navigate = useNavigate();
+      const { language, t } = useTranslation();
+      const { addNotification } = useNotification();
+      const { isAdmin, glassConfig = {
+        redOpacity: 0.15,
+        darkOpacity: 0.85,
+        blurAmount: 20,
+        saturation: 120,
+        borderOpacity: 0.1,
+        aberrationIntensity: 0.5,
+      } } = useUI();
 
-  const updateMyListIds = useCallback(() => {
-    const myList = JSON.parse(localStorage.getItem('myList') || '[]');
-    setIsAdded(myList.some((i: any) => i.id === item.id));
-  }, [item.id]);
+      const [isAdded, setIsAdded] = useState(false);
+      const [isImgLoaded, setIsImgLoaded] = useState(false);
+      const [isFocused, setIsFocused] = useState(false);
+      const [isHovered, setIsHovered] = useState(false);
 
-  useEffect(() => {
-    updateMyListIds();
-    window.addEventListener('storage', updateMyListIds);
-    return () => window.removeEventListener('storage', updateMyListIds);
-  }, [updateMyListIds]);
+      const isCustom = String(item.id).startsWith('custom_');
+      const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
 
-  const handleToggleMyList = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    let myList: MyListItem[] = JSON.parse(localStorage.getItem('myList') || '[]');
-    const index = myList.findIndex(i => i.id === item.id);
-    
-    if (index > -1) {
-      myList.splice(index, 1);
-      setIsAdded(false);
-      addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListRemoveSuccess') });
-    } else {
-      myList.push({ 
-        id: item.id, 
-        media_type: mediaType === 'dubbed' ? 'movie' : (mediaType as 'movie' | 'tv'), 
-        title: item.title || item.name || '', 
-        poster_path: item.poster_path 
-      });
-      setIsAdded(true);
-      addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListAddSuccess') });
-    }
-    
-    localStorage.setItem('myList', JSON.stringify(myList));
-    window.dispatchEvent(new Event('storage'));
-  };
+      const updateMyListIds = useCallback(() => {
+        const myList = JSON.parse(localStorage.getItem('myList') || '[]');
+        setIsAdded(myList.some((i: any) => i.id === item.id));
+      }, [item.id]);
 
-  const handleRemoveProgress = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-      const filtered = progress.filter((i: any) => !(i.id === item.id && String(i.type) === mediaType));
-      localStorage.setItem('watchProgress', JSON.stringify(filtered));
-      window.dispatchEvent(new Event('storage'));
-      window.dispatchEvent(new Event('watchProgressUpdated'));
-  };
+      useEffect(() => {
+        updateMyListIds();
+        window.addEventListener('storage', updateMyListIds);
+        return () => window.removeEventListener('storage', updateMyListIds);
+      }, [updateMyListIds]);
 
-  const handleBan = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const cleanId = String(item.id).replace('custom_', '');
+      const handleToggleMyList = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        let myList: MyListItem[] = JSON.parse(localStorage.getItem('myList') || '[]');
+        const index = myList.findIndex((i) => i.id === item.id);
 
-    if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
-
-    try {
-        const banSignal = await bannedService.banContent(cleanId, mediaType);
-        if (!banSignal) throw new Error("Registry reject");
-
-        if (isCustom) {
-            await supabase.rpc('delete_dubbed_movie', { target_id: String(item.id) });
+        if (index > -1) {
+          myList.splice(index, 1);
+          setIsAdded(false);
+          addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListRemoveSuccess') });
+        } else {
+          myList.push({
+            id: item.id,
+            media_type: mediaType === 'dubbed' ? 'movie' : (mediaType as 'movie' | 'tv'),
+            title: item.title || item.name || '',
+            poster_path: item.poster_path,
+          });
+          setIsAdded(true);
+          addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListAddSuccess') });
         }
-        
-        addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed from global registry.' });
-        window.dispatchEvent(new CustomEvent('banned-list-updated'));
-    } catch (err) {
-        console.error("Moderation failure:", err);
-        addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
-    }
-  };
 
-  const detailPath =
-    mediaType === 'dubbed' || isCustom
-      ? `/dubbed-details/${String(item.id).replace('custom_', '')}`
-      : `/details/${mediaType}/${item.id}`;
+        localStorage.setItem('myList', JSON.stringify(myList));
+        window.dispatchEvent(new Event('storage'));
+      };
 
-  const navigateToDetail = () => {
-    navigate(detailPath, { state: { customData: item } });
-  };
+      const handleRemoveProgress = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+        const filtered = progress.filter((i: any) => !(i.id === item.id && String(i.type) === mediaType));
+        localStorage.setItem('watchProgress', JSON.stringify(filtered));
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('watchProgressUpdated'));
+      };
 
-  const handlePrefetch = () => {
-    if (isCustom || mediaType === 'dubbed') {
-      import('../pages/DubbedDetailPage');
-    } else {
-      import('../pages/DetailPage');
-      import('../pages/TVDetailPage');
-      
-      if (item.id) {
-        const isTv = mediaType === 'tv';
-        const endpoint = `/${isTv ? 'tv' : 'movie'}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
-        fetchData(endpoint, language).catch(() => {});
-      }
-    }
-  };
+      const handleBan = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const cleanId = String(item.id).replace('custom_', '');
 
-  // Extract metadata
-  const isRtl = language === 'ku' || language === 'badini';
-  const title = (isRtl && item.kurdishTitle) ? item.kurdishTitle : (item.title || item.name || '');
-  const rating = item.vote_average || 0;
-  const year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
-  const progressPct = 'progress' in item ? Math.min(100, (item.progress / (item.duration || 3600)) * 100) : 0;
-  const imageSrc = item.imageBase64 || item.poster_path || '';
+        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
 
-  return (
-    <motion.div
-      ref={ref}
-      onClick={navigateToDetail}
-      onMouseEnter={handlePrefetch}
-      onPointerDown={handlePrefetch}
-      className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation ${className || 'w-44 md:w-72'}`}
-      whileHover={!IS_TOUCH_DEVICE ? { scale: 1.04, y: -6 } : undefined}
-      whileTap={{ scale: 0.96 }}
-      transition={{
-          type: "spring",
-          stiffness: 400,
-          damping: 25
-      }}
-    >
-      {/* Pokemon trading card frame */}
-      <div 
-        className="relative aspect-[2/3] w-full rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden border-2 border-white/5 transition-all duration-500 shadow-xl bg-neutral-950 p-2 flex flex-col hover:border-brand/40 group-hover/card:shadow-[0_20px_40px_rgba(var(--brand-red-rgb),0.15)]"
-        style={{
-          boxShadow: `
-            0 15px 35px rgba(0, 0, 0, 0.6),
-            inset 0 1px 1px rgba(255, 255, 255, 0.05)
-          `
-        }}
-      >
-        {/* Poster artwork window with inner border */}
-        <div className="relative flex-1 min-h-0 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/10 bg-neutral-900 group-hover/card:border-brand/20">
-          <img
-            src={
-              (imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:')))
-                ? imageSrc
-                : (imageSrc
-                    ? `${IMAGE_BASE_URL_POSTER}${imageSrc}`
-                    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp')
-            }
-            alt={title}
-            width={342}
-            height={513}
-            loading="lazy"
-            decoding="async"
-            className="object-cover w-full h-full transition-transform duration-500 transform-gpu backface-hidden group-hover/card:scale-105"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
-            }}
-          />
+        try {
+          const banSignal = await bannedService.banContent(cleanId, mediaType);
+          if (!banSignal) throw new Error('Registry reject');
 
-          {/* IMDb Rating Badge */}
-          {rating > 0 && (
-            <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-[#F5C518]/30">
-              <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">IMDb</span>
-              <span className="font-black text-[8px] md:text-xs leading-none">{rating.toFixed(1)}</span>
-            </div>
-          )}
+          if (isCustom) {
+            await supabase.rpc('delete_dubbed_movie', { target_id: String(item.id) });
+          }
 
-          {/* Kurdish CC Badge (Auto-detect via queue) */}
-          {!isCustom && (
-            <div className="z-20 relative">
-              <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
-            </div>
-          )}
+          addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed from global registry.' });
+          window.dispatchEvent(new CustomEvent('banned-list-updated'));
+        } catch (err) {
+          console.error('Moderation failure:', err);
+          addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
+        }
+      };
 
-          {/* Level Rank Badge */}
-          {item.level ? (
-            <div className={`absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[7px] md:text-[9px] font-black uppercase tracking-widest shadow-[0_4px_10px_rgba(0,0,0,0.5)] backdrop-blur-sm ${item.level === 'KING' ? 'bg-yellow-500 text-black border border-yellow-500/30' : 'bg-brand text-white border border-brand/30'}`}>
-              {item.level === 'KING' && <Star size={8} fill="currentColor" className="md:w-2.5 md:h-2.5" />}
-              <span>{item.level}</span>
-            </div>
-          ) : (
-            /* Dubbed Label */
-            mediaType === 'dubbed' && (
-              <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-brand text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded-md shadow-[0_4px_10px_rgba(0,0,0,0.5)] border border-brand/30">
-                <Mic2 size={10} className="text-white" />
-                <span className="font-black text-[8px] md:text-xs leading-none">DUBBED</span>
-              </div>
-            )
-          )}
+      const detailPath =
+        mediaType === 'dubbed' || isCustom
+          ? `/dubbed-details/${String(item.id).replace('custom_', '')}`
+          : `/details/${mediaType}/${item.id}`;
 
-          {/* Action Buttons */}
-          <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
-            {!isProgressRow && (
-              <LiquidButton
-                variant={isAdded ? "default" : "secondary"}
-                onClick={handleToggleMyList}
-                className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${isAdded ? 'bg-brand text-white' : 'text-white'}`}
-                aria-label={isAdded ? t('myListRemoveSuccess') || "Remove from my list" : t('myListAddSuccess') || "Add to my list"}
-              >
-                {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
-              </LiquidButton>
-            )}
-            
-            {isProgressRow && (
-              <LiquidButton
-                variant="default"
-                onClick={handleRemoveProgress}
-                className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
-                aria-label="Remove watch progress"
-              >
-                <X className="w-4 h-4" strokeWidth={4} />
-              </LiquidButton>
-            )}
+      const navigateToDetail = () => {
+        navigate(detailPath, { state: { customData: item } });
+      };
 
-            {isAdmin && (
-              <LiquidButton
-                variant="destructive"
-                onClick={handleBan}
-                className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
-                aria-label="Ban content from global registry"
-              >
-                <Trash2 className="w-4 h-4" />
-              </LiquidButton>
-            )}
-          </div>
+      const handleShare = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const shareTitle = item.title || item.name || 'FLKRD Movie';
+        const shareText = [
+          shareTitle,
+          item.vote_average ? `⭐ ${item.vote_average.toFixed(1)}` : '',
+          (item.release_date || item.first_air_date || '').split('-')[0] || '',
+          item.overview ? item.overview.slice(0, 120) + (item.overview.length > 120 ? '…' : '') : '',
+        ].filter(Boolean).join(' · ');
+        const shareUrl = `https://flkrd.pro/#${detailPath}`;
 
-          {/* Bottom Progress Bar */}
-          {isProgressRow && progressPct > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/60 z-20 overflow-hidden">
-              <div className="h-full bg-brand" style={{ width: `${progressPct}%` }} />
-            </div>
-          )}
-        </div>
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: shareTitle, text: shareText, url: shareUrl });
+          } catch { /* user cancelled */ }
+        } else {
+          try {
+            await navigator.clipboard.writeText(shareUrl);
+            addNotification({ type: 'success', title: 'Link Copied!', message: shareTitle });
+          } catch {
+            addNotification({ type: 'error', title: 'Share Failed', message: 'Cannot copy link.' });
+          }
+        }
+      };
 
-        {/* Pokemon trading card details footer */}
-        <div 
-          className="mt-2 px-1.5 py-1.5 flex flex-col gap-0.5 rounded-2xl border"
-          style={{
-            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 0.7}), transparent 90%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.9})`,
-            backdropFilter: `blur(${glassConfig.blurAmount * 0.4}px)`,
-            borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity * 0.7})`,
-            boxShadow: `
-              inset 0 1px 0 0 rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.15}),
-              0 4px 10px rgba(0, 0, 0, 0.4)
-            `
+      const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigateToDetail();
+        }
+      };
+
+      const handlePrefetch = () => {
+        if (isCustom || mediaType === 'dubbed') {
+          import('../pages/DubbedDetailPage');
+        } else {
+          import('../pages/DetailPage');
+          import('../pages/TVDetailPage');
+
+          if (item.id) {
+            const isTv = mediaType === 'tv';
+            const endpoint = `/${isTv ? 'tv' : 'movie'}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+            fetchData(endpoint, language).catch(() => {});
+          }
+        }
+      };
+
+      // Extract metadata
+      const isRtl = language === 'ku' || language === 'badini';
+      const title = isRtl && item.kurdishTitle ? item.kurdishTitle : item.title || item.name || '';
+      const rating = item.vote_average || 0;
+      const year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
+      const progressPct = 'progress' in item ? Math.min(100, (item.progress / (item.duration || 3600)) * 100) : 0;
+      const imageSrc = item.imageBase64 || item.poster_path || '';
+      const isActiveState = isHovered || isFocused;
+
+      return (
+        <motion.div
+          ref={ref}
+          tabIndex={0}
+          onClick={navigateToDetail}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onMouseEnter={() => {
+            setIsHovered(true);
+            handlePrefetch();
+          }}
+          onMouseLeave={() => setIsHovered(false)}
+          onPointerDown={handlePrefetch}
+          className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation focus:outline-none ${
+            className || 'w-44 md:w-72'
+          }`}
+          style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 280px' }}
+          whileHover={!IS_TOUCH_DEVICE ? { scale: 1.04, y: -5 } : undefined}
+          whileTap={{ scale: 0.95 }}
+          transition={{
+            type: 'spring',
+            stiffness: 380,
+            damping: 24,
           }}
         >
-          {/* Card Title */}
-          <h4 className="text-[9px] md:text-sm font-black text-white truncate leading-tight tracking-tight text-center">
-            {title}
-          </h4>
+          {/* Hand-Crafted Card Outer Shell */}
+          <div
+            className={`relative aspect-[2/3] w-full rounded-[2.2rem] md:rounded-[3rem] overflow-hidden border-2 transition-all duration-300 bg-neutral-950 p-2 flex flex-col ${
+              isActiveState
+                ? 'border-brand/40 shadow-[0_22px_50px_rgba(229,9,20,0.38)]'
+                : 'border-white/5 shadow-[0_15px_35px_rgba(0,0,0,0.65)]'
+            }`}
+            style={{
+              boxShadow: isActiveState
+                ? '0 22px 50px rgba(229, 9, 20, 0.38)'
+                : '0 15px 35px rgba(0, 0, 0, 0.65)',
+            }}
+          >
+            {/* Apple / Gemini AI Glowing Border Beam on Active Hover or Focus State (Desktop Only) */}
+            {isActiveState && !IS_TOUCH_DEVICE && (
+              <BorderBeam
+                size={220}
+                duration={7}
+                borderWidth={2}
+                colorFrom="#e50914"
+                colorTo="#9c40ff"
+                glow={true}
+              />
+            )}
 
-          {/* Metadata Row */}
-          <div className="flex items-center justify-between mt-0.5 text-[7px] md:text-[9px] font-bold text-sec-text px-0.5">
-            {/* Card Subtitle/Brand */}
-            <span className="text-brand font-[1000] tracking-widest text-[6px] md:text-[8px] uppercase italic">
-              FLKRD STUDIO
-            </span>
+            {/* Poster Artwork Window */}
+            <div className="relative flex-1 min-h-0 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/5 bg-neutral-900">
+              {/* Skeleton Pulse loader during image fetch */}
+              {!isImgLoaded && (
+                <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
+                  <div className="w-6 h-6 border-2 border-white/15 border-t-brand rounded-full animate-spin" />
+                </div>
+              )}
 
-            {/* Year Badge */}
-            <span className="text-white/60 font-bold uppercase tracking-tighter">
-              {year}
-            </span>
+              <img
+                src={
+                  imageSrc && (imageSrc.startsWith('http') || imageSrc.startsWith('data:'))
+                    ? imageSrc
+                    : imageSrc
+                    ? `${IMAGE_BASE_URL_POSTER}${imageSrc}`
+                    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                }
+                alt={title}
+                width={342}
+                height={513}
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setIsImgLoaded(true)}
+                className={`object-cover w-full h-full transition-all duration-500 transform-gpu backface-hidden group-hover/card:scale-105 ${
+                  isImgLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                  setIsImgLoaded(true);
+                }}
+              />
+
+              {/* Poster Atmospheric Vignette Fade */}
+              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-transparent to-black/20 pointer-events-none" />
+
+              {/* Floating IMDb Rating Badge */}
+              {rating > 0 && (
+                <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.6)] border border-[#F5C518]/40">
+                  <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">
+                    IMDb
+                  </span>
+                  <span className="font-black text-[8px] md:text-xs leading-none">{rating.toFixed(1)}</span>
+                </div>
+              )}
+
+              {/* Floating Kurdish CC Badge */}
+              {!isCustom && (
+                <div className="z-20 relative">
+                  <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
+                </div>
+              )}
+
+              {/* Level / Dubbed Rank Badge */}
+              {item.level ? (
+                <div
+                  className={`absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[7px] md:text-[9px] font-black uppercase tracking-widest shadow-[0_4px_12px_rgba(0,0,0,0.6)] backdrop-blur-sm ${
+                    item.level === 'KING'
+                      ? 'bg-yellow-500 text-black border border-yellow-500/40'
+                      : 'bg-brand text-white border border-brand/40'
+                  }`}
+                >
+                  {item.level === 'KING' && <Star size={8} fill="currentColor" className="md:w-2.5 md:h-2.5" />}
+                  <span>{item.level}</span>
+                </div>
+              ) : (
+                mediaType === 'dubbed' && (
+                  <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-brand text-white px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.6)] border border-brand/40">
+                    <Mic2 size={10} className="text-white" />
+                    <span className="font-black text-[8px] md:text-xs leading-none">DUBBED</span>
+                  </div>
+                )
+              )}
+
+              {/* Action Triggers (List Add / Remove / Ban) */}
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
+                {!isProgressRow && (
+                  <LiquidButton
+                    variant={isAdded ? 'default' : 'secondary'}
+                    onClick={handleToggleMyList}
+                    className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${
+                      isAdded ? 'bg-brand text-white' : 'text-white'
+                    }`}
+                    aria-label={
+                      isAdded
+                        ? t('myListRemoveSuccess') || 'Remove from my list'
+                        : t('myListAddSuccess') || 'Add to my list'
+                    }
+                  >
+                    {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
+                  </LiquidButton>
+                )}
+
+                {isProgressRow && (
+                  <LiquidButton
+                    variant="default"
+                    onClick={handleRemoveProgress}
+                    className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
+                    aria-label="Remove watch progress"
+                  >
+                    <X className="w-4 h-4" strokeWidth={4} />
+                  </LiquidButton>
+                )}
+
+                <LiquidButton
+                  variant="secondary"
+                  onClick={handleShare}
+                  className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl text-white"
+                  aria-label="Share movie"
+                >
+                  <Share2 className="w-4 h-4" />
+                </LiquidButton>
+
+                {isAdmin && (
+                  <LiquidButton
+                    variant="destructive"
+                    onClick={handleBan}
+                    className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
+                    aria-label="Ban content from global registry"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </LiquidButton>
+                )}
+              </div>
+
+              {/* Bottom Progress Bar for Watch Progress */}
+              {isProgressRow && progressPct > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/70 z-20 overflow-hidden">
+                  <div className="h-full bg-brand shadow-[0_0_8px_rgba(229,9,20,0.8)]" style={{ width: `${progressPct}%` }} />
+                </div>
+              )}
+            </div>
+
+            {/* Bespoke Glass Footer Container */}
+            <div
+              className="mt-2 px-3 py-2 flex flex-col gap-0.5 rounded-2xl border"
+              style={{
+                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb, 229, 9, 20), ${
+                  glassConfig.redOpacity * 0.8
+                }), transparent 85%), rgba(12, 12, 12, ${glassConfig.darkOpacity * 0.92})`,
+                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px)`,
+                borderColor: `rgba(var(--brand-red-rgb, 229, 9, 20), ${glassConfig.borderOpacity * 0.8})`,
+                boxShadow: `
+                  inset 0 1px 0 0 rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.2}),
+                  0 6px 14px rgba(0, 0, 0, 0.45)
+                `,
+              }}
+            >
+              {/* Card Title (RTL Kurdish & English Typography Polish) */}
+              <h4
+                className={`text-[10px] md:text-sm truncate text-center transition-colors group-hover/card:text-brand ${
+                  isRtl ? 'font-kurdish leading-[1.35] tracking-normal font-bold text-white' : 'font-extrabold tracking-tight leading-tight text-white'
+                }`}
+              >
+                {title}
+              </h4>
+
+              {/* Metadata Sub-Row */}
+              <div className="flex items-center justify-between mt-0.5 text-[7px] md:text-[9px] font-bold text-sec-text px-0.5">
+                <span className="text-brand font-[1000] tracking-widest text-[6px] md:text-[8px] uppercase italic">
+                  FLKRD
+                </span>
+
+                <span className="text-white/60 font-semibold uppercase tracking-tighter">{year}</span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}));
+        </motion.div>
+      );
+    }
+  )
+);
 
 MovieCard.displayName = 'MovieCard';
 

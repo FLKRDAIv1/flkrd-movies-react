@@ -75,10 +75,16 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'border-beam': {
+          '100%': {
+            'offset-distance': '100%',
+          },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.5s infinite linear',
         'fade-in': 'fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'border-beam': 'border-beam calc(var(--duration, 12) * 1s) infinite linear',
       },
     },
   },

@@ -1,6 +1,15 @@
+@import "@fontsource-variable/geist/index.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  @font-face {
+    font-family: 'Geist Variable';
+    font-display: swap;
+  }
+}
 
 /* ═══════════════════════════════════════════════
    FLKRD MOVIES — Design System & Performance CSS
@@ -1012,12 +1021,96 @@ a,
   [class*="overflow-x-auto"],
   [class*="overflow-x-scroll"] {
     scroll-snap-type: x proximity;
-    -webkit-overflow-scrolling: touch;
   }
+}
 
-  /* ── 8. Reduce Framer Motion spring overhead on touch devices ── */
-  .card-entrance,
-  [data-framer-appear-id] {
-    will-change: opacity, transform;
+/* ═══════════════════════════════════════════════
+   Omni-Channel 60FPS Pure-GPU Hardware Engine (TV / Mobile / PC)
+   ═══════════════════════════════════════════════ */
+
+/* Global Reflow Isolation: Prevents one card change from forcing full page re-layouts.
+   No content-visibility or pop-in effects — 100% visible continuously. */
+.movie-row-container,
+.movie-row-deferred,
+.movie-grid-container {
+  contain: layout paint;
+}
+
+/* Hardware Acceleration & WebKit Anti-Flicker Fixes */
+.gpu-layer-3d {
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  perspective: 1000px;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+/* Prevent image & font blurriness on WebKit GPUs during transform scale */
+.transform-gpu-crisp {
+  transform: translateZ(0);
+  -webkit-font-smoothing: subpixel-antialiased;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* ── 8. Reduce Framer Motion spring overhead on touch devices ── */
+.card-entrance,
+[data-framer-appear-id] {
+  will-change: opacity, transform;
+}
+
+/* ═══════════════════════════════════════════════
+   Shadcn / Velora GPU-Accelerated Border Beam & Apple/Gemini AI Glow
+   ═══════════════════════════════════════════════ */
+
+@keyframes border-beam {
+  0% {
+    offset-distance: 0%;
   }
+  100% {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes screen-beam {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1000;
+  }
+}
+
+.animate-border-beam {
+  animation: border-beam calc(var(--duration, 12) * 1s) infinite linear;
+}
+
+.animate-screen-beam {
+  animation: screen-beam 10s infinite linear;
+}
+
+/* RTL Kurdish Typography & Spacing Optimization */
+[dir="rtl"], .rtl {
+  letter-spacing: 0em !important;
+}
+
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3,
+.rtl-heading {
+  line-height: 1.35 !important;
+}
+
+[dir="rtl"] p, .rtl-text {
+  line-height: 1.7 !important;
+}
+
+/* TV & Keyboard Focus Visible Glow State */
+:focus-visible {
+  outline: none !important;
+}
+
+.tv-focus-target:focus-visible {
+  box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.8), 0 0 25px rgba(229, 9, 20, 0.5) !important;
 }

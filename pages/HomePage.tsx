@@ -125,7 +125,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
 
 const HomePage: React.FC = () => {
   const { language, t } = useTranslation();
-  const { theme } = useUI();
+  const { theme, viewMode } = useUI();
   const [activeItem, setActiveItem] = useState<any>(null);
   const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
   const [continueWatchingItems, setContinueWatchingItems] = useState<WatchProgress[]>([]);
@@ -332,9 +332,9 @@ const HomePage: React.FC = () => {
           />
         </div>
       )}
-      <HeroBanner onActiveItemChange={setActiveItem} />
+      {viewMode !== 'list' && <HeroBanner onActiveItemChange={setActiveItem} />}
 
-      <div className="relative z-20 mt-8 md:mt-12">
+      <div className={`relative z-20 ${viewMode === 'list' ? 'pt-24 md:pt-32 space-y-12' : 'mt-8 md:mt-12'}`}>
         <AnimatePresence>
           {continueWatchingItems.length > 0 && (
             <motion.div

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, 
@@ -159,120 +159,65 @@ const MobileNav: React.FC = () => {
 
   return (
     <>
-      {/* Bottom NotchNavbar for Mobile (Flipped shape of the Header Notch) */}
+      {/* Floating Pill Bottom Navbar for Mobile (100% Responsive, Floating Capsule) */}
       <div 
-        className="global-mobilenav fixed bottom-0 inset-x-0 z-[999] md:hidden flex flex-col transition-all duration-300 w-full select-none pointer-events-auto"
-        style={{ height: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+        className="global-mobilenav fixed bottom-3 inset-x-3 sm:inset-x-6 z-[999] md:hidden flex justify-center select-none pointer-events-auto"
         dir="ltr"
       >
-        {/* Curved Notch Navigation Bar Content (64px height) */}
-        <div className="h-16 w-full flex relative z-10">
-          
-          {/* Left Side Bar - Flexible width */}
-          <div className={cn("flex-grow h-10 self-end transition-all duration-300 relative min-w-0", notchBgClass)}>
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-              <line x1="0" y1="24.5" x2="100%" y2="24.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-              <line x1="0" y1="27.5" x2="100%" y2="27.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-            </svg>
-          </div>
-
-          {/* Responsive Bottom Notch Container */}
-          <div className="flex h-16 relative z-10 shrink-0 -ml-px">
-            
-            {/* Left Slice (Corner Curve Flipped) */}
-            <div className="w-[40px] h-full relative shrink-0">
-              <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
-                <path 
-                  d="M -1 64 H 51 V 0 C 25 0 25 24 -1 24 Z" 
-                  className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
-                />
-                <path d="M0 24.5 C25 24.5 25 0.5 50 0.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
-                <path d="M0 27.5 C25 27.5 25 3.5 50 3.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
-              </svg>
-            </div>
-
-            {/* Center Slice (Content Area - Fits 5 items) */}
-            <div className={cn("flex h-full relative transition-all duration-300 w-[230px] min-[375px]:w-[270px] min-[414px]:w-[310px] -ml-px", notchBgClass)}>
-               <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
-                 <line x1="0" y1="0.5" x2="100%" y2="0.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-                 <line x1="0" y1="3.5" x2="100%" y2="3.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-               </svg>
-
-               {/* Bottom Navigation Buttons (RTL for text, LTR flex layout) */}
-               <div className="relative w-full h-full flex items-center justify-around pb-1 px-1.5" dir={isRtl ? 'rtl' : 'ltr'}>
-                 {mainItems.map((item) => {
-                   const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-
-                   return (
-                     <NavLink
-                       key={item.id}
-                       to={item.to}
-                       className="flex flex-col items-center justify-center w-10 h-10 min-[375px]:w-12 min-[375px]:h-12 flex-1 relative select-none focus:outline-none"
-                     >
-                       <div className={cn(
-                         "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all duration-300",
-                         isActive 
-                           ? 'text-red-500 bg-red-500/10 border border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]' 
-                           : (isDarkNavbar ? 'text-zinc-400 hover:text-white border-transparent' : 'text-zinc-600 hover:text-black border-transparent')
-                       )}>
-                         {item.icon}
-                         <span className="text-[7px] font-black uppercase tracking-widest leading-none">
-                           {getKurdishLabel(item.labelKey)}
-                         </span>
-                       </div>
-                     </NavLink>
-                   );
-                 })}
-
-                 {/* More Button */}
-                 <button
-                   onClick={() => setIsMoreMenuOpen(true)}
-                   className="flex flex-col items-center justify-center w-10 h-10 min-[375px]:w-12 min-[375px]:h-12 flex-1 relative select-none focus:outline-none"
-                 >
-                   <div className={cn(
-                     "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-xl transition-all duration-300",
-                     isMoreMenuOpen 
-                       ? 'text-red-500 bg-red-500/10 border border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.12)]' 
-                       : (isDarkNavbar ? 'text-zinc-400 hover:text-white border-transparent' : 'text-zinc-600 hover:text-black border-transparent')
-                   )}>
-                     <MoreHorizontal size={18} />
-                     <span className="text-[7px] font-black uppercase tracking-widest leading-none">
-                       {getKurdishLabel('more')}
-                     </span>
-                   </div>
-                 </button>
-               </div>
-            </div>
-
-            {/* Right Slice (Corner Curve Flipped) */}
-            <div className="w-[40px] h-full relative shrink-0 -ml-px">
-              <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible" viewBox="0 0 50 64" preserveAspectRatio="none">
-                <path 
-                  d="M -1 64 H 51 V 24 C 25 24 25 0 -1 0 Z" 
-                  className={cn("transition-all duration-300", isDarkNavbar ? "fill-black" : "fill-white")} 
-                />
-                <path d="M0 0.5 C25 0.5 25 24.5 50 24.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
-                <path d="M0 3.5 C25 3.5 25 27.5 50 27.5" fill="none" stroke="currentColor" strokeOpacity={0.12} strokeWidth={0.5} className={notchStrokeClass} />
-              </svg>
-            </div>
-
-          </div>
-
-          {/* Right Side Bar - Flexible width */}
-          <div className={cn("flex-grow h-10 self-end transition-all duration-300 relative min-w-0 -ml-px", notchBgClass)}>
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-              <line x1="0" y1="24.5" x2="100%" y2="24.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-              <line x1="0" y1="27.5" x2="100%" y2="27.5" stroke="currentColor" strokeOpacity={0.06} strokeWidth={0.5} className={notchStrokeClass} />
-            </svg>
-          </div>
-
-        </div>
-
-        {/* Bottom safe-area home-indicator background filler */}
         <div 
-          className={cn("w-full transition-all duration-300 relative z-0", notchBgClass)} 
-          style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
-        />
+          className="w-full max-w-md h-14 bg-neutral-950/85 backdrop-blur-2xl border border-white/20 rounded-full shadow-[0_12px_35px_rgba(0,0,0,0.85)] p-1 flex items-center justify-between"
+          dir={isRtl ? 'rtl' : 'ltr'}
+        >
+          {mainItems.map((item) => {
+            const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
+
+            return (
+              <button
+                key={item.id}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  navigate(item.to);
+                }}
+                className="flex-1 h-full flex flex-col items-center justify-center relative select-none focus:outline-none touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+              >
+                <div className={cn(
+                  "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-full transition-all duration-200",
+                  isActive 
+                    ? 'text-red-500 bg-red-500/15 border border-red-500/30 font-black shadow-[0_0_15px_rgba(239,68,68,0.25)]' 
+                    : 'text-zinc-400 border-transparent'
+                )}>
+                  {item.icon}
+                  <span className="text-[8px] font-black uppercase tracking-widest leading-none">
+                    {getKurdishLabel(item.labelKey)}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+
+          {/* More Button */}
+          <button
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setIsMoreMenuOpen(true);
+            }}
+            className="flex-1 h-full flex flex-col items-center justify-center relative select-none focus:outline-none touch-manipulation"
+            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+          >
+            <div className={cn(
+              "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-full transition-all duration-200",
+              isMoreMenuOpen 
+                ? 'text-red-500 bg-red-500/15 border border-red-500/30 font-black shadow-[0_0_15px_rgba(239,68,68,0.25)]' 
+                : 'text-zinc-400 border-transparent'
+            )}>
+              <MoreHorizontal size={18} />
+              <span className="text-[8px] font-black uppercase tracking-widest leading-none">
+                {getKurdishLabel('more')}
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Floating Bottom sheet menu drawer for More */}
@@ -317,8 +262,12 @@ const MobileNav: React.FC = () => {
                   {drawerItems.map((item) => (
                     <button
                       key={item.label}
-                      onClick={item.onClick}
-                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 active:scale-95 relative"
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        item.onClick();
+                      }}
+                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 active:scale-95 relative touch-manipulation"
+                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     >
                       <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
                         {item.icon}

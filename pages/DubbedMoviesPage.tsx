@@ -17,6 +17,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import MovieCard from '../components/MovieCard';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
 import { bannedService } from '../services/bannedService';
 import { featuredBannerService, FeaturedBannerItem } from '../services/featuredBannerService';
 import { supabase } from '../utils/supabaseClient';
@@ -565,7 +566,11 @@ const DubbedMoviesPage: React.FC = () => {
                 if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE') {
                     setHasNewMovies(true);
                     // Silently refresh the local list without showing a loader
-                    const { data } = await supabase.from('dubbed_movies').select('*').order('created_at', { ascending: false });
+                    const { data } = await supabase
+                        .from('dubbed_movies')
+                        .select('id, title, description, level, videoUrl, created_at, imdb_id, tmdb_id, imageBase64')
+                        .order('created_at', { ascending: false })
+                        .limit(100);
                     if (data) {
                         const bannedIds = await bannedService.fetchBannedList();
                         const formatted = data
@@ -1682,16 +1687,11 @@ const DubbedMoviesPage: React.FC = () => {
                         </div>
                     </motion.div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10 px-4 md:px-12">
-                        {filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter).map((movie, index) => (
-                            <MovieCard
-                                key={`${movie.id}-${index}`}
-                                item={movie}
-                                type="dubbed"
-                                className="w-full"
-                            />
-                        ))}
-                    </div>
+                    <MovieLayoutManager
+                        items={filteredContent.filter(movie => activeFilter === 'ALL' || movie.level === activeFilter)}
+                        type="dubbed"
+                        className="px-4 md:px-12"
+                    />
                 )}
 
                 {/* Infinite Scroll Sensor */}

@@ -1,18 +1,26 @@
-
-import React, { useState, memo, useMemo } from 'react';
+import React, { useState, memo, useMemo, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, Location } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Tv, Film, Bookmark, Search, Globe, Mic2, PlayCircle, ChevronRight } from 'lucide-react';
+import {
+  Home,
+  Tv,
+  Film,
+  Bookmark,
+  Search,
+  Globe,
+  Mic2,
+  PlayCircle,
+  ChevronRight,
+  X,
+  Sparkles,
+} from 'lucide-react';
 import { STUDIOS } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 
-
-// sidebarVariants is now defined dynamically inside the Sidebar component to use the live elasticity configuration
-
 const textVariants = {
-  open: { opacity: 1, x: 0, display: 'inline', transition: { delay: 0.1 } },
-  closed: { opacity: 0, x: -10, display: 'none' },
+  open: { opacity: 1, x: 0, display: 'inline-block', transition: { delay: 0.08, duration: 0.2 } },
+  closed: { opacity: 0, x: -8, transitionEnd: { display: 'none' }, transition: { duration: 0.15 } },
 };
 
 interface NavItemProps {
@@ -21,16 +29,15 @@ interface NavItemProps {
   text: string;
   location: Location;
   isCollapsed: boolean;
+  onItemClick?: () => void;
 }
 
-const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) => {
+const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: NavItemProps) => {
   const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
   const { glassConfig } = useUI();
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
-  
-  // Prefetch logic for snappier navigation
+
   const handlePrefetch = () => {
-    // If it's a lazy component, this will trigger the import
     const componentMap: Record<string, () => Promise<any>> = {
       '/': () => import('../pages/HomePage'),
       '/tv': () => import('../pages/TVShowsPage'),
@@ -45,39 +52,46 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed }: NavItemProps) =
 
   return (
     <motion.div
-      whileHover={{ scale: 1.05, x: isCollapsed ? 0 : 5 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 450 * (elasticity / 0.35), 
-        damping: 18 * (0.35 / elasticity) 
+      whileHover={{ scale: 1.04, x: isCollapsed ? 0 : 4 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{
+        type: 'spring',
+        stiffness: 450 * (elasticity / 0.35),
+        damping: 18 * (0.35 / elasticity),
       }}
       className="w-full"
     >
-    <NavLink 
-      to={to} 
-      title={isCollapsed ? text : ""}
-      onMouseEnter={handlePrefetch}
-      className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-500 overflow-hidden border ${
-        isActive 
-        ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black' 
-        : 'bg-transparent border-transparent hover:bg-box-bg hover:backdrop-blur-md hover:border-border-color text-sec-text hover:text-main-text'
-      }`}
-    >
-      <div className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110 text-white' : 'group-hover:scale-110 text-sec-text'}`}>
-        {icon}
-      </div>
-      <motion.span 
-        variants={textVariants} 
-        className="ml-4 font-black uppercase tracking-[0.15em] text-[10px] whitespace-nowrap"
+      <NavLink
+        to={to}
+        title={isCollapsed ? text : ''}
+        onMouseEnter={handlePrefetch}
+        onClick={onItemClick}
+        className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-300 overflow-hidden border ${
+          isActive
+            ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black'
+            : 'bg-transparent border-transparent hover:bg-white/10 hover:backdrop-blur-md hover:border-white/10 text-neutral-400 hover:text-white'
+        }`}
       >
-        {text}
-      </motion.span>
-      
-      {!isCollapsed && isActive && (
-        <ChevronRight size={14} className="ml-auto opacity-50 text-white" />
-      )}
-    </NavLink>
+        <div
+          className={`flex-shrink-0 transition-all duration-300 ${
+            isActive ? 'scale-110 text-white' : 'group-hover:scale-110 text-neutral-400'
+          }`}
+        >
+          {icon}
+        </div>
+
+        <motion.span
+          variants={textVariants}
+          animate={isCollapsed ? 'closed' : 'open'}
+          className="ml-4 font-black uppercase tracking-[0.15em] text-[10px] whitespace-nowrap"
+        >
+          {text}
+        </motion.span>
+
+        {!isCollapsed && isActive && (
+          <ChevronRight size={14} className="ml-auto opacity-70 text-white" />
+        )}
+      </NavLink>
     </motion.div>
   );
 });
@@ -87,67 +101,109 @@ interface StudioItemProps {
   icon: React.ReactNode;
   text: string;
   location: Location;
+  isCollapsed: boolean;
+  onItemClick?: () => void;
 }
 
-const StudioItem = memo(({ to, icon, text, location }: StudioItemProps) => {
+const StudioItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: StudioItemProps) => {
   const isActive = location.pathname.startsWith(to.split('/').slice(0, 3).join('/'));
   const { glassConfig } = useUI();
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
+
   return (
     <motion.div
-      whileHover={{ scale: 1.05, x: 4 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 450 * (elasticity / 0.35), 
-        damping: 18 * (0.35 / elasticity) 
+      whileHover={{ scale: 1.04, x: 4 }}
+      whileTap={{ scale: 0.96 }}
+      transition={{
+        type: 'spring',
+        stiffness: 450 * (elasticity / 0.35),
+        damping: 18 * (0.35 / elasticity),
       }}
       className="w-full"
     >
-    <NavLink 
-      to={to} 
-      className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-500 border ${
-        isActive 
-        ? 'bg-brand/20 backdrop-blur-md border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]' 
-        : 'bg-transparent border-transparent hover:bg-box-bg hover:backdrop-blur-sm hover:border-border-color text-sec-text hover:text-main-text'
-      }`}
-    >
-      <div className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${isActive ? 'scale-110 text-brand' : 'group-hover:rotate-12 text-sec-text'}`}>
-        {icon}
-      </div>
-      <motion.span 
-        variants={textVariants} 
-        className="ml-4 font-bold text-[9px] uppercase tracking-widest whitespace-nowrap"
+      <NavLink
+        to={to}
+        onClick={onItemClick}
+        className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-300 border ${
+          isActive
+            ? 'bg-brand/20 backdrop-blur-md border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]'
+            : 'bg-transparent border-transparent hover:bg-white/10 hover:backdrop-blur-sm hover:border-white/10 text-neutral-400 hover:text-white'
+        }`}
       >
-        {text}
-      </motion.span>
-    </NavLink>
+        <div
+          className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${
+            isActive ? 'scale-110 text-brand' : 'group-hover:rotate-12 text-neutral-400'
+          }`}
+        >
+          {icon}
+        </div>
+        <motion.span
+          variants={textVariants}
+          animate={isCollapsed ? 'closed' : 'open'}
+          className="ml-4 font-bold text-[9px] uppercase tracking-widest whitespace-nowrap"
+        >
+          {text}
+        </motion.span>
+      </NavLink>
     </motion.div>
   );
 });
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
   const { t } = useTranslation();
   const { theme, glassConfig } = useUI();
 
+  // Close mobile drawer on ESC
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && onClose) {
+        onClose();
+      }
+    },
+    [isOpen, onClose]
+  );
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const sidebarVariants = useMemo(() => {
-    const e = Math.max(0.01, glassConfig.elasticity || 0.35);
+    const e = Math.max(0.01, glassConfig?.elasticity || 0.35);
     return {
-      open: { 
-        width: "16.5rem",
-        transition: { type: "spring", stiffness: Math.min(2000, 400 * (e / 0.35)), damping: Math.min(200, 40 * (0.35 / e)) }
+      open: {
+        width: '16.5rem',
+        transition: {
+          type: 'spring',
+          stiffness: Math.min(2000, 400 * (e / 0.35)),
+          damping: Math.min(200, 40 * (0.35 / e)),
+        },
       },
-      closed: { 
-        width: "4.5rem",
-        transition: { type: "spring", stiffness: Math.min(2000, 400 * (e / 0.35)), damping: Math.min(200, 40 * (0.35 / e)) }
+      closed: {
+        width: '4.5rem',
+        transition: {
+          type: 'spring',
+          stiffness: Math.min(2000, 400 * (e / 0.35)),
+          damping: Math.min(200, 40 * (0.35 / e)),
+        },
       },
     };
-  }, [glassConfig.elasticity]);
+  }, [glassConfig?.elasticity]);
 
   return (
     <>
+      {/* ──────────────────────────────────────────────────────────
+          1. PERSISTENT DESKTOP / TV SIDEBAR (PC & Smart TV size)
+          - Carries class "global-sidebar" for index.css layout alignment
+          - Expands smoothly from 4.5rem to 16.5rem on hover with GPU composite
+         ────────────────────────────────────────────────────────── */}
       <AnimatePresence>
         {!isCollapsed && (
           <motion.div
@@ -155,107 +211,131 @@ const Sidebar: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsCollapsed(true)}
-            className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-md hidden md:block"
+            className="fixed inset-0 z-[45] bg-black/40 backdrop-blur-md hidden md:block transform-gpu"
+            style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
           />
         )}
       </AnimatePresence>
 
       <motion.div
-        className="global-sidebar hidden md:flex flex-col flex-shrink-0 h-[calc(100dvh-2.5rem)] my-5 ml-4 mr-0 text-sec-text z-50 overflow-visible relative"
+        className="global-sidebar hidden md:flex flex-col flex-shrink-0 text-neutral-300 z-50 overflow-visible relative select-none transform-gpu"
         variants={sidebarVariants}
         initial="closed"
-        animate={isCollapsed ? "closed" : "open"}
-        style={{ width: isCollapsed ? '4.5rem' : '16.5rem' }}
+        animate={isCollapsed ? 'closed' : 'open'}
+        style={{
+          width: isCollapsed ? '4.5rem' : '16.5rem',
+          willChange: 'width, transform',
+          transform: 'translateZ(0)',
+        }}
         onMouseEnter={() => setIsCollapsed(false)}
         onMouseLeave={() => setIsCollapsed(true)}
       >
         {/* Pure CSS Premium Glassmorphism Background with Red Tint */}
         <div
-          className="absolute inset-0 z-0 w-full h-full border backdrop-blur-2xl transition-all duration-300 overflow-hidden"
+          className="absolute inset-0 z-0 w-full h-full border backdrop-blur-2xl transition-all duration-300 overflow-hidden transform-gpu"
           style={{
-            background: theme === 'light'
-              ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 70%), rgba(255, 255, 255, 0.75)`
-              : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 70%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-            backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-            WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+            background:
+              theme === 'light'
+                ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 70%), rgba(255, 255, 255, 0.75)`
+                : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${
+                    glassConfig?.redOpacity || 0.15
+                  }), transparent 70%), rgba(10, 10, 10, ${glassConfig?.darkOpacity || 0.85})`,
+            backdropFilter: `blur(${glassConfig?.blurAmount || 20}px) saturate(${
+              glassConfig?.saturation || 120
+            }%)`,
+            WebkitBackdropFilter: `blur(${glassConfig?.blurAmount || 20}px) saturate(${
+              glassConfig?.saturation || 120
+            }%)`,
             borderStyle: 'solid',
-            borderColor: theme === 'light' 
-              ? `rgba(0, 0, 0, 0.06)`
-              : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-            borderRadius: `${glassConfig.cornerRadius}px`,
-            boxShadow: theme === 'light'
-              ? `0 30px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
-              : `
-                inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
+            borderColor:
+              theme === 'light'
+                ? `rgba(0, 0, 0, 0.06)`
+                : `rgba(var(--brand-red-rgb), ${glassConfig?.borderOpacity || 0.1})`,
+            borderRadius: `${glassConfig?.cornerRadius || 28}px`,
+            boxShadow:
+              theme === 'light'
+                ? `0 30px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
+                : `
+                inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + (glassConfig?.borderOpacity || 0.1) * 0.45}),
+                inset ${(glassConfig?.aberrationIntensity || 0.5) * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
+                inset -${(glassConfig?.aberrationIntensity || 0.5) * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
                 inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
                 0 30px 60px rgba(0,0,0,0.55)
-              `
+              `,
           }}
         >
           {/* Dynamic GPU-accelerated water sheen overlay */}
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
             style={{
-              background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-              opacity: (glassConfig.displacementScale / 120) * 0.9,
-              animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
+              background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${
+                0.05 + ((glassConfig?.displacementScale || 10) / 120) * 0.15
+              }) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
+              opacity: ((glassConfig?.displacementScale || 10) / 120) * 0.9,
+              animationDuration: `${
+                30 * (0.35 / Math.max(0.01, glassConfig?.elasticity || 0.35))
+              }s`,
             }}
           />
         </div>
 
-        {/* Content panel sitting above LiquidGlass */}
-        <div className="relative z-10 flex flex-col h-full w-full overflow-hidden" style={{ borderRadius: `${glassConfig.cornerRadius}px` }}>
+        {/* Content panel */}
+        <div
+          className="relative z-10 flex flex-col h-full w-full overflow-hidden"
+          style={{ borderRadius: `${glassConfig?.cornerRadius || 28}px` }}
+        >
           <button
-            onClick={(e) => { e.stopPropagation(); setIsCollapsed(prev => !prev); }}
-            className="flex items-center justify-center h-32 flex-shrink-0 relative overflow-hidden w-full cursor-pointer select-none group"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCollapsed((prev) => !prev);
+            }}
+            className="flex items-center justify-center h-28 flex-shrink-0 relative overflow-hidden w-full cursor-pointer select-none group"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-brand/20 to-transparent opacity-50" />
-            <motion.div 
-              animate={{ 
-                scale: isCollapsed ? 1 : 1.1,
-                width: isCollapsed ? "4rem" : "12rem"
+            <motion.div
+              animate={{
+                scale: isCollapsed ? 1 : 1.05,
+                width: isCollapsed ? '3.5rem' : '11.5rem',
               }}
-              className="relative z-10 flex items-center justify-center p-3 bg-box-bg rounded-2xl border border-border-color shadow-[0_0_30px_rgba(var(--text-primary-rgb),0.05)] backdrop-blur-2xl overflow-hidden hover:border-brand/20 transition-all duration-300"
+              className="relative z-10 flex items-center justify-center p-2.5 bg-neutral-900/60 rounded-2xl border border-white/10 shadow-lg backdrop-blur-2xl overflow-hidden hover:border-brand/30 transition-all duration-300"
             >
-               <AnimatePresence mode="wait">
-                 {isCollapsed ? (
-                   <motion.img 
-                     key="icon"
-                     initial={{ opacity: 0, scale: 0.8 }}
-                     animate={{ opacity: 1, scale: 1 }}
-                     exit={{ opacity: 0, scale: 0.8 }}
-                     src="/flkrd-icon.png" 
-                     alt="F" 
-                     className="w-10 h-10 object-contain" 
-                   />
-                 ) : (
-                   <motion.img 
-                     key="logo"
-                     initial={{ opacity: 0, x: -20 }}
-                     animate={{ opacity: 1, x: 0 }}
-                     exit={{ opacity: 0, x: -20 }}
-                     src="/flkrd-logo.png" 
-                     alt="FLKRD" 
-                     className="h-10 w-auto object-contain" 
-                   />
-                 )}
-               </AnimatePresence>
-               <div className="absolute -inset-2 bg-red-600/20 blur-2xl opacity-50 rounded-full" />
+              <AnimatePresence mode="wait">
+                {isCollapsed ? (
+                  <motion.img
+                    key="icon"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    src="/flkrd-icon.png"
+                    alt="F"
+                    className="w-9 h-9 object-contain"
+                  />
+                ) : (
+                  <motion.img
+                    key="logo"
+                    initial={{ opacity: 0, x: -15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -15 }}
+                    src="/flkrd-logo.png"
+                    alt="FLKRD"
+                    className="h-9 w-auto object-contain"
+                  />
+                )}
+              </AnimatePresence>
+              <div className="absolute -inset-2 bg-brand/20 blur-xl opacity-50 rounded-full" />
             </motion.div>
           </button>
 
-          <nav className="flex-grow flex flex-col space-y-3.5 mt-4 overflow-y-auto scrollbar-hide py-4">
-            <NavItem to="/" icon={<Home size={20} />} text={t('home')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/dubbed" icon={<Mic2 size={20} />} text={t('dubbedMovies')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/discover" icon={<Globe size={20} />} text={t('discover')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/search" icon={<Search size={20} />} text={t('search')} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList')} location={location} isCollapsed={isCollapsed} />
+          <nav className="flex-grow flex flex-col space-y-2 mt-2 overflow-y-auto scrollbar-hide py-2">
+            <NavItem to="/" icon={<Home size={20} />} text={t('home') || 'Home'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday') || 'Trending'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows') || 'TV Shows'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/dubbed" icon={<Mic2 size={20} />} text={t('dubbedMovies') || 'Dubbed'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/discover" icon={<Globe size={20} />} text={t('discover') || 'Discover'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/search" icon={<Search size={20} />} text={t('search') || 'Search'} location={location} isCollapsed={isCollapsed} />
+            <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList') || 'My List'} location={location} isCollapsed={isCollapsed} />
 
             <AnimatePresence>
               {!isCollapsed && (
@@ -263,27 +343,25 @@ const Sidebar: React.FC = () => {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="pt-10 px-2 overflow-hidden"
+                  transition={{ duration: 0.25 }}
+                  className="pt-6 px-2 overflow-hidden"
                 >
-                  <motion.div
-                    variants={textVariants}
-                    className="px-4 mb-4"
-                  >
-                    <h3 className="text-[8px] font-black text-gray-500 uppercase tracking-[0.4em] opacity-50">
-                      {t('studios')}
+                  <div className="px-4 mb-3">
+                    <h3 className="text-[8px] font-black text-neutral-500 uppercase tracking-[0.4em]">
+                      {t('studios') || 'Studios'}
                     </h3>
-                    <div className="h-px w-full bg-gradient-to-r from-main-text/10 to-transparent mt-2" />
-                  </motion.div>
-                  
+                    <div className="h-px w-full bg-gradient-to-r from-white/10 to-transparent mt-1.5" />
+                  </div>
+
                   <div className="space-y-1">
-                    {STUDIOS.map(studio => (
+                    {STUDIOS.map((studio) => (
                       <StudioItem
                         key={studio.id}
                         to={`/studio/${studio.id}/${encodeURIComponent(studio.name)}`}
                         icon={<Film size={16} />}
                         text={studio.name}
                         location={location}
+                        isCollapsed={isCollapsed}
                       />
                     ))}
                   </div>
@@ -291,22 +369,89 @@ const Sidebar: React.FC = () => {
               )}
             </AnimatePresence>
           </nav>
-          
-          <div className="p-6 border-t border-border-color bg-box-bg backdrop-blur-20 relative z-20">
-             <div className={`flex items-center gap-4 ${isCollapsed ? 'justify-center' : ''}`}>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-900 flex-shrink-0 border border-border-color shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]" />
-                {!isCollapsed && (
-                  <div className="flex flex-col min-w-0">
-                    <p className="text-[10px] font-black text-main-text uppercase tracking-tighter truncate">Premium Member</p>
-                    <p className="text-[8px] font-bold text-sec-text uppercase tracking-widest">Global Archive Access</p>
-                  </div>
-                )}
-             </div>
+
+          <div className="p-4 border-t border-white/10 bg-neutral-900/60 backdrop-blur-20 relative z-20">
+            <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-950 flex-shrink-0 border border-white/10 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)] flex items-center justify-center font-black text-[10px] text-white">
+                F
+              </div>
+              {!isCollapsed && (
+                <div className="flex flex-col min-w-0">
+                  <p className="text-[10px] font-black text-white uppercase tracking-tighter truncate">
+                    Premium Member
+                  </p>
+                  <p className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest truncate">
+                    Global Archive
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>
+
+      {/* ──────────────────────────────────────────────────────────
+          2. MOBILE DRAWER OVERLAY (When isOpen is triggered)
+         ────────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 z-[90] bg-black/70 backdrop-blur-md md:hidden transform-gpu"
+              style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
+            />
+
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: '0%' }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 350, damping: 34 }}
+              className="fixed top-0 left-0 bottom-0 z-[100] w-72 h-full bg-neutral-950/95 border-r border-white/10 text-neutral-300 shadow-2xl flex flex-col justify-between overflow-hidden md:hidden transform-gpu select-none"
+              style={{ contain: 'strict', transform: 'translateZ(0)' }}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-neutral-900/60">
+                <div className="flex items-center gap-3">
+                  <img src="/flkrd-icon.png" alt="FLKRD" className="w-9 h-9 object-contain" />
+                  <span className="text-sm font-black tracking-widest text-white uppercase">
+                    FLKRD MOVIES
+                  </span>
+                </div>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-full bg-white/5 text-neutral-400 hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </div>
+
+              <nav className="flex-grow flex flex-col space-y-2 py-4 overflow-y-auto scrollbar-hide px-2">
+                <NavItem to="/" icon={<Home size={20} />} text={t('home') || 'Home'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday') || 'Trending'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows') || 'TV Shows'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/dubbed" icon={<Mic2 size={20} />} text={t('dubbedMovies') || 'Dubbed'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/discover" icon={<Globe size={20} />} text={t('discover') || 'Discover'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/search" icon={<Search size={20} />} text={t('search') || 'Search'} location={location} isCollapsed={false} onItemClick={onClose} />
+                <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList') || 'My List'} location={location} isCollapsed={false} onItemClick={onClose} />
+              </nav>
+
+              <div className="p-4 border-t border-white/10 bg-neutral-900/60 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center font-bold text-white text-xs">
+                  F
+                </div>
+                <p className="text-xs font-black text-white uppercase">FLKRD VIP</p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

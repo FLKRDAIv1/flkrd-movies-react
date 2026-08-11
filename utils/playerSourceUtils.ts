@@ -67,8 +67,9 @@ export const getRankedSources = (hasKurdishSub: boolean = false): EnhancedPlayer
   return sourcesWithScores.sort((a, b) => b.score - a.score);
 };
 
-export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', season?: number, episode?: number, progress: number = 0, accentColor?: string, subtitleUrl?: string) => {
+export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv' | 'anime', season?: number, episode?: number, progress: number = 0, accentColor?: string, subtitleUrl?: string) => {
   const isTv = type === 'tv';
+  const isAnime = type === 'anime';
   const playerColor = accentColor?.replace('#', '') || 'e50914';
   const subParam = subtitleUrl ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}` : '';
 
@@ -79,8 +80,13 @@ export const getSourceUrl = (name: string, id: string, type: 'movie' | 'tv', sea
         ? `https://www.vidking.net/embed/tv/${id}/${season}/${episode}?${vkParams}&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
 
-    case 'FLKRD SERVER 1': { // Videasy (TOP 2) — uses built-in subtitle upload UI
-      const veParams = `?color=${playerColor}&autoplay=true&overlay=true&playsinline=1${progress > 10 ? `&progress=${Math.floor(progress)}` : ''}`;
+    case 'FLKRD SERVER 1': { // Videasy (TOP 2) — full Quick Start compliant
+      const veParams = `?color=${playerColor}&overlay=true${progress > 5 ? `&progress=${Math.floor(progress)}` : ''}`;
+      if (isAnime) {
+        return episode
+          ? `https://player.videasy.net/anime/${id}/${episode}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
+          : `https://player.videasy.net/anime/${id}${veParams}`;
+      }
       return isTv
         ? `https://player.videasy.net/tv/${id}/${season}/${episode}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
         : `https://player.videasy.net/movie/${id}${veParams}`;

@@ -13,6 +13,7 @@ import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from './KurdishCCBadge';
 import { LiquidButton } from './ui/liquid-glass-button';
 import MovieCard from './MovieCard';
+import MovieListCard from './MovieListCard';
 
 interface RowProps {
   title: string;
@@ -37,7 +38,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
   const rowRef = useRef<HTMLDivElement>(null);
   const scrollTicking = useRef(false);
   const { language, t } = useTranslation();
-  const { theme, isAdmin, glassConfig = {
+  const { theme, viewMode, isAdmin, glassConfig = {
     redOpacity: 0.15,
     darkOpacity: 0.85,
     blurAmount: 20,
@@ -102,7 +103,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
           observer.disconnect();
         }
       },
-      { rootMargin: '450px 0px' }
+      { rootMargin: '1500px 0px' }
     );
     observer.observe(containerRef.current);
     return () => observer.disconnect();
@@ -184,7 +185,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
       scrollTicking.current = false;
       if (rowRef.current && fetchUrl && hasMore && !loadingMore) {
           const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-          const isNearEnd = scrollWidth - scrollLeft - clientWidth < 600;
+          const isNearEnd = scrollWidth - scrollLeft - clientWidth < 1200;
 
           if (isNearEnd) {
               setLoadingMore(true);
@@ -268,37 +269,54 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
         </div>
       )}
       
-      <div className="relative group overflow-visible">
-        <div 
-          ref={rowRef} 
-          onScroll={handleScroll} 
-          className="flex overflow-x-scroll scrollbar-hide space-x-4 md:space-x-8 py-4 px-1 scroll-smooth overflow-visible"
-        >
+      {viewMode === 'list' ? (
+        <div className="flex flex-col gap-3 w-full animate-fadeIn">
           {content.map((item, index) => {
-              const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
-              const imageSrc = item.poster_path || (item as any).imageBase64;
-              if (!imageSrc || !mediaType) return null;
-              return (
-                <MovieCard
-                  key={`${item.id || 'item'}-${index}-${mediaType || 'media'}`}
-                  item={item}
-                  type={mediaType as 'movie' | 'tv' | 'dubbed'}
-                  isProgressRow={isProgressRow}
-                />
-              );
+            const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
+            const imageSrc = item.poster_path || (item as any).imageBase64;
+            if (!imageSrc && !item.title) return null;
+            return (
+              <MovieListCard
+                key={`list-${item.id || 'item'}-${index}`}
+                item={item}
+                type={mediaType as 'movie' | 'tv' | 'dubbed'}
+              />
+            );
           })}
-
-          {hasMore && (
-            <div className="flex-shrink-0 w-32 md:w-48 flex items-center justify-center p-8">
-                {loadingMore ? (
-                    <Loader2 className="w-8 h-8 text-brand animate-spin" />
-                ) : (
-                    <div className="w-1 h-12 bg-main-text/10 rounded-full" />
-                )}
-            </div>
-          )}
         </div>
-      </div>
+      ) : (
+        <div className="relative group overflow-visible">
+          <div 
+            ref={rowRef} 
+            onScroll={handleScroll} 
+            className="flex overflow-x-scroll scrollbar-hide space-x-4 md:space-x-8 py-4 px-1 scroll-smooth overflow-visible"
+          >
+            {content.map((item, index) => {
+                const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
+                const imageSrc = item.poster_path || (item as any).imageBase64;
+                if (!imageSrc || !mediaType) return null;
+                return (
+                  <MovieCard
+                    key={`${item.id || 'item'}-${index}-${mediaType || 'media'}`}
+                    item={item}
+                    type={mediaType as 'movie' | 'tv' | 'dubbed'}
+                    isProgressRow={isProgressRow}
+                  />
+                );
+            })}
+
+            {hasMore && (
+              <div className="flex-shrink-0 w-32 md:w-48 flex items-center justify-center p-8">
+                  {loadingMore ? (
+                      <Loader2 className="w-8 h-8 text-brand animate-spin" />
+                  ) : (
+                      <div className="w-1 h-12 bg-main-text/10 rounded-full" />
+                  )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -105,6 +105,8 @@ interface UIContextType {
 
   playerConfig: PlayerConfig;
   updatePlayerConfig: (config: PlayerConfig) => Promise<boolean>;
+  viewMode: 'grid' | 'list';
+  setViewMode: (mode: 'grid' | 'list') => void;
   hasPermission: (permKey: string) => boolean;
   currentAdminEmail: string;
   loginAsAdmin: (email: string, pass: string) => { success: boolean; admin?: any; message?: string };
@@ -135,6 +137,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Default OFF — user must opt-in from Settings
     return false;
   });
+  const [viewMode, setViewModeState] = useState<'grid' | 'list'>(() => {
+    const saved = localStorage.getItem('flkrd_view_mode') as 'grid' | 'list';
+    return saved === 'grid' ? 'grid' : 'list';
+  });
+
+  const setViewMode = useCallback((mode: 'grid' | 'list') => {
+    setViewModeState(mode);
+    localStorage.setItem('flkrd_view_mode', mode);
+  }, []);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [glassConfig, setGlassConfig] = useState<GlassConfig>(() => {
@@ -1067,6 +1079,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       setTheme, setAccentColor, setScale, setIsPerformanceMode, setIsSettingsOpen, setIsAdminModalOpen, toggleTheme, setIsConsoleMode, setIsControllerDetected, setIsAdmin, updateGlassConfig,
       mobileNavConfig, updateMobileNavConfig,
       playerConfig, updatePlayerConfig,
+      viewMode, setViewMode,
       hasPermission, currentAdminEmail, loginAsAdmin
     }}>
       {children}

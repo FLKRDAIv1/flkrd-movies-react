@@ -9,6 +9,7 @@ import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
 import { Carousel_003 } from './ui/skiper-ui/skiper49';
 import DiagonalCarousel from './ui/diagonal-carousel';
+import { usePreloadLCP } from '../hooks/usePreloadLCP';
 
 interface ExtendedContent extends Content {
   logo?: string;
@@ -45,6 +46,9 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
   const { t, language } = useTranslation();
   const { theme } = useUI();
   const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
+
+  const firstBackdropUrl = items[0]?.backdrop_path ? `${IMAGE_BASE_URL}${items[0].backdrop_path}` : undefined;
+  usePreloadLCP(firstBackdropUrl);
 
   // ── Settings sync ────────────────────────────────────────────────────────
   useEffect(() => {

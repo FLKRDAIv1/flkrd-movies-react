@@ -17,6 +17,8 @@ import { AdminManagementModal } from './AdminManagementModal';
 import BackendHealthInspectorModal from './BackendHealthInspectorModal';
 import Portal from './Portal';
 import { LiquidButton } from './ui/liquid-glass-button';
+import { BorderBeam } from './ui/border-beam';
+import { ViewToggle } from './ui/ViewToggle';
 import { updateService, UpdateCheckResult } from '../services/updateService';
 import { isTauri } from '../utils/tauriUtils';
 import { tauriService } from '../services/tauriService';
@@ -357,6 +359,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     accentColor, setAccentColor, 
     scale, setScale, 
     isPerformanceMode, setIsPerformanceMode,
+    viewMode, setViewMode,
     glassConfig,
     isAdmin
   } = useUI();
@@ -1019,6 +1022,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             style={{ borderRadius: `${glassConfig.cornerRadius}px` }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Apple / Gemini AI Glowing Border Beam */}
+            <BorderBeam size={320} duration={8} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
             {/* Isolated Liquid-Glass background overlay */}
             <div 
               className="absolute inset-0 z-0 pointer-events-none transition-all duration-300 overflow-hidden"
@@ -1269,6 +1274,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                   </div>
                 </Section>
               )}
+
+              {/* Default View Mode Setting (Grid vs List) */}
+              <Section delay={0.2}>
+                <SectionLabel icon={<Layers size={14} />} label={(language === 'ku' || language === 'badini') ? 'شێوازی نیشاندانی فیلمەکان (Grid / List)' : 'Movie View Mode (Grid / List)'} />
+                <Card className="p-5 flex items-center justify-between border-white/10 bg-white/5">
+                  <div>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">
+                      {(language === 'ku' || language === 'badini') ? 'جۆری نیشاندان (View Layout)' : 'Default Layout Mode'}
+                    </h3>
+                    <p className="text-[10px] text-gray-400 font-bold mt-1">
+                      {(language === 'ku' || language === 'badini') ? 'دەتوانیت شێوازی کاتیی یان هەمیشەیی بگوڕیت بۆ Grid یان List' : 'Switch default layout for movies across all devices'}
+                    </p>
+                  </div>
+                  <ViewToggle value={viewMode} onChange={setViewMode} />
+                </Card>
+              </Section>
 
               {/* Theme Selection */}
               <Section delay={0.25}>

@@ -1200,24 +1200,27 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                     {/* Sync Delay */}
                     <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex flex-col gap-3 mt-2">
                       <div className="flex items-center justify-between">
-                        <Label>{isKu ? 'خێرایی ژێرنووس (چرکە)' : 'Subtitle Sync (sec)'}</Label>
-                        <span className={`text-[10px] font-bold ${
+                        <Label>{isKu ? 'ڕێکخستنی کاتی ژێرنووس (دواکەوتن / پێشکەوتن)' : 'Subtitle Sync Timing Offset'}</Label>
+                        <span className={`text-[11px] font-mono font-black ${
                           subtitleOffset === 0 ? 'text-zinc-400' : subtitleOffset > 0 ? 'text-blue-400' : 'text-amber-400'
                         }`}>
                           {subtitleOffset > 0 ? '+' : ''}{(subtitleOffset / 1000).toFixed(1)}s
                         </span>
                       </div>
+
+                      {/* Range slider -60s to +60s */}
                       <div className="flex items-center gap-2">
                         <motion.button
                           type="button"
                           onClick={() => setSubtitleOffset(subtitleOffset - 500)}
                           whileTap={{ scale: 0.88 }}
                           className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 transition-colors"
+                          title="Delay 0.5s"
                         >
                           <Minus size={12} />
                         </motion.button>
                         <input
-                          type="range" min={-5000} max={5000} step={500}
+                          type="range" min={-60000} max={60000} step={250}
                           value={subtitleOffset}
                           onChange={e => setSubtitleOffset(Number(e.target.value))}
                           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-white/10 accent-blue-500"
@@ -1227,9 +1230,63 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           onClick={() => setSubtitleOffset(subtitleOffset + 500)}
                           whileTap={{ scale: 0.88 }}
                           className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 transition-colors"
+                          title="Advance 0.5s"
                         >
                           <Plus size={12} />
                         </motion.button>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="flex items-center justify-between gap-1 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 5000)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          -5s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 1000)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          -1s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 500)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          -0.5s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(0)}
+                          className="px-2 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-[9px] font-black text-red-400 border border-red-500/20 transition-all flex items-center gap-0.5"
+                        >
+                          <RotateCcw size={9} /> Reset
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 500)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          +0.5s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 1000)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          +1s
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 5000)}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[9px] font-mono font-bold text-zinc-300 border border-white/5 transition-all"
+                        >
+                          +5s
+                        </button>
                       </div>
                     </div>
 

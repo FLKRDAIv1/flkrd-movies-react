@@ -102,7 +102,18 @@ const setPersistentCache = (key: string, data: any) => {
       timestamp: Date.now(),
       data
     }));
-  } catch (e) {}
+  } catch (e) {
+    // Local storage full: clean up expired or older tmdb cache entries
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if (k.startsWith('tmdb_v3_')) localStorage.removeItem(k);
+      });
+      localStorage.setItem(key, JSON.stringify({
+        timestamp: Date.now(),
+        data
+      }));
+    } catch (err) {}
+  }
 };
 
 export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {

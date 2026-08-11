@@ -1514,11 +1514,13 @@ export default function PremiumVidLinkPlayer({
             if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
             else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
             else if (typeof payload.time === 'number') extractedTime = payload.time;
+            else if (typeof payload.timestamp === 'number') extractedTime = payload.timestamp;
             else if (typeof payload.position === 'number') extractedTime = payload.position;
             else if (payload.data && typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
+            else if (payload.data && typeof payload.data.timestamp === 'number') extractedTime = payload.data.timestamp;
 
-            eventType = payload.event || payload.type;
-            duration = payload.duration;
+            eventType = payload.event || (payload.timestamp !== undefined ? 'timeupdate' : payload.type);
+            duration = payload.duration || payload.data?.duration;
           } else if (typeof payload === 'number') {
             extractedTime = payload;
           }

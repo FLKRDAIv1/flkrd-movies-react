@@ -237,9 +237,9 @@ const DubbedDetailPage: React.FC = () => {
                     let duration = 0;
 
                     // 1. Videasy format: { timestamp: number, duration: number, progress: number }
-                    if (payload.timestamp !== undefined && payload.duration !== undefined) {
+                    if (payload.timestamp !== undefined) {
                         time = Number(payload.timestamp);
-                        duration = Number(payload.duration);
+                        duration = payload.duration ? Number(payload.duration) : 0;
                     }
                     // 2. VidLink Pro format: { type: 'PLAYER_EVENT', data: { currentTime, duration } }
                     else if (payload.type === 'PLAYER_EVENT' && payload.data) {

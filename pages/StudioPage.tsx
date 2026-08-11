@@ -10,6 +10,7 @@ import Spinner from '../components/Spinner';
 import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import MovieCard from '../components/MovieCard';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
 import { useNotification } from '../contexts/NotificationContext';
 
 const StudioPage: React.FC = () => {
@@ -195,17 +196,7 @@ const StudioPage: React.FC = () => {
             </motion.div>
             
             {results.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
-                    {results.map((item, index) => (
-                        <MovieCard
-                            ref={index === results.length - 1 ? lastElementRef : null}
-                            key={`${item.id}-${index}`}
-                            item={item}
-                            type={item.media_type as any}
-                            className="w-full"
-                        />
-                    ))}
-                </div>
+                <MovieLayoutManager items={results} />
             ) : (
                 <div className="text-center py-32 bg-white/5 rounded-[4rem] border border-white/5 backdrop-blur-xl">
                     <Stars size={48} className="mx-auto mb-6 text-gray-700 animate-pulse" />
