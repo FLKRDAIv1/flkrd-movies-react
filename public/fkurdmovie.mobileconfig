@@ -14,7 +14,7 @@
             <key>Label</key>
             <string>FLKRD MOVIES</string>
             <key>PayloadDescription</key>
-            <string>this app created by zana faroq and devloped by FLKRD STUDIO for movie porpuse and watching enjoy the movie </string>
+            <string>پڕۆفایلی فەرمی ئەپڵیکەیشنی FLKRD MOVIES بۆ سەیرکردنی فیلم و زنجیرەکان بە کوالێتی بەرز</string>
             <key>PayloadDisplayName</key>
             <string>FLKRD MOVIES</string>
             <key>PayloadIdentifier</key>
@@ -31,29 +31,14 @@
             <true/>
             <key>URL</key>
             <string>https://fkurd.pro</string>
-            <key>IgnoreManifestScope</key>
-            <true/>
-            <key>AllowTextSelection</key>
-            <true/>
-            <key>TargetApplicationBundleIdentifier</key>
-            <string>yad.infy.uk</string>
-            <key>Orientations</key>
-            <array>
-                <integer>1</integer><integer>2</integer>
-                
-            </array>
-            <key>TargetDeviceType</key>
-            <integer>3</integer>
-            <key>SecurityPolicy</key>
-            <string>default</string>
         </dict>
     </array>
     <key>PayloadDescription</key>
-    <string>this app created by zana faroq and devloped by FLKRD STUDIO for movie porpuse and watching enjoy the movie </string>
+    <string>ئەم ئەپڵیکەیشنە لەلایەن زانا فارۆقەوە دروستکراوە کە بەناوی ستۆدیۆکەم (FLKRD STUDIO) گرنگییەکی زۆرمان پێداوە. هیوادارم چێژی لێ ببینن.</string>
     <key>PayloadDisplayName</key>
     <string>FLKRD MOVIES</string>
     <key>PayloadIdentifier</key>
-    <string>com.flkrdstudio.fkurd</string>
+    <string>com.flkrdstudio.fkurd.profile</string>
     <key>PayloadOrganization</key>
     <string>FLKRD STUDIO</string>
     <key>PayloadRemovalDisallowed</key>

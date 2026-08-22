@@ -6,6 +6,8 @@ import { Content } from '../types';
 import { IMAGE_BASE_URL } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { BorderBeam } from './ui/border-beam';
+import { ListMoviePreviewDrawer } from './ListMoviePreviewDrawer';
+
 
 interface ExtendedContent extends Content {
   logo?: string;
@@ -110,12 +112,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
     setCurrentIndex(index);
   };
 
+  const [selectedItemForDrawer, setSelectedItemForDrawer] = useState<any>(null);
+
   const handleNavigateDetail = (item: ExtendedContent) => {
-    const mediaType = item.media_type || (String(item.id).startsWith('custom_') ? 'dubbed' : 'movie');
-    const path = mediaType === 'dubbed'
-      ? `/dubbed-details/${String(item.id).replace('custom_', '')}`
-      : `/details/${mediaType}/${item.id}`;
-    navigate(path, { state: { customData: item } });
+    setSelectedItemForDrawer(item);
   };
 
   if (!currentItem) return null;
@@ -334,6 +334,14 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             <ChevronRight className="w-5 h-5" />
           </motion.button>
         </div>
+      )}
+
+      {selectedItemForDrawer && (
+        <ListMoviePreviewDrawer
+          item={selectedItemForDrawer}
+          isOpen={!!selectedItemForDrawer}
+          onClose={() => setSelectedItemForDrawer(null)}
+        />
       )}
     </div>
   );

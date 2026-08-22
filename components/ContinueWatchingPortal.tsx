@@ -203,12 +203,12 @@ const ContinueWatchingPortal: React.FC = () => {
                                   ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
                                       ? (item.poster_path || (item as any).imageBase64)
                                       : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
-                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                                  : '/default-poster.svg'
                               }
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
                               alt={item.title} 
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                                (e.target as HTMLImageElement).src = '/default-poster.svg';
                               }}
                             />
                             
@@ -350,12 +350,12 @@ const ContinueWatchingPortal: React.FC = () => {
                       ? ((activeItem.poster_path || (activeItem as any).imageBase64).startsWith('http') || (activeItem.poster_path || (activeItem as any).imageBase64).startsWith('data:')
                           ? (activeItem.poster_path || (activeItem as any).imageBase64)
                           : `${IMAGE_BASE_URL_POSTER}${activeItem.poster_path}`)
-                      : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                      : '/default-poster.svg'
                   }
                   className="w-full h-full object-cover opacity-50 transition-transform duration-500 group-hover:scale-110" 
                   alt="" 
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                    (e.target as HTMLImageElement).src = '/default-poster.svg';
                   }}
                 />
                 <div className="absolute inset-0 flex items-center justify-center">

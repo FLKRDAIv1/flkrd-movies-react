@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Content } from '../types';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY, GENRES_T } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import Spinner from './Spinner';
@@ -161,9 +161,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
       src: backdropSrc,
       alt: label,
       title: item.title || item.name || '',
+      name: item.name || item.title || '',
+      original_name: item.original_name,
+      first_air_date: item.first_air_date,
+      release_date: item.release_date,
       logo: logoSrc,
       id: item.id,
-      media_type: item.media_type || 'movie',
+      media_type: getMediaType(item),
     };
   });
 
@@ -185,9 +189,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
       src: posterSrc,
       alt: label,
       title: item.title || item.name || '',
+      name: item.name || item.title || '',
+      original_name: item.original_name,
+      first_air_date: item.first_air_date,
+      release_date: item.release_date,
       logo: logoSrc,
       id: item.id,
-      media_type: item.media_type || 'movie',
+      media_type: getMediaType(item),
       genreNames: genreName,
       year: year,
       vote_average: item.vote_average,

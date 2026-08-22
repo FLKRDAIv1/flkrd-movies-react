@@ -62,7 +62,7 @@ const StoryReels: React.FC<StoryReelsProps> = ({ size = "md" }) => {
 
           const posterUrl = movie.poster_path 
             ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` 
-            : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+            : '/default-poster.svg';
 
           // Ensure valid format for timestamp (fallback to now if invalid)
           const releaseDate = movie.release_date ? new Date(movie.release_date).toISOString() : new Date().toISOString();

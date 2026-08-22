@@ -126,14 +126,13 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 2. Bypass local development assets
+  // 2. Bypass local development assets natively
   if (
     url.hostname === 'localhost' ||
     url.hostname === '127.0.0.1' ||
     url.hostname.startsWith('192.168.') ||
     url.searchParams.has('import')
   ) {
-    event.respondWith(fetch(event.request).catch(() => {}));
     return;
   }
 

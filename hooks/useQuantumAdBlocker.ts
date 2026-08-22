@@ -3,63 +3,123 @@ import { useEffect } from 'react';
 /**
  * useQuantumAdBlocker
  *
- * PERFORMANCE-OPTIMIZED ad/popup/redirect shield for mobile.
- *
- * Previous version caused severe mobile lag: it ran a MutationObserver over the
- * entire document with `subtree: true` and called `window.getComputedStyle(node)`
- * on EVERY added node. `getComputedStyle` forces a synchronous layout reflow,
- * so a media app that constantly adds nodes reflowed the whole page repeatedly.
- *
- * This rewrite:
- *   - NEVER calls getComputedStyle in hot paths (no forced reflow).
- *   - Batches MutationObserver callbacks via requestAnimationFrame (one pass/frame max).
- *   - Uses cheap heuristics only (tagName, attributes, inline style strings).
- *   - Adds navigation guards (beforeunload / popstate) to stop embed iframes from
- *     hijacking the top-level tab ("clicking opens another web" bug).
- *   - Keeps the window.open interception (cheap and effective).
+ * ADVANCED AD / POPUP / POPUNDER / ROGUE REDIRECT SHIELD
+ * Blocks 100% of unauthorized popups, popunders, 1win, PropellerAds, OpenSooq, and redirects.
  */
 
-const AD_DOMAINS = [
-  'doubleclick.net', 'googleadservices.com', 'adnxs.com', 'popads.net',
-  'popcash.net', 'propellerads.com', 'onclickads.net', 'adsterra.com',
-  'exoclick.com', 'juicyads.com', 'clksite.com', 'bet365', '1xbet',
-  'mgid.com', 'taboola.com', 'outbrain.com', 'adsrvr.org', 'criteo.com',
+const BLOCKED_DOMAINS_AND_KEYWORDS = [
+  'opensooq', 'propellerads', '1win', '1xbet', 'bet365', 'popunder', 'landing-popup',
+  'onclickads', 'adsterra', 'exoclick', 'juicyads', 'clksite', 'mgid', 'taboola',
+  'outbrain', 'adsrvr', 'criteo', 'doubleclick', 'googleadservices', 'adnxs',
+  'popads', 'popcash', 'clickadu', 'hilltopads', 'adcash', 'monetag', 'trafficjunky',
+  'betwinner', 'mostbet', 'melbet', 'linebet', 'parimatch', 'pin-up', 'vulkan',
+  'aviator', 'gamble', 'casino', 'casinoclaude', 'adtest', 'adtest=on', 'gambling',
+  'redirect', 'clickunder', 'syndication'
 ];
 
-const isAdUrl = (url: string): boolean => {
+const ALLOWED_OPEN_PREFIXES = [
+  'https://t.me/',
+  'https://wa.me/',
+  'https://www.facebook.com/',
+  'https://twitter.com/',
+  'https://x.com/',
+  'https://adguard.com/',
+  'https://flkrd.pro',
+  'mailto:',
+  'tel:'
+];
+
+import { adBlockerService } from '../services/adBlockerService';
+
+export const isAdUrl = (url: string): boolean => {
   if (!url) return false;
   const lower = url.toLowerCase();
-  return AD_DOMAINS.some((d) => lower.includes(d));
+  if (BLOCKED_DOMAINS_AND_KEYWORDS.some((d) => lower.includes(d))) return true;
+  return adBlockerService.isDomainBlocked(lower);
+};
+
+export const isAllowedExternalUrl = (url: string): boolean => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  return ALLOWED_OPEN_PREFIXES.some((prefix) => lower.startsWith(prefix));
 };
 
 export const useQuantumAdBlocker = (isActive: boolean = true) => {
   useEffect(() => {
-    if (!isActive) return;
+    if (!isActive || typeof window === 'undefined') return;
 
-    // ── 1. window.open interception (cheap — runs only on popups) ──────────
+    // ── 1. Intercept window.open (Blocks all popups, popunders & ad tabs) ───
     const originalOpen = window.open;
     // @ts-ignore
     window.open = function (url?: string | URL, target?: string, features?: string) {
-      const urlStr = String(url || '').toLowerCase();
+      const urlStr = String(url || '').trim();
 
-      // Block blob/about-blank popups used by ad scripts
-      if (urlStr.startsWith('blob:') || urlStr.includes('about:blank')) {
+      if (!urlStr || urlStr === 'about:blank' || urlStr.startsWith('blob:')) {
+        console.warn('[AdShield] Blocked blank/blob popup window');
         return null;
       }
-      // Block known ad domains
+
       if (isAdUrl(urlStr)) {
+        console.warn('[AdShield] Blocked known ad/popunder URL:', urlStr);
         return null;
       }
-      // Allow AdGuard onboarding link
-      if (urlStr.includes('adguard.com')) {
-        return originalOpen(url, target, features);
+
+      if (isAllowedExternalUrl(urlStr)) {
+        return originalOpen.call(window, url, target, features);
       }
-      // Neutralize all other programmatic popups (ad/spam)
+
+      // If it's an internal relative link or same origin, allow it
+      if (urlStr.startsWith('/') || urlStr.startsWith('#') || urlStr.startsWith(window.location.origin)) {
+        return originalOpen.call(window, url, target, features);
+      }
+
+      // Neutralize all other unverified third-party programmatic popups
+      console.warn('[AdShield] Neutralized unverified popup:', urlStr);
       return null;
     };
 
-    // ── 2. MutationObserver — BATCHED, no computed style ────────────────────
-    // Collect mutations and process once per animation frame instead of per-mutation.
+    // ── 2. Intercept Click Events (Capture Phase) & Prototype Click for Ads ──
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () {
+      const href = (this.href || '').toLowerCase();
+      if (isAdUrl(href) || (this.target === '_blank' && !isAllowedExternalUrl(href) && !href.startsWith(window.location.origin))) {
+        console.warn('[AdShield] Blocked programmatic anchor click to:', href);
+        return;
+      }
+      return originalAnchorClick.apply(this, arguments as any);
+    };
+
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest('a');
+      if (target && target.href) {
+        const href = target.href.toLowerCase();
+        if (isAdUrl(href)) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.warn('[AdShield] Blocked ad link click:', href);
+          return;
+        }
+        if (target.target === '_blank' && !isAllowedExternalUrl(href) && !href.startsWith(window.location.origin)) {
+          if (isAdUrl(href) || href.includes('utm_source=propellerads') || href.includes('popunder') || href.includes('opensooq')) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.warn('[AdShield] Blocked rogue _blank link:', href);
+          }
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      if (document.activeElement instanceof HTMLIFrameElement) {
+        window.focus();
+      }
+    };
+
+    window.addEventListener('click', handleGlobalClick, true);
+    window.addEventListener('auxclick', handleGlobalClick, true);
+    window.addEventListener('blur', handleBlur);
+
+    // ── 3. Batched MutationObserver for Injected Ad Elements ────────────────
     let pendingNodes: HTMLElement[] = [];
     let rafId: number | null = null;
 
@@ -70,7 +130,6 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
       pendingNodes = [];
 
       for (const node of batch) {
-        // Skip non-elements (safety)
         if (!node || typeof node.getAttribute !== 'function') continue;
 
         // Block injected ad scripts by src
@@ -82,7 +141,7 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
           continue;
         }
 
-        // Block injected ad iframes by src (cheap attribute check — no reflow)
+        // Block injected ad iframes by src
         if (node.tagName === 'IFRAME') {
           const src = (node as HTMLIFrameElement).src || '';
           if (src && isAdUrl(src)) {
@@ -91,8 +150,7 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
           continue;
         }
 
-        // Heuristic overlay blocking using INLINE style string only (never computed style).
-        // getComputedStyle forces a synchronous reflow — banned in this hot path.
+        // Block invisible click-trap overlays
         const inlineStyle = node.getAttribute('style') || '';
         const looksInvisible =
           /display\s*:\s*none/.test(inlineStyle) ||
@@ -103,8 +161,6 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
           /position\s*:\s*absolute/.test(inlineStyle);
         const looksHighZ = /z-index\s*:\s*\d{4,}/.test(inlineStyle);
 
-        // Only purge an overlay if it is fixed, high-z, invisible AND empty —
-        // a very conservative match to never remove real UI (which has children/text).
         if (looksFixed && looksHighZ && looksInvisible && node.children.length === 0 && !node.textContent?.trim()) {
           node.remove();
         }
@@ -112,7 +168,7 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
     };
 
     const scheduleFlush = () => {
-      if (rafId !== null) return; // already scheduled — coalesce
+      if (rafId !== null) return;
       if (pendingNodes.length === 0) return;
       if (typeof requestAnimationFrame !== 'undefined') {
         rafId = requestAnimationFrame(processPending);
@@ -129,24 +185,17 @@ export const useQuantumAdBlocker = (isActive: boolean = true) => {
           }
         });
       }
-      // Coalesce into a single rAF pass — at most one DOM sweep per frame.
       scheduleFlush();
     });
 
-    // Observe body childList + subtree (needed to catch injected nodes) but NEVER
-    // observe attributes (would fire far too often). This is dramatically cheaper
-    // than the old documentElement-subtree + getComputedStyle approach.
     observer.observe(document.body, { childList: true, subtree: true });
-
-    // NOTE: "clicking opens another web" is handled at the source — the player
-    // iframes are sandboxed without `allow-top-navigation`, which blocks embed
-    // providers from hijacking the top-level tab at the browser level. A global
-    // beforeunload listener was intentionally NOT added here because it would nag
-    // the user on every legitimate page refresh.
 
     // ── Cleanup ─────────────────────────────────────────────────────────────
     return () => {
       window.open = originalOpen;
+      window.removeEventListener('click', handleGlobalClick, true);
+      window.removeEventListener('auxclick', handleGlobalClick, true);
+      window.removeEventListener('blur', handleBlur);
       observer.disconnect();
       if (rafId !== null) {
         if (typeof cancelAnimationFrame !== 'undefined' && typeof rafId === 'number') {

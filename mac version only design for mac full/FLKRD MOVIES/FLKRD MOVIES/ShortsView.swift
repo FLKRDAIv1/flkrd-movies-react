@@ -61,7 +61,7 @@ struct ShortsView: View {
                     
                     // Ambient backlight glow
                     LinearGradient(
-                        colors: [.black.opacity(0.8), .clear, .black.opacity(0.75)],
+                        colors: [.black.opacity(0.8), .clear, .black.opacity(0.85)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -75,32 +75,41 @@ struct ShortsView: View {
                             // Left Details
                             VStack(alignment: .leading, spacing: 10) {
                                 Text(activeReel.title)
-                                    .font(.system(size: 22, weight: .black))
+                                    .font(.system(size: 24, weight: .black, design: .rounded))
                                     .foregroundColor(.white)
+                                    .shadow(color: .black, radius: 4)
                                 
                                 Text(activeReel.description)
                                     .font(.system(size: 13))
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .foregroundColor(.white.opacity(0.85))
                                     .lineLimit(3)
-                                    .frame(maxWidth: 360, alignment: .leading)
+                                    .frame(maxWidth: 380, alignment: .leading)
                                 
                                 // Tag pills
                                 HStack(spacing: 8) {
                                     Text("#cinematic")
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundColor(.blue)
-                                        .padding(.horizontal, 8)
+                                        .padding(.horizontal, 10)
                                         .padding(.vertical, 4)
-                                        .background(Color.blue.opacity(0.12))
-                                        .cornerRadius(4)
+                                        .background(Color.blue.opacity(0.2))
+                                        .cornerRadius(6)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.blue.opacity(0.5), lineWidth: 1)
+                                        )
                                     
                                     Text("#trailers")
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundColor(.cyan)
-                                        .padding(.horizontal, 8)
+                                        .padding(.horizontal, 10)
                                         .padding(.vertical, 4)
-                                        .background(Color.cyan.opacity(0.12))
-                                        .cornerRadius(4)
+                                        .background(Color.cyan.opacity(0.2))
+                                        .cornerRadius(6)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 6)
+                                                .stroke(Color.cyan.opacity(0.5), lineWidth: 1)
+                                        )
                                 }
                                 .padding(.top, 4)
                             }
@@ -108,64 +117,45 @@ struct ShortsView: View {
                             Spacer()
                             
                             // Right Frosted Utility Bar
-                            VStack(spacing: 20) {
+                            VStack(spacing: 18) {
                                 // Like
-                                Button {
+                                TactileMacButton {
                                     if likedReels.contains(activeReel.id) {
                                         likedReels.remove(activeReel.id)
                                     } else {
                                         likedReels.insert(activeReel.id)
                                     }
-                                } label: {
+                                } content: {
                                     VStack(spacing: 4) {
                                         Image(systemName: likedReels.contains(activeReel.id) ? "heart.fill" : "heart")
                                             .font(.system(size: 18))
                                             .foregroundColor(likedReels.contains(activeReel.id) ? .red : .white)
                                             .frame(width: 44, height: 44)
-                                            .glassPanel(cornerRadius: 22)
+                                            .nativeMacGlass(cornerRadius: 22)
                                         Text(likedReels.contains(activeReel.id) ? "102" : "101")
                                             .font(.system(size: 10, weight: .bold))
                                             .foregroundColor(.white)
                                     }
                                 }
-                                .buttonStyle(.plain)
-                                
-                                // Comment Mock
-                                Button {
-                                    // Pop comments sheet or alert
-                                } label: {
-                                    VStack(spacing: 4) {
-                                        Image(systemName: "bubble.left.fill")
-                                            .font(.system(size: 16))
-                                            .foregroundColor(.white)
-                                            .frame(width: 44, height: 44)
-                                            .glassPanel(cornerRadius: 22)
-                                        Text("42")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                .buttonStyle(.plain)
                                 
                                 // Direct Link to Full Movie Details Page
-                                Button {
+                                TactileMacButton {
                                     showFullMovieDetail = activeReel.fullMovieItem
-                                } label: {
+                                } content: {
                                     VStack(spacing: 4) {
                                         Image(systemName: "popcorn.fill")
                                             .font(.system(size: 16))
                                             .foregroundColor(.yellow)
                                             .frame(width: 44, height: 44)
-                                            .glassPanel(cornerRadius: 22)
+                                            .nativeMacGlass(cornerRadius: 22)
                                         Text("Full Movie")
                                             .font(.system(size: 9, weight: .bold))
                                             .foregroundColor(.white)
                                     }
                                 }
-                                .buttonStyle(.plain)
                             }
                             .padding(12)
-                            .glassPanel(cornerRadius: 28)
+                            .nativeMacGlass(cornerRadius: 28)
                         }
                         .padding(.horizontal, 32)
                         .padding(.bottom, 40)
@@ -176,40 +166,38 @@ struct ShortsView: View {
                         HStack {
                             Spacer()
                             VStack(spacing: 12) {
-                                Button {
+                                TactileMacButton {
                                     if activeIndex > 0 {
                                         withAnimation(.easeInOut(duration: 0.4)) {
                                             activeIndex -= 1
                                         }
                                     }
-                                } label: {
+                                } content: {
                                     Image(systemName: "chevron.up")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundColor(activeIndex > 0 ? .white : .white.opacity(0.2))
-                                        .frame(width: 32, height: 32)
-                                        .glassPanel(cornerRadius: 16)
+                                        .frame(width: 36, height: 36)
+                                        .nativeMacGlass(cornerRadius: 18)
                                 }
                                 .disabled(activeIndex == 0)
-                                .buttonStyle(.plain)
                                 
-                                Button {
+                                TactileMacButton {
                                     if activeIndex < reels.count - 1 {
                                         withAnimation(.easeInOut(duration: 0.4)) {
                                             activeIndex += 1
                                         }
                                     }
-                                } label: {
+                                } content: {
                                     Image(systemName: "chevron.down")
                                         .font(.system(size: 14, weight: .bold))
                                         .foregroundColor(activeIndex < reels.count - 1 ? .white : .white.opacity(0.2))
-                                        .frame(width: 32, height: 32)
-                                        .glassPanel(cornerRadius: 16)
+                                        .frame(width: 36, height: 36)
+                                        .nativeMacGlass(cornerRadius: 18)
                                 }
                                 .disabled(activeIndex == reels.count - 1)
-                                .buttonStyle(.plain)
                             }
+                            .padding(.top, 40)
                             .padding(.trailing, 24)
-                            .padding(.top, 24)
                         }
                         Spacer()
                     }
@@ -222,45 +210,37 @@ struct ShortsView: View {
     }
 }
 
-// MARK: - Loop Player View for Shorts
+// MARK: - Dedicated Video Player Subview
 struct ShortsPlayerView: View {
     let videoURL: String
-    @State private var player: AVQueuePlayer?
-    @State private var looper: AVPlayerLooper?
+    @State private var player: AVPlayer? = nil
     
     var body: some View {
         ZStack {
             if let player = player {
                 VideoPlayer(player: player)
-                    .onAppear {
-                        player.play()
-                    }
-                    .onDisappear {
-                        player.pause()
-                    }
+                    .aspectRatio(16/9, contentMode: .fill)
             } else {
-                Color.black
-                    .overlay(ProgressView())
+                ProgressView()
             }
         }
         .onAppear {
-            setupPlayer()
+            if let url = URL(string: videoURL) {
+                let p = AVPlayer(url: url)
+                p.isMuted = false
+                p.play()
+                self.player = p
+                
+                // Auto Loop
+                NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: p.currentItem, queue: .main) { _ in
+                    p.seek(to: .zero)
+                    p.play()
+                }
+            }
         }
         .onDisappear {
             player?.pause()
             player = nil
-            looper = nil
         }
-    }
-    
-    private func setupPlayer() {
-        guard let url = URL(string: videoURL) else { return }
-        let playerItem = AVPlayerItem(url: url)
-        let queuePlayer = AVQueuePlayer(playerItem: playerItem)
-        queuePlayer.isMuted = true // Shorts loop muted in catalog previews
-        
-        self.looper = AVPlayerLooper(player: queuePlayer, templateItem: playerItem)
-        self.player = queuePlayer
-        queuePlayer.play()
     }
 }

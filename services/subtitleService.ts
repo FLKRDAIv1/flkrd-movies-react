@@ -206,7 +206,8 @@ export const subtitleService = {
     async searchSubtitles(imdbId: string, type: 'movie' | 'tv', season?: number, episode?: number, language: string = 'ku', allLanguages: boolean = false, tmdbId?: string) {
         const isRawImdb = imdbId && String(imdbId).startsWith('tt');
         let targetImdbId = isRawImdb ? imdbId : '';
-        const effectiveTmdbId = tmdbId || (!isRawImdb && imdbId ? String(imdbId) : undefined);
+        const rawTmdb = tmdbId || (!isRawImdb && imdbId ? String(imdbId) : undefined);
+        const effectiveTmdbId = (rawTmdb && /^\d+$/.test(String(rawTmdb))) ? String(rawTmdb) : undefined;
 
         // Auto-resolve IMDb ID from TMDB ID if missing to guarantee 100% engine discovery for all movies & TV shows
         if (!targetImdbId && effectiveTmdbId) {
@@ -623,10 +624,15 @@ export const subtitleService = {
             }
             console.log("[SUBTITLE SERVICE] Fetching subtitle VTT for:", absoluteUrl);
             let response: Response | null = null;
+            const isExternalCdn = absoluteUrl.includes('strem.io') || absoluteUrl.includes('subdl') || absoluteUrl.includes('opensubtitles') || absoluteUrl.includes('kurdsubtitle');
             try {
-                response = await fetch(absoluteUrl);
-                if (!response || !response.ok) {
+                if (isExternalCdn) {
                     response = await this.fetchWithFallback(absoluteUrl);
+                } else {
+                    response = await fetch(absoluteUrl);
+                    if (!response || !response.ok) {
+                        response = await this.fetchWithFallback(absoluteUrl);
+                    }
                 }
             } catch (netErr) {
                 console.warn("[SUBTITLE SERVICE] Direct fetch failed in getSubtitleBlob, trying proxy fallback:", netErr);

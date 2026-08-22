@@ -42,18 +42,23 @@ import LayoutWrapper from './components/LayoutWrapper';
 import Portal from './components/Portal';
 import DesktopTitleBar from './components/DesktopTitleBar';
 import { fetchData } from './services/tmdbService';
-import { requests } from './constants';
+import { requests, API_KEY } from './constants';
+import { Season, SeasonDetails } from './types';
 import GamepadHints from './components/GamepadHints';
 import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { usePlayer } from './contexts/PlayerContext';
 import FloatingPipPlayer from './components/FloatingPipPlayer';
+import UniversalVideoPlayer from './components/UniversalVideoPlayer';
+import { getSourceUrl, getRankedSources } from './utils/playerSourceUtils';
 import { bannedService } from './services/bannedService';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
 import { isTauri } from './utils/tauriUtils';
 import { updateService } from './services/updateService';
 import { supabase } from './utils/supabaseClient';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
+import { useQuantumAdBlocker } from './hooks/useQuantumAdBlocker';
 
 class ChunkErrorBoundary extends React.Component<{ children?: React.ReactNode }, { hasError: boolean }> {
   state: { hasError: boolean };
@@ -112,7 +117,8 @@ class ChunkErrorBoundary extends React.Component<{ children?: React.ReactNode },
 }
 
 const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
+    const isKurdish = language === 'ku' || language === 'badini';
     const [step, setStep] = useState<'choice' | 'manual' | 'pro'>('choice');
 
     const handleClose = () => {
@@ -124,10 +130,10 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
     return (
         <Portal id="ios-prompt-portal">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-[50px] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-[50px] flex items-center justify-center p-6" dir={isKurdish ? 'rtl' : 'ltr'}>
                 <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} className="bg-[var(--card-bg)] border border-white/10 rounded-[3rem] w-full max-w-lg p-8 md:p-12 relative overflow-hidden shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-red)]" />
-                <button onClick={handleClose} className="absolute top-6 right-6 text-gray-500 hover:text-[var(--text-primary)] transition-colors"><X size={24} /></button>
+                <button onClick={handleClose} className={`absolute top-6 ${isKurdish ? 'left-6' : 'right-6'} text-gray-500 hover:text-[var(--text-primary)] transition-colors`}><X size={24} /></button>
 
                 <AnimatePresence mode="wait">
                     {step === 'choice' && (
@@ -136,31 +142,43 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                                 <div className="w-24 h-24 rounded-[2.5rem] overflow-hidden mb-6 shadow-2xl border-2 border-white/10 bg-black">
                                     <img src="/flkrd-icon.png" alt="FLKRD" className="w-full h-full object-cover" />
                                 </div>
-                                <h2 className="text-3xl md:text-4xl font-[1000] uppercase italic tracking-tighter mb-4 text-[var(--text-primary)]">Native Sync</h2>
-                                <p className="text-[var(--text-secondary)] font-bold text-sm leading-relaxed px-4">Optimize FLKRD for your Apple hardware. Select your installation protocol.</p>
+                                <h2 className="text-3xl md:text-4xl font-[1000] uppercase italic tracking-tighter mb-4 text-[var(--text-primary)]">
+                                    {isKurdish ? 'بەستنەوەی ڕەسەنی ئایفۆن' : 'Native Sync'}
+                                </h2>
+                                <p className="text-[var(--text-secondary)] font-bold text-sm leading-relaxed px-4">
+                                    {isKurdish ? 'ئەپەکە ڕێکبخە بۆ ئایفۆن و ئایپادەکەت بە شێوازی سەربەخۆ و فول سکرین.' : 'Optimize FLKRD for your Apple hardware. Select your installation protocol.'}
+                                </p>
                             </div>
 
                             <div className="space-y-4">
                                 <button onClick={() => setStep('pro')} className="w-full flex items-center justify-between p-6 bg-[var(--brand-red)] rounded-3xl group transition-all hover:scale-[1.02] text-white">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-white/20 rounded-2xl"><ShieldCheck size={24} /></div>
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Elite Method</p>
-                                            <p className="text-lg font-black uppercase italic tracking-tighter">Native Profile</p>
+                                        <div className="text-left rtl:text-right">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60">
+                                                {isKurdish ? 'شێوازی پێشکەوتوو' : 'Elite Method'}
+                                            </p>
+                                            <p className="text-lg font-black uppercase italic tracking-tighter">
+                                                {isKurdish ? 'پڕۆفایلی ڕەسەنی ئەپڵ' : 'Native Profile'}
+                                            </p>
                                         </div>
                                     </div>
-                                    <ArrowRight size={20} />
+                                    <ArrowRight size={20} className="rtl:rotate-180" />
                                 </button>
 
                                 <button onClick={() => setStep('manual')} className="w-full flex items-center justify-between p-6 bg-white/5 border border-white/10 rounded-3xl group transition-all">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-white/10 rounded-2xl"><Share size={24} className="text-[var(--text-secondary)]" /></div>
-                                        <div className="text-left">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Quick Method</p>
-                                            <p className="text-lg font-black uppercase italic tracking-tighter text-[var(--text-primary)]">Home Screen Link</p>
+                                        <div className="text-left rtl:text-right">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                                {isKurdish ? 'شێوازی خێرا' : 'Quick Method'}
+                                            </p>
+                                            <p className="text-lg font-black uppercase italic tracking-tighter text-[var(--text-primary)]">
+                                                {isKurdish ? 'دانان لە شاشەی سەرەکی' : 'Home Screen Link'}
+                                            </p>
                                         </div>
                                     </div>
-                                    <ArrowRight size={20} />
+                                    <ArrowRight size={20} className="rtl:rotate-180" />
                                 </button>
                             </div>
                         </motion.div>
@@ -169,43 +187,68 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     {step === 'manual' && (
                         <motion.div key="manual" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                             <div className="text-center mb-8">
-                                <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2 text-[var(--text-primary)]">Home Sync</h3>
-                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Add to your Apple device</p>
+                                <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2 text-[var(--text-primary)]">
+                                    {isKurdish ? 'شاشەی سەرەکی' : 'Home Sync'}
+                                </h3>
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
+                                    {isKurdish ? 'زیادکردن بۆ سەر شاشەی ئایفۆن' : 'Add to your Apple device'}
+                                </p>
                             </div>
                             <div className="space-y-3 mb-8">
                                 <div className="flex items-center gap-5 bg-white/5 p-5 rounded-[2rem] border border-white/5">
                                     <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0"><Share size={20} className="text-blue-500" /></div>
-                                    <p className="text-xs font-black uppercase tracking-widest text-gray-300">1. Tap the Share icon</p>
+                                    <p className="text-xs font-black uppercase tracking-widest text-gray-300">
+                                        {isKurdish ? '١. لە Safari کلیک لەسەر دوگمەی Share بکە' : '1. Tap the Share icon'}
+                                    </p>
                                 </div>
                                 <div className="flex items-center gap-5 bg-white/5 p-5 rounded-[2rem] border border-white/5">
                                     <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0"><Plus size={20} className="text-white" /></div>
-                                    <p className="text-xs font-black uppercase tracking-widest text-gray-300">2. Select 'Add to Home Screen'</p>
+                                    <p className="text-xs font-black uppercase tracking-widest text-gray-300">
+                                        {isKurdish ? '٢. هەڵبژاردەی Add to Home Screen هەڵبژێرە' : "2. Select 'Add to Home Screen'"}
+                                    </p>
                                 </div>
                             </div>
-                            <button onClick={() => setStep('choice')} className="w-full py-4 text-gray-500 text-[10px] font-black uppercase tracking-[0.4em]">Go Back</button>
+                            <button onClick={() => setStep('choice')} className="w-full py-4 text-gray-500 text-[10px] font-black uppercase tracking-[0.4em]">
+                                {isKurdish ? 'گەڕانەوە' : 'Go Back'}
+                            </button>
                         </motion.div>
                     )}
 
                     {step === 'pro' && (
                         <motion.div key="pro" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
                             <div className="text-center mb-8">
-                                <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2 text-[var(--text-primary)]">Native Profile</h3>
-                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Full-Screen Cinema Link</p>
+                                <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2 text-[var(--text-primary)]">
+                                    {isKurdish ? 'پڕۆفایلی ڕەسەنی ئەپڵ' : 'Native Profile'}
+                                </h3>
+                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
+                                    {isKurdish ? 'سینەمای فول سکرین بەبێ بەربەست' : 'Full-Screen Cinema Link'}
+                                </p>
                             </div>
                             <div className="bg-white/5 rounded-3xl p-6 mb-8 border border-white/10">
                                 <ol className="space-y-4 text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wide">
-                                    <li className="flex gap-4"><span className="text-[var(--brand-red)] font-black">01</span> Tap Download below.</li>
-                                    <li className="flex gap-4"><span className="text-[var(--brand-red)] font-black">02</span> Open Settings &gt; General &gt; VPN &amp; Device Management.</li>
-                                    <li className="flex gap-4"><span className="text-[var(--brand-red)] font-black">03</span> Select 'FLKRD MOVIES' and tap Install.</li>
+                                    <li className="flex gap-4">
+                                        <span className="text-[var(--brand-red)] font-black">01</span>
+                                        {isKurdish ? 'داگرتنی پڕۆفایل لە خوارەوە بکە و لە پرسیاری ئایفۆن Allow هەڵبژێرە.' : 'Tap Download below and tap Allow.'}
+                                    </li>
+                                    <li className="flex gap-4">
+                                        <span className="text-[var(--brand-red)] font-black">02</span>
+                                        {isKurdish ? 'بڕۆ بۆ Settings > General > VPN & Device Management (یان Profile Downloaded).' : 'Open Settings > General > VPN & Device Management.'}
+                                    </li>
+                                    <li className="flex gap-4">
+                                        <span className="text-[var(--brand-red)] font-black">03</span>
+                                        {isKurdish ? 'پڕۆفایلی FLKRD MOVIES هەڵبژێرە و دەست بنێ بە Install بۆ دامەزراندنی ئەپەکە.' : "Select 'FLKRD MOVIES' and tap Install."}
+                                    </li>
                                 </ol>
                             </div>
                             <button
                                 onClick={() => { downloadMobileConfig(); handleClose(); }}
                                 className="w-full bg-[var(--text-primary)] text-[var(--bg-primary)] font-[1000] py-6 rounded-3xl flex items-center justify-center gap-3 uppercase italic tracking-widest text-sm shadow-2xl active:scale-95 transition-all"
                             >
-                                <Download size={20} /> DOWNLOAD PROFILE
+                                <Download size={20} /> {isKurdish ? 'داگرتنی پڕۆفایلی فەرمی FLKRD' : 'DOWNLOAD PROFILE'}
                             </button>
-                            <button onClick={() => setStep('choice')} className="w-full mt-4 py-4 text-gray-500 text-[10px] font-black uppercase tracking-[0.4em]">Go Back</button>
+                            <button onClick={() => setStep('choice')} className="w-full mt-4 py-4 text-gray-500 text-[10px] font-black uppercase tracking-[0.4em]">
+                                {isKurdish ? 'گەڕانەوە' : 'Go Back'}
+                            </button>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -214,6 +257,8 @@ const IOSInstallPrompt: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </Portal>
     );
 };
+
+import { visitorAnalytics } from './services/visitorAnalyticsService';
 
 /** Enter-only fade: previous route unmounts immediately (no stacked ghost pages). */
 const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -225,6 +270,7 @@ const AnimatedPage: React.FC<{ children: React.ReactNode }> = ({ children }) => 
         if (mainEl) {
             mainEl.scrollTop = 0;
         }
+        visitorAnalytics.trackPageView(location.pathname);
     }, [location.pathname, location.search]);
 
     return (
@@ -619,6 +665,149 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
     );
 };
 
+const GlobalVideoPlayerModal: React.FC = () => {
+  const { activeVideo, setActiveVideo, isPipActive } = usePlayer();
+  const { language } = useTranslation();
+  const location = useLocation();
+
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [currentSeasonDetails, setCurrentSeasonDetails] = useState<SeasonDetails | null>(null);
+  const [currentSeasonNum, setCurrentSeasonNum] = useState<number>(activeVideo?.season || 1);
+
+  const isTv = activeVideo?.type === 'tv';
+
+  // Synchronize TV show season list and episode details from TMDB
+  useEffect(() => {
+    if (!activeVideo || !isTv || !activeVideo.tmdbId) return;
+
+    const fetchTvSeasons = async () => {
+      try {
+        const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
+        const res = await fetchData(`/tv/${activeVideo.tmdbId}?api_key=${API_KEY}&language=${langCode}`, language);
+        if (res && res.seasons) {
+          const validSeasons = res.seasons.filter((s: Season) => s.season_number > 0);
+          setSeasons(validSeasons.length > 0 ? validSeasons : res.seasons);
+        }
+      } catch (e) {
+        console.warn('[GLOBAL PLAYER] TV seasons fetch error:', e);
+      }
+    };
+
+    fetchTvSeasons();
+  }, [activeVideo?.tmdbId, isTv, language]);
+
+  // Synchronize episode details for active season
+  useEffect(() => {
+    if (!activeVideo || !isTv || !activeVideo.tmdbId) return;
+    const seasonToFetch = activeVideo.season || currentSeasonNum || 1;
+
+    const fetchSeasonEpisodes = async () => {
+      try {
+        const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
+        const res = await fetchData(`/tv/${activeVideo.tmdbId}/season/${seasonToFetch}?api_key=${API_KEY}&language=${langCode}`, language);
+        if (res) {
+          setCurrentSeasonDetails(res);
+        }
+      } catch (e) {
+        console.warn('[GLOBAL PLAYER] TV season episodes fetch error:', e);
+      }
+    };
+
+    fetchSeasonEpisodes();
+  }, [activeVideo?.tmdbId, activeVideo?.season, currentSeasonNum, isTv, language]);
+
+  // If PiP is active, or if the user is on Movie/TV/Dubbed DetailPage (which renders its own player modal), do not double-mount global player
+  if (!activeVideo || isPipActive) return null;
+  if (
+    location.pathname.startsWith('/details/movie') ||
+    location.pathname.startsWith('/details/tv') ||
+    location.pathname.startsWith('/movie/') ||
+    location.pathname.startsWith('/tv/') ||
+    location.pathname.startsWith('/dubbed-details')
+  ) {
+    return null;
+  }
+
+  const subtitleUrl = activeVideo.subtitleUrl;
+  const sources = activeVideo.sources && activeVideo.sources.length > 0
+    ? activeVideo.sources
+    : getRankedSources(!!subtitleUrl);
+
+  const handleClose = () => {
+    setActiveVideo(null);
+  };
+
+  const handleSourceChange = (srcName: string) => {
+    const matchingSource = sources.find((s: any) => s.name === srcName);
+    const newSrc = matchingSource?.url || getSourceUrl(srcName, activeVideo.tmdbId, activeVideo.type, activeVideo.season || 1, activeVideo.episode || 1);
+    setActiveVideo({
+      ...activeVideo,
+      activeSource: srcName,
+      src: newSrc
+    });
+  };
+
+  const handleEpisodeChange = (seasonNum: number, episodeNum: number) => {
+    const topSrc = activeVideo.activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER';
+    const newSrc = getSourceUrl(
+      topSrc,
+      activeVideo.tmdbId,
+      'tv',
+      seasonNum,
+      episodeNum
+    );
+    setActiveVideo({
+      ...activeVideo,
+      season: seasonNum,
+      episode: episodeNum,
+      src: newSrc,
+    });
+  };
+
+  const handleSeasonChange = (seasonNum: number) => {
+    setCurrentSeasonNum(seasonNum);
+    const topSrc = activeVideo.activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER';
+    const newSrc = getSourceUrl(
+      topSrc,
+      activeVideo.tmdbId,
+      'tv',
+      seasonNum,
+      1
+    );
+    setActiveVideo({
+      ...activeVideo,
+      season: seasonNum,
+      episode: 1,
+      src: newSrc,
+    });
+  };
+
+  return (
+    <Portal id="global-video-player-portal">
+      <div className="fixed inset-0 z-[200000] bg-black">
+        <UniversalVideoPlayer
+          src={activeVideo.src || getSourceUrl(activeVideo.activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER', activeVideo.tmdbId, activeVideo.type, activeVideo.season || 1, activeVideo.episode || 1)}
+          language={language}
+          contentType={activeVideo.type === 'tv' ? 'tv' : 'movie'}
+          title={activeVideo.title}
+          tmdbId={activeVideo.tmdbId}
+          season={activeVideo.season || 1}
+          episode={activeVideo.episode || 1}
+          startFullscreen={true}
+          onClose={handleClose}
+          activeSource={activeVideo.activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER'}
+          setActiveSource={handleSourceChange}
+          sources={sources}
+          seasons={seasons}
+          currentSeasonDetails={currentSeasonDetails || undefined}
+          onEpisodeChange={handleEpisodeChange}
+          onSeasonChange={handleSeasonChange}
+        />
+      </div>
+    </Portal>
+  );
+};
+
 const AppContent: React.FC<{
     scrolled: boolean;
     mainRef: React.RefObject<HTMLElement | null>;
@@ -628,6 +817,9 @@ const AppContent: React.FC<{
     const location = useLocation();
     const { user } = useAuth();
     const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+    // Global AdShield: Blocks 100% of rogue popups, popunders (OpenSooq/1win/PropellerAds)
+    useQuantumAdBlocker(true);
 
     // Track page visits (deferred to prevent blocking navigation transitions)
     useEffect(() => {
@@ -847,6 +1039,7 @@ const AppContent: React.FC<{
             <ContinueWatchingPortal />
             <OnboardingTour />
             <WelcomeNotificationPrompt />
+            <PwaInstallPrompt />
             <AnimatePresence>{showIOSPrompt && <IOSInstallPrompt onClose={() => setShowIOSPrompt(false)} />}</AnimatePresence>
             <React.Suspense fallback={null}>
               {isSettingsOpen && <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />}
@@ -854,6 +1047,7 @@ const AppContent: React.FC<{
             </React.Suspense>
             <GamepadHints />
             <FloatingPipPlayer />
+            <GlobalVideoPlayerModal />
             {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
             {!isTauri() && import.meta.env.PROD && <Analytics />}
         </>

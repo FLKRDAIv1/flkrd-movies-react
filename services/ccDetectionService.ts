@@ -1,5 +1,6 @@
 import { fetchExternalIds } from './tmdbService';
 import { supabase } from '../utils/supabaseClient';
+import { subtitleService } from './subtitleService';
 
 interface CCQueueItem {
     tmdbId: number;
@@ -102,12 +103,17 @@ class CCDetectionService {
                     // We only check Stremio for covers. If it's on Stremio, it gets the badge.
                     // Doing OpenSubtitles REST for 50 covers will get IP banned instantly.
                     const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${item.type}/${imdbId}.json`;
-                    const res = await fetch(stremioUrl).catch(() => null);
+                    const res = await subtitleService.fetchWithFallback(stremioUrl).catch(() => null);
                     
                     if (res && res.ok) {
-                        const data = await res.json();
-                        if (data && data.subtitles && Array.isArray(data.subtitles)) {
-                            hasCC = data.subtitles.some((s: any) => s.lang === 'ku' || s.lang === 'ckb');
+                        const rawText = await res.text().catch(() => '');
+                        if (rawText && !rawText.trim().startsWith('<')) {
+                            try {
+                                const data = JSON.parse(rawText);
+                                if (data && data.subtitles && Array.isArray(data.subtitles)) {
+                                    hasCC = data.subtitles.some((s: any) => s.lang === 'ku' || s.lang === 'ckb');
+                                }
+                            } catch (parseErr) {}
                         }
                     }
                 }

@@ -11,6 +11,7 @@ import { useUI } from '../contexts/UIContext';
 import { SkeletonGrid } from '../components/Skeleton';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import MovieCard from '../components/MovieCard';
+import MovieLayoutManager from '../components/MovieLayoutManager';
 
 const ContinueWatchingPage: React.FC = () => {
     const [items, setItems] = useState<WatchProgress[]>([]);
@@ -118,25 +119,13 @@ const ContinueWatchingPage: React.FC = () => {
             </div>
 
             {items.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
-                    {items.map((item, index) => {
-                        const progressPct = Math.min(100, (item.progress / item.duration) * 100);
-                        return (
-                            <div key={`${item.id}-${item.type}`} className="flex flex-col animate-[fade-in_0.5s_ease-out]">
-                                <MovieCard
-                                    item={item}
-                                    type={item.type as any}
-                                    isProgressRow={true}
-                                    className="w-full"
-                                />
-                                <div className="mt-2 flex items-center justify-between px-2">
-                                    <span className="text-[10px] font-black text-red-500 uppercase tracking-widest italic">{Math.floor(progressPct)}% Complete</span>
-                                    <span className="text-[10px] font-bold text-gray-600 uppercase tracking-widest">{Math.floor((item.duration - item.progress) / 60)}m Left</span>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+                <MovieLayoutManager
+                    items={items}
+                    isProgressRow={true}
+                    onRemove={(removed) => {
+                        setItems(prev => prev.filter(i => !(i.id === removed.id && String(i.type) === String(removed.type))));
+                    }}
+                />
             ) : (
                 <div className="text-center py-40 bg-white/[0.02] border border-white/5 rounded-[4rem] backdrop-blur-xl">
                     <Stars size={64} className="mx-auto text-gray-800 mb-8 animate-pulse" />

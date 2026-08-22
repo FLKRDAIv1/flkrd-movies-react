@@ -8,7 +8,11 @@
       "headers": [
         {
           "key": "Content-Type",
-          "value": "application/x-apple-aspen-config"
+          "value": "application/x-apple-aspen-config; charset=utf-8"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"FLKRD_MOVIES.mobileconfig\""
         }
       ]
     },

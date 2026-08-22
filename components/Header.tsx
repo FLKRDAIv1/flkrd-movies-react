@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
-import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle, Maximize2, Minimize2, ShieldAlert } from 'lucide-react';
+import { Cog, Moon, Sun, PlayCircle, User, History, Play, ChevronRight, X, Search, Menu, Bell, Zap, Subtitles, Sparkles, RefreshCcw, HelpCircle, Maximize2, Minimize2, ShieldAlert, Download } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import NotificationInbox from './NotificationInbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -465,6 +465,24 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     </button>
                   )}
 
+                  {/* PWA Install Button */}
+                  <button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('flkrd-open-pwa-install'));
+                    }}
+                    className={cn(
+                      "h-7 px-3 rounded-full flex items-center justify-center gap-1.5 border transition-all active:scale-[0.97] select-none shadow-sm shrink-0 font-black text-[9px] uppercase tracking-wider cursor-pointer",
+                      isDarkNavbar 
+                        ? "bg-brand/15 border-brand/40 text-white hover:bg-brand/25 shadow-[0_0_12px_rgba(229,9,20,0.25)]" 
+                        : "bg-red-50 border-red-200 text-brand hover:bg-red-100"
+                    )}
+                    title={language === 'ku' || language === 'badini' ? 'داگرتنی ئەپڵیکەیشن' : 'Install App'}
+                    aria-label="Install FLKRD App"
+                  >
+                    <Download size={11} className="text-brand animate-bounce" />
+                    <span className="hidden lg:inline">{language === 'ku' || language === 'badini' ? 'داگرتنی ئەپ' : 'Install App'}</span>
+                  </button>
+
                  {/* Consolidated User Profile Capsule with Dropdown Menu */}
                  <div className="relative" ref={profileMenuRef}>
                    <div 
@@ -556,101 +574,36 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                </div>
 
                 {/* 3. Mobile Layout (Hidden on Desktop) */}
-               <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-1.5 overflow-hidden">
-                 {isMobileSearchOpen ? (
-                   /* Full-Width Mobile Overlay Search Bar */
-                   <div className="flex items-center gap-2 w-full animate-fadeIn">
-                     <button
-                       onClick={() => setIsMobileSearchOpen(false)}
-                       className="p-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-white shrink-0 active:scale-90"
-                       aria-label="Close Search"
-                     >
-                       <X size={16} />
-                     </button>
-                     <div className="flex-1 min-w-0">
-                       <GooeySearch
-                         value={headerSearchQuery}
-                         onChange={(val) => {
-                           setHeaderSearchQuery(val);
-                           if (val.trim()) {
-                             navigate(`/search?query=${encodeURIComponent(val)}`, { replace: true });
-                           } else {
-                             navigate('/search', { replace: true });
-                           }
-                         }}
-                         onSearch={async (query) => {
-                           if (!query.trim()) return [];
-                           try {
-                             const langCode = (language === 'ku' || language === 'badini') ? 'ku-TR' : 'en-US';
-                             const endpoint = `/search/multi?api_key=${API_KEY}&language=${langCode}&query=${encodeURIComponent(query)}&page=1&include_adult=false`;
-                             const data = await fetchData(endpoint, language);
-                             if (data && Array.isArray(data)) {
-                               return data
-                                 .filter((item: any) => (item.media_type === 'movie' || item.media_type === 'tv') && (item.title || item.name))
-                                 .map((item: any) => item.title || item.name);
-                             }
-                           } catch (e) {
-                             console.error(e);
-                           }
-                           return [];
-                         }}
-                         onSelect={(item) => {
-                           setHeaderSearchQuery(item);
-                           setIsMobileSearchOpen(false);
-                           navigate(`/search?query=${encodeURIComponent(item)}`, { replace: true });
-                         }}
-                         placeholder={language === 'ku' || language === 'badini' ? 'گەڕان...' : 'Search...'}
-                         buttonLabel={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
-                       />
-                     </div>
-                   </div>
-                 ) : (
-                   /* Normal Mobile Header Row (Never overflows) */
-                   <>
-                     {/* Logo */}
-                     <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
-                       <img 
-                         src="/flkrd-logo.png" 
-                         alt="FLKRD" 
-                         className="h-6 sm:h-7 w-auto object-contain" 
-                       />
-                     </Link>
+                <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-1.5 overflow-hidden">
+                  {/* Logo */}
+                  <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
+                    <img 
+                      src="/flkrd-logo.png" 
+                      alt="FLKRD" 
+                      className="h-6 sm:h-7 w-auto object-contain" 
+                    />
+                  </Link>
 
-                     {/* Mobile Menu Action Triggers */}
-                     <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-auto">
-                        {/* Search Icon Trigger */}
-                        <button
-                          onClick={() => setIsMobileSearchOpen(true)}
-                          className={cn(
-                            "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
-                            isDarkNavbar 
-                              ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white" 
-                              : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black"
-                          )}
-                          title={language === 'ku' || language === 'badini' ? 'گەڕان' : 'Search'}
-                          aria-label="Open Search"
-                        >
-                          <Search size={13} />
-                        </button>
+                  {/* Mobile Menu Action Triggers */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-auto">
+                    {/* Compact Header View Mode Toggle (Mobile) */}
+                    <ViewToggle size="sm" showText={false} />
 
-                        {/* Compact Header View Mode Toggle (Mobile) */}
-                        <ViewToggle size="sm" showText={false} />
-
-                        {/* Subtle Native Fullscreen Button (Mobile Header) */}
-                        <button
-                          onClick={toggleAppFullscreen}
-                          className={cn(
-                            "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
-                            isDarkNavbar 
-                              ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
-                              : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
-                            isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
-                          )}
-                          title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
-                          aria-label="Toggle Fullscreen"
-                        >
-                          {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                        </button>
+                    {/* Subtle Native Fullscreen Button (Mobile Header) */}
+                    <button
+                      onClick={toggleAppFullscreen}
+                      className={cn(
+                        "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
+                        isDarkNavbar 
+                          ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
+                          : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
+                        isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
+                      )}
+                      title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
+                      aria-label="Toggle Fullscreen"
+                    >
+                      {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    </button>
 
                         {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
                         {isAdmin && (
@@ -691,10 +644,8 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                         >
                           <Menu size={20} />
                         </button>
-                     </div>
-                   </>
-                 )}
-               </div>
+                      </div>
+                </div>
 
              </div>
           </div>
@@ -906,6 +857,23 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   <ChevronRight className="w-4 h-4 text-gray-600" />
                 </button>
 
+                {/* PWA Install Button */}
+                <button
+                  onClick={() => {
+                    setIsDrawerOpen(false);
+                    window.dispatchEvent(new CustomEvent('flkrd-open-pwa-install'));
+                  }}
+                  className="w-full flex items-center justify-between p-3.5 bg-brand/10 border border-brand/30 rounded-2.5xl text-left hover:bg-brand/20 transition-all focus:outline-none cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <Download className="w-4.5 h-4.5 text-brand animate-pulse" />
+                    <span className="text-[11px] font-black uppercase tracking-wider text-white">
+                      {language === 'ku' || language === 'badini' ? 'داگرتنی ئەپ (Install App)' : 'Install FLKRD App'}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-brand" />
+                </button>
+
                 {/* Settings button */}
                 <button
                   onClick={() => { setIsDrawerOpen(false); setIsSettingsOpen(true); }}
@@ -945,12 +913,12 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                                   ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
                                       ? (item.poster_path || (item as any).imageBase64)
                                       : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
-                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                                  : '/default-poster.svg'
                               }
                               alt="" 
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                                (e.target as HTMLImageElement).src = '/default-poster.svg';
                               }}
                             />
                           </div>

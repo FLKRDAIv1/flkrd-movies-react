@@ -9,16 +9,15 @@ import {
   ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2, Cpu, Loader2, Lock, LockOpen
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, SeasonDetails, Episode, WatchProgress } from '../types';
-import { fetchData, isForbidden, fetchExternalIds } from '../services/tmdbService';
+import { fetchData, isForbidden, fetchExternalIds, getMediaType } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO, IMAGE_BASE_URL_PROFILE } from '../constants';
 import { SkeletonDetailPage } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
-import { getRankedSources, getSourceUrl, getSourceSandboxConfig } from '../utils/playerSourceUtils';
+import { getRankedSources, getSourceUrl, getSourceSandboxConfig, SOURCE_META } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
-import PremiumVidLinkPlayer from '../components/PremiumVidLinkPlayer';
 import { usePlayer } from '../contexts/PlayerContext';
 import Spinner from '../components/Spinner';
 import { subtitleService } from '../services/subtitleService';
@@ -110,6 +109,17 @@ const TVDetailPage: React.FC = () => {
     };
     fetchActorInfo();
   }, [selectedActorId, language]);
+
+  useEffect(() => {
+    if (selectedActorId) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedActorId]);
   const [recommendations, setRecommendations] = useState<Content[]>([]);
   const [isInMyList, setIsInMyList] = useState(false);
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
@@ -195,6 +205,17 @@ const TVDetailPage: React.FC = () => {
   const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
   const [playerKey, setPlayerKey] = useState(0);
   const [isSpinning, setIsSpinning] = useState(false);
+
+  useEffect(() => {
+    if (isPlayerModalOpen) {
+      document.body.classList.add('cinema-active');
+    } else {
+      document.body.classList.remove('cinema-active');
+    }
+    return () => {
+      document.body.classList.remove('cinema-active');
+    };
+  }, [isPlayerModalOpen]);
 
   const handleRefreshSource = () => {
     setIsSpinning(true);
@@ -736,13 +757,13 @@ const TVDetailPage: React.FC = () => {
               ? ((content.backdrop_path || content.poster_path)?.startsWith('http') || (content.backdrop_path || content.poster_path)?.startsWith('data:')
                   ? (content.backdrop_path || content.poster_path)!
                   : `${IMAGE_BASE_URL}${content.backdrop_path || content.poster_path}`)
-              : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+              : '/default-poster.svg'
           } 
           className="w-full h-full object-cover scale-110 opacity-70" 
           style={{ filter: 'blur(36px) saturate(1.4)' }} 
           alt="" 
           onError={(e) => {
-            (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+            (e.target as HTMLImageElement).src = '/default-poster.svg';
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/10 via-[var(--bg-primary)]/30 to-[var(--bg-primary)]"></div>
@@ -800,63 +821,34 @@ const TVDetailPage: React.FC = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {activeSource === 'FLKRD SERVER 2' ? (
-                <PremiumVidLinkPlayer
-                  key={`premium-tv-${playerKey}`}
-                  tmdbId={id!}
-                  type="tv"
-                  season={selectedSeason}
-                  episode={selectedEpisode}
-                  title={content.name}
-                  initialProgress={initialProgress}
-                  accentColor={accentColor}
-                  subtitleUrl={subtitleUrl || undefined}
-                  imdbId={imdbId || undefined}
-                  onProgress={handlePlayerProgress}
-                  seasons={content?.seasons || []}
-                  currentSeasonDetails={seasonDetails || undefined}
-                  watchedEpisodes={watchedEpisodes}
-                  onEpisodeChange={(s, e) => handlePlayClick(s, e)}
-                  onSeasonChange={(s) => {
-                    setSelectedSeason(s);
-                    fetchSeasonDetails(s);
-                  }}
-                  startFullscreen={true}
-                  onClose={handleClosePlayer}
-                  activeSource={activeSource}
-                  setActiveSource={setActiveSource}
-                  sources={sources}
-                />
-              ) : (
-                <UniversalVideoPlayer
-                  key={`universal-tv-${playerKey}`}
-                  src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
-                  accentColor={accentColor}
-                  language={language}
-                  onLoad={() => setIsPlayerLoading(false)}
-                  onProgress={handlePlayerProgress}
-                  subtitleUrl={subtitleUrl || undefined}
-                  imdbId={imdbId || content?.imdb_id}
-                  contentType="tv"
-                  season={selectedSeason}
-                  episode={selectedEpisode}
-                  title={content?.name}
-                  tmdbId={id}
-                  seasons={content?.seasons || []}
-                  currentSeasonDetails={seasonDetails || undefined}
-                  watchedEpisodes={watchedEpisodes}
-                  onEpisodeChange={(s, e) => handlePlayClick(s, e)}
-                  onSeasonChange={(s) => {
-                    setSelectedSeason(s);
-                    fetchSeasonDetails(s);
-                  }}
-                  startFullscreen={true}
-                  onClose={handleClosePlayer}
-                  activeSource={activeSource}
-                  setActiveSource={setActiveSource}
-                  sources={sources}
-                />
-              )}
+              <UniversalVideoPlayer
+                key={`universal-tv-${playerKey}`}
+                src={getSourceUrl(activeSource, id!, 'tv', selectedSeason, selectedEpisode, initialProgress, accentColor, subtitleUrl || undefined)}
+                accentColor={accentColor}
+                language={language}
+                onLoad={() => setIsPlayerLoading(false)}
+                onProgress={handlePlayerProgress}
+                subtitleUrl={subtitleUrl || undefined}
+                imdbId={imdbId || content?.imdb_id}
+                contentType="tv"
+                season={selectedSeason}
+                episode={selectedEpisode}
+                title={content?.name}
+                tmdbId={id}
+                seasons={content?.seasons || []}
+                currentSeasonDetails={seasonDetails || undefined}
+                watchedEpisodes={watchedEpisodes}
+                onEpisodeChange={(s, e) => handlePlayClick(s, e)}
+                onSeasonChange={(s) => {
+                  setSelectedSeason(s);
+                  fetchSeasonDetails(s);
+                }}
+                startFullscreen={true}
+                onClose={handleClosePlayer}
+                activeSource={activeSource}
+                setActiveSource={setActiveSource}
+                sources={sources}
+              />
 
               <AnimatePresence>
                 {showSourceSwitcher && (
@@ -876,9 +868,13 @@ const TVDetailPage: React.FC = () => {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2">
                           <Activity size={12} className="text-red-500 animate-pulse" />
-                          <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">FLKRD CORE</span>
+                          <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">
+                            {(language === 'ku' || language === 'badini') ? 'گرێیەکانی فلکرد' : 'FLKRD CORE'}
+                          </span>
                         </div>
-                        <h3 className="text-base font-black tracking-tight text-white uppercase italic text-left">Streaming Nodes</h3>
+                        <h3 className={`text-base font-black tracking-tight text-white uppercase italic ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
+                          {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکانی پەخش' : 'Streaming Nodes'}
+                        </h3>
                       </div>
                       <button 
                         onClick={() => setShowSourceSwitcher(false)}
@@ -888,19 +884,19 @@ const TVDetailPage: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1">
+                    <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                       {sources.map((s, idx) => {
                         const isActive = activeSource === s.name;
-                        let loadPct = 18; let speed = '1.8 Gbps'; let latency = '18ms'; let statusText = 'Optimal'; let statusColor = 'text-green-400'; let statusBg = 'bg-green-400/10 border-green-400/20';
+                        const isKurdishLang = language === 'ku' || language === 'badini';
+                        let loadPct = 18; let speed = '1.8 Gbps'; let latency = '18ms'; let statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast'; let statusColor = 'text-green-400'; let statusBg = 'bg-green-400/10 border-green-400/20';
 
-                        if (s.name === 'FLKRD SERVER') { loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast'; } 
-                        else if (s.name === 'FLKRD SERVER 1') { loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable'; } 
-                        else if (s.name === 'FLKRD SERVER 2') { loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized'; } 
-                        else if (s.name === 'FLKRD SERVER 3') { loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = 'Nominal'; } 
-                        else if (s.name === 'FLKRD SERVER 4') { loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20'; } 
-                        else if (s.name === 'FLKRD SERVER 5') { loadPct = 12; speed = '1.9 Gbps'; latency = '12ms'; statusText = 'Direct'; } 
-                        else if (s.name === 'FLKRD SERVER 6') { loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = 'Standard'; } 
-                        else if (s.name === 'FLKRD SERVER 7') { loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20'; }
+                        if (s.name === 'FLKRD SERVER') { loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast'; } 
+                        else if (s.name === 'FLKRD SERVER 1') { loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = isKurdishLang ? 'جێگیر' : 'Stable'; } 
+                        else if (s.name === 'FLKRD SERVER 2') { loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = isKurdishLang ? 'تایبەت' : 'Optimized'; } 
+                        else if (s.name === 'FLKRD SERVER 3') { loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = isKurdishLang ? 'خێرا' : 'Nominal'; } 
+                        else if (s.name === 'FLKRD SERVER 4') { loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = isKurdishLang ? 'یەدەگ' : 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20'; } 
+                        else if (s.name === 'FLKRD SERVER 6') { loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = isKurdishLang ? 'جێگرەوە' : 'Standard'; } 
+                        else if (s.name === 'FLKRD SERVER 7') { loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = isKurdishLang ? 'یەدەگی دووەم' : 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20'; }
 
                         return (
                           <motion.button 
@@ -955,13 +951,17 @@ const TVDetailPage: React.FC = () => {
                                     <Tv size={16} className={isActive ? 'text-red-500' : 'text-gray-400'} />
                                   )}
                                 </div>
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-black text-white group-hover:text-red-500 transition-colors uppercase italic">{s.name}</span>
-                                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">{speed} • {latency}</span>
+                                <div className={`flex flex-col items-start ${isKurdishLang ? 'text-right' : 'text-left'}`}>
+                                  <span className={`text-[12px] font-black uppercase tracking-wide ${isActive ? 'text-white font-extrabold' : 'text-gray-200'}`}>
+                                    {isKurdishLang ? (SOURCE_META[s.name]?.kurdishName || SOURCE_META[s.name]?.displayName || s.name) : (SOURCE_META[s.name]?.displayName || s.name)}
+                                  </span>
+                                  <span className="text-[10px] font-bold text-gray-400 tracking-tight">
+                                    {isKurdishLang ? (SOURCE_META[s.name]?.kurdishDesc || `گرێی ${idx + 1}`) : (SOURCE_META[s.name]?.description || `Node VK-${idx + 1}`)}
+                                  </span>
                                 </div>
                               </div>
                               <div className={`px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${statusColor} ${statusBg} relative z-10`}>
-                                {statusText}
+                                {isActive && isPlayerLoading ? (isKurdishLang ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') : (isActive ? (isKurdishLang ? 'پەیوەستە' : 'Connected') : statusText)}
                               </div>
                             </div>
                           </motion.button>
@@ -986,12 +986,12 @@ const TVDetailPage: React.FC = () => {
                 ? ((content.backdrop_path || content.poster_path)?.startsWith('http') || (content.backdrop_path || content.poster_path)?.startsWith('data:')
                     ? (content.backdrop_path || content.poster_path)!
                     : `${IMAGE_BASE_URL.replace('w1280', 'original')}${content.backdrop_path || content.poster_path}`)
-                : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                : '/default-poster.svg'
             } 
             alt="" 
             className="absolute inset-0 w-full h-full object-cover opacity-100" 
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+              (e.target as HTMLImageElement).src = '/default-poster.svg';
             }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-[2]" />
@@ -1244,12 +1244,12 @@ const TVDetailPage: React.FC = () => {
                     <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
                       <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative">
                         <img 
-                          src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.png'} 
+                          src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.webp'} 
                           alt={person.name} 
                           width={150} 
                           height={225} 
                           className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
-                          onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
                         />
                       </div>
                       <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-white">{person.name}</p>
@@ -1331,10 +1331,10 @@ const TVDetailPage: React.FC = () => {
                   <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
                     <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
                       <img 
-                        src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                        src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.webp'} 
                         alt={actorDetails.name}
                         className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
                       />
                     </div>
                     
@@ -1390,7 +1390,7 @@ const TVDetailPage: React.FC = () => {
                                 className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
                                 onClick={() => {
                                   setSelectedActorId(null);
-                                  navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`);
+                                  navigate(`/details/${getMediaType(movie)}/${movie.id}`);
                                 }}
                               >
                                 <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-white/5">

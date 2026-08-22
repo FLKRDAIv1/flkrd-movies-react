@@ -18,9 +18,9 @@ const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTER
 export const API_BASE_URL = (!isTauri && import.meta.env.DEV) ? "/api/tmdb" : "https://api.tmdb.org/3";
 export const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w1280";
 export const IMAGE_BASE_URL_POSTER = "https://image.tmdb.org/t/p/w500";
-export const IMAGE_BASE_URL_THUMB = "https://image.tmdb.org/t/p/w342"; // For card thumbnails — saves ~40% bandwidth vs w500
-export const IMAGE_BASE_URL_LOGO = "https://image.tmdb.org/t/p/w300";
-export const IMAGE_BASE_URL_PROFILE = "https://image.tmdb.org/t/p/w185"; // For actor/person profile portraits
+export const IMAGE_BASE_URL_THUMB = "https://image.tmdb.org/t/p/w300";
+export const IMAGE_BASE_URL_LOGO = "https://image.tmdb.org/t/p/w500";
+export const IMAGE_BASE_URL_PROFILE = "https://image.tmdb.org/t/p/w185";
 export const APP_VERSION = "1.8.1";
 
 export const requests = {
@@ -80,15 +80,18 @@ export const STUDIOS = [
 
 // FLKRD PROTECTION System: Stricter blocklists
 export const FORBIDDEN_KEYWORDS_EN: string[] = [
-  'porn', 'sex', 'erotic', 'lust', 'naked', 'sexy', 'nude', 'nudity',
-  'explicit', 'sensual', 'sexual', 'hardcore', 'xxx', 'hentai', 'stripper',
+  'porn', 'sex', 'erotic', 'erotica', 'lust', 'naked', 'sexy', 'nude', 'nudity',
+  'explicit', 'sensual', 'sexual', 'hardcore', 'xxx', 'hentai', 'stripper', 'striptease',
   'ejaculation', 'orgasm', 'pornography', 'bdsm', 'gay porn', 'lesbian porn',
-  'hot scene', 'bikini body', 'naked woman', 'naked man'
+  'hot scene', 'bikini body', 'naked woman', 'naked man', 'nsfw', 'adult movie',
+  'adult film', 'prostitute', 'prostitution', 'escort', 'brothel', 'intercourse',
+  'swingers', 'playboy', 'x-rated', 'fetish', 'penetration', 'softcore'
 ];
 
 export const FORBIDDEN_KEYWORDS_KU: string[] = [
   'پۆرن', 'سێکس', 'ئیرۆتیک', 'ڕووت', 'سێکسی', 'ڕووتی',
-  'بێ پەردە', 'کاری سێکسی', 'ڕووتکردنەوە', 'ئۆرگازم', 'پۆرنۆگرافی'
+  'بێ پەردە', 'کاری سێکسی', 'ڕووتکردنەوە', 'ئۆرگازم', 'پۆرنۆگرافی',
+  'لەشفرۆش', 'قەحبە', 'فاحیشە', 'سێکسیی'
 ];
 
 // Block specific IDs (EKS, Risqué, Kulong, Rita, and other extreme content)

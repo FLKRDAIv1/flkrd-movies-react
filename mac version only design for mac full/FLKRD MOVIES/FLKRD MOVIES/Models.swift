@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import Combine
+import SwiftUI
 
 // MARK: - TMDB Media Models
 struct MovieResponse: Codable {
@@ -26,8 +28,9 @@ struct MediaItem: Identifiable, Codable, Hashable {
     let firstAirDate: String?
     let mediaType: String?
     let adult: Bool?
+    let genreIds: [Int]?
     
-    init(id: Int, title: String? = nil, name: String? = nil, originalTitle: String? = nil, originalName: String? = nil, posterPath: String? = nil, backdropPath: String? = nil, overview: String? = nil, voteAverage: Double? = nil, releaseDate: String? = nil, firstAirDate: String? = nil, mediaType: String? = nil, adult: Bool? = nil) {
+    init(id: Int, title: String? = nil, name: String? = nil, originalTitle: String? = nil, originalName: String? = nil, posterPath: String? = nil, backdropPath: String? = nil, overview: String? = nil, voteAverage: Double? = nil, releaseDate: String? = nil, firstAirDate: String? = nil, mediaType: String? = nil, adult: Bool? = nil, genreIds: [Int]? = nil) {
         self.id = id
         self.title = title
         self.name = name
@@ -41,6 +44,7 @@ struct MediaItem: Identifiable, Codable, Hashable {
         self.firstAirDate = firstAirDate
         self.mediaType = mediaType
         self.adult = adult
+        self.genreIds = genreIds
     }
     
     var computedTitle: String {
@@ -58,7 +62,13 @@ struct MediaItem: Identifiable, Codable, Hashable {
     }
     
     var computedMediaType: String {
-        mediaType ?? "movie"
+        if let type = mediaType, !type.isEmpty {
+            return type
+        }
+        if firstAirDate != nil || name != nil {
+            return "tv"
+        }
+        return "movie"
     }
     
     enum CodingKeys: String, CodingKey {
@@ -75,6 +85,7 @@ struct MediaItem: Identifiable, Codable, Hashable {
         case firstAirDate = "first_air_date"
         case mediaType = "media_type"
         case adult
+        case genreIds = "genre_ids"
     }
 }
 
@@ -168,14 +179,14 @@ struct Episode: Identifiable, Codable, Hashable {
     }
 }
 
-// MARK: - Supabase Dubbed Movie Model
+// MARK: - Dubbed Movie Model for Supabase Integration
 struct DubbedMovie: Identifiable, Codable, Hashable {
     let id: String
     let title: String
     let kurdishTitle: String
     let description: String?
     let videoUrl: String
-    let mediaType: String
+    let mediaType: String?
     let imdbId: String?
     let tmdbId: Int?
     let imageBase64: String?
@@ -184,20 +195,33 @@ struct DubbedMovie: Identifiable, Codable, Hashable {
     let createdAt: String?
     
     var posterURL: String {
-        imageBase64 ?? "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=500"
+        let candidate = imageBase64 ?? bannerBase64 ?? ""
+        if candidate.isEmpty {
+            return "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=500"
+        }
+        if candidate.starts(with: "/") {
+            return "https://image.tmdb.org/t/p/w500\(candidate)"
+        }
+        return candidate
     }
     
     enum CodingKeys: String, CodingKey {
         case id
         case title
         case kurdishTitle = "kurdishTitle"
+        case kurdishTitleSnake = "kurdish_title"
         case description
         case videoUrl = "videoUrl"
+        case videoUrlSnake = "video_url"
         case mediaType = "media_type"
         case imdbId = "imdb_id"
         case tmdbId = "tmdb_id"
         case imageBase64 = "imageBase64"
+        case imageBase64Snake = "image_base64"
         case bannerBase64 = "bannerBase64"
+        case bannerBase64Snake = "banner_base64"
+        case posterPath = "poster_path"
+        case backdropPath = "backdrop_path"
         case level
         case createdAt = "created_at"
     }
@@ -214,17 +238,28 @@ struct DubbedMovie: Identifiable, Codable, Hashable {
             self.id = UUID().uuidString
         }
         
-        self.title = try container.decodeIfPresent(String.self, forKey: .title) ?? ""
-        self.kurdishTitle = try container.decodeIfPresent(String.self, forKey: .kurdishTitle) ?? self.title
-        self.description = try container.decodeIfPresent(String.self, forKey: .description)
-        self.videoUrl = try container.decodeIfPresent(String.self, forKey: .videoUrl) ?? ""
-        self.mediaType = try container.decodeIfPresent(String.self, forKey: .mediaType) ?? "dubbed"
-        self.imdbId = try container.decodeIfPresent(String.self, forKey: .imdbId)
-        self.tmdbId = try container.decodeIfPresent(Int.self, forKey: .tmdbId)
-        self.imageBase64 = try container.decodeIfPresent(String.self, forKey: .imageBase64)
-        self.bannerBase64 = try container.decodeIfPresent(String.self, forKey: .bannerBase64)
-        self.level = try container.decodeIfPresent(String.self, forKey: .level) ?? "NEW"
-        self.createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        self.title = (try? container.decodeIfPresent(String.self, forKey: .title)) ?? ""
+        self.kurdishTitle = (try? container.decodeIfPresent(String.self, forKey: .kurdishTitle)) ?? 
+                            (try? container.decodeIfPresent(String.self, forKey: .kurdishTitleSnake)) ?? self.title
+        self.description = try? container.decodeIfPresent(String.self, forKey: .description)
+        self.videoUrl = (try? container.decodeIfPresent(String.self, forKey: .videoUrl)) ?? 
+                        (try? container.decodeIfPresent(String.self, forKey: .videoUrlSnake)) ?? ""
+        self.mediaType = (try? container.decodeIfPresent(String.self, forKey: .mediaType)) ?? "dubbed"
+        self.imdbId = try? container.decodeIfPresent(String.self, forKey: .imdbId)
+        self.tmdbId = try? container.decodeIfPresent(Int.self, forKey: .tmdbId)
+        
+        let rawImg = (try? container.decodeIfPresent(String.self, forKey: .imageBase64)) ?? 
+                     (try? container.decodeIfPresent(String.self, forKey: .imageBase64Snake)) ?? 
+                     (try? container.decodeIfPresent(String.self, forKey: .posterPath))
+        self.imageBase64 = rawImg
+        
+        let rawBanner = (try? container.decodeIfPresent(String.self, forKey: .bannerBase64)) ?? 
+                        (try? container.decodeIfPresent(String.self, forKey: .bannerBase64Snake)) ?? 
+                        (try? container.decodeIfPresent(String.self, forKey: .backdropPath))
+        self.bannerBase64 = rawBanner
+        
+        self.level = (try? container.decodeIfPresent(String.self, forKey: .level)) ?? "NEW"
+        self.createdAt = try? container.decodeIfPresent(String.self, forKey: .createdAt)
     }
     
     func encode(to encoder: Encoder) throws {
@@ -334,4 +369,106 @@ struct ServerConfigRow: Codable, Hashable {
     let server_name: String
     let priority: Int
 }
+
+// MARK: - OpenSubtitles & Kurdish CC Models
+struct OpenSubtitlesSearchResult: Codable {
+    let data: [OpenSubtitlesData]?
+}
+
+struct OpenSubtitlesData: Codable {
+    let id: String?
+    let attributes: OpenSubtitlesAttributes?
+}
+
+struct OpenSubtitlesAttributes: Codable {
+    let language: String?
+    let release: String?
+    let files: [OpenSubtitlesFileItem]?
+}
+
+struct OpenSubtitlesFileItem: Codable {
+    let file_id: Int?
+    let cd_number: Int?
+    let file_name: String?
+}
+
+struct OpenSubtitlesDownloadResponse: Codable {
+    let link: String?
+    let file_name: String?
+    let requests: Int?
+}
+
+struct OpenSubtitleTrack: Identifiable, Hashable {
+    let id: Int
+    let language: String
+    let languageCode: String
+    let releaseName: String
+    let isKurdish: Bool
+    var directUrl: String? = nil
+    var sourceName: String = "OpenSubtitles"
+}
+
+// MARK: - Universal Player Sources & Persistence Manager
+struct PlayerSourceItem: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let description: String
+    let badge: String
+    let kurdishName: String
+}
+
+class PlayerSourceManager {
+    static let shared = PlayerSourceManager()
+    
+    let allSources: [PlayerSourceItem] = [
+        PlayerSourceItem(id: "FLKRD SERVER", name: "111Movies Ultra (Server 1)", description: "Direct Clean 4K BluRay / WEB-DL Stream", badge: "⚡ 4K BLURAY", kurdishName: "١١١ موڤیز (111Movies Ultra)"),
+        PlayerSourceItem(id: "FLKRD SERVER 1", name: "VidLove 4K Pro (Server 2)", description: "NextGen 4K Player · Custom Theme & Download", badge: "💎 4K PRO", kurdishName: "ڤید لۆڤ پرۆ (VidLove 4K Pro)"),
+        PlayerSourceItem(id: "FLKRD SERVER 2", name: "VidLink Pro 4K (Server 3)", description: "Ultra-Fast 4K HDR Player · Instant Load", badge: "👑 4K HDR", kurdishName: "ڤید لینک پرۆ (VidLink Pro 4K)"),
+        PlayerSourceItem(id: "FLKRD SERVER 3", name: "Videasy HD (Server 4)", description: "Adaptive Multi-Bitrate · HD 1080p · Ultra Fast", badge: "⚡ TOP HD", kurdishName: "ڤید ئیزی (Videasy HD)"),
+        PlayerSourceItem(id: "FLKRD SERVER 4", name: "VidKing 4K (Server 5)", description: "Universal Direct Streaming · 4K UHD", badge: "🚀 4K DIRECT", kurdishName: "ڤید کینگ (VidKing 4K)"),
+        PlayerSourceItem(id: "FLKRD SERVER 5", name: "AutoEmbed VIP (Server 6)", description: "Ultra-Fast Multi-Cloud Failover CDN", badge: "🛡️ FAILOVER", kurdishName: "ئۆتۆ ئیمبێد (AutoEmbed VIP)"),
+        PlayerSourceItem(id: "FLKRD SERVER 6", name: "VidSrc VIP (Server 7)", description: "Deep Global Fast Movie & Series Archive", badge: "🌐 CLOUD VIP", kurdishName: "ڤید سۆرس ڤی ئای پی (VidSrc VIP)"),
+        PlayerSourceItem(id: "FLKRD SERVER 7", name: "SuperEmbed (Server 8)", description: "Multi-Source Mirror Backup Stream", badge: "🎬 MIRROR", kurdishName: "سوپەر ئیمبێد (SuperEmbed)")
+    ]
+    
+    var defaultSource: String {
+        get {
+            UserDefaults.standard.string(forKey: "flkrd_default_player_source") ?? "FLKRD SERVER"
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "flkrd_default_player_source")
+        }
+    }
+}
+
+// MARK: - Global Admin Manager
+class AdminAuthManager: ObservableObject {
+    static let shared = AdminAuthManager()
+    
+    @Published var isAdmin: Bool {
+        didSet {
+            UserDefaults.standard.set(isAdmin, forKey: "flkrd_is_admin_logged_in")
+        }
+    }
+    
+    init() {
+        self.isAdmin = UserDefaults.standard.bool(forKey: "flkrd_is_admin_logged_in")
+    }
+    
+    func login(password: String) -> Bool {
+        let clean = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean == "Admin123" || clean == "admin123" || clean == "admin" || clean == "flkrdadmin" {
+            self.isAdmin = true
+            return true
+        }
+        return false
+    }
+    
+    func logout() {
+        self.isAdmin = false
+    }
+}
+
+
+
 

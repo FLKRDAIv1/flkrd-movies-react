@@ -1,0 +1,14 @@
+/*.mobileconfig
+  Content-Type: application/x-apple-aspen-config; charset=utf-8
+  Content-Disposition: attachment; filename="FLKRD_MOVIES.mobileconfig"
+  Cache-Control: public, max-age=0, must-revalidate
+
+/webclip.mobileconfig
+  Content-Type: application/x-apple-aspen-config; charset=utf-8
+  Content-Disposition: attachment; filename="FLKRD_MOVIES.mobileconfig"
+  Cache-Control: public, max-age=0, must-revalidate
+
+/fkurdmovie.mobileconfig
+  Content-Type: application/x-apple-aspen-config; charset=utf-8
+  Content-Disposition: attachment; filename="FLKRD_MOVIES.mobileconfig"
+  Cache-Control: public, max-age=0, must-revalidate

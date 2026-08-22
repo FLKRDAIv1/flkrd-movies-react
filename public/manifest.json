@@ -1,26 +1,65 @@
 {
-    "short_name": "FLKRD",
-    "name": "FLKRD MOVIES",
-    "icons": [
-        {
-            "src": "/flkrd-icon.png",
-            "type": "image/png",
-            "sizes": "192x192"
-        },
-        {
-            "src": "/apple-touch-icon.png",
-            "type": "image/png",
-            "sizes": "180x180"
-        },
-        {
-            "src": "/flkrd-icon.png",
-            "type": "image/png",
-            "sizes": "512x512"
-        }
-    ],
-    "start_url": "/#/",
-    "background_color": "#000000",
-    "theme_color": "#000000",
-    "display": "standalone",
-    "orientation": "portrait"
+  "name": "FLKRD MOVIES - سینەمای کوردی و جیهانی",
+  "short_name": "FLKRD",
+  "description": "The ultimate cinema experience for Kurdish Dubbed, Kurdish Subtitled, and 4K International movies and series.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "categories": ["entertainment", "movies", "tv", "multimedia"],
+  "icons": [
+    {
+      "src": "/flkrd-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/flkrd-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/flkrd-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Kurdish Dubbed",
+      "short_name": "Dubbed",
+      "url": "/dubbed",
+      "icons": [{ "src": "/flkrd-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Kurdish CC Subtitles",
+      "short_name": "Kurdish CC",
+      "url": "/kurdish-cc",
+      "icons": [{ "src": "/flkrd-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Watchlist",
+      "short_name": "My List",
+      "url": "/my-list",
+      "icons": [{ "src": "/flkrd-icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Continue Watching",
+      "short_name": "Continue",
+      "url": "/continue-watching",
+      "icons": [{ "src": "/flkrd-icon.png", "sizes": "192x192" }]
+    }
+  ]
 }

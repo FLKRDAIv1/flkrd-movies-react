@@ -125,10 +125,19 @@ export default async function handler(req: SubtitleProxyRequest, res: SubtitlePr
       }
     }
 
+    // If target URL is JSON (e.g. Stremio discovery endpoint) or upstream is JSON, return JSON
+    const isJson = formattedUrl.endsWith('.json') || (upstreamRes.headers.get('content-type') || '').includes('application/json');
+    if (isJson) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400');
+      return res.status(200).send(rawText);
+    }
+
     // Convert SRT to WebVTT
     const webVttContent = convertSrtToVtt(rawText);
 
     // Cache responses for 1 day
+    res.setHeader('Content-Type', 'text/vtt; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=604800');
     return res.status(200).send(webVttContent);
   } catch (error: any) {

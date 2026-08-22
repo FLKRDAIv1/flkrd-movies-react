@@ -14,46 +14,31 @@
             <key>Label</key>
             <string>FLKRD MOVIES</string>
             <key>PayloadDescription</key>
-            <string>ئەم ئەپە لەلایەن زانا فارۆقەوە درووست کراوە کە بەناوی ستوودیەکەم گرنگی یەکی زۆرمان پێی داوە هیوادارم بە چێژی لێبینن لە یێستا یە بە خۆرایە </string>
+            <string>پڕۆفایلی فەرمی ئەپڵیکەیشنی FLKRD MOVIES بۆ سەیرکردنی فیلم و زنجیرەکان بە کوالێتی بەرز</string>
             <key>PayloadDisplayName</key>
             <string>FLKRD MOVIES</string>
             <key>PayloadIdentifier</key>
-            <string>com.flkrdstudiobyzana.app.webclip</string>
+            <string>com.flkrdstudio.fkurd.webclip</string>
             <key>PayloadOrganization</key>
             <string>FLKRD STUDIO</string>
             <key>PayloadType</key>
             <string>com.apple.webClip.managed</string>
             <key>PayloadUUID</key>
-            <string>e20e045c-4c2c-4a5f-bf02-657702d17a9a</string>
+            <string>bd04feae-8ab9-4d36-80cd-75e547c6065f</string>
             <key>PayloadVersion</key>
             <integer>1</integer>
             <key>Precomposed</key>
             <true/>
             <key>URL</key>
             <string>https://fkurd.pro</string>
-            <key>IgnoreManifestScope</key>
-            <true/>
-            <key>AllowTextSelection</key>
-            <true/>
-            <key>TargetApplicationBundleIdentifier</key>
-            <string>yad.infy.uk</string>
-            <key>Orientations</key>
-            <array>
-                <integer>1</integer><integer>2</integer>
-                <integer>3</integer><integer>4</integer>
-            </array>
-            <key>TargetDeviceType</key>
-            <integer>3</integer>
-            <key>SecurityPolicy</key>
-            <string>default</string>
         </dict>
     </array>
     <key>PayloadDescription</key>
-    <string>ئەم ئەپە لەلایەن زانا فارۆقەوە درووست کراوە کە بەناوی ستوودیەکەم گرنگی یەکی زۆرمان پێی داوە هیوادارم بە چێژی لێبینن لە یێستا یە بە خۆرایە </string>
+    <string>ئەم ئەپڵیکەیشنە لەلایەن زانا فارۆقەوە دروستکراوە کە بەناوی ستۆدیۆکەم (FLKRD STUDIO) گرنگییەکی زۆرمان پێداوە. هیوادارم چێژی لێ ببینن.</string>
     <key>PayloadDisplayName</key>
     <string>FLKRD MOVIES</string>
     <key>PayloadIdentifier</key>
-    <string>com.flkrdstudiobyzana.app</string>
+    <string>com.flkrdstudio.fkurd.profile</string>
     <key>PayloadOrganization</key>
     <string>FLKRD STUDIO</string>
     <key>PayloadRemovalDisallowed</key>
@@ -61,7 +46,7 @@
     <key>PayloadType</key>
     <string>Configuration</string>
     <key>PayloadUUID</key>
-    <string>84976991-466c-4422-b5bd-1afbd4a6d6a6</string>
+    <string>7453dc29-30bb-4719-b17c-6f2ce321e840</string>
     <key>PayloadVersion</key>
     <integer>1</integer>
 </dict>

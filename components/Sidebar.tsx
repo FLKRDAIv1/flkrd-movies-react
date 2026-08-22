@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { STUDIOS } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -51,48 +52,39 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: Na
   };
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.04, x: isCollapsed ? 0 : 4 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{
-        type: 'spring',
-        stiffness: 450 * (elasticity / 0.35),
-        damping: 18 * (0.35 / elasticity),
-      }}
-      className="w-full"
-    >
+    <div className="w-full">
       <NavLink
         to={to}
         title={isCollapsed ? text : ''}
         onMouseEnter={handlePrefetch}
         onClick={onItemClick}
-        className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-300 overflow-hidden border ${
+        className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-200 overflow-hidden border active:scale-95 ${
           isActive
             ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black'
-            : 'bg-transparent border-transparent hover:bg-white/10 hover:backdrop-blur-md hover:border-white/10 text-neutral-400 hover:text-white'
+            : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
         }`}
       >
         <div
-          className={`flex-shrink-0 transition-all duration-300 ${
+          className={`flex-shrink-0 transition-transform duration-200 ${
             isActive ? 'scale-110 text-white' : 'group-hover:scale-110 text-neutral-400'
           }`}
         >
           {icon}
         </div>
 
-        <motion.span
-          variants={textVariants}
-          animate={isCollapsed ? 'closed' : 'open'}
-          className="ml-4 font-black uppercase tracking-[0.15em] text-[10px] whitespace-nowrap"
+        <span
+          className={`ml-4 font-black uppercase tracking-[0.15em] text-[10px] whitespace-nowrap transition-opacity duration-200 ${
+            isCollapsed ? 'hidden' : 'inline-block opacity-100'
+          }`}
         >
           {text}
-        </motion.span>
+        </span>
 
         {!isCollapsed && isActive && (
           <ChevronRight size={14} className="ml-auto opacity-70 text-white" />
         )}
       </NavLink>
-    </motion.div>
+    </div>
   );
 });
 
@@ -107,45 +99,34 @@ interface StudioItemProps {
 
 const StudioItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: StudioItemProps) => {
   const isActive = location.pathname.startsWith(to.split('/').slice(0, 3).join('/'));
-  const { glassConfig } = useUI();
-  const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.04, x: 4 }}
-      whileTap={{ scale: 0.96 }}
-      transition={{
-        type: 'spring',
-        stiffness: 450 * (elasticity / 0.35),
-        damping: 18 * (0.35 / elasticity),
-      }}
-      className="w-full"
-    >
+    <div className="w-full">
       <NavLink
         to={to}
         onClick={onItemClick}
-        className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-300 border ${
+        className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-200 border active:scale-95 ${
           isActive
-            ? 'bg-brand/20 backdrop-blur-md border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]'
-            : 'bg-transparent border-transparent hover:bg-white/10 hover:backdrop-blur-sm hover:border-white/10 text-neutral-400 hover:text-white'
+            ? 'bg-brand/20 border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]'
+            : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
         }`}
       >
         <div
-          className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform ${
+          className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform duration-200 ${
             isActive ? 'scale-110 text-brand' : 'group-hover:rotate-12 text-neutral-400'
           }`}
         >
           {icon}
         </div>
-        <motion.span
-          variants={textVariants}
-          animate={isCollapsed ? 'closed' : 'open'}
-          className="ml-4 font-bold text-[9px] uppercase tracking-widest whitespace-nowrap"
+        <span
+          className={`ml-4 font-bold text-[9px] uppercase tracking-widest whitespace-nowrap transition-opacity duration-200 ${
+            isCollapsed ? 'hidden' : 'inline-block opacity-100'
+          }`}
         >
           {text}
-        </motion.span>
+        </span>
       </NavLink>
-    </motion.div>
+    </div>
   );
 });
 
@@ -157,7 +138,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const location = useLocation();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { theme, glassConfig } = useUI();
 
   // Close mobile drawer on ESC
@@ -370,7 +351,29 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             </AnimatePresence>
           </nav>
 
-          <div className="p-4 border-t border-white/10 bg-neutral-900/60 backdrop-blur-20 relative z-20">
+          <div className="p-3 border-t border-white/10 bg-neutral-900/60 backdrop-blur-20 relative z-20 flex flex-col gap-2">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('flkrd-open-pwa-install'));
+              }}
+              title={isCollapsed ? (language === 'ku' || language === 'badini' ? 'داگرتنی ئەپ' : 'Install App') : ''}
+              className={`w-full flex items-center h-10 px-3 rounded-xl transition-all duration-300 border bg-brand/15 hover:bg-brand/25 border-brand/35 text-white shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)] active:scale-95 cursor-pointer ${
+                isCollapsed ? 'justify-center' : 'justify-between'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Download size={16} className="text-brand animate-bounce shrink-0" />
+                {!isCollapsed && (
+                  <span className="font-black uppercase tracking-wider text-[10px] text-white">
+                    {language === 'ku' || language === 'badini' ? 'داگرتنی ئەپ' : 'Install App'}
+                  </span>
+                )}
+              </div>
+              {!isCollapsed && (
+                <Sparkles size={12} className="text-brand/80" />
+              )}
+            </button>
+
             <div className={`flex items-center gap-3 ${isCollapsed ? 'justify-center' : ''}`}>
               <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-brand to-red-950 flex-shrink-0 border border-white/10 shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)] flex items-center justify-center font-black text-[10px] text-white">
                 F
@@ -440,11 +443,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList') || 'My List'} location={location} isCollapsed={false} onItemClick={onClose} />
               </nav>
 
-              <div className="p-4 border-t border-white/10 bg-neutral-900/60 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center font-bold text-white text-xs">
-                  F
+              <div className="p-4 border-t border-white/10 bg-neutral-900/60 flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    onClose?.();
+                    window.dispatchEvent(new CustomEvent('flkrd-open-pwa-install'));
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-brand/20 hover:bg-brand/30 border border-brand/40 text-white font-black text-xs uppercase italic tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Download size={16} className="text-brand animate-bounce" />
+                  <span>{language === 'ku' || language === 'badini' ? 'داگرتنی ئەپڵیکەیشن' : 'Install FLKRD App'}</span>
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center font-bold text-white text-xs">
+                    F
+                  </div>
+                  <p className="text-xs font-black text-white uppercase">FLKRD VIP</p>
                 </div>
-                <p className="text-xs font-black text-white uppercase">FLKRD VIP</p>
               </div>
             </motion.div>
           </>

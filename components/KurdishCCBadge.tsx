@@ -10,7 +10,7 @@ interface KurdishCCBadgeProps {
     type: 'movie' | 'tv';
 }
 
-const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = ({ tmdbId, type }) => {
+const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = React.memo(({ tmdbId, type }) => {
     const [hasCC, setHasCC] = useState<boolean | null>(null);
     const { language } = useTranslation();
     const { translatedMovieIds = new Set() } = useUI();
@@ -40,10 +40,10 @@ const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = ({ tmdbId, type }) => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 className="absolute bottom-4 left-4 z-30 pointer-events-none"
             >
-                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 backdrop-blur-md rounded-xl border ${
+                <div className={`flex items-center gap-1.5 px-2.5 py-1.5 backdrop-blur-sm rounded-xl border ${
                     isCustomTranslated 
-                        ? 'bg-gradient-to-r from-red-600/90 to-rose-600/90 border-red-500/50 shadow-[0_4px_15px_rgba(229,9,20,0.4)]'
-                        : 'bg-zinc-900/90 border-zinc-700/50 shadow-[0_4px_12px_rgba(0,0,0,0.3)]'
+                        ? 'bg-gradient-to-r from-red-600/90 to-rose-600/90 border-red-500/50 shadow-md'
+                        : 'bg-zinc-900/90 border-zinc-700/50 shadow-md'
                 }`}>
                     <Subtitles size={12} className="text-white" />
                     <span className="text-[9px] font-black text-white uppercase tracking-wider">
@@ -56,6 +56,6 @@ const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = ({ tmdbId, type }) => {
             </motion.div>
         </AnimatePresence>
     );
-};
+});
 
 export default KurdishCCBadge;

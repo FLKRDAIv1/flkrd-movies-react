@@ -138,13 +138,22 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return false;
   });
   const [viewMode, setViewModeState] = useState<'grid' | 'list'>(() => {
-    const saved = localStorage.getItem('flkrd_view_mode') as 'grid' | 'list';
-    return saved === 'grid' ? 'grid' : 'list';
+    try {
+      const saved = localStorage.getItem('flkrd_view_mode');
+      if (saved === 'grid' || saved === 'list') {
+        return saved;
+      }
+    } catch (e) {}
+
+    // Default design is GRID for everyone across all devices
+    return 'grid';
   });
 
   const setViewMode = useCallback((mode: 'grid' | 'list') => {
     setViewModeState(mode);
-    localStorage.setItem('flkrd_view_mode', mode);
+    try {
+      localStorage.setItem('flkrd_view_mode', mode);
+    } catch (e) {}
   }, []);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

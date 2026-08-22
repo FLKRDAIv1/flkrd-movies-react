@@ -7,9 +7,6 @@ import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
 import { getSourceUrl, getRankedSources } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from './UniversalVideoPlayer';
-import PremiumVidLinkPlayer from './PremiumVidLinkPlayer';
-
-const PremiumPlayer = PremiumVidLinkPlayer as any;
 
 // Custom High-Fidelity Audio Synth Chime using Web Audio API for immersive, tactile feedback
 let sharedAudioCtx: AudioContext | null = null;
@@ -554,22 +551,7 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
   // Render Co-Watching Video Player with bidirectional control
   const getPlayerComponent = () => {
     const type = contentType || 'movie';
-    return activeSource === 'FLKRD SERVER 2' ? (
-      <PremiumPlayer
-        key={`${activeSource}-${playerKey}`}
-        tmdbId={movieId}
-        type={type}
-        season={season}
-        episode={episode}
-        title={movieTitle}
-        initialProgress={initialProgress}
-        accentColor={accentColor}
-        subtitleUrl={subtitleUrl}
-        imdbId={imdbId}
-        onProgress={handlePlayerProgress}
-        peerSyncTrigger={peerSyncTrigger}
-      />
-    ) : (
+    return (
       <UniversalVideoPlayer
         key={`${activeSource}-${playerKey}`}
         src={getSourceUrl(activeSource, movieId, type, season, episode, initialProgress, accentColor, subtitleUrl)}
@@ -584,6 +566,9 @@ export const CoWatchVideoPlayer: React.FC<CoWatchVideoPlayerProps> = ({
         title={movieTitle}
         peerSyncTrigger={peerSyncTrigger}
         tmdbId={movieId}
+        activeSource={activeSource}
+        setActiveSource={handleServerSwitch}
+        sources={sources}
       />
     );
   };

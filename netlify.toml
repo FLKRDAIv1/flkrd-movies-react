@@ -43,3 +43,17 @@
   [headers.values]
     Cache-Control = "public, max-age=604800"
 
+[[headers]]
+  for = "/*.mobileconfig"
+  [headers.values]
+    Content-Type = "application/x-apple-aspen-config; charset=utf-8"
+    Content-Disposition = "attachment; filename=\"FLKRD_MOVIES.mobileconfig\""
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/webclip.mobileconfig"
+  [headers.values]
+    Content-Type = "application/x-apple-aspen-config; charset=utf-8"
+    Content-Disposition = "attachment; filename=\"FLKRD_MOVIES.mobileconfig\""
+    Cache-Control = "public, max-age=0, must-revalidate"
+

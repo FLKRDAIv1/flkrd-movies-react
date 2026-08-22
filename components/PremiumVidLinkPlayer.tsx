@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon, Sun, Sliders, Languages } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Play, Maximize, Minimize, Shield, Loader2, Subtitles, X, Search, Activity, Sparkles, ArrowRight, Settings2, Mic2, Globe, Volume2, Tv, Download, ShieldCheck, RefreshCcw, Cpu, Zap, Timer, Infinity as InfinityIcon, Sun, Sliders, Languages, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subtitleService } from '../services/subtitleService';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
@@ -16,6 +16,7 @@ import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
 import { usePlayerNavigationGuard } from '../hooks/usePlayerNavigationGuard';
 
 import { Season, SeasonDetails } from '../types';
+import { getRankedSources, getSourceUrl, SOURCE_META } from '../utils/playerSourceUtils';
 
 function cleanAndFormatVtt(text: string): string {
   if (!text) return 'WEBVTT\n\n';
@@ -124,7 +125,7 @@ export default function PremiumVidLinkPlayer({
     (navigator.userAgent.includes('Mac') && 'ontouchend' in document)
   );
   const { isAdmin, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration } = useUI();
-  const { isPaused } = usePlayer();
+  const { isPaused, setIsPaused } = usePlayer();
   const { addNotification } = useNotification();
   const [isShieldActive, setIsShieldActive] = useState(false);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
@@ -247,6 +248,15 @@ export default function PremiumVidLinkPlayer({
   const setIsFullscreen = isFullscreenProp !== undefined ? () => {} : setLocalIsFullscreen;
   const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const seasonsScrollRef = useRef<HTMLDivElement>(null);
+  const episodesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollHorizontally = useCallback((ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const amount = direction === 'left' ? -360 : 360;
+      ref.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  }, []);
 
   const [availableSubs, setAvailableSubs] = useState<any[]>([]);
   const [loadingSubs, setLoadingSubs] = useState(false);
@@ -1530,21 +1540,26 @@ export default function PremiumVidLinkPlayer({
           lastMessageTimeRef.current = performance.now();
           lastReceivedTimeRef.current = extractedTime;
 
-          if (eventType === 'pause' || eventType === 'paused') {
-            if (isPlayingRef.current) {
-              isPlayingRef.current = false;
-              setIsPlaying(false);
-            }
-          } else if (eventType === 'play' || eventType === 'playing' || eventType === 'timeupdate' || extractedTime !== undefined) {
-            if (!isPlayingRef.current) {
-              isPlayingRef.current = true;
-              setIsPlaying(true);
-            }
+          const normalizedType = String(eventType || '').toLowerCase();
+          const isPauseEvent = normalizedType === 'pause' || normalizedType === 'paused' || normalizedType === 'pausevideo' || normalizedType === 'ended' || normalizedType === 'stalled' || normalizedType === 'waiting' || normalizedType === 'suspend';
+          const isPlayEvent = normalizedType === 'play' || normalizedType === 'playing' || normalizedType === 'timeupdate';
+
+          if (isPauseEvent) {
+            isPlayingRef.current = false;
+            setIsPlaying(false);
+            setIsPaused(true);
+            updateActiveCues([]);
+            if (pauseGlobalTranslation) pauseGlobalTranslation();
+          } else if (isPlayEvent) {
+            isPlayingRef.current = true;
+            setIsPlaying(true);
+            setIsPaused(false);
+            if (resumeGlobalTranslation) resumeGlobalTranslation();
           }
 
           const offsetSec = subtitleOffsetRef.current / 1000;
-          if (parsedCuesRef.current.length > 0) {
-            const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec - 0.1) && extractedTime! <= (c.end + offsetSec + 0.1));
+          if (parsedCuesRef.current.length > 0 && isPlayingRef.current) {
+            const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec) && extractedTime! <= (c.end + offsetSec));
             updateActiveCues(active);
           }
 
@@ -1563,23 +1578,25 @@ export default function PremiumVidLinkPlayer({
     return () => window.removeEventListener('message', handleIframeMessage);
   }, [onProgress, updateActiveCues]);
 
-  // Universal Fallback Timer: Advances playhead second-by-second for iframe sources that do not emit continuous postMessages
+  // Universal Fallback Timer: Only ticks if active playing is explicitly confirmed via recent messages
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
       const now = performance.now();
-      if (isPlaying && now - lastMessageTimeRef.current > 1200 && parsedCuesRef.current.length > 0) {
+      // Crucial fix: Only advance playhead if video is active AND received recent stream postMessages (< 2000ms ago).
+      // If postMessages stop (video paused or stopped buffering), DO NOT increment time.
+      if (isPlaying && isPlayingRef.current && (now - lastMessageTimeRef.current < 2000) && parsedCuesRef.current.length > 0) {
         const nextTime = lastReceivedTimeRef.current + 1;
         lastReceivedTimeRef.current = nextTime;
         const offsetSec = subtitleOffsetRef.current / 1000;
-        const active = parsedCuesRef.current.filter(c => nextTime >= (c.start + offsetSec - 0.1) && nextTime <= (c.end + offsetSec + 0.1));
+        const active = parsedCuesRef.current.filter(c => nextTime >= (c.start + offsetSec) && nextTime <= (c.end + offsetSec));
         updateActiveCues(active);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, updateActiveCues]);
 
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {
@@ -1973,22 +1990,13 @@ export default function PremiumVidLinkPlayer({
 
   // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
   useEffect(() => {
-    if (isSimulatedFullscreen) {
-      document.body.classList.add('movie-player-active');
-      document.documentElement.classList.add('movie-player-active');
-    } else {
-      if (!onClose) {
-        document.body.classList.remove('movie-player-active');
-        document.documentElement.classList.remove('movie-player-active');
-      }
-    }
+    document.body.classList.add('movie-player-active');
+    document.documentElement.classList.add('movie-player-active');
     return () => {
-      if (!onClose) {
-        document.body.classList.remove('movie-player-active');
-        document.documentElement.classList.remove('movie-player-active');
-      }
+      document.body.classList.remove('movie-player-active');
+      document.documentElement.classList.remove('movie-player-active');
     };
-  }, [isSimulatedFullscreen, onClose]);
+  }, []);
 
   useEffect(() => {
     const preventTouch = (e: TouchEvent) => {
@@ -2047,9 +2055,6 @@ export default function PremiumVidLinkPlayer({
               ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})` 
               : undefined
           }}
-          // NOTE: sandbox attribute intentionally omitted — VidLink Pro detects
-          // sandboxed iframes and blocks playback with "Please Disable Sandbox".
-          // Tauri's WKWebView security handles isolation at the process level.
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write; gyroscope; accelerometer"
           referrerPolicy="no-referrer-when-downgrade"
           // @ts-ignore
@@ -2067,12 +2072,12 @@ export default function PremiumVidLinkPlayer({
 
 
         <AnimatePresence>
-          {showSubtitles && activeCues.length > 0 && (
+          {showSubtitles && isPlaying && activeCues.length > 0 && !showSubSettings && !showEpisodesPortal && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="absolute bottom-[15%] left-0 right-0 z-[99999] pointer-events-none w-full flex justify-center px-4"
+              className="absolute bottom-[18%] sm:bottom-[15%] left-0 right-0 z-30 pointer-events-none w-full flex justify-center px-4"
             >
               {(() => {
                 // Determine text direction by checking active cues with their potential override texts
@@ -2090,7 +2095,8 @@ export default function PremiumVidLinkPlayer({
                       unicodeBidi: hasRtl ? 'plaintext' : 'normal',
                       textAlign: 'center',
                       backgroundColor: showSubBackground ? `rgba(0,0,0,${subBgOpacity})` : 'transparent',
-                      backdropFilter: showSubBackground && subBlur ? 'blur(12px)' : 'none',
+                      backdropFilter: !isIOSDevice && showSubBackground && subBlur ? 'blur(12px)' : 'none',
+                      WebkitBackdropFilter: !isIOSDevice && showSubBackground && subBlur ? 'blur(12px)' : 'none',
                       border: showSubBackground ? undefined : 'none',
                       boxShadow: showSubBackground ? undefined : 'none',
                       textShadow: showSubBackground 
@@ -2101,8 +2107,8 @@ export default function PremiumVidLinkPlayer({
                       fontWeight: 800, // Optimized weight for Zain font
                       fontFamily: "'Zain', 'Outfit', sans-serif",
                       lineHeight: hasRtl ? '1.5' : '1.4',
-                      transform: 'translateZ(99999px)',
-                      WebkitTransform: 'translateZ(99999px)',
+                      transform: 'translateZ(0)',
+                      WebkitTransform: 'translateZ(0)',
                       willChange: 'transform'
                     }}
                   >
@@ -2406,72 +2412,90 @@ export default function PremiumVidLinkPlayer({
 
         {/* Episodes Portal Drawer v2 (Top-Down Sliding Cinema Overlay) */}
         <AnimatePresence>
-          {showEpisodesPortal && type === 'tv' && onEpisodeChange && (
+          {showEpisodesPortal && (
             <motion.div 
               initial={{ y: '-100%', opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '-100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 24, stiffness: 100 }}
-              className="absolute top-0 left-0 right-0 h-[68%] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] flex flex-col gap-4 select-none shadow-[0_24px_50px_rgba(0,0,0,0.9)] overflow-hidden"
+              dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+              className="absolute top-0 left-0 right-0 max-h-[78vh] min-h-[340px] bg-gradient-to-b from-black/98 via-black/95 to-[#080808]/92 backdrop-blur-3xl border-b border-white/10 z-[200] flex flex-col gap-3 select-none shadow-[0_24px_60px_rgba(0,0,0,0.95)] overflow-hidden"
               style={{ 
                 fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
-                paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
-                paddingLeft: 'calc(1.5rem + env(safe-area-inset-left, 0px))',
-                paddingRight: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
-                paddingBottom: '1.25rem'
+                paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+                paddingLeft: 'calc(1.25rem + env(safe-area-inset-left, 0px))',
+                paddingRight: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
+                paddingBottom: '1rem'
               }}
             >
               {/* Header Row */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-3 shrink-0">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="bg-red-600/10 border border-red-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
-                    <Tv size={12} className="text-red-500 animate-pulse" />
+                  <div className="bg-red-600/15 border border-red-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
+                    <Tv size={13} className="text-red-500 animate-pulse" />
                     <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
                       {(language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL'}
                     </span>
                   </div>
-                  <span className={`font-bold text-gray-500 tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[10px]'}`}>
+                  <span className={`font-bold text-white/90 tracking-wider truncate max-w-[200px] sm:max-w-xs ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[11px]'}`}>
                     {title}
                   </span>
                 </div>
                 <button 
-                  onClick={() => setShowEpisodesPortal(false)} 
-                  className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white"
+                  onClick={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }} 
+                  className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white active:scale-90"
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Season Buttons Horizontal Row */}
-              <div className="flex flex-col gap-1.5 shrink-0 text-left">
-                <span className={`font-black text-gray-500 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
-                  {(language === 'ku' || language === 'badini') ? 'سیزنەکان' : 'SEASONS'}
-                </span>
-                <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide">
+              {/* Season Buttons Horizontal Row with Left/Right Scroll Controls */}
+              <div className="flex flex-col gap-1.5 shrink-0 relative">
+                <div className="flex items-center justify-between">
+                  <span className={`font-black text-gray-400 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
+                    {(language === 'ku' || language === 'badini') ? 'وەرزەکان' : 'SEASONS'}
+                  </span>
+                  <div className="flex items-center gap-1.5 dir-ltr">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'left'); }}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
+                      title="Scroll left"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'right'); }}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
+                      title="Scroll right"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div ref={seasonsScrollRef} className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide scroll-smooth">
                   {seasons.map((s) => {
                     const isCurrentSeason = season === s.season_number;
                     return (
                       <button
                         key={s.id}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (onSeasonChange) onSeasonChange(s.season_number);
                         }}
-                        className={`relative px-5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
+                        className={`relative px-4 py-1.5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${
                           isCurrentSeason 
-                            ? 'border-red-500/20' 
-                            : 'border-white/5 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.06]'
-                        } ${(language === 'ku' || language === 'badini') ? 'text-[13px] py-1' : 'text-[10px] py-2.5'}`}
+                            ? 'border-red-500/50 bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white' 
+                            : 'border-white/10 bg-white/[0.04] text-white/80 hover:border-white/20 hover:bg-white/[0.10]'
+                        } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}
                       >
-                        {isCurrentSeason ? (
-                          <motion.div 
-                            layoutId="activeSeasonPillPremium"
-                            className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-500 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                          />
-                        ) : null}
-                        <span className={`relative z-10 ${isCurrentSeason ? 'text-white font-black' : 'text-gray-400 hover:text-white'}`}>
+                        <span className="relative z-10 font-black">
                           {(language === 'ku' || language === 'badini') 
-                            ? `سیزنی ${s.season_number}`
+                            ? `وەرزی ${s.season_number}`
                             : `Season ${s.season_number}`}
                         </span>
                       </button>
@@ -2481,29 +2505,47 @@ export default function PremiumVidLinkPlayer({
               </div>
 
               {/* Episodes Horizontal Swiper Container */}
-              <div className="flex-1 flex flex-col gap-1.5 overflow-hidden text-left relative">
-                <span className={`font-black text-gray-500 uppercase tracking-widest shrink-0 ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[8px]'}`}>
-                  {(language === 'ku' || language === 'badini') 
-                    ? `ئەڵقەکانی سیزنی ${season}`
-                    : `SEASON ${season} EPISODES`}
-                </span>
+              <div className="flex-1 flex flex-col gap-1.5 overflow-hidden relative">
+                <div className="flex items-center justify-between shrink-0">
+                  <span className={`font-black text-gray-400 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
+                    {(language === 'ku' || language === 'badini') 
+                      ? `ئەڵقەکانی وەرزی ${season}`
+                      : `SEASON ${season} EPISODES`}
+                  </span>
+                  <div className="flex items-center gap-1.5 dir-ltr">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'left'); }}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                      title="Scroll left"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'right'); }}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                      title="Scroll right"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
                 
                 <div className="relative flex-1 overflow-hidden mt-1">
-                  {/* Edge Gradient Overlays */}
-                  <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
-                  <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black via-black/40 to-transparent pointer-events-none z-10 hidden md:block" />
+                  <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
+                  <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
 
                   <motion.div 
+                    ref={episodesScrollRef}
                     variants={containerVariants}
                     initial="hidden"
                     animate="show"
-                    className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-6 py-2 px-6 scrollbar-hide scroll-smooth"
+                    className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-4 py-2 px-1 scrollbar-hide scroll-smooth"
                   >
                     {!currentSeasonDetails ? (
                       <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
                         <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
                         <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
-                          {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING EPISODES...'}
+                          {(language === 'ku' || language === 'badini') ? 'داگرتنی زانیاری ئەڵقەکان...' : 'SYNCHRONIZING EPISODES...'}
                         </span>
                       </div>
                     ) : (
@@ -2512,25 +2554,38 @@ export default function PremiumVidLinkPlayer({
                         const isWatched = watchedEpisodes.has(epKey);
                         const isActive = episode === ep.episode_number && season === currentSeasonDetails.season_number;
                         const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
+                        const isKurdish = language === 'ku' || language === 'badini';
+
+                        // Deduplicate episode titles like "Episode 1" vs "ئەڵقەی 1"
+                        const rawName = ep.name?.trim() || '';
+                        const isGenericName = !rawName || /^episode\s*\d+$/i.test(rawName) || /^ئەڵقەی\s*\d+$/i.test(rawName) || rawName === `Episode ${ep.episode_number}`;
                         
                         return (
                           <motion.div
                             key={ep.id}
                             variants={cardVariants}
-                            whileHover={{ y: -6, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
+                            whileHover={{ y: -5, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                              if (onEpisodeChange) onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onEpisodeChange) {
+                                onEpisodeChange(currentSeasonDetails.season_number, ep.episode_number);
+                              } else {
+                                const ranked = getRankedSources();
+                                const topSrc = ranked[0]?.name || 'FLKRD SERVER';
+                                const newUrl = getSourceUrl(activeSource || topSrc, String(tmdbId), 'tv', currentSeasonDetails.season_number, ep.episode_number);
+                                const iframe = document.querySelector('iframe[data-player="premium"]') as HTMLIFrameElement | null;
+                                if (iframe) iframe.src = newUrl;
+                              }
                               setShowEpisodesPortal(false);
                             }}
-                            className={`w-64 shrink-0 flex flex-col gap-2 rounded-3xl border p-2.5 transition-all group relative cursor-pointer ${
+                            className={`w-48 sm:w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${
                               isActive
-                                ? 'bg-red-600/10 border-red-600/60 shadow-[0_8px_32px_rgba(220,38,38,0.2)]'
-                                : 'bg-white/[0.02] border-white/5 hover:border-white/20 hover:bg-white/[0.05]'
+                                ? 'bg-gradient-to-br from-red-600/[0.16] to-rose-500/[0.05] border-red-500/70 shadow-[0_8px_32px_rgba(220,38,38,0.35)]'
+                                : 'bg-white/[0.03] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
                             }`}
                           >
-                            {/* Card Image Wrapper */}
-                            <div className="relative aspect-video rounded-2xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
                               {ep.still_path ? (
                                 <img 
                                   src={`${IMAGE_BASE_URL}${ep.still_path}`} 
@@ -2542,50 +2597,51 @@ export default function PremiumVidLinkPlayer({
                                 <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
                               )}
 
-                              {/* Hover Play Button Overlay */}
                               <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
-                                  <Play size={18} fill="currentColor" className="translate-x-[1.5px]" />
+                                <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                  <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
                                 </div>
                               </div>
 
-                              {/* Rating Badge */}
                               {ep.vote_average > 0 && (
-                                <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
+                                <div className={`absolute top-2 left-2 bg-black/70 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
                                   <span className="text-[8px] leading-none">★</span>
                                   <span>{ep.vote_average.toFixed(1)}</span>
                                 </div>
                               )}
 
-                              {/* Active / Current indicator */}
                               {isActive && (
-                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${isKurdish ? 'text-[10px] py-[2px] px-1.5 font-black' : 'text-[7px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
                                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                  <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
+                                  <span>{isKurdish ? 'ئێستا پەخش دەکرێت' : 'NOW PLAYING'}</span>
                                 </div>
                               )}
 
-                              {/* Watched status tick */}
                               {isWatched && !isActive && (
-                                <div className={`absolute top-2 right-2 bg-green-500/25 backdrop-blur-md text-green-400 rounded-lg border border-green-500/30 flex items-center gap-0.5 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
+                                <div className={`absolute top-2 right-2 bg-green-500/30 backdrop-blur-md text-green-400 rounded-lg border border-green-500/40 flex items-center gap-0.5 z-20 ${isKurdish ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
                                   <span>✓</span>
-                                  <span>{(language === 'ku' || language === 'badini') ? 'بینراوە' : 'WATCHED'}</span>
+                                  <span>{isKurdish ? 'بینراوە' : 'WATCHED'}</span>
                                 </div>
                               )}
                             </div>
 
-                            {/* Card Metadata */}
                             <div className="flex flex-col px-1">
-                              <span className={`uppercase tracking-widest ${isActive ? 'text-red-500 animate-pulse' : 'text-gray-500'} ${(language === 'ku' || language === 'badini') ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
-                                {(language === 'ku' || language === 'badini') 
-                                  ? `ئەڵقەی ${ep.episode_number}` 
-                                  : `Episode ${ep.episode_number}`}
-                              </span>
-                              <h4 className={`text-white font-black truncate group-hover:text-red-500 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
-                                {ep.name}
-                              </h4>
-                              <p className={`line-clamp-2 leading-relaxed mt-1 ${(language === 'ku' || language === 'badini') ? 'text-[13px] text-gray-300 font-medium' : 'text-[10px] text-gray-400 font-normal'}`} title={ep.overview}>
-                                {ep.overview || ((language === 'ku' || language === 'badini') ? 'بیۆگرافی ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
+                              {!isGenericName ? (
+                                <>
+                                  <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-400'} ${isKurdish ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
+                                    {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
+                                  </span>
+                                  <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[14px]' : 'text-xs'}`} title={ep.name}>
+                                    {ep.name}
+                                  </h4>
+                                </>
+                              ) : (
+                                <h4 className={`font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isActive ? 'text-red-400' : 'text-white'} ${isKurdish ? 'text-[15px]' : 'text-xs'}`}>
+                                  {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
+                                </h4>
+                              )}
+                              <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-300 ${isKurdish ? 'text-[12px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
+                                {ep.overview || (isKurdish ? 'هیچ ڕوونکردنەوەیەک بۆ ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
                               </p>
                             </div>
                           </motion.div>
@@ -2769,7 +2825,7 @@ export default function PremiumVidLinkPlayer({
 
       {/* Media Source Switcher Drawer for Fullscreen Mode */}
       <AnimatePresence>
-        {showSourceSwitcher && sources && sources.length > 0 && (
+        {showSourceSwitcher && (
           <motion.div 
             initial={{ x: '100%', opacity: 0 }} 
             animate={{ x: 0, opacity: 1 }} 
@@ -2793,9 +2849,13 @@ export default function PremiumVidLinkPlayer({
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <Activity size={12} className="text-red-500 animate-pulse" />
-                  <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">FLKRD CORE</span>
+                  <span className="text-[9px] font-[1000] tracking-[0.2em] text-red-500 uppercase">
+                    {(language === 'ku' || language === 'badini') ? 'گرێیەکانی فلکرد' : 'FLKRD CORE'}
+                  </span>
                 </div>
-                <h3 className="text-base font-black tracking-tight text-white uppercase italic text-left">Streaming Nodes</h3>
+                <h3 className={`text-base font-black tracking-tight text-white uppercase italic ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
+                  {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکانی پەخش' : 'Streaming Nodes'}
+                </h3>
               </div>
               <button 
                 onClick={() => setShowSourceSwitcher(false)}
@@ -2813,32 +2873,38 @@ export default function PremiumVidLinkPlayer({
                                s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
 
                 const isActive = activeSource === s.name;
+                const isKurdishLang = language === 'ku' || language === 'badini';
                 
                 let loadPct = 18;
                 let speed = '1.8 Gbps';
                 let latency = '18ms';
-                let statusText = 'Optimal';
+                let statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast';
                 let statusColor = 'text-green-400';
                 let statusBg = 'bg-green-400/10 border-green-400/20';
 
                 if (s.name === 'FLKRD SERVER') {
-                  loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = 'Ultra Fast';
+                  loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast';
                 } else if (s.name === 'FLKRD SERVER 1') {
-                  loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = 'Stable';
+                  loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = isKurdishLang ? 'جێگیر' : 'Stable';
                 } else if (s.name === 'FLKRD SERVER 2') {
-                  loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = 'Optimized';
-                }                return (
+                  loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = isKurdishLang ? 'تایبەت' : 'Optimized';
+                } else if (s.name === 'FLKRD SERVER 3') {
+                  loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = isKurdishLang ? 'خێرا' : 'Nominal';
+                } else if (s.name === 'FLKRD SERVER 4') {
+                  loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = isKurdishLang ? 'یەدەگ' : 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20';
+                } else if (s.name === 'FLKRD SERVER 6') {
+                  loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = isKurdishLang ? 'جێگرەوە' : 'Standard';
+                } else if (s.name === 'FLKRD SERVER 7') {
+                  loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = isKurdishLang ? 'یەدەگی دووەم' : 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20';
+                }
+
+                return (
                   <button 
                     key={s.name}
-                    onClick={() => { 
-                      if (isActive) return;
-                      if (setActiveSource) {
-                        setActiveSource(s.name); 
-                      }
+                    onClick={() => {
+                      if (setActiveSource) setActiveSource(s.name);
                       setIsPlayerLoading(true);
-                      setTimeout(() => {
-                        setShowSourceSwitcher(false);
-                      }, 800);
+                      setTimeout(() => setShowSourceSwitcher(false), 400);
                     }} 
                     className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
                       isActive 
@@ -2897,12 +2963,12 @@ export default function PremiumVidLinkPlayer({
                           )}
                         </div>
 
-                        <div className="flex flex-col items-start text-left">
-                          <span className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-white font-extrabold' : 'text-gray-300'}`}>
-                            {s.name}
+                        <div className={`flex flex-col items-start ${isKurdishLang ? 'text-right' : 'text-left'}`}>
+                          <span className={`text-[12px] font-black uppercase tracking-wide ${isActive ? 'text-white' : 'text-gray-200'}`}>
+                            {isKurdishLang ? (SOURCE_META[s.name]?.kurdishName || SOURCE_META[s.name]?.displayName || s.name) : (SOURCE_META[s.name]?.displayName || s.name)}
                           </span>
-                          <span className="text-[9px] font-bold text-gray-500 uppercase tracking-tighter">
-                            Node VK-{idx + 1}
+                          <span className="text-[10px] font-bold text-gray-400 tracking-tight">
+                            {isKurdishLang ? (SOURCE_META[s.name]?.kurdishDesc || `گرێی ${idx + 1}`) : (SOURCE_META[s.name]?.description || `Node VK-${idx + 1}`)}
                           </span>
                         </div>
                       </div>
@@ -2917,8 +2983,8 @@ export default function PremiumVidLinkPlayer({
                         } ${isActive ? '' : statusColor}`}>
                           {isActive 
                             ? isPlayerLoading 
-                              ? ((language === 'ku' || language === 'badini') ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') 
-                              : ((language === 'ku' || language === 'badini') ? 'پەیوەستە' : 'Connected')
+                              ? (isKurdishLang ? 'پەیوەندی دەبەسترێت...' : 'Connecting...') 
+                              : (isKurdishLang ? 'پەیوەستە' : 'Connected')
                             : statusText}
                         </div>
                       </div>
@@ -3005,8 +3071,7 @@ export default function PremiumVidLinkPlayer({
           WebkitTransform: 'translate3d(0, 0, 0)'
         }}
       >
-        {type === 'tv' && onEpisodeChange && (
-          <button 
+        <button 
             onClick={() => {
               setShowEpisodesPortal(!showEpisodesPortal);
               setShowSubSettings(false);
@@ -3017,12 +3082,11 @@ export default function PremiumVidLinkPlayer({
                 ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_12px_rgba(220,38,38,0.4)]' 
                 : 'bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30'
             }`}
-            style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+            style={{ backdropFilter: isIOSDevice ? 'none' : 'blur(8px)', WebkitBackdropFilter: isIOSDevice ? 'none' : 'blur(8px)' }}
           >
             <Tv size={12} className="shrink-0" />
-            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'EP'}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? (type === 'tv' ? 'ئەڵقەکان' : 'پێشنیار') : (type === 'tv' ? 'EP' : 'REC')}</span>
           </button>
-        )}
 
         {/* Subtitle Toggle */}
         <button 
@@ -3037,15 +3101,14 @@ export default function PremiumVidLinkPlayer({
               ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_14px_rgba(220,38,38,0.45)]' 
               : 'bg-black/60 border-white/15 text-white/90 px-3 py-1.5 hover:border-white/30'
           }`}
-          style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+          style={{ backdropFilter: isIOSDevice ? 'none' : 'blur(8px)', WebkitBackdropFilter: isIOSDevice ? 'none' : 'blur(8px)' }}
         >
           <Subtitles size={12} className="shrink-0" />
           <span className="text-[10px] font-bold uppercase tracking-wide">CC</span>
         </button>
 
         {/* Relink Button */}
-        {sources && sources.length > 0 && (
-          <button 
+        <button 
             onClick={() => {
               setShowSourceSwitcher(!showSourceSwitcher);
               setShowSubSettings(false);
@@ -3056,19 +3119,18 @@ export default function PremiumVidLinkPlayer({
                 ? 'bg-red-600 border-red-500/80 text-white px-3 py-1.5 shadow-[0_0_12px_rgba(220,38,38,0.4)]'
                 : 'bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30'
             }`}
-            style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
-            title="Relink"
+            style={{ backdropFilter: isIOSDevice ? 'none' : 'blur(8px)', WebkitBackdropFilter: isIOSDevice ? 'none' : 'blur(8px)' }}
+            title={(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان / بەستنەوە' : 'Relink'}
           >
             <RefreshCcw size={12} className={`shrink-0 ${showSourceSwitcher ? 'rotate-180 transition-transform duration-500' : ''}`} />
-            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەر' : 'Link'}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide hidden sm:inline">{(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان' : 'Relink'}</span>
           </button>
-        )}
 
         {/* Fullscreen Button */}
         <button 
           onClick={toggleFullscreen}
           className="flex items-center gap-1.5 rounded-full border bg-black/60 border-white/15 text-white/90 px-2.5 py-1.5 hover:border-white/30 transition-all active:scale-90"
-          style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
+          style={{ backdropFilter: isIOSDevice ? 'none' : 'blur(8px)', WebkitBackdropFilter: isIOSDevice ? 'none' : 'blur(8px)' }}
           title={isFullscreen 
             ? ((language === 'ku' || language === 'badini') ? 'دەرچوون لە شاشەی تەواو' : 'Exit Fullscreen') 
             : ((language === 'ku' || language === 'badini') ? 'شاشەی تەواو' : 'Fullscreen')}

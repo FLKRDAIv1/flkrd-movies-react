@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, Zap, Sparkles, Stars, Globe, Sword, ChevronLeft, Plus, Check, Play } from 'lucide-react';
 import { Content, Studio as StudioType, MyListItem } from '../types';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { fetchByStudio, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_LOGO, API_KEY, API_BASE_URL, STUDIOS } from '../constants';
 import Spinner from '../components/Spinner';
 import { SkeletonGrid } from '../components/Skeleton';
@@ -54,7 +54,7 @@ const StudioPage: React.FC = () => {
         } else {
             myList.push({ 
                 id: item.id, 
-                media_type: item.media_type || 'movie', 
+                media_type: getMediaType(item), 
                 title: item.title || item.name || '', 
                 poster_path: item.poster_path 
             });

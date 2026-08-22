@@ -343,7 +343,7 @@ export function Card5() {
     { name: "FLKRD SERVER 1", calls: 14, latency: "180ms", fill: 45, color: "from-blue-500 to-blue-600" },
     { name: "FLKRD SERVER 2", calls: 8, latency: "120ms", fill: 25, color: "from-emerald-500 to-emerald-600" },
     { name: "FLKRD SERVER 3", calls: 22, latency: "340ms", fill: 70, color: "from-amber-500 to-amber-600" },
-    { name: "FLKRD SERVER 5", calls: 31, latency: "95ms", fill: 95, color: "from-red-500 to-red-600" },
+    { name: "FLKRD SERVER", calls: 31, latency: "45ms", fill: 95, color: "from-red-500 to-red-600" },
   ];
 
   return (

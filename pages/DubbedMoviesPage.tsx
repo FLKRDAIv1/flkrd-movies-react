@@ -24,6 +24,8 @@ import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
 import { db, initDB } from '../utils/db';
 import { isTauri } from '../utils/tauriUtils';
+import { usePlayer } from '../contexts/PlayerContext';
+import { getDubbedSources, extractEmbedSrc } from '../utils/playerSourceUtils';
 
 
 // Removed MeshGradientBackground to allow global PremiumBackground to handle theme rendering.
@@ -36,7 +38,7 @@ const LazyBase64Image: React.FC<{ src: string, className?: string, alt?: string,
             alt={alt}
             decoding="async"
             onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                (e.target as HTMLImageElement).src = '/default-poster.svg';
             }}
         />
     );
@@ -408,6 +410,7 @@ const DubbedMoviesPage: React.FC = () => {
 
     const navigate = useNavigate();
     const { t, language } = useTranslation();
+    const { setActiveVideo, setIsPaused, setIsPipActive } = usePlayer();
     const [hasNewMovies, setHasNewMovies] = useState(false);
     const [isLive, setIsLive] = useState(false);
     const [page, setPage] = useState(0);
@@ -846,13 +849,28 @@ const DubbedMoviesPage: React.FC = () => {
         return () => clearInterval(timer);
     }, [heroMovies.length]);
     const handlePlay = (item: any) => {
-        navigate(`/dubbed-details/${item.id}`, {
-            state: {
-                customSource: item.customStream,
-                isDubbedMode: true,
-                customData: item
-            }
+        const rawStream = item?.customStream || item?.videoUrl || item?.video_url || item?.url || '';
+        const dubbedSources = getDubbedSources(rawStream, language);
+        const firstSrc = dubbedSources[0]?.url || extractEmbedSrc(rawStream);
+        const title = ((language === 'ku' || language === 'badini') && item.kurdishTitle) ? item.kurdishTitle : (item.title || 'Dubbed Movie');
+        const backdrop = item.bannerBase64 || item.backdrop_path || item.poster_path || item.imageBase64 || '';
+
+        const validTmdbId = (item?.tmdb_id && /^\d+$/.test(String(item.tmdb_id))) 
+            ? String(item.tmdb_id) 
+            : (/^\d+$/.test(String(item?.id || '').replace('custom_', '')) ? String(item?.id).replace('custom_', '') : undefined);
+
+        setActiveVideo({
+            tmdbId: validTmdbId,
+            imdbId: item?.imdb_id || undefined,
+            type: 'dubbed',
+            title: title,
+            activeSource: dubbedSources[0]?.name || 'FLKRD DUBBED 1',
+            sources: dubbedSources,
+            backdropPath: backdrop,
+            src: firstSrc,
         });
+        setIsPaused(false);
+        setIsPipActive(false);
     };
 
     useEffect(() => {
@@ -1136,7 +1154,7 @@ const DubbedMoviesPage: React.FC = () => {
         setUploadProgress(20);
         setUploadStep('Broadcasting to global node...');
 
-        const finalImage = uploadData.imageBase64 || 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+        const finalImage = uploadData.imageBase64 || '/default-poster.svg';
 
         try {
             // Generate a unique ID (custom_<uuid>) required by public.dubbed_movies primary key constraint

@@ -9,6 +9,37 @@
 
   <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com; script-src-elem * 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com; style-src * 'self' 'unsafe-inline'; img-src * 'self' data: content: blob:; media-src * 'self' blob: https://*.strem.io; frame-src *; worker-src * blob: data:; connect-src * 'self' blob: data: gap: https://*.strem.io;">
 
+  <!-- FLKRD Quantum Anti-Popunder / Ad-Hijack Shield (Zero-Delay Kernel) -->
+  <script>
+    (function() {
+      var ALLOWED_PREFIXES = [
+        'https://t.me/', 'https://wa.me/', 'https://www.facebook.com/', 
+        'https://twitter.com/', 'https://x.com/', 'https://adguard.com/', 
+        'https://flkrd.pro', 'mailto:', 'tel:'
+      ];
+      var origOpen = window.open;
+      function isPermitted(url) {
+        if (!url) return false;
+        var u = String(url).toLowerCase().trim();
+        for (var i = 0; i < ALLOWED_PREFIXES.length; i++) {
+          if (u.indexOf(ALLOWED_PREFIXES[i]) === 0) return true;
+        }
+        if (u.indexOf(window.location.origin) === 0 || u.indexOf('/') === 0 || u.indexOf('#') === 0) return true;
+        return false;
+      }
+      window.open = function(url, target, features) {
+        if (!isPermitted(url)) {
+          console.warn('[FLKRD-KERNEL] Blocked rogue popup/popunder:', url);
+          return null;
+        }
+        return origOpen.apply(window, arguments);
+      };
+      if (window.Window && window.Window.prototype) {
+        window.Window.prototype.open = window.open;
+      }
+    })();
+  </script>
+
   <script type="importmap">
     {
       "imports": {

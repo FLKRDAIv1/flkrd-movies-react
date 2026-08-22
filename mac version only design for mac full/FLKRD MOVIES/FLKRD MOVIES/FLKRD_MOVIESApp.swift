@@ -9,6 +9,14 @@ import SwiftUI
 
 @main
 struct FLKRD_MOVIESApp: App {
+    init() {
+        // High-Speed In-Memory & Disk Image & API Cache for 60/120fps Silky Smooth Scrolling
+        let memoryCapacity = 512 * 1024 * 1024 // 512 MB RAM
+        let diskCapacity = 1024 * 1024 * 1024 // 1 GB High-Speed Disk Cache
+        let cache = URLCache(memoryCapacity: memoryCapacity, diskCapacity: diskCapacity, diskPath: "flkrd_turbo_cache")
+        URLCache.shared = cache
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()

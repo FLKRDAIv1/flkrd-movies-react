@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Check, Play, Loader2, Sparkles, Trash2 } from 'lucide-react';
 import { Content, WatchProgress, MyListItem } from '../types';
-import { fetchData, clearTMDBCache } from '../services/tmdbService';
+import { fetchData, clearTMDBCache, getMediaType } from '../services/tmdbService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -11,7 +11,6 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from './KurdishCCBadge';
-import { LiquidButton } from './ui/liquid-glass-button';
 import MovieCard from './MovieCard';
 import MovieListCard from './MovieListCard';
 
@@ -215,7 +214,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
 
   const navigateToDetail = (item: any) => {
     const isCustom = String(item.id).startsWith('custom_');
-    const mType = item.media_type || (item as WatchProgress).type || type || (isCustom ? 'dubbed' : 'movie');
+    const mType = isCustom ? 'dubbed' : (type || getMediaType(item));
     
     if (mType === 'dubbed' || isCustom) {
       navigate(`/dubbed-details/${String(item.id).replace('custom_', '')}`, { state: { customData: item } });
@@ -280,6 +279,10 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 key={`list-${item.id || 'item'}-${index}`}
                 item={item}
                 type={mediaType as 'movie' | 'tv' | 'dubbed'}
+                isProgressRow={isProgressRow}
+                onRemove={(removed) => {
+                  setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
+                }}
               />
             );
           })}
@@ -301,6 +304,9 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                     item={item}
                     type={mediaType as 'movie' | 'tv' | 'dubbed'}
                     isProgressRow={isProgressRow}
+                    onRemove={(removed) => {
+                      setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
+                    }}
                   />
                 );
             })}

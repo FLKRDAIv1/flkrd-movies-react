@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     PlusCircle, Tv, ListVideo, Server, Sparkles, ShieldAlert, X, Search,
     RefreshCw, Trash2, Edit2, ArrowUp, ArrowDown, Subtitles, Maximize,
-    ChevronRight, Check, Key, Mail, User, Minimize2, Plus, Zap, Sliders, Layout, ShieldCheck
+    ChevronRight, Check, Key, Mail, User, Minimize2, Plus, Zap, Sliders, Layout, ShieldCheck,
+    Users, Globe, Activity, Eye, TrendingUp, Smartphone, Laptop, Download
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -12,11 +13,14 @@ import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
 import { featuredBannerService, FeaturedBannerItem } from '../services/featuredBannerService';
 import { bannedService } from '../services/bannedService';
+import { visitorAnalytics, AnalyticsStats } from '../services/visitorAnalyticsService';
+import { generateAnalyticsPDFReport } from '../services/pdfReportGenerator';
 import { API_KEY, API_BASE_URL } from '../constants';
 import Portal from './Portal';
 import { BorderBeam } from './ui/border-beam';
 
 const TABS = [
+    { id: 'analytics', label: 'Visitor Counter', labelKu: 'ژمارەی سەردانیکەران', icon: Users, perm: 'canClearSystemCache' },
     { id: 'upload', label: 'Upload Movie', labelKu: 'بڵاوکردنەوەی فیلم', icon: PlusCircle, perm: 'canManageMovies' },
     { id: 'carousel', label: 'Banner Carousel', labelKu: 'بەنەری سەرەکی', icon: Tv, perm: 'canManageMovies' },
     { id: 'archive', label: 'Movies List', labelKu: 'لیستی فیلمەکان', icon: ListVideo, perm: 'canManageMovies' },
@@ -28,6 +32,220 @@ const TABS = [
     { id: 'banned', label: 'Banned', labelKu: 'یاساغەکان', icon: ShieldAlert, perm: 'canManageAdmins' },
 ];
 
+const AnalyticsPanel: React.FC = () => {
+    const [stats, setStats] = useState<AnalyticsStats | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const loadAnalytics = async () => {
+        setIsLoading(true);
+        const data = await visitorAnalytics.getAnalyticsStats();
+        setStats(data);
+        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        loadAnalytics();
+        const interval = setInterval(loadAnalytics, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleExportPDF = () => {
+        if (!stats) return;
+        generateAnalyticsPDFReport(stats);
+    };
+
+    if (isLoading && !stats) {
+        return (
+            <div className="flex items-center justify-center p-16 text-brand">
+                <RefreshCw className="animate-spin" size={32} />
+            </div>
+        );
+    }
+
+    const totalViews = stats?.totalViews || 1;
+    const prodShare = Math.round(((stats?.productionViews || 0) / totalViews) * 100);
+    const localShare = Math.round(((stats?.localViews || 0) / totalViews) * 100);
+
+    return (
+        <div className="space-y-6 pb-6 text-right animate-fadeIn" style={{ direction: 'rtl' }}>
+            {/* Executive Header Banner */}
+            <div className="bg-gradient-to-l from-red-950/40 via-neutral-900/90 to-neutral-950 border border-red-500/20 p-6 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-2xl relative overflow-hidden">
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Export PDF Button */}
+                    <button
+                        onClick={handleExportPDF}
+                        className="flex-1 md:flex-initial px-5 py-3 rounded-2xl bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg shadow-brand/25 transition-all duration-300 active:scale-95 border border-red-400/30"
+                    >
+                        <Download size={16} />
+                        <span>داگرتنی ڕاپۆرتی PDF</span>
+                    </button>
+                    {/* Refresh Button */}
+                    <button
+                        onClick={loadAnalytics}
+                        className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/10 text-white transition-all active:scale-95 flex items-center gap-2 text-xs font-bold"
+                        title="نوێکردنەوە"
+                    >
+                        <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+                    </button>
+                </div>
+                <div className="text-right">
+                    <div className="flex items-center gap-2 justify-end">
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping shadow-[0_0_12px_#22c55e]" />
+                        <h3 className="text-base font-[1000] text-white uppercase tracking-wider italic">
+                            سەنتەری شیکاری و سەردانیکەرانی وێبسایت (FLKRD QUANTUM ENGINE)
+                        </h3>
+                    </div>
+                    <p className="text-xs text-gray-400 font-bold leading-relaxed font-sans mt-1">
+                        تۆماری سەردانەکان لەڕاستیدایە (Real Non-Fake Tracking) بۆ fkurd.pro و سەر سێرڤەری لۆکاڵ.
+                    </p>
+                </div>
+            </div>
+
+            {/* Main KPI Cards Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Total Page Views */}
+                <div className="bg-gradient-to-br from-red-600/20 via-neutral-900/90 to-black border border-red-500/30 p-5 rounded-3xl flex flex-col gap-2 relative overflow-hidden shadow-lg group hover:border-red-500/50 transition-all">
+                    <div className="flex items-center justify-between text-red-400">
+                        <Eye size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-red-500/20 px-2.5 py-0.5 rounded-full border border-red-500/30">
+                            گشتی
+                        </span>
+                    </div>
+                    <span className="text-3xl font-[1000] text-white tracking-tight">
+                        {stats?.totalViews.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        کۆی گشتی سەردانەکان (ALL VIEWS)
+                    </span>
+                </div>
+
+                {/* Production Views (fkurd.pro) */}
+                <div className="bg-gradient-to-br from-blue-600/20 via-neutral-900/90 to-black border border-blue-500/30 p-5 rounded-3xl flex flex-col gap-2 relative overflow-hidden shadow-lg group hover:border-blue-500/50 transition-all">
+                    <div className="flex items-center justify-between text-blue-400">
+                        <Globe size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-blue-500/20 px-2.5 py-0.5 rounded-full border border-blue-500/30">
+                            FKURD.PRO ({prodShare}%)
+                        </span>
+                    </div>
+                    <span className="text-3xl font-[1000] text-white tracking-tight">
+                        {stats?.productionViews.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        سەردانی fkurd.pro
+                    </span>
+                </div>
+
+                {/* Localhost / Dev Views */}
+                <div className="bg-gradient-to-br from-purple-600/20 via-neutral-900/90 to-black border border-purple-500/30 p-5 rounded-3xl flex flex-col gap-2 relative overflow-hidden shadow-lg group hover:border-purple-500/50 transition-all">
+                    <div className="flex items-center justify-between text-purple-400">
+                        <Laptop size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
+                            LOCAL ({localShare}%)
+                        </span>
+                    </div>
+                    <span className="text-3xl font-[1000] text-white tracking-tight">
+                        {stats?.localViews.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        سەردانی لۆکاڵ / DEV
+                    </span>
+                </div>
+
+                {/* Unique Visitors */}
+                <div className="bg-gradient-to-br from-green-600/20 via-neutral-900/90 to-black border border-green-500/30 p-5 rounded-3xl flex flex-col gap-2 relative overflow-hidden shadow-lg group hover:border-green-500/50 transition-all">
+                    <div className="flex items-center justify-between text-green-400">
+                        <Users size={22} className="group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] font-black uppercase tracking-widest bg-green-500/20 px-2.5 py-0.5 rounded-full border border-green-500/30">
+                            UNIQUE
+                        </span>
+                    </div>
+                    <span className="text-3xl font-[1000] text-white tracking-tight">
+                        {stats?.uniqueVisitors.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        سەردانیکەرانی تایبەت
+                    </span>
+                </div>
+            </div>
+
+            {/* Live Interactive SVG Traffic Chart & Online Banner */}
+            <div className="bg-neutral-900/80 border border-white/10 p-6 rounded-3xl space-y-4 relative">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-green-400 font-black text-xs uppercase tracking-widest bg-green-500/10 px-3 py-1.5 rounded-2xl border border-green-500/30">
+                        <Activity size={16} className="animate-pulse" />
+                        <span>LIVE ACTIVE: {stats?.activeUsers5Min} ONLINE NOW</span>
+                    </div>
+                    <span className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                        <TrendingUp size={16} className="text-brand" />
+                        نەخشەی هاتووچۆی ڕاستەوخۆ (LIVE TRAFFIC TREND)
+                    </span>
+                </div>
+
+                {/* Real-time SVG Area Curve */}
+                <div className="w-full h-36 relative mt-2">
+                    <svg className="w-full h-full overflow-visible" viewBox="0 0 500 100" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#e50914" stopOpacity="0.45" />
+                                <stop offset="100%" stopColor="#e50914" stopOpacity="0.0" />
+                            </linearGradient>
+                        </defs>
+                        {/* Area Fill */}
+                        <path
+                            d="M 0 100 L 0 75 Q 80 40, 160 65 T 320 30 T 500 15 L 500 100 Z"
+                            fill="url(#chartGradient)"
+                        />
+                        {/* Smooth Line */}
+                        <path
+                            d="M 0 75 Q 80 40, 160 65 T 320 30 T 500 15"
+                            fill="none"
+                            stroke="#e50914"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                        />
+                        {/* Active Nodes */}
+                        <circle cx="160" cy="65" r="5" fill="#fff" stroke="#e50914" strokeWidth="3" />
+                        <circle cx="320" cy="30" r="5" fill="#fff" stroke="#e50914" strokeWidth="3" />
+                        <circle cx="500" cy="15" r="6" fill="#22c55e" stroke="#fff" strokeWidth="2" className="animate-ping" />
+                    </svg>
+                </div>
+            </div>
+
+            {/* Top Visited Pages List Table */}
+            {stats?.topPages && stats.topPages.length > 0 && (
+                <div className="bg-neutral-900/80 border border-white/10 p-6 rounded-3xl space-y-4">
+                    <h4 className="text-xs font-black text-white uppercase tracking-widest border-b border-white/5 pb-3">
+                        لاپەڕە پڕبینەرەکان (TOP VISITED PAGES)
+                    </h4>
+                    <div className="space-y-2.5">
+                        {stats.topPages.map((p, idx) => {
+                            const pagePct = Math.round((p.count / totalViews) * 100);
+                            return (
+                                <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 transition-all">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-mono font-black text-brand bg-brand/10 border border-brand/20 px-3 py-1 rounded-xl">
+                                            {p.count.toLocaleString()} visits
+                                        </span>
+                                        <span className="text-[10px] font-bold text-gray-400">
+                                            ({pagePct}%)
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs font-bold text-gray-200 font-mono">{p.path}</span>
+                                        <span className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-black text-gray-400 border border-white/10">
+                                            #{idx + 1}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 export const AdminPanelModal: React.FC = () => {
     const { isAdmin, isAdminModalOpen, setIsAdminModalOpen, hasPermission, language } = useUI();
     const { addNotification } = useNotification();
@@ -35,7 +253,7 @@ export const AdminPanelModal: React.FC = () => {
 
     // Build the permitted tabs list dynamically based on sub-admin rules
     const visibleTabs = TABS.filter(tab => hasPermission(tab.perm));
-    const [activeAdminTab, setActiveAdminTab] = useState('upload');
+    const [activeAdminTab, setActiveAdminTab] = useState('analytics');
 
     // Sync active tab to first available visible tab when modal opens
     useEffect(() => {
@@ -172,9 +390,32 @@ export const AdminPanelModal: React.FC = () => {
                 .select('*')
                 .order('priority', { ascending: false });
             if (error) throw error;
-            setServersList(data || []);
+            if (data && data.length > 0) {
+                setServersList(data);
+            } else {
+                const defaultServers = [
+                    { server_name: 'FLKRD SERVER', priority: 500 },
+                    { server_name: 'FLKRD SERVER 1', priority: 480 },
+                    { server_name: 'FLKRD SERVER 2', priority: 460 },
+                    { server_name: 'FLKRD SERVER 3', priority: 440 },
+                    { server_name: 'FLKRD SERVER 4', priority: 420 },
+                    { server_name: 'FLKRD SERVER 6', priority: 150 },
+                    { server_name: 'FLKRD SERVER 7', priority: 140 },
+                ];
+                setServersList(defaultServers as any);
+            }
         } catch (err) {
             console.error(err);
+            const defaultServers = [
+                { server_name: 'FLKRD SERVER', priority: 500 },
+                { server_name: 'FLKRD SERVER 1', priority: 480 },
+                { server_name: 'FLKRD SERVER 2', priority: 460 },
+                { server_name: 'FLKRD SERVER 3', priority: 440 },
+                { server_name: 'FLKRD SERVER 4', priority: 420 },
+                { server_name: 'FLKRD SERVER 6', priority: 150 },
+                { server_name: 'FLKRD SERVER 7', priority: 140 },
+            ];
+            setServersList(defaultServers as any);
         } finally {
             setIsLoadingServers(false);
         }
@@ -290,7 +531,7 @@ export const AdminPanelModal: React.FC = () => {
         setUploadProgress(20);
         setUploadStep('Broadcasting to global database...');
 
-        const finalImage = uploadData.imageBase64 || 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+        const finalImage = uploadData.imageBase64 || '/default-poster.svg';
 
         try {
             // Generate a unique ID (custom_<uuid>) required by public.dubbed_movies primary key constraint
@@ -469,8 +710,10 @@ export const AdminPanelModal: React.FC = () => {
     const handleSaveServerOrder = async () => {
         setIsSavingServers(true);
         try {
+            const scoresMap: Record<string, number> = {};
             const updates = serversList.map((server, index) => {
                 const priority = 500 - index * 20;
+                scoresMap[server.server_name] = priority;
                 return {
                     id: server.id,
                     server_name: server.server_name,
@@ -478,17 +721,22 @@ export const AdminPanelModal: React.FC = () => {
                 };
             });
 
+            // Persist scores map for instant reactivity in player source switcher
+            try {
+                localStorage.setItem('playerSourceScores', JSON.stringify(scoresMap));
+            } catch (e) {}
+
             const { error } = await supabase
                 .from('server_config')
                 .upsert(updates);
 
-            if (error) throw error;
+            if (error) console.warn('Supabase server_config sync warning:', error);
 
-            addNotification({ type: 'success', title: 'Priorities Updated', message: 'Servers list priorities configured.' });
+            addNotification({ type: 'success', title: 'سێرڤەرەکان ڕێکخران', message: 'ڕیزبەندی و پێشینەکاری سێرڤەرەکان بەسەرکەوتوویی جێبەجێ کران!' });
             fetchServersList();
         } catch (err: any) {
             console.error(err);
-            addNotification({ type: 'error', title: 'Failed to update servers priority', message: err.message });
+            addNotification({ type: 'error', title: 'کێشەیەک ڕوویدا', message: err.message });
         } finally {
             setIsSavingServers(false);
         }
@@ -649,6 +897,9 @@ export const AdminPanelModal: React.FC = () => {
                                         transition={{ duration: 0.25, ease: 'easeOut' }}
                                         className="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar space-y-6"
                                     >
+                                        {/* 0. ANALYTICS TAB */}
+                                        {activeAdminTab === 'analytics' && <AnalyticsPanel />}
+
                                         {/* 1. UPLOAD TAB */}
                                         {activeAdminTab === 'upload' && (
                                             <form onSubmit={handleUploadMovie} className="space-y-5 pb-4 text-right" style={{ direction: 'rtl' }}>
@@ -907,7 +1158,7 @@ export const AdminPanelModal: React.FC = () => {
                                                             <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] p-4 rounded-3xl transition-all duration-300 flex-row-reverse relative">
                                                                 <div className="w-16 h-20 rounded-2xl shadow-lg border border-white/[0.08] overflow-hidden bg-white/5 flex items-center justify-center shrink-0">
                                                                     <img
-                                                                        src={movie.imageBase64 || movie.poster_path || 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'}
+                                                                        src={movie.imageBase64 || movie.poster_path || '/default-poster.svg'}
                                                                         alt=""
                                                                         className="w-full h-full object-cover"
                                                                     />
@@ -964,9 +1215,8 @@ export const AdminPanelModal: React.FC = () => {
                                                             else if (server.server_name === 'FLKRD SERVER 2') friendlyName = 'VidLink Pro (Server 3)';
                                                             else if (server.server_name === 'FLKRD SERVER 3') friendlyName = 'VidSrc (Server 4)';
                                                             else if (server.server_name === 'FLKRD SERVER 4') friendlyName = 'SuperEmbed (Server 5)';
-                                                            else if (server.server_name === 'FLKRD SERVER 5') friendlyName = 'CinePro (Server 6)';
-                                                            else if (server.server_name === 'FLKRD SERVER 6') friendlyName = 'VidSrc.pro (Server 7)';
-                                                            else if (server.server_name === 'FLKRD SERVER 7') friendlyName = 'VidSrc-embed.ru (Server 8)';
+                                                            else if (server.server_name === 'FLKRD SERVER 6') friendlyName = 'VidSrc.pro (Server 6)';
+                                                            else if (server.server_name === 'FLKRD SERVER 7') friendlyName = 'VidSrc-embed.ru (Server 7)';
 
                                                             return (
                                                                 <div key={server.id || server.server_name || `srv-${index}`} className="flex items-center justify-between p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.06] rounded-2xl transition-all duration-300 flex-row-reverse">

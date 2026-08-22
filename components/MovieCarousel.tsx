@@ -6,6 +6,8 @@ import { Content } from '../types';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 
+import { getMediaType } from '../services/tmdbService';
+
 interface MovieCarouselProps {
   title?: string;
   items?: Content[];
@@ -86,7 +88,7 @@ export const MovieCarousel: React.FC<MovieCarouselProps> = ({
       onCardClick(item);
       return;
     }
-    const mediaType = item.media_type || 'movie';
+    const mediaType = getMediaType(item);
     navigate(`/details/${mediaType}/${item.id}`, { state: { customData: item } });
   };
 

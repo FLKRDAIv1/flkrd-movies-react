@@ -31,13 +31,16 @@ import {
   RotateCcw,
   VolumeX,
   CheckCircle2,
+  ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
+import { adBlockerService } from '../services/adBlockerService';
 
 // ─────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────
-export type SubStudioTab = 'sub' | 'dub' | 'lighting' | 'shortcuts';
+export type SubStudioTab = 'sub' | 'dub' | 'lighting' | 'shortcuts' | 'shield';
 
 interface SubtitleTrack {
   id: string | number;
@@ -321,11 +324,38 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
     };
   }, [isOpen, onClose]);
 
+  const [blockedDomainsList, setBlockedDomainsList] = React.useState<string[]>(() => adBlockerService.getBlockedDomains());
+  const [newDomainInput, setNewDomainInput] = React.useState('');
+  const [isBlockingDomain, setIsBlockingDomain] = React.useState(false);
+
+  React.useEffect(() => {
+    return adBlockerService.subscribe(() => {
+      setBlockedDomainsList(adBlockerService.getBlockedDomains());
+    });
+  }, []);
+
+  const handleAddBlockedDomain = async (domainToAdd?: string) => {
+    const targetDomain = (domainToAdd || newDomainInput).trim();
+    if (!targetDomain) return;
+    setIsBlockingDomain(true);
+    try {
+      await adBlockerService.addBlockedDomain(targetDomain);
+      setNewDomainInput('');
+    } finally {
+      setIsBlockingDomain(false);
+    }
+  };
+
+  const handleRemoveBlockedDomain = async (domain: string) => {
+    await adBlockerService.removeBlockedDomain(domain);
+  };
+
   const TABS: { id: SubStudioTab; icon: React.ReactNode; label: string }[] = [
     { id: 'sub',       icon: <Subtitles size={12} />, label: isKu ? 'ژێرنووس'  : 'Subtitles' },
     { id: 'dub',       icon: <Mic2      size={12} />, label: isKu ? 'دۆبلاژ'   : 'Dubbing'   },
     { id: 'lighting',  icon: <Sliders   size={12} />, label: isKu ? 'ڕووناکی'  : 'Display'   },
     { id: 'shortcuts', icon: <Keyboard  size={12} />, label: isKu ? 'کلیلەکان' : 'Hotkeys'   },
+    ...(isAdmin ? [{ id: 'shield' as SubStudioTab, icon: <ShieldAlert size={12} className="text-red-400" />, label: isKu ? 'ڕیکلام' : 'Ad Shield' }] : []),
   ];
 
   return (
@@ -1506,6 +1536,131 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       <span className="text-[8px] text-zinc-400 font-black tracking-widest uppercase">
                         FLKRD Player Controller
                       </span>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── TAB: ADMIN AD & REKLAM SHIELD (Supabase Linked) ── */}
+                {activeTab === 'shield' && isAdmin && (
+                  <motion.div
+                    key="shield-tab"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.18 }}
+                    className="flex flex-col gap-4"
+                    style={{ fontFamily: "'Zain', 'Outfit', sans-serif" }}
+                  >
+                    {/* Header Banner */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-950/40 via-black/80 to-zinc-950 border border-red-500/20 p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center shrink-0">
+                          <ShieldAlert size={20} className="text-red-400 animate-pulse" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-white tracking-tight">
+                            {isKu ? 'قەڵغانی ڕیکلام و سپۆنسەر (Supabase)' : 'Global Ad & Reklam Shield'}
+                          </h3>
+                          <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">
+                            {isKu ? 'تایبەت بە بەڕێوەبەر (Admin Only)' : 'Admin Quantum Shield'}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-zinc-400 leading-relaxed">
+                        {isKu
+                          ? 'هەر دۆمەین، لینک، یان کلیلەوشەیەکی ڕیکلام (وەک OpenSooq, PropellerAds, 1win) لێرە بنووسە بۆ ئەوەی ڕاستەوخۆ لە Supabase تۆمار بکرێت و بۆ هەموو بەکارهێنەرێک بلۆک بێت.'
+                          : 'Block any rogue ad network, popup, or redirect domain globally via Supabase for all viewers.'}
+                      </p>
+                    </div>
+
+                    {/* Input to Block Domain */}
+                    <div className="flex flex-col gap-2 bg-white/[0.02] border border-white/[0.06] p-3 rounded-2xl">
+                      <label className="text-[10px] font-black text-zinc-300 uppercase tracking-wider">
+                        {isKu ? 'زیادکردنی دۆمەین یان لینکی ڕیکلام:' : 'Add Domain or URL to Block:'}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newDomainInput}
+                          onChange={(e) => setNewDomainInput(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddBlockedDomain()}
+                          placeholder="e.g. opensooq.com, propellerads, 1win"
+                          className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-red-500/60 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddBlockedDomain()}
+                          disabled={!newDomainInput.trim() || isBlockingDomain}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center gap-1.5 shadow-lg shadow-red-600/30"
+                        >
+                          <Plus size={14} />
+                          {isKu ? 'بلۆککردن' : 'Block'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">
+                        {isKu ? 'بلۆککردنی خێرا (Presets):' : 'Quick Block Presets:'}
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['opensooq.com', 'propellerads.com', '1win.pro', '1xbet.com', 'bet365.com', 'monetag.com', 'clickadu.com'].map((preset) => {
+                          const isAlreadyBlocked = blockedDomainsList.includes(preset);
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => !isAlreadyBlocked && handleAddBlockedDomain(preset)}
+                              disabled={isAlreadyBlocked}
+                              className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-all active:scale-95 ${
+                                isAlreadyBlocked
+                                  ? 'bg-red-950/40 border-red-500/30 text-red-400 opacity-60 cursor-default'
+                                  : 'bg-white/5 border-white/10 hover:bg-red-600/20 hover:border-red-500/40 text-zinc-300'
+                              }`}
+                            >
+                              {isAlreadyBlocked ? `✓ ${preset}` : `+ ${preset}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Blocked Domains Registry List */}
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">
+                          {isKu ? `لیستی ڕیکلامە بلۆککراوەکان (${blockedDomainsList.length})` : `Active Blocked Domains (${blockedDomainsList.length})`}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                        {blockedDomainsList.length === 0 ? (
+                          <div className="p-4 text-center text-zinc-500 text-xs bg-white/[0.01] rounded-xl border border-white/5">
+                            {isKu ? 'هیچ دۆمەینێکی دەستی زیاد نەکراوە.' : 'No custom domains blocked yet.'}
+                          </div>
+                        ) : (
+                          blockedDomainsList.map((domain) => (
+                            <div
+                              key={domain}
+                              className="flex items-center justify-between bg-zinc-950/80 border border-white/5 hover:border-white/10 px-3 py-2 rounded-xl transition-all"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_#ef4444]" />
+                                <span className="text-xs font-mono text-zinc-200">{domain}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBlockedDomain(domain)}
+                                className="p-1.5 hover:bg-red-600/20 text-zinc-500 hover:text-red-400 rounded-lg transition-colors"
+                                title="Unblock domain"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 )}

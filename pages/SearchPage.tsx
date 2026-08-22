@@ -9,11 +9,12 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { clearTMDBCache, fetchData } from '../services/tmdbService';
+import { clearTMDBCache, fetchData, getMediaType } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import KurdishCCBadge from '../components/KurdishCCBadge';
 import { LiquidButton } from '../components/ui/liquid-glass-button';
 import MovieCard from '../components/MovieCard';
+import MovieLayoutManager from '../components/MovieLayoutManager';
 import { CylinderCarousel } from '../components/ui/cylinder-carousel';
 import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
 
@@ -159,7 +160,7 @@ const SearchPage: React.FC = () => {
           if (item && item.id && item.poster_path && !bannedSet.has(String(item.id))) {
             uniqueMap.set(item.id, {
               ...item,
-              media_type: item.media_type || 'movie'
+              media_type: getMediaType(item)
             });
           }
         });
@@ -400,7 +401,7 @@ const SearchPage: React.FC = () => {
                             if (item.media_type === 'dubbed') {
                               navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
                             } else {
-                              navigate(`/details/${item.media_type}/${item.id}`);
+                              navigate(`/details/${getMediaType(item)}/${item.id}`);
                             }
                           }}
                           className="w-full text-left flex items-center gap-5 p-5 hover:bg-brand/10 transition-all group"
@@ -412,12 +413,12 @@ const SearchPage: React.FC = () => {
                                   ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
                                       ? (item.poster_path || (item as any).imageBase64)
                                       : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
-                                  : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                                  : '/default-poster.svg'
                               }
                               alt="" 
                               className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                                (e.target as HTMLImageElement).src = '/default-poster.svg';
                               }}
                             />
                             {item.media_type === 'dubbed' && (
@@ -508,16 +509,7 @@ const SearchPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-10">
-              {results.map((item) => (
-                <MovieCard
-                  key={item.id}
-                  item={item}
-                  type={item.media_type as 'movie' | 'tv' | 'dubbed'}
-                  className="w-full"
-                />
-              ))}
-            </div>
+            <MovieLayoutManager items={results} />
           </motion.div>
         ) : inputValue && !loading ? (
           <motion.div key="no-results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full py-20 text-center">
@@ -537,7 +529,7 @@ const SearchPage: React.FC = () => {
                   images={topRatedMovies.map(item => ({
                     src: `${IMAGE_BASE_URL_POSTER}${item.poster_path}`,
                     id: item.id,
-                    media_type: item.media_type || 'movie',
+                    media_type: getMediaType(item),
                     alt: item.title || item.name
                   }))}
                   onItemClick={handleCarouselItemClick}

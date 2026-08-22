@@ -8,6 +8,9 @@ import { useUI } from '../contexts/UIContext';
 interface MovieLayoutManagerProps {
   items: any[];
   type?: 'movie' | 'tv' | 'dubbed';
+  isProgressRow?: boolean;
+  isMyListPage?: boolean;
+  onRemove?: (item: any) => void;
   showToggleHeader?: boolean;
   gridClassName?: string;
   listClassName?: string;
@@ -39,6 +42,9 @@ const gridContainerVariants = {
 export const MovieLayoutManager: React.FC<MovieLayoutManagerProps> = ({
   items = [],
   type,
+  isProgressRow,
+  isMyListPage,
+  onRemove,
   showToggleHeader = false,
   gridClassName = '',
   listClassName = '',
@@ -67,10 +73,17 @@ export const MovieLayoutManager: React.FC<MovieLayoutManagerProps> = ({
             initial="initial"
             animate="animate"
             exit="exit"
-            className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 w-full transform-gpu ${gridClassName}`}
+            className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 w-full transform-gpu movie-grid-container ${gridClassName}`}
           >
             {items.map((item, idx) => (
-              <MovieCard key={item.id || idx} item={item} type={type} />
+              <MovieCard
+                key={item.id || idx}
+                item={item}
+                type={type}
+                isProgressRow={isProgressRow}
+                isMyListPage={isMyListPage}
+                onRemove={onRemove}
+              />
             ))}
           </motion.div>
         ) : (
@@ -83,7 +96,14 @@ export const MovieLayoutManager: React.FC<MovieLayoutManagerProps> = ({
             className={`flex flex-col gap-4 sm:gap-5 w-full transform-gpu ${listClassName}`}
           >
             {items.map((item, idx) => (
-              <MovieListCard key={item.id || idx} item={item} type={type} />
+              <MovieListCard
+                key={item.id || idx}
+                item={item}
+                type={type}
+                isProgressRow={isProgressRow}
+                isMyListPage={isMyListPage}
+                onRemove={onRemove}
+              />
             ))}
           </motion.div>
         )}

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2, Trash2, Subtitles } from 'lucide-react';
 import { Content } from '../types';
-import { fetchPaginatedData } from '../services/tmdbService';
+import { fetchPaginatedData, getMediaType } from '../services/tmdbService';
 import { API_KEY, IMAGE_BASE_URL_POSTER, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
 import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -172,7 +172,8 @@ const DiscoverPage: React.FC = () => {
     const handleBan = async (e: React.MouseEvent, item: Content) => {
         e.stopPropagation();
         const cleanId = String(item.id).replace('custom_', '');
-        const mediaType = item.media_type || (String(item.id).startsWith('custom_') ? 'dubbed' : 'movie');
+        const isCustom = String(item.id).startsWith('custom_');
+        const mediaType = isCustom ? 'dubbed' : getMediaType(item);
         
         if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
         

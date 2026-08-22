@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePlayer } from "../contexts/PlayerContext";
 import UniversalVideoPlayer from "./UniversalVideoPlayer";
-import PremiumVidLinkPlayer from "./PremiumVidLinkPlayer";
 import { Minus, Plus, Maximize2, X, Play, Pause } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useTranslation } from "../contexts/LanguageContext";
@@ -86,35 +85,19 @@ export const FloatingPipPlayer: React.FC = () => {
             collapsed ? "w-[1px] h-[1px] opacity-0 pointer-events-none" : "opacity-100"
           )}
         >
-          {activeVideo.activeSource === "FLKRD SERVER 2" ? (
-            <PremiumVidLinkPlayer
-              tmdbId={activeVideo.tmdbId}
-              type={activeVideo.type as any}
-              title={activeVideo.title}
-              initialProgress={pipTime}
-              accentColor={activeVideo.accentColor}
-              subtitleUrl={activeVideo.subtitleUrl}
-              imdbId={activeVideo.imdbId}
-              onProgress={handleProgressUpdate}
-              activeSource={activeVideo.activeSource}
-              sources={activeVideo.sources}
-              isPip={true}
-            />
-          ) : (
-            <UniversalVideoPlayer
-              src={activeVideo.src || ""}
-              accentColor={activeVideo.accentColor}
-              tmdbId={activeVideo.tmdbId}
-              imdbId={activeVideo.imdbId}
-              contentType={activeVideo.type === "tv" ? "tv" : "movie"}
-              title={activeVideo.title}
-              subtitleUrl={activeVideo.subtitleUrl}
-              onProgress={handleProgressUpdate}
-              activeSource={activeVideo.activeSource}
-              sources={activeVideo.sources}
-              isPip={true}
-            />
-          )}
+          <UniversalVideoPlayer
+            src={activeVideo.src || ""}
+            accentColor={activeVideo.accentColor}
+            tmdbId={activeVideo.tmdbId}
+            imdbId={activeVideo.imdbId}
+            contentType={activeVideo.type === "tv" ? "tv" : "movie"}
+            title={activeVideo.title}
+            subtitleUrl={activeVideo.subtitleUrl}
+            onProgress={handleProgressUpdate}
+            activeSource={activeVideo.activeSource}
+            sources={activeVideo.sources}
+            isPip={true}
+          />
         </div>
 
         {/* Poster fallback overlay when collapsed */}

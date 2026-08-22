@@ -1,15 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Users, Film, X, Star, Sparkles, Mic2, Heart, Check, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, API_KEY } from '../constants';
-import { fetchData } from '../services/tmdbService';
+import { IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_LOGO, API_KEY } from '../constants';
+import { fetchData, isForbidden, getMediaType } from '../services/tmdbService';
 import KurdishCCBadge from './KurdishCCBadge';
 import { BorderBeam } from './ui/border-beam';
+import MovieStageAccordion from './MovieStageAccordion';
+import CommentSection from './CommentSection';
 import Portal from './Portal';
+import { usePlayer } from '../contexts/PlayerContext';
+import { getSourceUrl, getRankedSources, getDubbedSources, extractEmbedSrc } from '../utils/playerSourceUtils';
+
+
 
 interface ListMoviePreviewDrawerProps {
   item: any;
@@ -19,7 +25,7 @@ interface ListMoviePreviewDrawerProps {
 
 /**
  * Ultra-Premium Full Screen 60FPS Framer Motion Movie Preview Modal
- * Rendered via Portal at body root with double-guaranteed touch/click close handlers.
+ * Rendered via Portal at body root with double-guaranteed touch/click close handlers & mobile swipe-down-to-dismiss.
  */
 export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   item,
@@ -29,16 +35,32 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   const navigate = useNavigate();
   const { language, t } = useTranslation();
   const { addNotification } = useNotification();
+  const { setActiveVideo, setIsPaused, setIsPipActive } = usePlayer();
   const isRtl = language === 'ku' || language === 'badini';
+  const drawerRef = useRef<HTMLDivElement>(null);
 
+  const [activeItem, setActiveItem] = useState<any>(item);
   const [cast, setCast] = useState<any[]>([]);
   const [similar, setSimilar] = useState<any[]>([]);
+  const [logoPath, setLogoPath] = useState<string | null>(null);
   const [loadingExtra, setLoadingExtra] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
 
-  const isCustom = item ? String(item.id).startsWith('custom_') : false;
-  const mediaType = item ? item.media_type || item.type || (isCustom ? 'dubbed' : 'movie') : 'movie';
-  const cleanId = item ? String(item.id).replace('custom_', '') : '';
+  useEffect(() => {
+    setActiveItem(item);
+  }, [item]);
+
+  // Scroll drawer to top whenever active movie changes
+  useEffect(() => {
+    if (activeItem && drawerRef.current) {
+      drawerRef.current.scrollTop = 0;
+    }
+  }, [activeItem]);
+
+  const targetItem = activeItem || item;
+  const isCustom = targetItem ? String(targetItem.id).startsWith('custom_') : false;
+  const mediaType = targetItem ? (isCustom ? 'dubbed' : getMediaType(targetItem)) : 'movie';
+  const cleanId = targetItem ? String(targetItem.id).replace('custom_', '') : '';
 
   // Close handler with stopPropagation guarantee
   const handleClose = useCallback(
@@ -118,7 +140,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   };
 
   useEffect(() => {
-    if (!item || !isOpen || isCustom) return;
+    if (!targetItem || !isOpen || isCustom) return;
 
     const fetchExtras = async () => {
       setLoadingExtra(true);
@@ -126,17 +148,24 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
         const langCode = isRtl ? 'ku-TR' : 'en-US';
         const creditsEndpoint = `/${mediaType}/${cleanId}/credits?api_key=${API_KEY}&language=${langCode}`;
         const similarEndpoint = `/${mediaType}/${cleanId}/similar?api_key=${API_KEY}&language=${langCode}&page=1`;
+        const imagesEndpoint = `/${mediaType}/${cleanId}/images?api_key=${API_KEY}&include_image_language=en,null`;
 
-        const [creditsRes, similarRes] = await Promise.all([
+        const [creditsRes, similarRes, imagesRes] = await Promise.all([
           fetchData(creditsEndpoint, language).catch(() => null),
           fetchData(similarEndpoint, language).catch(() => null),
+          fetchData(imagesEndpoint, language).catch(() => null),
         ]);
 
         if (creditsRes && creditsRes.cast) {
           setCast(creditsRes.cast.slice(0, 8));
         }
         if (similarRes && Array.isArray(similarRes)) {
-          setSimilar(similarRes.slice(0, 6));
+          const cleanSim = similarRes.filter((s: any) => !isForbidden(s, language));
+          setSimilar(cleanSim.slice(0, 6));
+        }
+        if (imagesRes && imagesRes.logos) {
+          const logo = imagesRes.logos.find((l: any) => l.file_path && (l.iso_639_1 === 'en' || !l.iso_639_1));
+          if (logo) setLogoPath(logo.file_path);
         }
       } catch (e) {
         // Ignore 404s gracefully
@@ -146,24 +175,71 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
     };
 
     fetchExtras();
-  }, [item, isOpen, mediaType, cleanId, isRtl, language, isCustom]);
+  }, [targetItem, isOpen, mediaType, cleanId, isRtl, language, isCustom]);
 
-  if (!item) return null;
+  // Lock body scroll when open and clean up on close
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
 
-  const title = isRtl && item.kurdishTitle ? item.kurdishTitle : item.title || item.name || '';
-  const backdrop = item.bannerBase64 || item.backdrop_path || item.poster_path || item.imageBase64 || '';
-  const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : '8.5';
-  const year = (item.release_date || item.first_air_date || '').split('-')[0] || '2026';
-  const overview = item.overview || item.description || '';
+  if (!targetItem || isForbidden(targetItem, language)) return null;
+
+  const title = isRtl && targetItem.kurdishTitle ? targetItem.kurdishTitle : targetItem.title || targetItem.name || '';
+  const backdrop = targetItem.bannerBase64 || targetItem.backdrop_path || targetItem.poster_path || targetItem.imageBase64 || '';
+  const rating = targetItem.vote_average ? Number(targetItem.vote_average).toFixed(1) : '8.5';
+  const year = (targetItem.release_date || targetItem.first_air_date || '').split('-')[0] || '2026';
+  const overview = targetItem.overview || targetItem.description || '';
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClose();
-    if (mediaType === 'dubbed' || isCustom) {
-      navigate(`/dubbed-details/${cleanId}`, { state: { customData: item } });
-    } else {
-      navigate(`/details/${mediaType}/${cleanId}`);
+
+    if (mediaType === 'dubbed' || isCustom || targetItem?.customStream || targetItem?.videoUrl || targetItem?.video_url || String(targetItem?.id || '').startsWith('custom_')) {
+      const rawStream = targetItem?.customStream || targetItem?.videoUrl || targetItem?.video_url || targetItem?.url || '';
+      const dubbedSources = getDubbedSources(rawStream, language);
+      const firstSrc = dubbedSources[0]?.url || extractEmbedSrc(rawStream);
+      
+      const validTmdbId = (targetItem?.tmdb_id && /^\d+$/.test(String(targetItem.tmdb_id)))
+        ? String(targetItem.tmdb_id)
+        : (/^\d+$/.test(String(targetItem?.id || cleanId).replace('custom_', '')) ? String(targetItem?.id || cleanId).replace('custom_', '') : undefined);
+
+      setActiveVideo({
+        tmdbId: validTmdbId,
+        imdbId: targetItem?.imdb_id || undefined,
+        type: 'dubbed',
+        title: title,
+        activeSource: dubbedSources[0]?.name || 'FLKRD DUBBED 1',
+        sources: dubbedSources,
+        backdropPath: backdrop,
+        src: firstSrc,
+      });
+      setIsPaused(false);
+      setIsPipActive(false);
+      return;
     }
+
+    const topSource = getRankedSources(false)[0]?.name || 'FLKRD SERVER';
+    const resolvedType: 'movie' | 'tv' = (mediaType === 'tv') ? 'tv' : 'movie';
+    setActiveVideo({
+      tmdbId: cleanId,
+      type: resolvedType,
+      title: title,
+      activeSource: topSource,
+      sources: getRankedSources(false),
+      backdropPath: backdrop,
+      season: resolvedType === 'tv' ? 1 : undefined,
+      episode: resolvedType === 'tv' ? 1 : undefined,
+      src: getSourceUrl(topSource, cleanId, resolvedType, 1, 1)
+    });
+    setIsPaused(false);
+    setIsPipActive(false);
   };
 
   const handleCoop = (e: React.MouseEvent) => {
@@ -174,26 +250,35 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
   return (
     <Portal id="movie-preview-portal">
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isOpen && (
-          <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden pointer-events-auto">
+          <div className="fixed inset-0 z-[200000] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden pointer-events-none">
             {/* Backdrop Blur Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={handleClose}
-              className="absolute inset-0 bg-black/85 backdrop-blur-2xl cursor-pointer"
+              className="absolute inset-0 bg-black/85 backdrop-blur-2xl cursor-pointer pointer-events-auto"
             />
 
-            {/* Slide-Up Full Screen Modal Box (PC & Mobile) */}
+            {/* Slide-Up Full Screen Modal Box (PC & Mobile) with Swipe-Down-To-Dismiss */}
             <motion.div
+              ref={drawerRef}
               initial={{ opacity: 0, scale: 0.9, y: 60 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 60 }}
               transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0.05, bottom: 0.8 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  handleClose();
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-neutral-950 border border-white/20 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl ${
+              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-neutral-950 border border-white/20 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto touch-pan-y ${
                 isRtl ? 'text-right' : 'text-left'
               }`}
               dir={isRtl ? 'rtl' : 'ltr'}
@@ -201,40 +286,38 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               {/* Glowing Border Beam */}
               <BorderBeam size={360} duration={10} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
 
+              {/* Mobile Drag/Pull Bar Handle */}
+              <div className="w-12 h-1.5 bg-white/40 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0 cursor-grab active:cursor-grabbing shadow" />
+
               {/* Header Hero Backdrop Area */}
               <div className="relative w-full h-56 sm:h-80 flex-shrink-0 bg-neutral-900 overflow-hidden">
-                <img
-                  src={
-                    backdrop && (backdrop.startsWith('http') || backdrop.startsWith('data:'))
-                      ? backdrop
-                      : `${IMAGE_BASE_URL}${backdrop}`
-                  }
-                  alt={title}
-                  className="w-full h-full object-cover transform-gpu scale-105"
-                />
+                {backdrop ? (
+                  <img
+                    src={
+                      backdrop.startsWith('http') || backdrop.startsWith('data:')
+                        ? backdrop
+                        : `${IMAGE_BASE_URL}${backdrop}`
+                    }
+                    alt={title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-neutral-900 to-black flex items-center justify-center">
+                    <Film className="w-16 h-16 text-white/20" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-transparent" />
 
-                {/* Left Top Close Button */}
+                {/* Single Clean Close Button */}
                 <button
                   type="button"
                   onClick={handleClose}
                   onTouchEnd={handleClose}
-                  className="absolute top-4 left-4 z-50 p-3 rounded-full bg-black/80 hover:bg-red-600 text-white border border-white/30 backdrop-blur-xl transition-all active:scale-90 shadow-2xl cursor-pointer pointer-events-auto flex items-center justify-center group"
+                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 p-2.5 rounded-full bg-black/70 hover:bg-red-600 text-white border border-white/20 backdrop-blur-xl transition-all active:scale-90 shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
                   aria-label="Close"
                 >
-                  <X className="w-5 h-5 stroke-[2.5] group-hover:scale-110 transition-transform" />
-                </button>
-
-                {/* Right Top Close Button */}
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  onTouchEnd={handleClose}
-                  className="absolute top-4 right-4 z-50 p-3 rounded-full bg-black/80 hover:bg-red-600 text-white border border-white/30 backdrop-blur-xl transition-all active:scale-90 shadow-2xl cursor-pointer pointer-events-auto flex items-center justify-center group"
-                  aria-label="Close"
-                >
-                  <X className="w-5 h-5 stroke-[2.5] group-hover:scale-110 transition-transform" />
+                  <X className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
                 </button>
 
                 {/* Title & Badges Overlay */}
@@ -257,9 +340,17 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     )}
                   </div>
 
-                  <h2 className={`text-2xl sm:text-4xl font-black text-white ${isRtl ? 'font-kurdish leading-snug' : 'tracking-tight'}`}>
-                    {title}
-                  </h2>
+                  {logoPath ? (
+                    <img
+                      src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
+                      alt={title}
+                      className="h-10 sm:h-16 w-auto max-w-[240px] sm:max-w-[320px] object-contain drop-shadow-2xl my-1"
+                    />
+                  ) : (
+                    <h2 className={`text-2xl sm:text-4xl font-black text-white ${isRtl ? 'font-kurdish leading-snug' : 'tracking-tight'}`}>
+                      {title}
+                    </h2>
+                  )}
                 </div>
               </div>
 
@@ -300,89 +391,23 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                       {isRtl ? 'Co-Op Watch' : 'Co-Op Watch'}
                     </span>
                   </button>
-
-                  {/* Explicit Bottom Close Button */}
-                  <button
-                    type="button"
-                    onClick={handleClose}
-                    className="flex items-center justify-center gap-1.5 px-4 py-3.5 bg-white/10 hover:bg-red-600/80 text-white border border-white/20 font-bold text-xs rounded-xl backdrop-blur-md cursor-pointer active:scale-95 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                    <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
-                      {isRtl ? 'داخستن' : 'Close'}
-                    </span>
-                  </button>
                 </div>
 
-                {/* Description / Overview */}
-                {overview && (
-                  <div className="flex flex-col gap-1.5 bg-white/5 border border-white/10 rounded-2xl p-4">
-                    <h4 className="text-xs font-black text-neutral-400 uppercase tracking-widest">
-                      {isRtl ? 'کورتەی فیلم' : 'Overview'}
-                    </h4>
-                    <p className={`text-xs sm:text-sm text-neutral-200 leading-relaxed ${isRtl ? 'font-kurdish' : ''}`}>
-                      {overview}
-                    </p>
-                  </div>
-                )}
+                {/* Interactive Stage-by-Stage Card Splitting Accordion */}
+                <div className="pt-2">
+                  <MovieStageAccordion
+                    item={targetItem}
+                    cast={cast}
+                    similar={similar}
+                    isRtl={isRtl}
+                    onSelectMovie={(newMovie) => setActiveItem(newMovie)}
+                  />
+                </div>
 
-                {/* Cast & Actors Section */}
-                {cast.length > 0 && (
-                  <div className="flex flex-col gap-2.5 pt-1">
-                    <h4 className="text-xs font-black text-neutral-400 uppercase tracking-widest">
-                      {isRtl ? 'ئەکتەرە سەرەکییەکان' : 'Top Cast'}
-                    </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      {cast.map((actor) => (
-                        <div key={actor.id} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
-                          <img
-                            src={
-                              actor.profile_path
-                                ? `${IMAGE_BASE_URL_POSTER}${actor.profile_path}`
-                                : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-avatar.webp'
-                            }
-                            alt={actor.name}
-                            className="w-9 h-9 rounded-full object-cover border border-white/10 shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-bold text-white truncate">{actor.name}</p>
-                            <p className="text-[10px] text-neutral-400 truncate">{actor.character}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Similar Movies Section */}
-                {similar.length > 0 && (
-                  <div className="flex flex-col gap-2.5 pt-3 border-t border-white/10">
-                    <h4 className="text-xs font-black text-neutral-400 uppercase tracking-widest">
-                      {isRtl ? 'هاوشێوەکانی ئەم فیلمە' : 'More Like This'}
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2.5">
-                      {similar.map((sim) => (
-                        <div
-                          key={sim.id}
-                          onClick={() => {
-                            onClose();
-                            navigate(`/details/movie/${sim.id}`);
-                          }}
-                          className="group relative aspect-[2/3] rounded-xl overflow-hidden bg-neutral-900 border border-white/10 cursor-pointer"
-                        >
-                          <img
-                            src={`${IMAGE_BASE_URL_POSTER}${sim.poster_path}`}
-                            alt={sim.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2 flex items-end">
-                            <p className="text-[10px] font-bold text-white line-clamp-1">{sim.title}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Comment & Discussion Section in Preview Drawer */}
+                <div className="pt-2 pb-6">
+                  <CommentSection movieId={targetItem?.id || cleanId} mediaType={isCustom ? 'dubbed' : (mediaType === 'tv' ? 'tv' : 'movie')} />
+                </div>
               </div>
             </motion.div>
           </div>

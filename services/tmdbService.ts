@@ -46,6 +46,26 @@ const filterContent = (data: any, language: 'en' | 'ku' | 'badini'): any => {
     return isForbidden(data, language) ? null : data;
 };
 
+export const getMediaType = (item: any): 'movie' | 'tv' => {
+  if (!item) return 'movie';
+  if (item.media_type === 'tv' || item.type === 'tv') return 'tv';
+  if (item.media_type === 'movie' || item.type === 'movie') return 'movie';
+
+  // Robust TV show detection across raw TMDB data and mapped objects
+  if (
+    item.first_air_date ||
+    item.original_name ||
+    item.number_of_seasons !== undefined ||
+    item.number_of_episodes !== undefined ||
+    (Array.isArray(item.origin_country) && item.origin_country.length > 0) ||
+    (item.name && (!item.title || item.name === item.title) && !item.release_date) ||
+    (item.name && !item.original_title)
+  ) {
+    return 'tv';
+  }
+  return 'movie';
+};
+
 const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promise<Response | null> => {
   const cleanEndpoint = (endpoint.startsWith('http://') || endpoint.startsWith('https://'))
     ? endpoint.replace(/^https?:\/\/api\.themoviedb\.org\/3/, '')
@@ -58,7 +78,10 @@ const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promis
 
   try {
     const res = await fetch(primaryUrl, { signal });
-    if (res && res.ok) return res;
+    if (res) {
+      if (res.ok) return res;
+      if (res.status === 404) return null; // Resource 404 Not Found on TMDB - do not retry on proxy mirrors
+    }
   } catch (e) { }
 
   // Strategy 2: Direct TMDB API endpoint fallback
@@ -68,7 +91,10 @@ const fetchWithFallback = async (endpoint: string, signal?: AbortSignal): Promis
         ? cleanEndpoint
         : `https://api.themoviedb.org/3${cleanEndpoint}`;
       const res = await fetch(targetPath, { signal });
-      if (res && res.ok) return res;
+      if (res) {
+        if (res.ok) return res;
+        if (res.status === 404) return null;
+      }
     } catch (e) { }
   }
 
@@ -117,6 +143,12 @@ const setPersistentCache = (key: string, data: any) => {
 };
 
 export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badini') => {
+  // Guard against querying TMDB with custom UUIDs or non-numeric IDs in /movie/{id} or /tv/{id}
+  const idMatch = endpoint.match(/^\/(movie|tv)\/([^/?]+)/);
+  if (idMatch && !/^\d+$/.test(idMatch[2])) {
+    return null;
+  }
+
   const cacheKey = `tmdb_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // 1. Instant In-Memory Access + Background SWR
@@ -214,6 +246,11 @@ export interface PaginatedResponse {
 }
 
 export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku' | 'badini'): Promise<PaginatedResponse | null> => {
+  const idMatch = endpoint.match(/^\/(movie|tv)\/([^/?]+)/);
+  if (idMatch && !/^\d+$/.test(idMatch[2])) {
+    return null;
+  }
+
   const cacheKey = `tmdb_pag_v3_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   // 1. Memory Check + Purely In-Memory SWR
@@ -292,12 +329,16 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
 };
 
 export const fetchExternalIds = async (id: string | number, type: 'movie' | 'tv') => {
-  const endpoint = `/${type}/${id}/external_ids?api_key=${API_KEY}`;
+  const cleanId = String(id || '').replace(/^custom_/, '');
+  if (!cleanId || !/^\d+$/.test(cleanId)) return null;
+  const endpoint = `/${type}/${cleanId}/external_ids?api_key=${API_KEY}`;
   return await fetchData(endpoint, 'en');
 };
 
 export const fetchTranslations = async (id: string | number, type: 'movie' | 'tv') => {
-  const endpoint = `/${type}/${id}/translations?api_key=${API_KEY}`;
+  const cleanId = String(id || '').replace(/^custom_/, '');
+  if (!cleanId || !/^\d+$/.test(cleanId)) return null;
+  const endpoint = `/${type}/${cleanId}/translations?api_key=${API_KEY}`;
   return await fetchData(endpoint, 'en');
 };
 

@@ -6,14 +6,13 @@ import HeroBanner from '../components/BannerCarousel';
 import { requests, IMAGE_BASE_URL } from '../constants';
 import { WatchProgress, Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { Play, Sparkles, Subtitles } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
 import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
 import { API_KEY, API_BASE_URL } from '../constants';
-import { LiquidButton } from '../components/ui/liquid-glass-button';
 import { useUI } from '../contexts/UIContext';
 
 const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
@@ -21,14 +20,6 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { glassConfig = {
-    redOpacity: 0.15,
-    darkOpacity: 0.85,
-    blurAmount: 20,
-    saturation: 120,
-    borderOpacity: 0.1,
-    aberrationIntensity: 0.5
-  } } = useUI();
 
   useEffect(() => {
     const getData = async () => {
@@ -49,39 +40,25 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   if (loading || !item) return null;
 
   return (
-    <div className="px-6 md:px-32 mb-24">
+    <div className="px-6 md:px-32 mb-24 content-visibility-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
-        onClick={() => navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } })}
-        className="relative h-[450px] md:h-[700px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.5)] transition-all duration-700 hover:border-brand/40"
+        onClick={() => navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } })}
+        className="relative h-[450px] md:h-[700px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] transition-all duration-500 hover:border-brand/40"
       >
         <img
           src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
           width={1280}
           height={720}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           alt={item.title || item.name || "Weekly Spotlight Movie Backdrop"}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
         
-        <div className={`absolute bottom-6 md:bottom-16 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-32' : 'left-6 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-3xl p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border backdrop-blur-2xl transition-all duration-500 hover:border-brand/30`}
-             style={{
-               background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 0.95})`,
-               backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-               WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-               borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-               boxShadow: `
-                 inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                 inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
-                 inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
-                 0 35px 70px rgba(0, 0, 0, 0.85)
-               `,
-               transform: 'translate3d(0, 0, 0)',
-               willChange: 'transform, border-color'
-             }}
+        <div className={`absolute bottom-6 md:bottom-16 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-32' : 'left-6 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-3xl p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-white/15 bg-black/80 backdrop-blur-md transition-all duration-300 hover:border-brand/40 shadow-2xl`}
         >
           {/* Metadata Grid (Corner-Style) */}
           <div className={`hidden md:flex flex-col gap-6 mb-12 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
@@ -90,7 +67,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
                     <Sparkles className="text-white animate-pulse" size={16} />
                     <span className="text-[10px] font-[1000] text-white uppercase tracking-[0.4em]">{t('weeklySpotlight') || 'SPOTLIGHT'}</span>
                   </div>
-                  <div className="bg-white/10 backdrop-blur-3xl border border-white/20 text-white px-5 py-3 rounded-2xl text-xs font-[1000] uppercase tracking-[0.2em]">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-3 rounded-2xl text-xs font-[1000] uppercase tracking-[0.2em]">
                       {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0]}
                   </div>
               </div>
@@ -109,13 +86,12 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
             {item.overview}
           </p>
           <div className={`flex flex-wrap items-center gap-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
-            <LiquidButton
-                variant="default"
-                onClick={(e) => { e.stopPropagation(); navigate(`/details/${item.media_type || 'movie'}/${item.id}`, { state: { customData: item } }); }}
-                className="text-white font-[1000] px-14 md:px-28 py-7 md:py-9 rounded-[1.5rem] md:rounded-[3rem] flex items-center gap-5 text-xs md:text-2xl uppercase italic tracking-tighter shadow-[0_30px_60px_rgba(255,255,255,0.1)] hover:shadow-[0_0_40px_rgba(255,255,255,0.4)]"
+            <button
+                onClick={(e) => { e.stopPropagation(); navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } }); }}
+                className="text-white font-[1000] px-10 md:px-20 py-5 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter bg-brand hover:bg-brand/90 active:scale-95 transition-all shadow-[0_20px_40px_rgba(229,9,20,0.4)]"
             >
-                <Play fill="currentColor" size={24} className="md:w-10 md:h-10" /> {t('play')}
-            </LiquidButton>
+                <Play fill="currentColor" size={20} className="md:w-8 md:h-8" /> {t('play')}
+            </button>
           </div>
         </div>
       </motion.div>

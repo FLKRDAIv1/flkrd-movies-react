@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -18,13 +18,13 @@ import {
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import Portal from './Portal';
-import { cn } from '../lib/utils';
+import { MorphingDiscoveryBar, Category } from './ui/morphing-discovery-bar';
 
 const MobileNav: React.FC = () => {
   const { t, language } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { theme, setIsSettingsOpen, glassConfig, mobileNavConfig } = useUI();
+  const { theme, setIsSettingsOpen, mobileNavConfig } = useUI();
   
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [continueWatchingCount, setContinueWatchingCount] = useState(0);
@@ -69,7 +69,6 @@ const MobileNav: React.FC = () => {
 
   const isRtl = language === 'ku' || language === 'badini';
 
-  // Kurdish Localization for bottom bar items
   const getKurdishLabel = (key: string) => {
     if (isRtl) {
       if (key === 'home') return 'سەرەکی';
@@ -86,26 +85,66 @@ const MobileNav: React.FC = () => {
     return key;
   };
 
-  const isDarkNavbar = theme === 'light';
-  
-  const notchBgClass = isDarkNavbar
-    ? "bg-black"
-    : "bg-white";
-
-  const notchStrokeClass = isDarkNavbar 
-    ? "text-zinc-800" 
-    : "text-zinc-200";
-
-  // Center notch buttons
-  const mainItems = [
-    { id: 'home', icon: <Home size={18} />, labelKey: 'home', to: '/' },
-    { id: 'discover', icon: <Globe size={18} />, labelKey: 'discover', to: '/discover' },
-    { id: 'tvShows', icon: <Tv size={18} />, labelKey: 'tvShows', to: '/tv' },
-    { id: 'dubbed', icon: <Mic2 size={18} />, labelKey: 'dubbed', to: '/dubbed' },
+  const discoveryCategories: Category[] = [
+    {
+      id: 'home',
+      label: getKurdishLabel('home'),
+      icon: <Home size={20} />,
+      activeColor: 'rgba(239, 68, 68, 0.2)',
+      activeTextColor: '#ef4444',
+      to: '/',
+      onClick: () => navigate('/'),
+    },
+    {
+      id: 'discover',
+      label: getKurdishLabel('discover'),
+      icon: <Globe size={20} />,
+      activeColor: 'rgba(239, 68, 68, 0.2)',
+      activeTextColor: '#ef4444',
+      to: '/discover',
+      onClick: () => navigate('/discover'),
+    },
+    {
+      id: 'dubbed',
+      label: getKurdishLabel('dubbed'),
+      icon: <Mic2 size={20} />,
+      activeColor: 'rgba(239, 68, 68, 0.2)',
+      activeTextColor: '#ef4444',
+      to: '/dubbed',
+      onClick: () => navigate('/dubbed'),
+    },
+    {
+      id: 'more',
+      label: getKurdishLabel('more'),
+      icon: <MoreHorizontal size={20} />,
+      activeColor: 'rgba(239, 68, 68, 0.2)',
+      activeTextColor: '#ef4444',
+      onClick: () => setIsMoreMenuOpen(true),
+    },
   ];
 
-  // Drawer items triggered by "More" button
+  const getActiveTabId = () => {
+    if (isMoreMenuOpen) return 'more';
+    const path = location.pathname;
+    if (path === '/') return 'home';
+    if (path.startsWith('/discover')) return 'discover';
+    if (path.startsWith('/dubbed')) return 'dubbed';
+    return 'home';
+  };
+
+  const handleSearchSubmit = (query: string) => {
+    navigate(`/search?query=${encodeURIComponent(query)}`);
+  };
+
   const drawerItems = [
+    {
+      label: isRtl ? 'زنجیرەکان' : 'TV Shows',
+      icon: <Tv size={20} />,
+      onClick: () => {
+        setIsMoreMenuOpen(false);
+        navigate('/tv');
+      }
+    },
     {
       label: isRtl ? 'ترێندینگ' : 'Trending',
       icon: <PlayCircle size={20} />,
@@ -159,68 +198,21 @@ const MobileNav: React.FC = () => {
 
   return (
     <>
-      {/* Floating Pill Bottom Navbar for Mobile (100% Responsive, Floating Capsule) */}
+      {/* Floating Dynamic Island Mobile Navigation */}
       <div 
-        className="global-mobilenav fixed bottom-3 inset-x-3 sm:inset-x-6 z-[999] md:hidden flex justify-center select-none pointer-events-auto"
-        dir="ltr"
+        className="global-mobilenav fixed inset-x-2 sm:inset-x-6 z-[999] md:hidden flex justify-center select-none pointer-events-auto transform-gpu"
+        style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div 
-          className="w-full max-w-md h-14 bg-neutral-950/85 backdrop-blur-2xl border border-white/20 rounded-full shadow-[0_12px_35px_rgba(0,0,0,0.85)] p-1 flex items-center justify-between"
-          dir={isRtl ? 'rtl' : 'ltr'}
-        >
-          {mainItems.map((item) => {
-            const isActive = location.pathname === item.to || (item.to !== '/' && location.pathname.startsWith(item.to));
-
-            return (
-              <button
-                key={item.id}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  navigate(item.to);
-                }}
-                className="flex-1 h-full flex flex-col items-center justify-center relative select-none focus:outline-none touch-manipulation"
-                style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-              >
-                <div className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-full transition-all duration-200",
-                  isActive 
-                    ? 'text-red-500 bg-red-500/15 border border-red-500/30 font-black shadow-[0_0_15px_rgba(239,68,68,0.25)]' 
-                    : 'text-zinc-400 border-transparent'
-                )}>
-                  {item.icon}
-                  <span className="text-[8px] font-black uppercase tracking-widest leading-none">
-                    {getKurdishLabel(item.labelKey)}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-
-          {/* More Button */}
-          <button
-            onPointerDown={(e) => {
-              e.preventDefault();
-              setIsMoreMenuOpen(true);
-            }}
-            className="flex-1 h-full flex flex-col items-center justify-center relative select-none focus:outline-none touch-manipulation"
-            style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-          >
-            <div className={cn(
-              "flex flex-col items-center justify-center gap-0.5 w-full h-full rounded-full transition-all duration-200",
-              isMoreMenuOpen 
-                ? 'text-red-500 bg-red-500/15 border border-red-500/30 font-black shadow-[0_0_15px_rgba(239,68,68,0.25)]' 
-                : 'text-zinc-400 border-transparent'
-            )}>
-              <MoreHorizontal size={18} />
-              <span className="text-[8px] font-black uppercase tracking-widest leading-none">
-                {getKurdishLabel('more')}
-              </span>
-            </div>
-          </button>
-        </div>
+        <MorphingDiscoveryBar
+          categories={discoveryCategories}
+          activeCategoryId={getActiveTabId()}
+          onSearchSubmit={handleSearchSubmit}
+          placeholder={isRtl ? 'گەڕان بۆ فیلم و زنجیرە...' : 'Search movies & series...'}
+          isRtl={isRtl}
+        />
       </div>
 
-      {/* Floating Bottom sheet menu drawer for More */}
+      {/* Floating Bottom Sheet Menu Drawer for More */}
       <Portal id="mobile-more-menu-portal">
         <AnimatePresence>
           {isMoreMenuOpen && (
@@ -230,56 +222,55 @@ const MobileNav: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
                 onClick={() => setIsMoreMenuOpen(false)}
-                className="fixed inset-0 bg-black/70 backdrop-blur-md z-[99998]"
+                className="fixed inset-0 bg-black/75 z-[99998]"
               />
 
-              {/* Bottom Sheet content container */}
+              {/* Bottom Sheet Container */}
               <motion.div
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed bottom-0 inset-x-0 bg-[#080809]/95 border-t border-white/10 rounded-t-[32px] p-6 pb-10 z-[99999] flex flex-col gap-4 shadow-[0_-15px_40px_rgba(0,0,0,0.8)]"
+                transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+                className="fixed bottom-0 inset-x-0 bg-[#0c0c0e] border-t border-white/15 rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-[0_-20px_50px_rgba(0,0,0,0.9)] transform-gpu"
+                style={{ paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))' }}
                 dir={isRtl ? 'rtl' : 'ltr'}
               >
-                {/* Header line slider handle indicator */}
-                <div className="w-12 h-1 bg-white/10 rounded-full mx-auto mb-2" />
+                {/* Header Slider Handle */}
+                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1" />
 
-                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="text-sm font-black uppercase tracking-wider text-white">
                     {getKurdishLabel('more')}
                   </h3>
                   <button 
                     onClick={() => setIsMoreMenuOpen(false)}
-                    className="p-2 bg-white/5 border border-white/10 hover:bg-red-600 rounded-xl transition-all"
+                    className="p-2 bg-white/5 border border-white/10 hover:bg-red-600 rounded-xl transition-all active:scale-90"
+                    aria-label="Close menu"
                   >
                     <X size={14} className="text-white" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3.5 py-2">
+                <div className="grid grid-cols-3 gap-3 py-1">
                   {drawerItems.map((item) => (
                     <button
                       key={item.label}
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        item.onClick();
-                      }}
-                      className="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 active:scale-95 relative touch-manipulation"
+                      onClick={() => item.onClick()}
+                      className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-red-500/30 transition-transform duration-100 active:scale-95 relative touch-manipulation cursor-pointer"
                       style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     >
                       <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
                         {item.icon}
                       </div>
                       
-                      <span className="text-[9px] font-black uppercase tracking-wider text-zinc-300">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300 text-center">
                         {item.label}
                       </span>
 
-                      {/* Optional item badge count */}
                       {item.count !== undefined && item.count > 0 && (
-                        <span className="absolute top-2 right-2 bg-red-600 text-white text-[7px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-black shadow">
+                        <span className="absolute top-2 right-2 bg-red-600 text-white text-[8px] font-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center border border-black shadow">
                           {item.count}
                         </span>
                       )}
@@ -296,3 +287,4 @@ const MobileNav: React.FC = () => {
 };
 
 export default MobileNav;
+

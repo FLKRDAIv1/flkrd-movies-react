@@ -77,9 +77,11 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch(() => cachedResponse);
+      }).catch(() => {
+        return cachedResponse || new Response('Asset unavailable offline', { status: 404, statusText: 'Not Found' });
+      });
 
       return cachedResponse || fetchPromise;
-    })
+    }).catch(() => new Response('Asset unavailable offline', { status: 404, statusText: 'Not Found' }))
   );
 });

@@ -29,22 +29,35 @@ export const VideoPlayerWithSubtitles: React.FC<VideoPlayerWithSubtitlesProps> =
     error: subError,
   } = useSubtitles({ subtitleUrl, mediaId: title });
 
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const isPlayingRef = React.useRef<boolean>(false);
+
   // Reset progress when iframe source changes
   useEffect(() => {
     setCurrentTimeSeconds(0);
+    setIsPlaying(false);
+    isPlayingRef.current = false;
   }, [iframeSrc]);
 
-  // PostMessage Progress Listener with guarded fallback ticker for Third-Party Iframe
+  // PostMessage Progress Listener with pause-aware playhead tracking
   useEffect(() => {
-    let hasReceivedPostMessage = false;
-
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (data && (typeof data.seconds === 'number' || typeof data.currentTime === 'number' || typeof data.time === 'number')) {
-          hasReceivedPostMessage = true;
+        if (!data) return;
+
+        const eventName = (data.event || data.type || data.method || '').toLowerCase();
+        if (eventName === 'play' || eventName === 'playing') {
+          setIsPlaying(true);
+          isPlayingRef.current = true;
+        } else if (eventName === 'pause' || eventName === 'paused' || eventName === 'ended') {
+          setIsPlaying(false);
+          isPlayingRef.current = false;
+        }
+
+        if (typeof data.seconds === 'number' || typeof data.currentTime === 'number' || typeof data.time === 'number') {
           const time = data.seconds ?? data.currentTime ?? data.time;
-          if (typeof time === 'number') {
+          if (typeof time === 'number' && !isNaN(time)) {
             setCurrentTimeSeconds(time);
           }
         }
@@ -55,16 +68,8 @@ export const VideoPlayerWithSubtitles: React.FC<VideoPlayerWithSubtitlesProps> =
 
     window.addEventListener('message', handleMessage);
 
-    // Only run fallback ticker if no postMessage API is available
-    const interval = setInterval(() => {
-      if (!hasReceivedPostMessage) {
-        setCurrentTimeSeconds((prev) => prev + 0.1);
-      }
-    }, 100);
-
     return () => {
       window.removeEventListener('message', handleMessage);
-      clearInterval(interval);
     };
   }, [iframeSrc]);
 

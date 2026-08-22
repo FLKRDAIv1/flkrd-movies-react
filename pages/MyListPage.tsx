@@ -149,7 +149,13 @@ const MyListPage: React.FC = () => {
             </div>
 
             {myListItems.length > 0 ? (
-                <MovieLayoutManager items={myListItems} />
+                <MovieLayoutManager
+                    items={myListItems}
+                    isMyListPage={true}
+                    onRemove={(removed) => {
+                        setMyListItems(prev => prev.filter(i => i.id !== removed.id));
+                    }}
+                />
             ) : (
                 <div className="text-center py-40 bg-white/[0.02] border border-white/5 rounded-[4rem] backdrop-blur-xl">
                     <Stars size={64} className="mx-auto text-gray-800 mb-8 animate-pulse" />

@@ -64,7 +64,7 @@ export default defineConfig(({ mode }) => {
           name: 'local-api-middleware',
           configureServer(server) {
             server.middlewares.use(async (req, res, next) => {
-              if (req.url?.startsWith('/api/translate') || req.url?.startsWith('/api/subtitle')) {
+              if (req.url?.startsWith('/api/translate') || req.url?.startsWith('/api/subtitle') || req.url?.startsWith('/api/mobileconfig') || req.url?.startsWith('/api/webclip')) {
                 // Populate process.env with Vite env variables
                 Object.keys(env).forEach(key => {
                   if (!process.env[key]) {
@@ -114,6 +114,12 @@ export default defineConfig(({ mode }) => {
                     }
                     return this;
                   },
+                  send(data: any) {
+                    if (!res.writableEnded) {
+                      res.end(data);
+                    }
+                    return this;
+                  },
                   end(data: any) {
                     if (!res.writableEnded) {
                       if (data !== undefined && typeof data === 'object' && !(data instanceof Buffer) && !(data instanceof Uint8Array)) {
@@ -136,6 +142,12 @@ export default defineConfig(({ mode }) => {
                   }
                   if (urlObj.pathname === '/api/subtitle') {
                     const modulePath = path.resolve(__dirname, 'api/subtitle.js');
+                    const { default: handler } = await import(modulePath + '?t=' + Date.now());
+                    await handler(mockReq, mockRes);
+                    return;
+                  }
+                  if (urlObj.pathname === '/api/mobileconfig' || urlObj.pathname === '/api/webclip') {
+                    const modulePath = path.resolve(__dirname, 'api/mobileconfig.js');
                     const { default: handler } = await import(modulePath + '?t=' + Date.now());
                     await handler(mockReq, mockRes);
                     return;

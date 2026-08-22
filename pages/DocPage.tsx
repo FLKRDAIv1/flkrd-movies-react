@@ -267,12 +267,12 @@ const DocPage: React.FC = () => {
       name: docLang === 'en' ? 'FLKRD Video Servers (1-5 Cluster)' : docLang === 'ku' ? 'کۆمەڵەی سێرڤەرەکانی ڤیدیۆ' : 'کۆمەڵەیا سێرڤەرێن ڤیدیۆ',
       sub: docLang === 'en' ? 'Multiplexed CDN mirrors' : 'سێرڤەرەکانی پەخشکردنی فڵکرد',
       desc: docLang === 'en' 
-        ? 'A high-speed streaming cluster consisting of 5 distributed servers. Automatically scrapes stream paths, indexes direct HLS/MP4 streams, and routes traffic through Server 4 (CinePro UHD) to ensure maximum 4K playback quality.'
+        ? 'A high-speed streaming cluster consisting of distributed servers. Automatically scrapes stream paths, indexes direct streams, and routes traffic through Server 1 (VidKing 4K HDR) to ensure maximum 4K playback quality.'
         : docLang === 'ku'
-        ? 'تۆڕێکی خێرا لە ٥ سێرڤەری سەرەکی پەخشی ڤیدیۆ. بە شێوەیەکی داینامیکی بەستەرەکان دەخوێنێتەوە و سێرڤەری ٤ (کۆدی تایبەت بە 4K) دەخاتە پێشەنگ بۆ دابینکردنی بەرزترین کوالێتی.'
-        : 'تۆڕەکا خێرا ژ ٥ سێرڤەرێن سەرەکیێن پەخشێ ڤیدیۆیان. خۆکارانە لینکێن پەخشێ دخوینیت و سێرڤەرێ ٤ (کۆدێ تایبەت یێ 4K) دکەتە پێشەنگ بۆ باشترین کوالێتی.',
+        ? 'تۆڕێکی خێرا لە سێرڤەرەکانی پەخشی ڤیدیۆ. بە شێوەیەکی داینامیکی بەستەرەکان دەخوێنێتەوە و سێرڤەری سەرەکی (VidKing 4K) دەخاتە پێشەنگ بۆ دابینکردنی بەرزترین کوالێتی.'
+        : 'تۆڕەکا خێرا ژ سێرڤەرێن پەخشێ ڤیدیۆیان. خۆکارانە لینکێن پەخشێ دخوینیت و سێرڤەرێ سەرەکی (VidKing 4K) دکەتە پێشەنگ بۆ باشترین کوالێتی.',
       stats: [
-        { label: 'Server 4 Core', val: 'CinePro 4K Ultra' },
+        { label: 'Primary Node', val: 'VidKing 4K Ultra' },
         { label: 'Auto Failover', val: 'Active (Next Stream)' },
         { label: 'Load Balancer', val: 'CDN Geolocation' }
       ]

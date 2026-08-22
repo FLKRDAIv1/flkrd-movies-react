@@ -30,36 +30,45 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
-// MARK: - Moving Liquid Background Spheres
+// MARK: - Dynamic Fluid Mesh Ambient Background (Apple Crystal Liquid Glass)
 struct AmbientBackgroundView: View {
     @State private var animateCircles = false
     
     var body: some View {
         ZStack {
-            Color.black // Base background
+            // Dynamic Native macOS Under-Window Material
+            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow, state: .active)
             
-            // Dynamic colorful spheres
+            Color.black.opacity(0.18)
+            
+            // Dynamic colorful glowing fluid spheres
             ZStack {
-                // Sphere 1: Ocean Cyan
+                // Sphere 1: Electric Cobalt
                 Circle()
-                    .fill(Color(red: 0.0, green: 0.6, blue: 0.8).opacity(0.15))
-                    .frame(width: 400, height: 400)
-                    .offset(x: animateCircles ? -150 : 150, y: animateCircles ? -100 : 100)
+                    .fill(Color(red: 0.0, green: 0.45, blue: 0.95).opacity(0.18))
+                    .frame(width: 550, height: 550)
+                    .offset(x: animateCircles ? -180 : 180, y: animateCircles ? -120 : 120)
                 
-                // Sphere 2: Coral Red
+                // Sphere 2: Deep Violet / Indigo
                 Circle()
-                    .fill(Color(red: 0.9, green: 0.25, blue: 0.25).opacity(0.15))
-                    .frame(width: 500, height: 500)
-                    .offset(x: animateCircles ? 200 : -200, y: animateCircles ? 150 : -150)
+                    .fill(Color(red: 0.45, green: 0.2, blue: 0.95).opacity(0.16))
+                    .frame(width: 600, height: 600)
+                    .offset(x: animateCircles ? 220 : -220, y: animateCircles ? 160 : -160)
                 
-                // Sphere 3: Deep Royal Purple
+                // Sphere 3: Warm Amber Glow
                 Circle()
-                    .fill(Color(red: 0.4, green: 0.2, blue: 0.9).opacity(0.18))
-                    .frame(width: 450, height: 450)
-                    .offset(x: animateCircles ? -50 : 100, y: animateCircles ? 200 : -100)
+                    .fill(Color(red: 0.95, green: 0.55, blue: 0.15).opacity(0.12))
+                    .frame(width: 480, height: 480)
+                    .offset(x: animateCircles ? -80 : 140, y: animateCircles ? 220 : -120)
+                
+                // Sphere 4: Cyan Highlight
+                Circle()
+                    .fill(Color(red: 0.0, green: 0.8, blue: 0.9).opacity(0.12))
+                    .frame(width: 420, height: 420)
+                    .offset(x: animateCircles ? 150 : -150, y: animateCircles ? -180 : 180)
             }
             .blur(radius: 90)
-            .animation(.easeInOut(duration: 15).repeatForever(autoreverses: true), value: animateCircles)
+            .animation(.easeInOut(duration: 16).repeatForever(autoreverses: true), value: animateCircles)
             .onAppear {
                 animateCircles = true
             }
@@ -67,38 +76,112 @@ struct AmbientBackgroundView: View {
     }
 }
 
-// MARK: - Glass Modifier for Panels
-struct GlassBackground: ViewModifier {
-    @ObservedObject var glass = GlassConfigManager.shared
-    var cornerRadius: CGFloat? = nil
-    var shadowColor: Color = Color.black.opacity(0.3)
-    var shadowRadius: CGFloat = 15
+// MARK: - Native Apple macOS Glass Refraction Modifier
+struct NativeMacGlassModifier: ViewModifier {
+    var cornerRadius: CGFloat = 14
+    var isHovered: Bool = false
+    var shadowRadius: CGFloat = 12
 
     func body(content: Content) -> some View {
-        let finalRadius = cornerRadius ?? glass.cornerRadius
         content
             .background(
                 ZStack {
                     VisualEffectView(material: .hudWindow, blendingMode: .behindWindow, state: .active)
-                    Color.black.opacity(glass.darkOpacity)
-                    RadialGradient(
-                        colors: [Color.red.opacity(glass.redOpacity), Color.clear],
-                        center: .top,
-                        startRadius: 0,
-                        endRadius: 300
+                    Color.black.opacity(0.22)
+                    LinearGradient(
+                        colors: [Color.white.opacity(isHovered ? 0.10 : 0.04), Color.clear],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 }
             )
-            .cornerRadius(finalRadius)
+            .cornerRadius(cornerRadius)
             .overlay(
-                RoundedRectangle(cornerRadius: finalRadius)
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(isHovered ? 0.38 : 0.20), location: 0.0),
+                                .init(color: .white.opacity(isHovered ? 0.12 : 0.05), location: 0.35),
+                                .init(color: .clear, location: 1.0)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: isHovered ? 1.5 : 1.0
+                    )
+            )
+            .shadow(
+                color: isHovered ? Color.blue.opacity(0.3) : Color.black.opacity(0.25),
+                radius: isHovered ? shadowRadius * 1.3 : shadowRadius,
+                y: isHovered ? 6 : 3
+            )
+    }
+}
+
+// MARK: - Glass Modifier for Panels (Default macOS Liquid Glass)
+struct GlassBackground: ViewModifier {
+    var cornerRadius: CGFloat?
+    
+    func body(content: Content) -> some View {
+        let radius = cornerRadius ?? 16
+        content
+            .background(
+                ZStack {
+                    VisualEffectView(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    Color.black.opacity(0.20)
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.06), Color.clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                }
+            )
+            .cornerRadius(radius)
+            .overlay(
+                RoundedRectangle(cornerRadius: radius)
+                    .stroke(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.32), location: 0.0),
+                                .init(color: .white.opacity(0.08), location: 0.4),
+                                .init(color: .clear, location: 1.0)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.2
+                    )
+            )
+            .shadow(color: Color.black.opacity(0.25), radius: 12, y: 6)
+    }
+}
+
+// MARK: - Floating VisionOS Liquid Pill Modifier
+struct LiquidPillBackground: ViewModifier {
+    var isSelected: Bool = false
+    var activeColor: Color = .blue
+    
+    func body(content: Content) -> some View {
+        content
+            .background(
+                ZStack {
+                    VisualEffectView(material: .hudWindow, blendingMode: .behindWindow, state: .active)
+                    if isSelected {
+                        activeColor.opacity(0.3)
+                    } else {
+                        Color.white.opacity(0.06)
+                    }
+                }
+            )
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
                     .stroke(
                         LinearGradient(
                             colors: [
-                                Color.white.opacity(glass.borderOpacity),
-                                Color.white.opacity(glass.borderOpacity * 0.2),
-                                Color.black.opacity(0.1),
-                                Color.white.opacity(glass.borderOpacity * 0.4)
+                                isSelected ? activeColor.opacity(0.8) : Color.white.opacity(0.25),
+                                isSelected ? activeColor.opacity(0.3) : Color.white.opacity(0.08)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -106,13 +189,115 @@ struct GlassBackground: ViewModifier {
                         lineWidth: 1
                     )
             )
-            .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: 8)
+            .shadow(color: isSelected ? activeColor.opacity(0.35) : Color.black.opacity(0.25), radius: 8, y: 4)
     }
 }
 
 extension View {
     func glassPanel(cornerRadius: CGFloat? = nil) -> some View {
         self.modifier(GlassBackground(cornerRadius: cornerRadius))
+    }
+    
+    func nativeMacGlass(cornerRadius: CGFloat = 14, isHovered: Bool = false) -> some View {
+        self.modifier(NativeMacGlassModifier(cornerRadius: cornerRadius, isHovered: isHovered))
+    }
+    
+    func liquidPill(isSelected: Bool = false, activeColor: Color = .blue) -> some View {
+        self.modifier(LiquidPillBackground(isSelected: isSelected, activeColor: activeColor))
+    }
+    
+    func framerHover(isHovered: Bool, cornerRadius: CGFloat = 14) -> some View {
+        self.modifier(FramerHoverEffectModifier(isHovered: isHovered, cornerRadius: cornerRadius))
+    }
+    
+    func framerEntrance(delay: Double = 0.0) -> some View {
+        self.modifier(FramerEntranceModifier(delay: delay))
+    }
+}
+
+// MARK: - Framer Motion 3D Hover & Sheen Modifier
+struct FramerHoverEffectModifier: ViewModifier {
+    var isHovered: Bool
+    var cornerRadius: CGFloat = 14
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                // Animated Specular Light Sheen
+                ZStack {
+                    if isHovered {
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0.0),
+                                .init(color: .white.opacity(0.18), location: 0.5),
+                                .init(color: .clear, location: 1.0)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .cornerRadius(cornerRadius)
+                        .transition(.opacity)
+                    }
+                }
+            )
+            .scaleEffect(isHovered ? 1.05 : 1.0)
+            .shadow(
+                color: isHovered ? Color.blue.opacity(0.45) : Color.black.opacity(0.35),
+                radius: isHovered ? 16 : 6,
+                x: 0,
+                y: isHovered ? 8 : 4
+            )
+            .animation(.spring(response: 0.28, dampingFraction: 0.70, blendDuration: 0), value: isHovered)
+    }
+}
+
+// MARK: - Framer Motion Smooth Staggered Entrance Modifier
+struct FramerEntranceModifier: ViewModifier {
+    var delay: Double = 0.0
+    @State private var hasAppeared = false
+    
+    func body(content: Content) -> some View {
+        content
+            .opacity(hasAppeared ? 1.0 : 0.0)
+            .offset(y: hasAppeared ? 0 : 16)
+            .scaleEffect(hasAppeared ? 1.0 : 0.97)
+            .onAppear {
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.75).delay(delay)) {
+                    hasAppeared = true
+                }
+            }
+    }
+}
+
+// MARK: - Tactile Apple Spring Physics Button
+struct TactileMacButton<Content: View>: View {
+    let action: () -> Void
+    let content: () -> Content
+    
+    @State private var isHovered = false
+    @State private var isPressed = false
+    
+    init(action: @escaping () -> Void, @ViewBuilder content: @escaping () -> Content) {
+        self.action = action
+        self.content = content
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            content()
+                .scaleEffect(isPressed ? 0.96 : (isHovered ? 1.03 : 1.0))
+                .animation(.spring(response: 0.26, dampingFraction: 0.75), value: isHovered)
+                .animation(.spring(response: 0.18, dampingFraction: 0.85), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .onHover { hover in
+            isHovered = hover
+        }
+        ._onButtonGesture { pressing in
+            isPressed = pressing
+        } perform: {
+            action()
+        }
     }
 }
 
@@ -129,31 +314,31 @@ struct GlassButtonStyle: ButtonStyle {
             .background(
                 ZStack {
                     if configuration.isPressed {
-                        activeColor.opacity(0.3)
+                        activeColor.opacity(0.35)
                     } else if isHovered {
-                        Color.white.opacity(0.1)
+                        Color.white.opacity(0.12)
                     } else {
-                        Color.white.opacity(0.04)
+                        Color.white.opacity(0.05)
                     }
                 }
             )
-            .cornerRadius(8)
+            .cornerRadius(10)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .stroke(
                         LinearGradient(
                             colors: [
-                                .white.opacity(configuration.isPressed ? 0.3 : 0.15),
+                                .white.opacity(configuration.isPressed ? 0.4 : (isHovered ? 0.3 : 0.15)),
                                 .white.opacity(0.05)
                             ],
-                            startPoint: .top,
-                            endPoint: .bottom
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         ),
                         lineWidth: 1
                     )
             )
             .scaleEffect(configuration.isPressed ? 0.96 : (isHovered ? 1.03 : 1.0))
-            .animation(.easeOut(duration: 0.2), value: isHovered)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isHovered)
             .onHover { hover in
                 isHovered = hover
             }
@@ -401,6 +586,86 @@ class GlassConfigManager: ObservableObject {
                 self.isSaving = false
             }
             return false
+        }
+    }
+}
+
+// MARK: - Native Liquid Glass Year Filter Component
+struct YearFilterBar: View {
+    @ObservedObject var lang = LocalizationService.shared
+    @Binding var selectedYear: Int?
+    var onSelect: () -> Void
+    
+    let years: [Int] = [
+        2026, 2025, 2024, 2023, 2022, 2021, 2020,
+        2019, 2018, 2017, 2016, 2015, 2014, 2012,
+        2010, 2008, 2005, 2000, 1995, 1990, 1980
+    ]
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // "All Years" Pill
+                Button {
+                    withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                        selectedYear = nil
+                    }
+                    onSelect()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 10))
+                        Text(lang.t("allYears"))
+                            .font(.system(size: 11, weight: selectedYear == nil ? .bold : .medium))
+                    }
+                    .foregroundColor(selectedYear == nil ? .white : .white.opacity(0.65))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(
+                        selectedYear == nil
+                        ? AnyView(LinearGradient(colors: [Color.blue, Color.purple], startPoint: .leading, endPoint: .trailing))
+                        : AnyView(Color.white.opacity(0.06))
+                    )
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(selectedYear == nil ? Color.blue.opacity(0.7) : Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .shadow(color: selectedYear == nil ? Color.blue.opacity(0.4) : Color.clear, radius: 6)
+                }
+                .buttonStyle(.plain)
+                
+                // Specific Year Pills
+                ForEach(years, id: \.self) { year in
+                    let isSelected = (selectedYear == year)
+                    Button {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
+                            selectedYear = year
+                        }
+                        onSelect()
+                    } label: {
+                        Text(String(year))
+                            .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                            .foregroundColor(isSelected ? .white : .white.opacity(0.65))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                isSelected
+                                ? AnyView(LinearGradient(colors: [Color.blue, Color(red: 0.0, green: 0.4, blue: 0.95)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                : AnyView(Color.white.opacity(0.06))
+                            )
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected ? Color.blue.opacity(0.8) : Color.white.opacity(0.12), lineWidth: 1)
+                            )
+                            .shadow(color: isSelected ? Color.blue.opacity(0.4) : Color.clear, radius: 6)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 6)
         }
     }
 }

@@ -7,7 +7,7 @@ import {
   ArrowDown, ArrowUp
 } from 'lucide-react';
 import { Content } from '../types';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { requests, API_KEY, IMAGE_BASE_URL, GENRES_T, IMAGE_BASE_URL_POSTER } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useGamepad } from '../contexts/GamepadContext';
@@ -114,7 +114,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
     if (!shouldLoad) return;
 
     const loadMetadata = async () => {
-      const type = movie.media_type || 'movie';
+      const type = getMediaType(movie);
       const endpoint = `/${type}/${movie.id}?api_key=${API_KEY}&append_to_response=videos,images&include_image_language=en,null`;
       try {
         const data = await fetchData(endpoint, 'en');
@@ -346,7 +346,7 @@ const TrailerItem: React.FC<TrailerItemProps> = ({
             onClick={onNavigate}
           >
             <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-2 border-brand/50 p-0.5 bg-black overflow-hidden shadow-[0_0_20px_rgba(var(--brand-red-rgb),0.3)] group-hover:border-brand transition-colors">
-              <img src={movie.poster_path ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` : "/flkrd-icon.png"} alt="" className="w-full h-full object-cover rounded-full" />
+              <img src={movie.poster_path ? `${IMAGE_BASE_URL_POSTER}${movie.poster_path}` : "/flkrd-icon.webp"} alt="" className="w-full h-full object-cover rounded-full" />
             </div>
             <button className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-brand text-white rounded-full p-1 border-2 border-black shadow-xl">
               <Plus className="w-2.5 h-2.5" strokeWidth={3} />
@@ -673,7 +673,7 @@ const ShortsPage: React.FC = () => {
                 active={index === activeIndex}
                 isMutedGlobal={isMutedGlobal} toggleMuteGlobal={toggleMuteGlobal}
                 hasInteracted={hasInteracted}
-                onNavigate={() => navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`, { state: { customData: movie } })}
+                onNavigate={() => navigate(`/details/${getMediaType(movie)}/${movie.id}`, { state: { customData: movie } })}
                 isFollowed={followedIds.has(movie.id)} onToggleFollow={() => handleToggleFollow(movie.id)}
             />
           );

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Star, Mic2, Info, Share, Zap, Activity, MessageSquare, Calendar, Monitor, Clock, Globe, User, Film, Layers, ShieldCheck, Maximize, ArrowLeft, Check, Layers as LayersIcon, ExternalLink, Link as LinkIcon, Send, Facebook, ArrowRight, Shield, PlayCircle, Sparkles, X
+    Star, Mic2, Share2, Zap, Activity, Calendar, Monitor, Clock, Film,
+    ArrowLeft, Check, Plus, Users, Sparkles, X, Home, Play
 } from 'lucide-react';
 import { Content, WatchProgress } from '../types';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
 import { API_KEY, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_PROFILE, CUSTOM_DUBBED_ARCHIVE } from '../constants';
 import { SkeletonDetailPage } from '../components/Skeleton';
@@ -19,7 +20,7 @@ import { useLocalUser } from '../hooks/useLocalUser';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import Portal from '../components/Portal';
 import CommentSection from '../components/CommentSection';
-
+import { extractEmbedSrc, getDubbedSources } from '../utils/playerSourceUtils';
 
 const DubbedDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -33,14 +34,22 @@ const DubbedDetailPage: React.FC = () => {
 
     const [content, setContent] = useState<Content | null>(null);
     const [loading, setLoading] = useState(!location.state?.customData);
-    const [isPlayerLoading, setIsPlayerLoading] = useState(true);
     const [supabaseData, setSupabaseData] = useState<any>(null);
-    const playerContainerRef = useRef<HTMLDivElement>(null);
 
+    // Fullscreen Video Player State
+    const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
+    const [activeSourceIndex, setActiveSourceIndex] = useState(0);
+
+    // My List State
+    const [isAdded, setIsAdded] = useState(false);
+
+    // Cast / Actor Profile State
     const [cast, setCast] = useState<any[]>([]);
     const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
     const [actorDetails, setActorDetails] = useState<any | null>(null);
     const [isActorLoading, setIsActorLoading] = useState(false);
+
+    const isRtl = language === 'ku' || language === 'badini';
 
     useEffect(() => {
         if (!selectedActorId) {
@@ -62,6 +71,17 @@ const DubbedDetailPage: React.FC = () => {
         };
         fetchActorInfo();
     }, [selectedActorId, language]);
+
+    useEffect(() => {
+        if (selectedActorId || isPlayerModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [selectedActorId, isPlayerModalOpen]);
 
     const dubbedData = useMemo(() => {
         if (!id) return null;
@@ -91,105 +111,69 @@ const DubbedDetailPage: React.FC = () => {
         });
     }, [id, location.state, supabaseData]);
 
-    // Smart iFrame Parser Engine
-    const extractEmbedSrc = (source: string) => {
-        if (!source) return "";
+    const dubbedSources = useMemo(() => {
+        const raw = (dubbedData?.customStream && dubbedData.customStream.trim())
+            || (dubbedData?.videoUrl && dubbedData.videoUrl.trim())
+            || (dubbedData?.video_url && dubbedData.video_url.trim())
+            || (dubbedData?.url && dubbedData.url.trim())
+            || (location.state?.customSource && location.state.customSource.trim());
+        return getDubbedSources(raw || '', language);
+    }, [dubbedData, location.state?.customSource, language]);
 
-        // 0. Clean and normalize the source string from any escaping
-        let cleanSource = source;
+    const activeEmbedUrl = useMemo(() => {
+        if (dubbedSources.length > 0) {
+            const selected = dubbedSources[activeSourceIndex] || dubbedSources[0];
+            return selected.url;
+        }
+        const raw = (dubbedData?.customStream && dubbedData.customStream.trim())
+            || (dubbedData?.videoUrl && dubbedData.videoUrl.trim())
+            || (dubbedData?.video_url && dubbedData.video_url.trim())
+            || (dubbedData?.url && dubbedData.url.trim())
+            || (location.state?.customSource && location.state.customSource.trim());
+        return extractEmbedSrc(raw || '');
+    }, [dubbedSources, activeSourceIndex, dubbedData, location.state?.customSource]);
+
+    // Check My List status
+    useEffect(() => {
         try {
-            // Replace escaped quotes
-            cleanSource = cleanSource
-                .replace(/\\"/g, '"')
-                .replace(/\\'/g, "'")
-                // Replace escaped forward slashes
-                .replace(/\\\//g, '/')
-                // Remove any remaining backslashes that might precede quotes or slashes
-                .replace(/\\/g, '');
-        } catch (e) {
-            console.warn("Error cleaning source URL/iframe:", e);
-        }
+            const myList = JSON.parse(localStorage.getItem('myList') || '[]');
+            const cleanId = id?.replace('custom_', '');
+            setIsAdded(myList.some((item: any) => String(item.id).replace('custom_', '') === cleanId));
+        } catch (e) {}
+    }, [id]);
 
-        let finalUrl = "";
-
-        // 1. Extract from iframe if needed
-        if (cleanSource.toLowerCase().includes('<iframe')) {
-            // Match src="..." or src='...'
-            const match = cleanSource.match(/src=["'](.*?)["']/i);
-            if (match && match[1]) {
-                finalUrl = match[1];
-            } else {
-                // Fallback: match src=... without quotes or with any quotes
-                const fallbackMatch = cleanSource.match(/src=(?:["']|\\")?([^\s"'>\\]+)/i);
-                if (fallbackMatch && fallbackMatch[1]) {
-                    finalUrl = fallbackMatch[1];
-                }
-            }
-        } else {
-            // Trim whitespace
-            const trimmed = cleanSource.trim();
-            if (trimmed.toLowerCase().startsWith('http')) {
-                finalUrl = trimmed;
-            } else {
-                // If it doesn't start with http, search for any http link inside it
-                const linkMatch = cleanSource.match(/https?:\/\/[^\s"'><]+/i);
-                if (linkMatch) {
-                    finalUrl = linkMatch[0];
-                }
-            }
-        }
-
-        if (!finalUrl) return "";
-
-        // 1.5 Convert raw rashaba.com URLs to direct /e/ embeds
-        if (finalUrl.includes('rashaba.com') && !finalUrl.includes('/e/') && !finalUrl.includes('/embed/')) {
-            try {
-                const matches = finalUrl.match(/\/([a-zA-Z0-9]{12,20})\/?$/) || finalUrl.match(/\/([a-zA-Z0-9]{12,20})\//);
-                const rid = matches ? matches[1] : finalUrl.split('/').filter(Boolean).pop();
-                if (rid) {
-                    finalUrl = `https://rashaba.com/e/${rid}`;
-                }
-            } catch (e) {
-                console.warn("Rashaba URL formatting failed:", e);
-            }
-        }
-
-        // 2. Professional Injection: Automatically fix Autoplay, VidKing, and others for iframe embeds only
-        const isDirectMedia = (
-            finalUrl.toLowerCase().includes('.m3u8') ||
-            finalUrl.toLowerCase().includes('.mp4') ||
-            finalUrl.toLowerCase().includes('.webm') ||
-            finalUrl.toLowerCase().includes('/storage/v1/object/public/') ||
-            finalUrl.toLowerCase().includes('shortbox')
-        );
-
-        if (isDirectMedia) {
-            return finalUrl;
-        }
-
+    const handleToggleMyList = () => {
         try {
-            const url = new URL(finalUrl);
-            if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
-            if (!url.searchParams.has('play')) url.searchParams.append('play', '1');
-            if (finalUrl.includes('vidking.net')) {
-                if (!url.searchParams.has('sub')) url.searchParams.append('sub', '1');
-                if (!url.searchParams.has('subtitles')) url.searchParams.append('subtitles', '1');
-                if (!url.searchParams.has('color')) url.searchParams.append('color', accentColor?.replace('#', '') || 'e50914');
+            let myList = JSON.parse(localStorage.getItem('myList') || '[]');
+            const cleanId = id?.replace('custom_', '');
+            const idx = myList.findIndex((item: any) => String(item.id).replace('custom_', '') === cleanId);
+            if (idx > -1) {
+                myList.splice(idx, 1);
+                setIsAdded(false);
+                addNotification({
+                    type: 'info',
+                    title: t('notificationsInfoTitle') || 'Removed',
+                    message: t('myListRemoveSuccess') || 'Removed from My List'
+                });
+            } else {
+                myList.push({
+                    id: cleanId,
+                    media_type: 'dubbed',
+                    title: dubbedData?.kurdishTitle || dubbedData?.title || displayTitle,
+                    poster_path: dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '',
+                    vote_average: dubbedData?.vote_average || content?.vote_average || 8.5
+                });
+                setIsAdded(true);
+                addNotification({
+                    type: 'success',
+                    title: t('notificationsSuccessTitle') || 'Added',
+                    message: t('myListAddSuccess') || 'Saved to My List'
+                });
             }
-            finalUrl = url.toString();
-        } catch (e) {
-            if (!finalUrl.includes('autoplay=')) {
-                finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'autoplay=1&play=1';
-            }
-        }
-
-        return finalUrl;
+            localStorage.setItem('myList', JSON.stringify(myList));
+            window.dispatchEvent(new Event('storage'));
+        } catch (e) {}
     };
-
-    const embedUrl = useMemo(() => {
-        const source = dubbedData?.customStream || dubbedData?.videoUrl;
-        return extractEmbedSrc(source);
-    }, [dubbedData]);
 
     const lastProgressSaveRef = useRef<number>(0);
     const updateProgress = useCallback((time: number, duration: number) => {
@@ -236,29 +220,20 @@ const DubbedDetailPage: React.FC = () => {
                     let time = 0;
                     let duration = 0;
 
-                    // 1. Videasy format: { timestamp: number, duration: number, progress: number }
                     if (payload.timestamp !== undefined) {
                         time = Number(payload.timestamp);
                         duration = payload.duration ? Number(payload.duration) : 0;
-                    }
-                    // 2. VidLink Pro format: { type: 'PLAYER_EVENT', data: { currentTime, duration } }
-                    else if (payload.type === 'PLAYER_EVENT' && payload.data) {
+                    } else if (payload.type === 'PLAYER_EVENT' && payload.data) {
                         time = payload.data.currentTime || payload.data.time || 0;
                         duration = payload.data.duration || 0;
-                    }
-                    // 3. VidLink MEDIA_DATA format
-                    else if (payload.type === 'MEDIA_DATA' && payload.data) {
+                    } else if (payload.type === 'MEDIA_DATA' && payload.data) {
                         time = payload.data.currentTime || 0;
                         duration = payload.data.duration || 0;
-                    }
-                    // 4. Standard timeupdate events (VidKing, others)
-                    else if (payload.event === 'timeupdate' || payload.type === 'timeupdate' || payload.event === 'pause') {
+                    } else if (payload.event === 'timeupdate' || payload.type === 'timeupdate' || payload.event === 'pause') {
                         const d = payload.data || payload;
                         time = d.currentTime || d.time || d.seconds || 0;
                         duration = d.duration || 0;
-                    }
-                    // 5. Generic currentTime fallback
-                    else if (payload.currentTime !== undefined) {
+                    } else if (payload.currentTime !== undefined) {
                         time = Number(payload.currentTime);
                         duration = payload.duration ? Number(payload.duration) : 0;
                     }
@@ -272,7 +247,6 @@ const DubbedDetailPage: React.FC = () => {
         window.addEventListener('message', handlePlayerMessages);
         return () => window.removeEventListener('message', handlePlayerMessages);
     }, [updateProgress]);
-
 
     useEffect(() => {
         return () => {
@@ -310,14 +284,13 @@ const DubbedDetailPage: React.FC = () => {
         setSelectedActorId(null);
         setActorDetails(null);
         
-        // Instant Hydration Protocol: Skip the 10s delay if we already have data from the state
         if (location.state?.customData) {
             setLoading(false);
         }
 
         const timeoutId = setTimeout(() => {
             if (isMounted) setLoading(false);
-        }, 10000); // 10s absolute maximum fallback
+        }, 10000);
 
         const loadContent = async () => {
             if (!id) return;
@@ -328,7 +301,7 @@ const DubbedDetailPage: React.FC = () => {
 
             let hasPreHydrated = false;
 
-            // --- STEP 1: INSTANT LOCAL PRE-HYDRATION ---
+            // STEP 1: Local Pre-Hydration
             try {
                 const cached = await db.getMovies();
                 const localMovie = cached.find(m => String(m.id) === dbId || String(m.id).replace('custom_', '') === cleanId)
@@ -344,34 +317,28 @@ const DubbedDetailPage: React.FC = () => {
                         kurdishTitle: localMovie.title,
                         kurdishOverview: localMovie.description
                     });
-                    setLoading(false); // Instantly bypass skeleton
+                    setLoading(false);
                     hasPreHydrated = true;
                 }
             } catch (e) {
                 console.warn("Local IndexedDB pre-hydration failed", e);
             }
 
-            // --- STEP 2: BACKGROUND ENRICHMENT ---
+            // STEP 2: Supabase + TMDB Enrichment
             try {
                 if (!location.state?.customData && !hasPreHydrated) {
                     setLoading(true);
                 }
 
-                // Parallel Enrichment: Supabase + TMDB
                 const [supabaseResult, tmdbResult] = await Promise.all([
                     (async () => {
-                        console.log("[DUB DETAIL] Fetching from Supabase. id =", dbId, "cleanId =", cleanId);
                         const { data, error } = await supabase
                             .from('dubbed_movies')
                             .select('*')
                             .or(`id.eq.${dbId},id.eq.${cleanId}`)
                             .limit(1);
                         
-                        if (error) {
-                            console.error("[DUB DETAIL] Supabase error:", error);
-                        }
                         if (data && data.length > 0) {
-                            console.log("[DUB DETAIL] Supabase data fetched successfully:", data[0]);
                             return data[0];
                         }
                         return null;
@@ -423,237 +390,399 @@ const DubbedDetailPage: React.FC = () => {
           mainEl.scrollTo({ top: 0, behavior: 'instant' });
         }
 
-        return () => { isMounted = false; };
+        return () => { 
+            isMounted = false; 
+            clearTimeout(timeoutId);
+        };
     }, [id, language]);
 
-const handlePlayerLoad = useCallback(() => {
-    setIsPlayerLoading(false);
-}, []);
+    const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Kurdish Dubbed Movie") as string;
+    const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "چیرۆکی ئەم فیلمە دۆبلاژکراوە تاقانەیە بە زمانی شیرینی کوردی لە FLKRD بەردەستە." : "Exclusive Kurdish dubbed cinema experience on FLKRD.")) as string;
 
-const handleCreateWatchParty = async () => {
-    if (!localUserId) return;
-    setIsCreatingTicket(true);
-    try {
-        const pin = String(Math.floor(1000 + Math.random() * 9000));
-        const cleanId = id?.replace('custom_', '') || '';
-        const ticketMovieId = `custom_${cleanId}`;
+    const posterRaw = dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '';
+    const posterUrl = posterRaw
+        ? (posterRaw.startsWith('http') || posterRaw.startsWith('data:') ? posterRaw : `${IMAGE_BASE_URL_POSTER}${posterRaw}`)
+        : '/flkrd-icon.webp';
 
-        const { data, error: insertError } = await supabase
-            .from('watch_tickets')
-            .insert({
-                movie_id: ticketMovieId,
-                host_id: localUserId,
-                pin_code: pin,
-                status: 'waiting'
-            })
-            .select()
-            .single();
+    const backdropRaw = dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path || posterRaw;
+    const backdropUrl = backdropRaw
+        ? (backdropRaw.startsWith('http') || backdropRaw.startsWith('data:') ? backdropRaw : `${IMAGE_BASE_URL}${backdropRaw}`)
+        : '/default-poster.svg';
 
-        if (insertError || !data) throw insertError;
+    const handleBack = useCallback(() => {
+        if (window.history.length > 2) {
+            navigate(-1);
+        } else {
+            navigate('/dubbed');
+        }
+    }, [navigate]);
 
-        addNotification({
-            type: 'success',
-            title: (language === 'ku' || language === 'badini') ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
-            message: (language === 'ku' || language === 'badini') ? 'هاوڕێکەت بانگهێشت بکە!' : 'Invite your guest to join!'
-        });
+    const handleOpenPlayer = () => {
+        setIsPlayerModalOpen(true);
+    };
 
-        const movieState = {
-            id: cleanId,
-            title: dubbedData?.kurdishTitle || dubbedData?.title || displayTitle,
-            poster_path: dubbedData?.poster_path || dubbedData?.imageBase64 || content?.poster_path || '',
-            backdrop_path: dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path || '',
-            vote_average: dubbedData?.vote_average || content?.vote_average,
-            release_date: dubbedData?.created_at || content?.release_date
-        };
+    const handleClosePlayer = () => {
+        setIsPlayerModalOpen(false);
+        // Pause any video elements created inside the player
+        try {
+            const elements = document.querySelectorAll('video, audio');
+            elements.forEach((el: any) => {
+                try {
+                    el.pause();
+                } catch (e) {}
+            });
+        } catch (e) {}
+    };
 
-        navigate(`/watch/${data.id}`, { state: { ticket: data, movie: movieState } });
-    } catch (err: any) {
-        console.error('Watch party creation error:', err);
-        addNotification({
-            type: 'error',
-            title: (language === 'ku' || language === 'badini') ? 'هەڵە' : 'Error',
-            message: (language === 'ku' || language === 'badini') ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
-        });
-    } finally {
-        setIsCreatingTicket(false);
-    }
-};
+    const handleSourceChange = (srcName: string) => {
+        const idx = dubbedSources.findIndex(s => s.name === srcName);
+        if (idx !== -1) {
+            setActiveSourceIndex(idx);
+        }
+    };
 
-if (loading && !dubbedData && !content) return <SkeletonDetailPage />;
+    const handleShare = async () => {
+        const shareTitle = dubbedData?.kurdishTitle || dubbedData?.title || displayTitle;
+        const shareUrl = window.location.href;
+        if (navigator.share) {
+            try {
+                await navigator.share({ title: shareTitle, url: shareUrl });
+            } catch {}
+        } else {
+            try {
+                await navigator.clipboard.writeText(shareUrl);
+                addNotification({
+                    type: 'success',
+                    title: isRtl ? 'بەستەر کۆپیکرا' : 'Link Copied',
+                    message: shareTitle
+                });
+            } catch {
+                addNotification({
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to copy link'
+                });
+            }
+        }
+    };
 
-// Strict Data Boundary Logic to prevent Black Screen / Crash
-const displayTitle = (dubbedData?.kurdishTitle || dubbedData?.title || content?.title || content?.name || "Loading...") as string;
-const displayOverview = (dubbedData?.kurdishOverview || dubbedData?.description || content?.overview || ((language === 'ku' || language === 'badini') ? "داتاکان لە بارکردندان..." : "Neural node synchronizing...")) as string;
+    const handleCreateWatchParty = async () => {
+        if (!localUserId) return;
+        setIsCreatingTicket(true);
+        try {
+            const pin = String(Math.floor(1000 + Math.random() * 9000));
+            const cleanId = id?.replace('custom_', '') || '';
+            const ticketMovieId = `custom_${cleanId}`;
 
-const backdropRaw = dubbedData?.bannerBase64 || dubbedData?.backdrop_path || content?.backdrop_path || dubbedData?.poster_path || content?.poster_path || '';
-const backdropUrl = backdropRaw
-    ? (backdropRaw.startsWith('http') || backdropRaw.startsWith('data:') ? backdropRaw : `${IMAGE_BASE_URL}${backdropRaw}`)
-    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
-const isReady = !!(embedUrl || dubbedData || content);
+            const { data, error: insertError } = await supabase
+                .from('watch_tickets')
+                .insert({
+                    movie_id: ticketMovieId,
+                    host_id: localUserId,
+                    pin_code: pin,
+                    status: 'waiting'
+                })
+                .select()
+                .single();
 
-if (!isReady) return <SkeletonDetailPage />;
+            if (insertError || !data) throw insertError;
 
-return (
-    <div className="min-h-screen bg-main-bg bg-[#050505] text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+            addNotification({
+                type: 'success',
+                title: isRtl ? '🎬 تیکتی تەماشا دروست کرا!' : '🎬 WATCH TICKET CREATED!',
+                message: isRtl ? 'هاوڕێکەت بانگهێشت بکە!' : 'Invite your guest to join!'
+            });
 
-            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 hidden md:block ${theme.includes('moon') ? 'opacity-10' : 'opacity-20'}`}>
+            const movieState = {
+                id: cleanId,
+                title: dubbedData?.kurdishTitle || dubbedData?.title || displayTitle,
+                poster_path: posterUrl,
+                backdrop_path: backdropUrl,
+                vote_average: dubbedData?.vote_average || content?.vote_average,
+                release_date: dubbedData?.created_at || content?.release_date
+            };
+
+            navigate(`/watch/${data.id}`, { state: { ticket: data, movie: movieState } });
+        } catch (err: any) {
+            console.error('Watch party creation error:', err);
+            addNotification({
+                type: 'error',
+                title: isRtl ? 'هەڵە' : 'Error',
+                message: isRtl ? 'نەتوانرا تیکت دروست بکرێت.' : 'Failed to create watch ticket.'
+            });
+        } finally {
+            setIsCreatingTicket(false);
+        }
+    };
+
+    if (loading && !dubbedData && !content) return <SkeletonDetailPage />;
+
+    const isReady = !!(activeEmbedUrl || dubbedData || content);
+    if (!isReady) return <SkeletonDetailPage />;
+
+    return (
+        <div className="min-h-screen bg-main-bg bg-[#050505] text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
+            {/* Ambient Blurred Backdrop Background */}
+            <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-30 md:opacity-40`}>
                 {backdropUrl && (
                     <img 
                         src={backdropUrl} 
-                        className="w-full h-full object-cover blur-[120px] scale-150" 
+                        className="w-full h-full object-cover blur-[100px] scale-125" 
                         alt="" 
                         onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                            (e.target as HTMLImageElement).src = '/default-poster.svg';
                         }}
                     />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)] via-transparent to-[var(--bg-primary)]"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/80 via-[var(--bg-primary)]/90 to-[var(--bg-primary)]"></div>
             </div>
 
-            <div className="relative z-10 pt-24 md:pt-32 px-4 md:px-12">
-            <Portal id="dubbed-nav-portal">
-                <div className={`fixed top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
+            {/* Top Navigation Bar */}
+            <div className="relative z-20 pt-16 md:pt-20 px-4 md:px-12 max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex flex-wrap items-center gap-2">
                     <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-2 bg-box-bg/85 backdrop-blur-2xl border border-border-color px-5 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-90 transition-all font-black uppercase tracking-widest text-[10px] shadow-2xl"
+                        onClick={handleBack}
+                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
                     >
-                        <ArrowLeft size={18} className={(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} />
-                        {t('back')}
+                        <ArrowLeft size={16} className={isRtl ? 'rotate-180' : ''} />
+                        {isRtl ? 'گەڕانەوە' : 'Back'}
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/dubbed')}
+                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                    >
+                        <Film size={15} />
+                        {isRtl ? 'فیلمی دۆبلاژکراو' : 'Dubbed Movies'}
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/')}
+                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                    >
+                        <Home size={15} />
+                        {isRtl ? 'سەرەکی' : 'Home'}
                     </button>
                 </div>
-            </Portal>
 
-                <div className="w-full max-w-7xl mx-auto mb-8 md:mb-12">
-                    <div ref={playerContainerRef} className="relative rounded-3xl md:rounded-[4rem] overflow-hidden bg-black border-4 md:border-[6px] border-border-color shadow-2xl group aspect-video" dir="ltr">
-                        {embedUrl ? (
-                            <UniversalVideoPlayer
-                                key={id || dubbedData?.id || 'dubbed-player-key'}
-                                src={embedUrl}
-                                accentColor={accentColor}
-                                language={language}
-                                onLoad={handlePlayerLoad}
-                                tmdbId={dubbedData?.tmdb_id || content?.id}
-                                imdbId={dubbedData?.imdb_id || content?.imdb_id}
-                                contentType={dubbedData?.media_type || "movie"}
-                            />
-                        ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl">
-                                <Zap className="w-12 h-12 mb-4 animate-[pulse_1.5s_infinite]" style={{ color: accentColor }} />
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Synchronizing Stream...</span>
-                            </div>
-                        )}
-                    </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleShare}
+                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-white/20 active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                    >
+                        <Share2 size={15} />
+                        {isRtl ? 'هاوبەشکردن' : 'Share'}
+                    </button>
                 </div>
+            </div>
 
-                <div className="max-w-7xl mx-auto flex flex-col items-start mb-10">
-                    <div className="flex flex-wrap items-center gap-2 mb-6">
-                        <div className="text-white text-[9px] md:text-[11px] font-black px-5 py-2.5 rounded-full flex items-center gap-2 shadow-xl uppercase tracking-[0.2em]" style={{ backgroundColor: accentColor }}>
-                            <Mic2 size={14} />
-                            {dubbedData?.isSubtitled ? ((language === 'ku' || language === 'badini') ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : ((language === 'ku' || language === 'badini') ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
-                        </div>
-                        {dubbedData?.level && (
-                            <div className="bg-box-bg border border-border-color text-sec-text text-[8px] md:text-[9px] font-black px-4 py-2.5 rounded-full uppercase tracking-widest">
-                                {dubbedData.level} RANK
-                            </div>
-                        )}
-
-                        {/* CO-WATCH PARTY Button */}
-                        <button
-                            onClick={handleCreateWatchParty}
-                            disabled={isCreatingTicket}
-                            className="group relative px-5 py-2.5 rounded-full font-black text-[9px] md:text-[11px] flex items-center gap-2 uppercase tracking-[0.2em] transition-all active:scale-95 disabled:opacity-60 border border-orange-500/50 hover:border-orange-400 bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 hover:text-orange-300 shadow-[0_0_20px_rgba(234,88,12,0.1)] hover:shadow-[0_0_30px_rgba(234,88,12,0.25)]"
-                        >
-                            {isCreatingTicket ? (
-                                <div className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent border-orange-500 animate-spin" />
-                            ) : (
-                                <Sparkles size={14} className="text-orange-500 animate-pulse" />
-                            )}
-                            {(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}
-                        </button>
+            {/* Main Cinematic Hero Banner */}
+            <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto mb-16">
+                <div className="flex flex-col lg:flex-row items-center lg:items-end gap-8 lg:gap-14 pt-4 pb-8">
+                    {/* Glowing Movie Poster */}
+                    <div className="w-48 sm:w-64 lg:w-80 flex-shrink-0 aspect-[2/3] rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8)] relative group bg-neutral-950">
+                        <img 
+                            src={posterUrl} 
+                            alt={displayTitle} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/flkrd-icon.webp';
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                     </div>
-                    <h1 className="text-4xl md:text-8xl font-[1000] uppercase italic tracking-[calc(-0.04em)] leading-[0.85] text-[var(--text-primary)] text-right max-w-5xl drop-shadow-2xl mb-10">
-                        {displayTitle}
-                    </h1>
-                </div>
 
-                <div className="max-w-7xl mx-auto mb-24">
-                    <div className="bg-box-bg border border-border-color p-10 rounded-3xl md:rounded-[4rem] shadow-2xl relative overflow-hidden group">
-                        <div className="flex items-center justify-between mb-10">
-                            <div className="flex items-center gap-4">
-                                <div className="w-1.5 h-6 rounded-full shadow-[0_0_15px_currentColor]" style={{ backgroundColor: accentColor, color: accentColor }} />
-                                <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-[var(--text-secondary)] italic opacity-60">CHRONICLE_SOURCE</h3>
+                    {/* Movie Info & Primary Actions */}
+                    <div className="flex-1 flex flex-col items-center lg:items-start text-center lg:text-start gap-4">
+                        {/* Badges */}
+                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                            <div 
+                                className="text-white text-[10px] md:text-[11px] font-black px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg uppercase tracking-wider" 
+                                style={{ backgroundColor: accentColor || 'var(--brand-red)' }}
+                            >
+                                <Mic2 size={13} />
+                                {dubbedData?.isSubtitled ? (isRtl ? "ژێرنوسی کوردی" : "Kurdish Subtitled") : (isRtl ? "دۆبلاژکراوی کوردی" : "Kurdish Dubbed")}
                             </div>
-                            <div className="flex items-center gap-6">
-                                {content?.vote_average && (
-                                    <div className="flex items-center gap-2 text-yellow-500 font-mono font-black text-lg">
-                                        <Star size={18} fill="currentColor" />
-                                        {content.vote_average.toFixed(1)}
-                                    </div>
-                                )}
-                                <Zap size={18} className="animate-pulse" style={{ color: accentColor }} />
+
+                            <div className="bg-white/10 backdrop-blur-md border border-white/10 text-white text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                ULTRA HD 4K
                             </div>
-                        </div>
-                        <p className="text-[var(--text-primary)] text-xl md:text-4xl leading-[1.6] italic text-right font-black py-4 opacity-90 tracking-tight">
-                            {displayOverview}
-                        </p>
 
-                        {/* Aesthetic Data Layer */}
-                        <div className="mt-12 flex flex-wrap gap-8 items-center border-t border-border-color pt-10">
-                             <div className="flex flex-col gap-1.5">
-                                 <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Release Cycle</span>
-                                 <div className="flex items-center gap-2 text-main-text font-black text-xs">
-                                     <Calendar size={14} className="text-brand" />
-                                     {dubbedData?.created_at ? new Date(dubbedData.created_at).getFullYear() : (content?.release_date?.split('-')[0] || '2025')}
-                                 </div>
-                             </div>
-                             <div className="flex flex-col gap-1.5">
-                                 <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Source Protocol</span>
-                                 <div className="flex items-center gap-2 text-[var(--text-secondary)] font-black text-[10px] uppercase tracking-tighter">
-                                     <Monitor size={14} style={{ color: accentColor }} />
-                                     {dubbedData?.customStream ? "Private Node" : "Standard API"}
-                                 </div>
-                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                {cast.length > 0 && (
-                    <div className="max-w-7xl mx-auto mb-24 mt-12">
-                        <div className="flex items-center gap-4 mb-12">
-                            <h2 className="text-2xl md:text-6xl font-[1000] uppercase italic tracking-tighter text-main-text">
-                                {(language === 'ku' || language === 'badini') ? 'ئەکتەرەکان' : 'ACTORS'}
-                            </h2>
-                            <div className="h-[2px] flex-grow bg-border-color rounded-full"></div>
-                        </div>
-                        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8">
-                            {cast.map(person => (
-                                <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
-                                    <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative">
-                                        <img 
-                                            src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.png'} 
-                                            alt={person.name} 
-                                            className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-110" 
-                                            onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
-                                        />
-                                    </div>
-                                    <p className="text-[10px] md:text-xs font-black uppercase italic truncate text-main-text">{person.name}</p>
+                            {dubbedData?.level && (
+                                <div className="bg-yellow-500/20 border border-yellow-500/40 text-yellow-400 text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full uppercase tracking-wider">
+                                    {dubbedData.level} RANK
                                 </div>
-                            ))}
+                            )}
+
+                            {content?.vote_average && (
+                                <div className="bg-box-bg border border-border-color text-yellow-500 text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                                    <Star size={13} fill="currentColor" />
+                                    {content.vote_average.toFixed(1)}
+                                </div>
+                            )}
+
+                            <div className="bg-box-bg border border-border-color text-sec-text text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                                <Calendar size={13} />
+                                {dubbedData?.created_at ? new Date(dubbedData.created_at).getFullYear() : (content?.release_date?.split('-')[0] || '2026')}
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-[1000] tracking-tight leading-none text-main-text drop-shadow-2xl">
+                            {displayTitle}
+                        </h1>
+
+                        {/* Action Buttons Row */}
+                        <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-4 w-full">
+                            {/* Primary Play Button */}
+                            <button
+                                onClick={handleOpenPlayer}
+                                className="flex-1 sm:flex-initial min-w-[200px] flex items-center justify-center gap-3 px-8 py-4 bg-[var(--brand-red)] hover:bg-red-700 text-white font-[1000] text-sm md:text-base rounded-2xl shadow-[0_10px_35px_rgba(229,9,20,0.5)] active:scale-95 transition-all cursor-pointer uppercase tracking-wider"
+                            >
+                                <Play fill="currentColor" size={20} />
+                                <span>{isRtl ? 'سەیرکردنی فیلم' : 'Play Movie'}</span>
+                            </button>
+
+                            {/* Co-Watch Party Button */}
+                            <button
+                                onClick={handleCreateWatchParty}
+                                disabled={isCreatingTicket}
+                                className="flex items-center justify-center gap-2 px-5 py-4 bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 font-bold text-xs md:text-sm rounded-2xl backdrop-blur-md active:scale-95 transition-all cursor-pointer uppercase tracking-wider"
+                            >
+                                {isCreatingTicket ? (
+                                    <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-orange-400 animate-spin" />
+                                ) : (
+                                    <Sparkles size={16} className="text-orange-400 animate-pulse" />
+                                )}
+                                <span>{isRtl ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH'}</span>
+                            </button>
+
+                            {/* My List Button */}
+                            <button
+                                onClick={handleToggleMyList}
+                                className={`flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-xs md:text-sm font-bold border backdrop-blur-md active:scale-95 transition-all cursor-pointer ${
+                                    isAdded 
+                                        ? 'bg-[var(--brand-red)] text-white border-[var(--brand-red)]' 
+                                        : 'bg-box-bg/80 hover:bg-box-bg border-border-color text-main-text'
+                                }`}
+                            >
+                                {isAdded ? <Check size={16} /> : <Plus size={16} />}
+                                <span>{isAdded ? (isRtl ? 'لە لیستەکەم دایە' : 'In My List') : (isRtl ? 'لیستی من' : 'My List')}</span>
+                            </button>
                         </div>
                     </div>
-                )}
+                </div>
+            </div>
 
-                {/* Comment Discussion Section */}
+            {/* Synopsis / Story Details */}
+            <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto mb-16">
+                <div className="bg-box-bg/90 backdrop-blur-2xl border border-border-color p-6 md:p-10 rounded-3xl md:rounded-[3rem] shadow-2xl">
+                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-border-color">
+                        <div className="flex items-center gap-3">
+                            <div className="w-1.5 h-5 rounded-full" style={{ backgroundColor: accentColor || 'var(--brand-red)' }} />
+                            <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-sec-text">
+                                {isRtl ? 'چیرۆکی فیلم' : 'SYNOPSIS'}
+                            </h3>
+                        </div>
+                        <div className="flex items-center gap-4 text-sec-text text-xs font-bold">
+                            <div className="flex items-center gap-1.5">
+                                <Monitor size={14} style={{ color: accentColor || 'var(--brand-red)' }} />
+                                <span>{dubbedSources.length > 0 ? `${dubbedSources.length} Servers Online` : 'Direct Node'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-main-text text-base md:text-xl leading-relaxed font-bold opacity-90 text-right">
+                        {displayOverview}
+                    </p>
+                </div>
+            </div>
+
+            {/* Actors / Cast Grid */}
+            {cast.length > 0 && (
+                <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto mb-16">
+                    <div className="flex items-center gap-4 mb-8">
+                        <h2 className="text-2xl md:text-4xl font-[1000] uppercase tracking-tight text-main-text">
+                            {isRtl ? 'ئەکتەرەکان' : 'CAST & CREW'}
+                        </h2>
+                        <div className="h-[1px] flex-grow bg-border-color rounded-full"></div>
+                    </div>
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-6">
+                        {cast.map(person => (
+                            <div 
+                                key={person.id} 
+                                className="group cursor-pointer flex flex-col items-center text-center" 
+                                onClick={() => setSelectedActorId(person.id)}
+                            >
+                                <div className="w-full aspect-[3/4] rounded-2xl overflow-hidden mb-2.5 border border-border-color shadow-lg bg-neutral-900">
+                                    <img 
+                                        src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.webp'} 
+                                        alt={person.name} 
+                                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-500" 
+                                        onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
+                                        loading="lazy"
+                                    />
+                                </div>
+                                <p className="text-[11px] md:text-xs font-black uppercase truncate w-full text-main-text">{person.name}</p>
+                                <p className="text-[9px] font-bold text-sec-text truncate w-full">{person.character || ''}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Comment Section */}
+            <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto">
                 <CommentSection movieId={id!} mediaType="dubbed" />
             </div>
 
+            {/* Fullscreen Player Modal */}
+            <AnimatePresence>
+                {isPlayerModalOpen && (
+                    <Portal id="dubbed-player-portal">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 w-screen h-dvh bg-black z-[999999] overflow-hidden flex items-center justify-center"
+                            dir="ltr"
+                        >
+                            <UniversalVideoPlayer
+                                key={`dubbed-player-modal-${id}-${activeSourceIndex}`}
+                                src={activeEmbedUrl}
+                                sources={dubbedSources}
+                                activeSource={dubbedSources[activeSourceIndex]?.name || 'FLKRD DUBBED 1'}
+                                setActiveSource={handleSourceChange}
+                                accentColor={accentColor}
+                                language={language}
+                                startFullscreen={true}
+                                onClose={handleClosePlayer}
+                                onProgress={(data) => {
+                                    if (data?.currentTime && data?.duration) {
+                                        updateProgress(data.currentTime, data.duration);
+                                    }
+                                }}
+                                tmdbId={(dubbedData?.tmdb_id && /^\d+$/.test(String(dubbedData.tmdb_id))) 
+                                    ? String(dubbedData.tmdb_id) 
+                                    : (/^\d+$/.test(String(content?.tmdb_id || content?.id || '')) ? String(content?.tmdb_id || content?.id) : undefined)}
+                                imdbId={dubbedData?.imdb_id || content?.imdb_id || undefined}
+                                contentType="dubbed"
+                                title={dubbedData?.kurdishTitle || dubbedData?.title || displayTitle}
+                            />
+                        </motion.div>
+                    </Portal>
+                )}
+            </AnimatePresence>
+
+            {/* Actor Detail Dossier Modal */}
             <AnimatePresence>
                 {selectedActorId && (
                     <motion.div 
                         initial={{ opacity: 0 }} 
                         animate={{ opacity: 1 }} 
                         exit={{ opacity: 0 }} 
-                        className="fixed inset-0 bg-black/80 backdrop-blur-xl z-[99999] flex items-center justify-center p-4 md:p-10"
+                        className="fixed inset-0 bg-black/85 backdrop-blur-xl z-[99999] flex items-center justify-center p-4 md:p-10"
                         onClick={() => setSelectedActorId(null)}
                     >
                         <motion.div 
@@ -661,24 +790,14 @@ return (
                             animate={{ scale: 1, y: 0, opacity: 1 }}
                             exit={{ scale: 0.9, y: 20, opacity: 0 }}
                             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                            className="relative w-full max-w-4xl bg-card-bg border border-border-color rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
-                            dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
-                            style={{
-                                background: theme === 'light'
-                                    ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 85%), rgba(255, 255, 255, 0.85)`
-                                    : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.85)`,
-                                backdropFilter: 'blur(30px) saturate(130%)',
-                                WebkitBackdropFilter: 'blur(30px) saturate(130%)',
-                                boxShadow: theme === 'light'
-                                    ? '0 50px 100px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
-                                    : '0 50px 100px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)'
-                            }}
+                            className="relative w-full max-w-4xl bg-card-bg border border-border-color rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[85vh] md:max-h-[90vh] flex flex-col md:flex-row gap-6 md:gap-10 p-6 md:p-10 text-start"
+                            dir={isRtl ? 'rtl' : 'ltr'}
                             onClick={(e) => e.stopPropagation()}
                         >
                             {/* Close Button */}
                             <button 
                                 onClick={() => setSelectedActorId(null)}
-                                className={`absolute top-6 ${language === 'ku' || language === 'badini' ? 'left-6' : 'right-6'} p-3 bg-box-bg border border-border-color hover:bg-red-600 rounded-2xl text-main-text hover:text-white transition-all z-50 group hover:rotate-90`}
+                                className={`absolute top-6 ${isRtl ? 'left-6' : 'right-6'} p-3 bg-box-bg border border-border-color hover:bg-red-600 rounded-2xl text-main-text hover:text-white transition-all z-50`}
                             >
                                 <X size={20} />
                             </button>
@@ -692,12 +811,12 @@ return (
                                 <>
                                     {/* Left Column: Image */}
                                     <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
-                                        <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-border-color shadow-2xl relative bg-box-bg mx-auto">
+                                        <div className="w-48 md:w-full aspect-[3/4] rounded-2xl overflow-hidden border border-border-color shadow-2xl relative bg-box-bg mx-auto">
                                             <img 
-                                                src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.png'} 
+                                                src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.webp'} 
                                                 alt={actorDetails.name}
                                                 className="w-full h-full object-cover"
-                                                onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.png'; }}
+                                                onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
                                             />
                                         </div>
                                         
@@ -713,14 +832,6 @@ return (
                                                     </span>
                                                 </div>
                                             )}
-                                            {actorDetails.known_for_department && (
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-[8px] text-sec-text font-black uppercase tracking-widest">Department</span>
-                                                    <span className="text-xs font-bold text-brand uppercase tracking-wider">
-                                                        {actorDetails.known_for_department}
-                                                    </span>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
 
@@ -728,21 +839,21 @@ return (
                                     <div className="flex-1 flex flex-col gap-6 md:gap-8 md:overflow-y-auto md:max-h-[60vh] scrollbar-hide pr-2 text-start">
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
-                                                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{(language === 'ku' || language === 'badini') ? 'ژیاننامە' : 'Biography'}</h4>
+                                                <div className="w-1.5 h-4 bg-brand rounded-full" />
+                                                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{isRtl ? 'ژیاننامە' : 'Biography'}</h4>
                                             </div>
-                                            <p className="text-sec-text text-sm leading-relaxed font-bold italic opacity-95">
-                                                {actorDetails.biography || ((language === 'ku' || language === 'badini') ? "زانیاری لەسەر ئەم ئەکتەرە بەردەست نییە." : "No biography compiled for this subject node.")}
+                                            <p className="text-sec-text text-sm leading-relaxed font-bold opacity-95">
+                                                {actorDetails.biography || (isRtl ? "زانیاری لەسەر ئەم ئەکتەرە بەردەست نییە." : "No biography compiled for this actor.")}
                                             </p>
                                         </div>
 
                                         {actorDetails.combined_credits?.cast?.length > 0 && (
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-1.5 h-4 bg-brand rounded-full shadow-[0_0_10px_rgba(229,9,20,0.5)]" />
-                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{(language === 'ku' || language === 'badini') ? 'کارە دیارەکان' : 'Featured Works'}</h4>
+                                                    <div className="w-1.5 h-4 bg-brand rounded-full" />
+                                                    <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-sec-text italic">{isRtl ? 'کارە دیارەکان' : 'Featured Works'}</h4>
                                                 </div>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4" dir="ltr">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" dir="ltr">
                                                     {actorDetails.combined_credits.cast
                                                         .filter((c: any) => c.poster_path)
                                                         .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
@@ -750,17 +861,17 @@ return (
                                                         .map((movie: any) => (
                                                             <div 
                                                                 key={movie.id} 
-                                                                className="group/work cursor-pointer bg-box-bg border border-border-color p-2 rounded-2xl flex flex-col gap-2 hover:bg-brand/10 hover:border-brand/20 transition-all"
+                                                                className="group/work cursor-pointer bg-box-bg border border-border-color p-2 rounded-2xl flex flex-col gap-1.5 hover:bg-brand/10 hover:border-brand/20 transition-all"
                                                                 onClick={() => {
                                                                     setSelectedActorId(null);
-                                                                    navigate(`/details/${movie.media_type || 'movie'}/${movie.id}`);
+                                                                    navigate(`/details/${getMediaType(movie)}/${movie.id}`);
                                                                 }}
                                                             >
                                                                 <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-border-color">
                                                                     <img 
                                                                         src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
                                                                         alt={movie.title || movie.name}
-                                                                        className="w-full h-full object-cover group-hover/work:scale-105 transition-transform duration-500"
+                                                                        className="w-full h-full object-cover group-hover/work:scale-105 transition-transform duration-500" 
                                                                         loading="lazy"
                                                                     />
                                                                 </div>

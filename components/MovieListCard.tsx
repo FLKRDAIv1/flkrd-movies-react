@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, Plus, Check, Star, Mic2, Film, Share2, Trash2 } from 'lucide-react';
+import { Play, Plus, Check, Star, Mic2, Film, Share2, Trash2, X } from 'lucide-react';
 import { MyListItem } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -11,77 +11,65 @@ import { supabase } from '../utils/supabaseClient';
 import KurdishCCBadge from './KurdishCCBadge';
 import { BorderBeam } from './ui/border-beam';
 import { ListMoviePreviewDrawer } from './ListMoviePreviewDrawer';
+import { getMediaType } from '../services/tmdbService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
+import { isItemInMyList, toggleMyList, subscribeMyList } from '../utils/myListStorage';
 
 interface MovieListCardProps {
   item: any;
   type?: 'movie' | 'tv' | 'dubbed';
+  isProgressRow?: boolean;
+  isMyListPage?: boolean;
+  onRemove?: (item: any) => void;
   className?: string;
 }
 
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
-export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, type, className = '' }) => {
+export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, type, isProgressRow, isMyListPage, onRemove, className = '' }) => {
   const navigate = useNavigate();
   const { language, t } = useTranslation();
   const { addNotification } = useNotification();
   const { isAdmin } = useUI();
 
-  const [isAdded, setIsAdded] = useState(false);
+  const [isAdded, setIsAdded] = useState(() => isItemInMyList(item.id));
   const [isFocused, setIsFocused] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isImgLoaded, setIsImgLoaded] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const isCustom = String(item.id).startsWith('custom_');
-  const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
-
-  const updateMyListIds = useCallback(() => {
-    const myList = JSON.parse(localStorage.getItem('myList') || '[]');
-    setIsAdded(myList.some((i: any) => i.id === item.id));
-  }, [item.id]);
+  const mediaType = isCustom ? 'dubbed' : (type || getMediaType(item));
 
   useEffect(() => {
-    updateMyListIds();
-    window.addEventListener('storage', updateMyListIds);
-    return () => window.removeEventListener('storage', updateMyListIds);
-  }, [updateMyListIds]);
+    setIsAdded(isItemInMyList(item.id));
+    return subscribeMyList(() => {
+      setIsAdded(isItemInMyList(item.id));
+    });
+  }, [item.id]);
 
   const handleToggleMyList = (e: React.MouseEvent) => {
     e.stopPropagation();
-    let myList: MyListItem[] = JSON.parse(localStorage.getItem('myList') || '[]');
-    const index = myList.findIndex((i) => i.id === item.id);
+    const { added } = toggleMyList(item, mediaType);
+    setIsAdded(added);
 
-    if (index > -1) {
-      myList.splice(index, 1);
-      setIsAdded(false);
-      addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListRemoveSuccess') });
-    } else {
-      myList.push({
-        id: item.id,
-        media_type: mediaType === 'dubbed' ? 'movie' : (mediaType as 'movie' | 'tv'),
-        title: item.title || item.name || '',
-        poster_path: item.poster_path,
-      });
-      setIsAdded(true);
+    if (added) {
       addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListAddSuccess') });
+    } else {
+      if (onRemove) onRemove(item);
+      addNotification({ type: 'info', title: t('notificationsInfoTitle') || 'Removed', message: t('myListRemoveSuccess') });
     }
+  };
 
-    try {
-      localStorage.setItem('myList', JSON.stringify(myList));
-    } catch (err) {
-      console.warn('localStorage quota exceeded. Clearing legacy TMDB cache items...');
-      // Clear old TMDB cache keys if quota full
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('tmdb_v3_')) localStorage.removeItem(key);
-      });
-      try {
-        localStorage.setItem('myList', JSON.stringify(myList));
-      } catch (retryErr) {
-        addNotification({ type: 'error', title: 'Storage Full', message: 'Storage limit reached on device.' });
-      }
-    }
+  const handleRemoveProgress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+    const filtered = progress.filter((i: any) => !(i.id === item.id && String(i.type) === mediaType));
+    localStorage.setItem('watchProgress', JSON.stringify(filtered));
+    if (onRemove) onRemove(item);
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('watchProgressUpdated'));
+    addNotification({ type: 'info', title: t('notificationsInfoTitle') || 'Removed', message: t('removeFromProgress') || 'Removed from continue watching' });
   };
 
   const detailPath =
@@ -91,7 +79,7 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
 
   const navigateToDetail = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(detailPath, { state: { customData: item } });
+    setIsPreviewOpen(true);
   };
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -196,7 +184,7 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
                 ? imageSrc
                 : imageSrc
                 ? `${IMAGE_BASE_URL_POSTER}${imageSrc}`
-                : 'https://raw.githubusercontent.com/flkrd-cdn/main/default-poster.webp'
+                : '/default-poster.svg'
             }
             alt={title}
             loading="lazy"
@@ -274,22 +262,55 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
               </span>
             </button>
 
-            {/* My List */}
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); handleToggleMyList(e as any); }}
-              onClick={(e) => e.stopPropagation()}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-colors cursor-pointer active:scale-95 shrink-0 ${
-                isAdded
-                  ? 'bg-brand text-white border-brand'
-                  : 'bg-white/10 text-white border-white/15 backdrop-blur-md'
-              }`}
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-            >
-              {isAdded ? <Check className="w-3 h-3 shrink-0" /> : <Plus className="w-3 h-3 shrink-0" />}
-              <span className={`hidden sm:inline ${isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}`}>
-                {isAdded ? (t('myListRemoveSuccess') || 'Saved') : (t('myListAddSuccess') || 'List')}
-              </span>
-            </button>
+            {/* Remove from Progress */}
+            {isProgressRow && (
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); handleRemoveProgress(e as any); }}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold border bg-red-600/80 hover:bg-red-600 text-white border-red-500/50 backdrop-blur-md transition-colors cursor-pointer active:scale-95 shrink-0"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                aria-label="Remove progress"
+                title="Remove from progress"
+              >
+                <X className="w-3 h-3 shrink-0" />
+                <span className={`hidden sm:inline ${isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}`}>
+                  {isRtl ? 'سڕینەوە' : 'Remove'}
+                </span>
+              </button>
+            )}
+
+            {/* My List / Remove */}
+            {isMyListPage ? (
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); handleToggleMyList(e as any); }}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold border bg-red-600/80 hover:bg-red-600 text-white border-red-500/50 backdrop-blur-md transition-colors cursor-pointer active:scale-90 shrink-0 shadow-lg"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                aria-label={t('myListRemoveSuccess') || 'Remove'}
+                title="Remove from List"
+              >
+                <Trash2 className="w-3 h-3 shrink-0" />
+                <span className={`hidden sm:inline ${isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}`}>
+                  {isRtl ? 'سڕینەوە' : 'Remove'}
+                </span>
+              </button>
+            ) : (
+              <button
+                onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); handleToggleMyList(e as any); }}
+                onClick={(e) => e.stopPropagation()}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold border transition-colors cursor-pointer active:scale-95 shrink-0 ${
+                  isAdded
+                    ? 'bg-brand text-white border-brand'
+                    : 'bg-white/10 text-white border-white/15 backdrop-blur-md'
+                }`}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >
+                {isAdded ? <Check className="w-3 h-3 shrink-0" /> : <Plus className="w-3 h-3 shrink-0" />}
+                <span className={`hidden sm:inline ${isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}`}>
+                  {isAdded ? (t('myListRemoveSuccess') || 'Saved') : (t('myListAddSuccess') || 'List')}
+                </span>
+              </button>
+            )}
 
             {/* Share */}
             <button

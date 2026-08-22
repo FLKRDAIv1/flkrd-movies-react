@@ -143,8 +143,6 @@ export const PremiumBackground: React.FC = () => {
                  ctx.beginPath();
                  ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
                  ctx.fillStyle = moonGrad;
-                 ctx.shadowBlur = 40;
-                 ctx.shadowColor = 'rgba(255,255,255,0.2)';
                  ctx.fill();
                  
                  // Crater Details

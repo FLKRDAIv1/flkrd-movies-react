@@ -1,113 +1,124 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Star, Plus, Check, X, Trash2, Mic2, Share2 } from 'lucide-react';
-import { MyListItem, WatchProgress } from '../types';
-import { bannedService } from '../services/bannedService';
-import { supabase } from '../utils/supabaseClient';
+import React, { memo, useState, forwardRef } from 'react';
+import { Plus, Check, Trash2, X, Star, Share2, Mic2 } from 'lucide-react';
+import { Content } from '../types';
+import { IMAGE_BASE_URL_POSTER, API_KEY } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
-import KurdishCCBadge from './KurdishCCBadge';
-import { LiquidButton } from './ui/liquid-glass-button';
+import { useAuth } from '../contexts/AuthContext';
+import { bannedService } from '../services/bannedService';
 import { fetchData } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER } from '../constants';
-import { BorderBeam } from './ui/border-beam';
+import KurdishCCBadge from './KurdishCCBadge';
+import ListMoviePreviewDrawer from './ListMoviePreviewDrawer';
 
 interface MovieCardProps {
-  item: any; // Can be Content, WatchProgress, or MyListItem
-  type?: 'movie' | 'tv' | 'dubbed';
+  item: Content | any;
+  isMyListPage?: boolean;
   isProgressRow?: boolean;
+  onRemove?: () => void;
   className?: string;
+  mediaType?: 'movie' | 'tv' | 'dubbed';
 }
 
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
-export const MovieCard = React.memo(
-  React.forwardRef<HTMLDivElement, MovieCardProps>(
-    ({ item, type, isProgressRow, className }, ref) => {
-      const navigate = useNavigate();
-      const { language, t } = useTranslation();
+const MovieCard = memo(
+  forwardRef<HTMLDivElement, MovieCardProps>(
+    ({ item, isMyListPage = false, isProgressRow = false, onRemove, className, mediaType = 'movie' }, ref) => {
+      const { t, language } = useTranslation();
       const { addNotification } = useNotification();
-      const { isAdmin, glassConfig = {
-        redOpacity: 0.15,
-        darkOpacity: 0.85,
-        blurAmount: 20,
-        saturation: 120,
-        borderOpacity: 0.1,
-        aberrationIntensity: 0.5,
-      } } = useUI();
+      const { isAdmin } = useUI();
+      const { user } = useAuth();
 
-      const [isAdded, setIsAdded] = useState(false);
       const [isImgLoaded, setIsImgLoaded] = useState(false);
-      const [isFocused, setIsFocused] = useState(false);
+      const [isPreviewOpen, setIsPreviewOpen] = useState(false);
       const [isHovered, setIsHovered] = useState(false);
+      const [isFocused, setIsFocused] = useState(false);
 
-      const isCustom = String(item.id).startsWith('custom_');
-      const mediaType = item.media_type || (item as any).type || type || (isCustom ? 'dubbed' : 'movie');
+      const isCustom = item.isCustom || 'isCustom' in item;
 
-      const updateMyListIds = useCallback(() => {
-        const myList = JSON.parse(localStorage.getItem('myList') || '[]');
-        setIsAdded(myList.some((i: any) => i.id === item.id));
-      }, [item.id]);
-
-      useEffect(() => {
-        updateMyListIds();
-        window.addEventListener('storage', updateMyListIds);
-        return () => window.removeEventListener('storage', updateMyListIds);
-      }, [updateMyListIds]);
+      // Saved state
+      const [isAdded, setIsAdded] = useState(() => {
+        try {
+          const list = JSON.parse(localStorage.getItem('myList') || '[]');
+          return list.some((i: any) => String(i.id) === String(item.id));
+        } catch {
+          return false;
+        }
+      });
 
       const handleToggleMyList = (e: React.MouseEvent) => {
         e.stopPropagation();
-        let myList: MyListItem[] = JSON.parse(localStorage.getItem('myList') || '[]');
-        const index = myList.findIndex((i) => i.id === item.id);
-
-        if (index > -1) {
-          myList.splice(index, 1);
-          setIsAdded(false);
-          addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListRemoveSuccess') });
-        } else {
-          myList.push({
-            id: item.id,
-            media_type: mediaType === 'dubbed' ? 'movie' : (mediaType as 'movie' | 'tv'),
-            title: item.title || item.name || '',
-            poster_path: item.poster_path,
-          });
-          setIsAdded(true);
-          addNotification({ type: 'success', title: t('notificationsSuccessTitle'), message: t('myListAddSuccess') });
+        try {
+          const list = JSON.parse(localStorage.getItem('myList') || '[]');
+          const idx = list.findIndex((i: any) => String(i.id) === String(item.id));
+          if (idx > -1) {
+            list.splice(idx, 1);
+            setIsAdded(false);
+            if (onRemove) onRemove();
+            addNotification({
+              type: 'info',
+              title: t('myListRemoveSuccess') || 'Removed from List',
+              message: item.title || item.name || '',
+            });
+          } else {
+            list.push({ ...item, media_type: mediaType });
+            setIsAdded(true);
+            addNotification({
+              type: 'success',
+              title: t('myListAddSuccess') || 'Added to List',
+              message: item.title || item.name || '',
+            });
+          }
+          localStorage.setItem('myList', JSON.stringify(list));
+          window.dispatchEvent(new Event('storage'));
+        } catch (err) {
+          console.error(err);
         }
-
-        localStorage.setItem('myList', JSON.stringify(myList));
-        window.dispatchEvent(new Event('storage'));
       };
 
       const handleRemoveProgress = (e: React.MouseEvent) => {
         e.stopPropagation();
-        const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-        const filtered = progress.filter((i: any) => !(i.id === item.id && String(i.type) === mediaType));
-        localStorage.setItem('watchProgress', JSON.stringify(filtered));
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new Event('watchProgressUpdated'));
+        try {
+          const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+          const filtered = progress.filter((p: any) => String(p.id) !== String(item.id));
+          localStorage.setItem('watchProgress', JSON.stringify(filtered));
+          window.dispatchEvent(new Event('storage'));
+          if (onRemove) onRemove();
+          addNotification({
+            type: 'info',
+            title: 'Progress Removed',
+            message: item.title || item.name || '',
+          });
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setIsPreviewOpen(true);
+        }
       };
 
       const handleBan = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        const cleanId = String(item.id).replace('custom_', '');
-
-        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
-
+        if (!isAdmin || !user) return;
+        const confirmBan = window.confirm(`Ban "${item.title || item.name}" permanently from FLKRD?`);
+        if (!confirmBan) return;
         try {
-          const banSignal = await bannedService.banContent(cleanId, mediaType);
-          if (!banSignal) throw new Error('Registry reject');
-
-          if (isCustom) {
-            await supabase.rpc('delete_dubbed_movie', { target_id: String(item.id) });
+          const success = await bannedService.banContent(
+            item.id,
+            mediaType === 'tv' ? 'tv' : 'movie'
+          );
+          if (success) {
+            addNotification({ type: 'success', title: 'Content Terminated', message: `${item.title || item.name} banned.` });
+            if (onRemove) onRemove();
+          } else {
+            addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
           }
-
-          addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed from global registry.' });
-          window.dispatchEvent(new CustomEvent('banned-list-updated'));
-        } catch (err) {
-          console.error('Moderation failure:', err);
+        } catch {
           addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
         }
       };
@@ -116,10 +127,6 @@ export const MovieCard = React.memo(
         mediaType === 'dubbed' || isCustom
           ? `/dubbed-details/${String(item.id).replace('custom_', '')}`
           : `/details/${mediaType}/${item.id}`;
-
-      const navigateToDetail = () => {
-        navigate(detailPath, { state: { customData: item } });
-      };
 
       const handleShare = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -146,15 +153,8 @@ export const MovieCard = React.memo(
         }
       };
 
-      const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          navigateToDetail();
-        }
-      };
-
       const handlePrefetch = () => {
-        if (isCustom || mediaType === 'dubbed') {
+        if (mediaType === 'dubbed' || isCustom) {
           import('../pages/DubbedDetailPage');
         } else {
           import('../pages/DetailPage');
@@ -172,65 +172,43 @@ export const MovieCard = React.memo(
       const isRtl = language === 'ku' || language === 'badini';
       const title = isRtl && item.kurdishTitle ? item.kurdishTitle : item.title || item.name || '';
       const rating = item.vote_average || 0;
-      const year = (item.release_date || item.first_air_date || '').split('-')[0] || 'N/A';
+      const year = (item.release_date || item.first_air_date || '').split('-')[0] || '';
       const progressPct = 'progress' in item ? Math.min(100, (item.progress / (item.duration || 3600)) * 100) : 0;
       const imageSrc = item.imageBase64 || item.poster_path || '';
       const isActiveState = isHovered || isFocused;
 
       return (
-        <motion.div
-          ref={ref}
-          tabIndex={0}
-          onClick={navigateToDetail}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onMouseEnter={() => {
-            setIsHovered(true);
-            handlePrefetch();
-          }}
-          onMouseLeave={() => setIsHovered(false)}
-          onPointerDown={handlePrefetch}
-          className={`flex-shrink-0 group/card relative cursor-pointer py-2 overflow-visible card-entrance transform-gpu will-change-transform touch-manipulation focus:outline-none ${
-            className || 'w-44 md:w-72'
-          }`}
-          style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 280px' }}
-          whileHover={!IS_TOUCH_DEVICE ? { scale: 1.04, y: -5 } : undefined}
-          whileTap={{ scale: 0.95 }}
-          transition={{
-            type: 'spring',
-            stiffness: 380,
-            damping: 24,
-          }}
-        >
-          {/* Hand-Crafted Card Outer Shell */}
+        <>
           <div
-            className={`relative aspect-[2/3] w-full rounded-[2.2rem] md:rounded-[3rem] overflow-hidden border-2 transition-all duration-300 bg-neutral-950 p-2 flex flex-col ${
-              isActiveState
-                ? 'border-brand/40 shadow-[0_22px_50px_rgba(229,9,20,0.38)]'
-                : 'border-white/5 shadow-[0_15px_35px_rgba(0,0,0,0.65)]'
-            }`}
-            style={{
-              boxShadow: isActiveState
-                ? '0 22px 50px rgba(229, 9, 20, 0.38)'
-                : '0 15px 35px rgba(0, 0, 0, 0.65)',
+            ref={ref}
+            tabIndex={0}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPreviewOpen(true);
             }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            onMouseEnter={() => {
+              setIsHovered(true);
+              handlePrefetch();
+            }}
+            onMouseLeave={() => setIsHovered(false)}
+            onPointerDown={handlePrefetch}
+            className={`flex-shrink-0 group/card relative cursor-pointer py-1.5 touch-manipulation focus:outline-none transform-gpu transition-transform duration-200 hover:scale-[1.03] active:scale-95 ${
+              className || 'w-44 md:w-72'
+            }`}
+            style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}
           >
-            {/* Apple / Gemini AI Glowing Border Beam on Active Hover or Focus State (Desktop Only) */}
-            {isActiveState && !IS_TOUCH_DEVICE && (
-              <BorderBeam
-                size={220}
-                duration={7}
-                borderWidth={2}
-                colorFrom="#e50914"
-                colorTo="#9c40ff"
-                glow={true}
-              />
-            )}
-
-            {/* Poster Artwork Window */}
-            <div className="relative flex-1 min-h-0 w-full rounded-[1.6rem] md:rounded-[2.4rem] overflow-hidden border border-white/5 bg-neutral-900">
-              {/* Skeleton Pulse loader during image fetch */}
+            {/* Seamless Cinematic Poster Card (No separated capsule) */}
+            <div
+              className={`relative aspect-[2/3] w-full rounded-2xl md:rounded-[2rem] overflow-hidden border transition-all duration-300 bg-neutral-950 shadow-xl ${
+                isActiveState
+                  ? 'border-brand/60 shadow-[0_16px_40px_rgba(229,9,20,0.35)]'
+                  : 'border-white/10 hover:border-white/25 shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+              }`}
+            >
+              {/* Image loader placeholder */}
               {!isImgLoaded && (
                 <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
                   <div className="w-6 h-6 border-2 border-white/15 border-t-brand rounded-full animate-spin" />
@@ -243,7 +221,7 @@ export const MovieCard = React.memo(
                     ? imageSrc
                     : imageSrc
                     ? `${IMAGE_BASE_URL_POSTER}${imageSrc}`
-                    : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp'
+                    : '/default-poster.svg'
                 }
                 alt={title}
                 width={342}
@@ -251,40 +229,45 @@ export const MovieCard = React.memo(
                 loading="lazy"
                 decoding="async"
                 onLoad={() => setIsImgLoaded(true)}
-                className={`object-cover w-full h-full transition-all duration-500 transform-gpu backface-hidden group-hover/card:scale-105 ${
+                className={`object-cover w-full h-full transition-transform duration-500 transform-gpu group-hover/card:scale-105 ${
                   isImgLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
-                  target.src = 'https://raw.githubusercontent.com/flkrd/cdn/main/default-poster.webp';
+                  target.src = '/default-poster.svg';
                   setIsImgLoaded(true);
                 }}
               />
 
-              {/* Poster Atmospheric Vignette Fade */}
-              <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-transparent to-black/20 pointer-events-none" />
+              {/* Bottom Cinematic Gradient Vignette */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-transparent pointer-events-none" />
 
-              {/* Floating IMDb Rating Badge */}
-              {rating > 0 && (
-                <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.6)] border border-[#F5C518]/40">
-                  <span className="font-[1000] text-[7px] md:text-[10px] uppercase tracking-widest leading-none">
-                    IMDb
-                  </span>
-                  <span className="font-black text-[8px] md:text-xs leading-none">{rating.toFixed(1)}</span>
-                </div>
-              )}
+              {/* Top Badges (IMDb Rating & Year) */}
+              <div className="absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1.5 pointer-events-none">
+                {rating > 0 && (
+                  <div className="flex items-center gap-1 bg-[#F5C518] text-black px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg font-black text-[8px] md:text-xs shadow-md border border-[#F5C518]/50">
+                    <span className="font-[1000] text-[7px] md:text-[9px] uppercase tracking-wider">IMDb</span>
+                    <span>{rating.toFixed(1)}</span>
+                  </div>
+                )}
 
-              {/* Floating Kurdish CC Badge */}
+                {year && (
+                  <div className="bg-black/70 backdrop-blur-md text-white/90 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg font-bold text-[8px] md:text-[10px] border border-white/15 shadow-md">
+                    {year}
+                  </div>
+                )}
+              </div>
+
+              {/* Kurdish CC / Dubbed Badge */}
               {!isCustom && (
-                <div className="z-20 relative">
+                <div className="absolute bottom-14 left-2.5 md:bottom-16 md:left-3.5 z-20 pointer-events-none">
                   <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
                 </div>
               )}
 
-              {/* Level / Dubbed Rank Badge */}
               {item.level ? (
                 <div
-                  className={`absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 px-2 py-0.5 md:px-2.5 md:py-1 rounded-md text-[7px] md:text-[9px] font-black uppercase tracking-widest shadow-[0_4px_12px_rgba(0,0,0,0.6)] backdrop-blur-sm ${
+                  className={`absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[7px] md:text-[9px] font-black uppercase tracking-widest shadow-md backdrop-blur-sm ${
                     item.level === 'KING'
                       ? 'bg-yellow-500 text-black border border-yellow-500/40'
                       : 'bg-brand text-white border border-brand/40'
@@ -295,21 +278,39 @@ export const MovieCard = React.memo(
                 </div>
               ) : (
                 mediaType === 'dubbed' && (
-                  <div className="absolute top-2 left-2 md:top-4 md:left-4 z-20 flex items-center gap-1 md:gap-1.5 bg-brand text-white px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md shadow-[0_4px_12px_rgba(0,0,0,0.6)] border border-brand/40">
+                  <div className="absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1 bg-brand text-white px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg shadow-md border border-brand/40">
                     <Mic2 size={10} className="text-white" />
                     <span className="font-black text-[8px] md:text-xs leading-none">DUBBED</span>
                   </div>
                 )
               )}
 
-              {/* Action Triggers (List Add / Remove / Ban) */}
-              <div className="absolute top-4 right-4 flex flex-col gap-2 z-30 opacity-0 group-hover/card:opacity-100 transition-all duration-300">
-                {!isProgressRow && (
-                  <LiquidButton
-                    variant={isAdded ? 'default' : 'secondary'}
+              {/* Action Buttons (List Add / Remove / Share / Ban) */}
+              <div
+                className={`absolute top-2.5 right-2.5 md:top-3.5 md:right-3.5 flex flex-col gap-1.5 z-30 transition-opacity duration-200 ${
+                  isMyListPage || isProgressRow || isAdded || IS_TOUCH_DEVICE
+                    ? 'opacity-100'
+                    : 'opacity-0 group-hover/card:opacity-100'
+                }`}
+              >
+                {isMyListPage && (
+                  <button
                     onClick={handleToggleMyList}
-                    className={`!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl transition-all ${
-                      isAdded ? 'bg-brand text-white' : 'text-white'
+                    className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg border border-red-500/40 active:scale-90 transition-all"
+                    aria-label={t('myListRemoveSuccess') || 'Remove from my list'}
+                    title="Remove from List"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {!isProgressRow && !isMyListPage && (
+                  <button
+                    onClick={handleToggleMyList}
+                    className={`p-2 rounded-xl transition-all shadow-lg active:scale-90 ${
+                      isAdded
+                        ? 'bg-brand text-white border border-brand/60'
+                        : 'bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95'
                     }`}
                     aria-label={
                       isAdded
@@ -317,39 +318,37 @@ export const MovieCard = React.memo(
                         : t('myListAddSuccess') || 'Add to my list'
                     }
                   >
-                    {isAdded ? <Check className="w-4 h-4" strokeWidth={4} /> : <Plus className="w-4 h-4" strokeWidth={4} />}
-                  </LiquidButton>
+                    {isAdded ? <Check className="w-3.5 h-3.5" strokeWidth={3.5} /> : <Plus className="w-3.5 h-3.5" strokeWidth={3.5} />}
+                  </button>
                 )}
 
                 {isProgressRow && (
-                  <LiquidButton
-                    variant="default"
+                  <button
                     onClick={handleRemoveProgress}
-                    className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 bg-brand text-white rounded-xl"
+                    className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg border border-red-500/40 active:scale-90 transition-all"
                     aria-label="Remove watch progress"
+                    title="Remove from progress"
                   >
-                    <X className="w-4 h-4" strokeWidth={4} />
-                  </LiquidButton>
+                    <X className="w-3.5 h-3.5" strokeWidth={3.5} />
+                  </button>
                 )}
 
-                <LiquidButton
-                  variant="secondary"
+                <button
                   onClick={handleShare}
-                  className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl text-white"
+                  className="p-2 rounded-xl bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95 shadow-lg active:scale-90 transition-all"
                   aria-label="Share movie"
                 >
-                  <Share2 className="w-4 h-4" />
-                </LiquidButton>
+                  <Share2 className="w-3.5 h-3.5" />
+                </button>
 
                 {isAdmin && (
-                  <LiquidButton
-                    variant="destructive"
+                  <button
                     onClick={handleBan}
-                    className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl"
+                    className="p-2 bg-red-950/80 hover:bg-red-700 text-red-300 hover:text-white rounded-xl shadow-lg border border-red-700/50 active:scale-90 transition-all"
                     aria-label="Ban content from global registry"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </LiquidButton>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
 
@@ -359,43 +358,31 @@ export const MovieCard = React.memo(
                   <div className="h-full bg-brand shadow-[0_0_8px_rgba(229,9,20,0.8)]" style={{ width: `${progressPct}%` }} />
                 </div>
               )}
-            </div>
 
-            {/* Bespoke Glass Footer Container */}
-            <div
-              className="mt-2 px-3 py-2 flex flex-col gap-0.5 rounded-2xl border"
-              style={{
-                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb, 229, 9, 20), ${
-                  glassConfig.redOpacity * 0.8
-                }), transparent 85%), rgba(12, 12, 12, ${glassConfig.darkOpacity * 0.92})`,
-                backdropFilter: `blur(${glassConfig.blurAmount * 0.5}px)`,
-                borderColor: `rgba(var(--brand-red-rgb, 229, 9, 20), ${glassConfig.borderOpacity * 0.8})`,
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, ${glassConfig.borderOpacity * 0.2}),
-                  0 6px 14px rgba(0, 0, 0, 0.45)
-                `,
-              }}
-            >
-              {/* Card Title (RTL Kurdish & English Typography Polish) */}
-              <h4
-                className={`text-[10px] md:text-sm truncate text-center transition-colors group-hover/card:text-brand ${
-                  isRtl ? 'font-kurdish leading-[1.35] tracking-normal font-bold text-white' : 'font-extrabold tracking-tight leading-tight text-white'
-                }`}
-              >
-                {title}
-              </h4>
+              {/* Clean Integrated Title Overlay at Bottom */}
+              <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-20 flex flex-col justify-end pointer-events-none">
+                <h4
+                  className={`text-xs md:text-sm text-white font-extrabold truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover/card:text-brand ${
+                    isRtl ? 'font-kurdish leading-snug font-bold' : 'tracking-tight leading-snug'
+                  }`}
+                >
+                  {title}
+                </h4>
 
-              {/* Metadata Sub-Row */}
-              <div className="flex items-center justify-between mt-0.5 text-[7px] md:text-[9px] font-bold text-sec-text px-0.5">
-                <span className="text-brand font-[1000] tracking-widest text-[6px] md:text-[8px] uppercase italic">
-                  FLKRD
-                </span>
-
-                <span className="text-white/60 font-semibold uppercase tracking-tighter">{year}</span>
+                <div className="flex items-center justify-between mt-1 text-[8px] md:text-[10px] font-bold text-white/70">
+                  <span className="text-brand font-[1000] tracking-wider uppercase text-[7px] md:text-[9px]">FLKRD</span>
+                  {year && <span className="text-white/60 font-semibold">{year}</span>}
+                </div>
               </div>
             </div>
           </div>
-        </motion.div>
+
+          <ListMoviePreviewDrawer
+            item={item}
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+          />
+        </>
       );
     }
   )
@@ -403,4 +390,5 @@ export const MovieCard = React.memo(
 
 MovieCard.displayName = 'MovieCard';
 
+export { MovieCard };
 export default MovieCard;

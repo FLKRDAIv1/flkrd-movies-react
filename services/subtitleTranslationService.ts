@@ -199,6 +199,54 @@ const getApiBaseUrl = (): string => {
 };
 
 /**
+ * Direct Google Apps Script translator (ultra-fast serverless macro with auto-redirect resolution)
+ */
+async function translateWithGoogleAppsScript(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
+  if (!chunkItems || chunkItems.length === 0) return null;
+  const gasEndpoints = [
+    'https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec',
+    'https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec'
+  ];
+  const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+  const effectiveTgt = (tgt === 'ku' || tgt === 'ckb' || tgt === 'sorani') ? 'ckb' : (tgt === 'badini' ? 'ku' : tgt);
+  const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(tgt);
+
+  for (const gasUrl of gasEndpoints) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      const res = await fetch(gasUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          texts: chunkItems,
+          text: chunkItems,
+          source: effectiveSrc,
+          target: effectiveTgt
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawTranslations = data?.translations || data?.translation || (Array.isArray(data) ? data : null);
+        if (Array.isArray(rawTranslations) && rawTranslations.length === chunkItems.length) {
+          return rawTranslations.map((item: string, idx: number) => {
+            const cleaned = (item || '').trim();
+            return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
+          });
+        }
+      }
+    } catch (gasErr) {
+      // Continue to next endpoint
+    }
+  }
+  return null;
+}
+
+/**
  * Direct client-side Google GTX GET array translator (runs directly in browser as secondary fail-safe without CORS preflight issues)
  */
 async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
@@ -264,7 +312,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
 }
 
 /**
- * Translates an array of text strings via Vercel translation proxy with direct client fallback.
+ * Translates an array of text strings via Vercel translation proxy with direct Google Apps Script & Google GTX fallback.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
   const currentBase = getApiBaseUrl();
@@ -297,7 +345,13 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
     }
   }
 
-  // Fail-Safe Fallback: Try direct browser client translation with Google GTX GET
+  // Fail-Safe Fallback 1: Google Apps Script
+  const gasDirect = await translateWithGoogleAppsScript(text, sourceLang, targetLang);
+  if (gasDirect && Array.isArray(gasDirect) && gasDirect.length === text.length) {
+    return gasDirect;
+  }
+
+  // Fail-Safe Fallback 2: Google GTX Client-Side Engine
   const clientDirect = await translateArrayDirectClient(text, sourceLang, targetLang);
   if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
     return clientDirect;

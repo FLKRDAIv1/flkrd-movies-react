@@ -23,10 +23,11 @@ import { updateService, UpdateCheckResult } from '../services/updateService';
 import { isTauri } from '../utils/tauriUtils';
 import { tauriService } from '../services/tauriService';
 import { supabase } from '../utils/supabaseClient';
+import { downloadMobileConfig } from '../utils/appleProfileUtils';
 // @ts-ignore
-import warningImage1 from './warnin g images/image.png';
+import warningImage1 from './warnin g images/image.webp';
 // @ts-ignore
-import warningImage2 from './warnin g images/image copy.png';
+import warningImage2 from './warnin g images/image copy.webp';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -427,28 +428,30 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     try {
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        addNotification({ type: 'error', title: 'Export Failed', message: 'Popup blocked. Please allow popups to generate PDF report.' });
+        addNotification({ type: 'error', title: 'کێشە لە دروستکردنی PDF', message: 'تکایە ڕێگە بە پەنجەرەی Pop-up بدە بۆ داگرتنی ڕاپۆرتی PDF.' });
         return;
       }
 
-      const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const dateStr = new Date().toLocaleDateString('ku-IQ', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       const liveCount = detailedVisits.filter(v => (Date.now() - new Date(v.created_at).getTime()) < 15 * 60 * 1000).length || analytics?.live_users || 1;
       const totalVisits = analytics?.total_visits || detailedVisits.length || 0;
 
-      // 1. Generate 7-day SVG Traffic Chart for PDF
+      // 1. Generate 7-day SVG Traffic Chart for PDF in Kurdish
       const chartWidth = 580;
       const chartHeight = 150;
       const chartPadding = 25;
 
       const daysList = [];
       const today = new Date();
+      const kurdishDays = ['شەممە', 'یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'جومعە'];
+
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
         const dateStrKey = d.toISOString().split('T')[0];
         const dayCount = detailedVisits.filter(v => v.created_at && v.created_at.startsWith(dateStrKey)).length;
         const rpcData = (analytics?.daily_traffic || []).find(dt => dt.date === dateStrKey);
         const count = Math.max(dayCount, rpcData ? rpcData.count : 0);
-        const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+        const label = kurdishDays[d.getDay()];
         daysList.push({ label, count, dateStrKey });
       }
 
@@ -474,11 +477,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const chartSvg = `
         <div style="background: #0e0e0e; border: 1px solid #222; border-radius: 16px; padding: 18px; margin-bottom: 25px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div style="font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #e50914;">
-              📈 WEEKLY & DAILY TRAFFIC TREND CHART
+            <div style="font-size: 14px; font-weight: 900; color: #e50914;">
+              📈 نەخشەی ڕەوتی هاتووچۆی هەفتانە و ڕۆژانە
             </div>
-            <div style="font-size: 9px; font-weight: 800; color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); padding: 3px 10px; border-radius: 12px; font-family: monospace;">
-              7-DAY LIVE TRAFFIC ANALYTICS
+            <div style="font-size: 11px; font-weight: 800; color: #4ade80; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); padding: 3px 12px; border-radius: 12px;">
+              شیکاری هاتووچۆی ٧ ڕۆژی ڕابردوو
             </div>
           </div>
           <svg width="100%" height="${chartHeight}" viewBox="0 0 ${chartWidth} ${chartHeight}" style="overflow: visible;">
@@ -497,8 +500,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             
             ${points.map(p => `
               <circle cx="${p.x}" cy="${p.y}" r="4" fill="#ffffff" stroke="#e50914" stroke-width="2" />
-              <text x="${p.x}" y="${p.y - 8}" fill="#ffffff" font-size="9" font-weight="900" text-anchor="middle" font-family="monospace">${p.count}</text>
-              <text x="${p.x}" y="${chartHeight - 6}" fill="#777777" font-size="9" font-weight="800" text-anchor="middle">${p.label}</text>
+              <text x="${p.x}" y="${p.y - 8}" fill="#ffffff" font-size="11" font-weight="900" text-anchor="middle">${p.count}</text>
+              <text x="${p.x}" y="${chartHeight - 4}" fill="#aaaaaa" font-size="11" font-weight="800" text-anchor="middle">${p.label}</text>
             `).join('')}
           </svg>
         </div>
@@ -507,7 +510,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       const countryRows = (analytics?.country_stats || []).map(c => `
         <tr>
           <td style="padding: 10px; border-bottom: 1px solid #222; font-weight: bold; color: #fff;">${getFlagEmoji(c.country)} ${c.country}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #222; font-family: monospace; color: #e50914; font-weight: bold; text-align: right;">${c.cnt} visits</td>
+          <td style="padding: 10px; border-bottom: 1px solid #222; color: #e50914; font-weight: bold; text-align: left;">${c.cnt} سەردان</td>
         </tr>
       `).join('');
 
@@ -516,16 +519,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
         const city = v.city || res.city;
         const district = v.district || res.district;
         const isLive = (Date.now() - new Date(v.created_at).getTime()) < 10 * 60 * 1000;
+        const deviceName = (v.device_type || 'Desktop') === 'Mobile' ? 'مۆبایل' : 'کۆمپیوتەر';
         return `
           <tr>
             <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-weight: bold; color: #fff;">${getFlagEmoji(v.country || 'Iraq')} ${city}</td>
             <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #f59e0b; font-weight: bold;">📍 ${district}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #ccc;">${v.device_type || 'Desktop'}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; font-family: monospace; color: #888; font-size: 11px;">${v.page_path || '/'}</td>
-            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; text-align: right;">
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #ccc;">${deviceName}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; color: #888; font-size: 12px; font-family: monospace;">${v.page_path || '/'}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #1a1a1a; text-align: left;">
               ${isLive 
-                ? '<span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 900;">ONLINE</span>' 
-                : `<span style="color: #666; font-size: 10px;">${new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`
+                ? '<span style="background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid rgba(34,197,94,0.4); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 900;">سەر خەتە</span>' 
+                : `<span style="color: #666; font-size: 11px;">${new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`
               }
             </td>
           </tr>
@@ -534,17 +538,23 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
 
       const htmlContent = `
         <!DOCTYPE html>
-        <html>
+        <html lang="ku" dir="rtl">
         <head>
-          <title>FLKRD MOVIES - Executive Telemetry & Visitor Analytics PDF Report</title>
+          <meta charset="UTF-8">
+          <title>FLKRD MOVIES - ڕاپۆرتی فەرمیی شیکاری سەردانیکەران</title>
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Zain:wght@300;400;700;800;900&display=swap');
+
             @page { size: A4; margin: 12mm; }
             body {
               background-color: #050505;
               color: #ffffff;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+              font-family: 'Zain', -apple-system, BlinkMacSystemFont, sans-serif;
               margin: 0;
               padding: 20px;
+              direction: rtl;
+              text-align: right;
+              line-height: 1.4;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
@@ -562,10 +572,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               gap: 12px;
             }
             .brand h1 {
-              font-size: 24px;
-              font-weight: 1000;
-              font-style: italic;
-              letter-spacing: -1px;
+              font-size: 26px;
+              font-weight: 900;
               margin: 0;
               color: #ffffff;
               text-transform: uppercase;
@@ -581,26 +589,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               margin-bottom: 20px;
             }
             .meta-label {
-              font-size: 8.5px;
-              font-weight: 900;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              color: #777;
+              font-size: 12px;
+              font-weight: 800;
+              color: #888888;
               margin-bottom: 4px;
             }
             .meta-value {
-              font-size: 14px;
+              font-size: 16px;
               font-weight: 900;
               color: #fff;
             }
             .section-title {
-              font-size: 13px;
+              font-size: 15px;
               font-weight: 900;
-              text-transform: uppercase;
-              letter-spacing: 1px;
               color: #e50914;
               margin-top: 20px;
               margin-bottom: 10px;
+              border-right: 4px solid #e50914;
+              padding-right: 8px;
             }
             table {
               width: 100%;
@@ -612,13 +618,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             }
             th {
               background: #181818;
-              color: #888;
-              font-size: 9px;
+              color: #aaaaaa;
+              font-size: 13px;
               font-weight: 900;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-              padding: 9px;
-              text-align: left;
+              padding: 10px;
+              text-align: right;
               border-bottom: 1px solid #252525;
             }
             .footer {
@@ -629,17 +633,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
               justify-content: space-between;
               align-items: center;
               color: #666;
-              font-size: 10px;
+              font-size: 12px;
               font-weight: 700;
             }
             .watermark {
               position: fixed;
               bottom: 40px;
-              right: 40px;
-              font-size: 50px;
-              font-weight: 1000;
+              left: 40px;
+              font-size: 45px;
+              font-weight: 900;
               color: rgba(229, 9, 20, 0.05);
-              letter-spacing: -2px;
               pointer-events: none;
               user-select: none;
               transform: rotate(-15deg);
@@ -647,52 +650,52 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
           </style>
         </head>
         <body>
-          <div class="watermark">FLKRD OFFICIAL REPORT</div>
+          <div class="watermark">FLKRD MOVIES — ڕاپۆرتی فەرمیی</div>
           
           <div class="header">
             <div class="brand">
-              <div style="width: 36px; height: 36px; background: #e50914; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 1000; font-size: 18px; color: #fff;">F</div>
+              <div style="width: 40px; height: 40px; background: #e50914; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 20px; color: #fff;">F</div>
               <div>
                 <h1>FLKRD MOVIES</h1>
-                <div style="font-size: 9px; font-weight: 800; color: #888; letter-spacing: 2px; text-transform: uppercase;">Official Visitor Analytics & Telemetry Executive PDF Report</div>
+                <div style="font-size: 12px; font-weight: 800; color: #888;">ڕاپۆرتی فەرمیی شیکاری و هاتووچۆی سەردانیکەران</div>
               </div>
             </div>
-            <div style="text-align: right;">
-              <div style="font-size: 11px; font-weight: 900; color: #4ade80;">● VERIFIED REAL-TIME TELEMETRY</div>
-              <div style="font-size: 10px; color: #666; font-family: monospace; margin-top: 2px;">Report ID: #${Math.floor(100000 + Math.random() * 900000)}</div>
+            <div style="text-align: left;">
+              <div style="font-size: 12px; font-weight: 900; color: #4ade80;">● تێلێمێتری سەرخەتی بەکارهێنەران</div>
+              <div style="font-size: 11px; color: #777; font-family: monospace; margin-top: 2px;">ناسنامەی ڕاپۆرت: #${Math.floor(100000 + Math.random() * 900000)}</div>
             </div>
           </div>
 
           <div class="meta-box">
             <div>
-              <div class="meta-label">DEVELOPER & FOUNDER</div>
-              <div class="meta-value" style="color: #f59e0b;">Zana Faroq (FLKRD CEO)</div>
+              <div class="meta-label">گەشەپێدەر و دامەزرێنەر</div>
+              <div class="meta-value" style="color: #f59e0b;">زانا فاروق (FLKRD CEO)</div>
             </div>
             <div>
-              <div class="meta-label">TOTAL VISITS LOGGED</div>
-              <div class="meta-value">${totalVisits}</div>
+              <div class="meta-label">کۆی سەردانە تۆمارکراوەکان</div>
+              <div class="meta-value">${totalVisits.toLocaleString()}</div>
             </div>
             <div>
-              <div class="meta-label">LIVE ACTIVE VISITORS</div>
-              <div class="meta-value" style="color: #4ade80;">${liveCount} ONLINE</div>
+              <div class="meta-label">سەردانیکەرانی چالاک</div>
+              <div class="meta-value" style="color: #4ade80;">${liveCount} سەر خەتن</div>
             </div>
             <div>
-              <div class="meta-label">GENERATED TIMESTAMP</div>
-              <div class="meta-value" style="font-size: 11px;">${dateStr}</div>
+              <div class="meta-label">کاتی دروستکردن</div>
+              <div class="meta-value" style="font-size: 12px;">${dateStr}</div>
             </div>
           </div>
 
           ${chartSvg}
 
-          <div class="section-title">🌐 KURDISTAN REGION & INTERNATIONAL LIVE VISITORS TELEMETRY</div>
+          <div class="section-title">🌐 شیکاری ڕاستەوخۆی سەردانیکەرانی هەرێمی کوردستان و نێودەوڵەتی</div>
           <table>
             <thead>
               <tr>
-                <th>Province / City</th>
-                <th>District / Area (قەزا)</th>
-                <th>Device Platform</th>
-                <th>Active Page Path</th>
-                <th style="text-align: right;">Status</th>
+                <th>پارێزگا / شار</th>
+                <th>قەزا / ناوچە</th>
+                <th>جۆری ئامێر</th>
+                <th>لاپەڕەی چالاک</th>
+                <th style="text-align: left;">دۆخ</th>
               </tr>
             </thead>
             <tbody>
@@ -700,22 +703,22 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
             </tbody>
           </table>
 
-          <div class="section-title" style="margin-top: 25px;">📊 INTERNATIONAL GEOGRAPHIC DISTRIBUTION</div>
+          <div class="section-title" style="margin-top: 25px;">📊 دابەشبوونی جوگرافیی سەردانیکەرانی نێودەوڵەتی</div>
           <table>
             <thead>
               <tr>
-                <th>Country Name</th>
-                <th style="text-align: right;">Total Visitors Logged</th>
+                <th>ناوی وڵات</th>
+                <th style="text-align: left;">کۆی سەردانەکان</th>
               </tr>
             </thead>
             <tbody>
-              ${countryRows || '<tr><td colSpan="2" style="padding: 10px; color: #666;">No international country logs</td></tr>'}
+              ${countryRows || '<tr><td colSpan="2" style="padding: 10px; color: #666;">هیچ زانیارییەکی نێودەوڵەتی تۆمار نەکراوە</td></tr>'}
             </tbody>
           </table>
 
           <div class="footer">
-            <div>CONFIDENTIAL • FOR AUTHORIZED FLKRD MOVIES ADMIN SYSTEM ONLY</div>
-            <div>CREATED & SIGNED BY ZANA FAROQ • FLKRD ENGINE v5.5.1</div>
+            <div>نهێنی • تەنها بۆ سیستەمی بەڕێوەبەری FLKRD MOVIES</div>
+            <div>دروستکراوە لەلایەن زانا فاروق • FLKRD ENGINE</div>
           </div>
 
           <script>
@@ -732,10 +735,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
       printWindow.document.open();
       printWindow.document.write(htmlContent);
       printWindow.document.close();
-      addNotification({ type: 'success', title: 'PDF Generator Ready', message: 'Opening print & PDF save window with Charts...' });
+      addNotification({ type: 'success', title: 'ڕاپۆرتی PDF ئامادەیە', message: 'پەنجەرەی چاپکردن و ڕاپۆرتی PDF کرایەوە...' });
     } catch (err: any) {
       console.error("[PDF EXPORT] Error generating report:", err);
-      addNotification({ type: 'error', title: 'PDF Export Failed', message: err?.message || 'Could not generate PDF.' });
+      addNotification({ type: 'error', title: 'کێشە لە دروستکردنی PDF', message: err?.message || 'کێشەیەک ڕوویدا.' });
     }
   };
 
@@ -1588,14 +1591,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           <p className="text-[9.5px] text-gray-400 font-medium leading-relaxed">
                             Installs a verified premium WebClip profile config. Unlocks full standalone experience, locked 60+ FPS playback speed, and persistent real-time notifications.
                           </p>
-                          <a
-                            href="/webclip.mobileconfig"
+                          <button
+                            onClick={downloadMobileConfig}
                             className="w-full py-3.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest text-center transition-all hover:scale-[1.02] active:scale-95 shadow-md flex items-center justify-center gap-2"
                             style={{ backgroundColor: accentColor }}
                           >
                             <Download size={12} strokeWidth={2.5} />
                             Install FLKRD Movies WebClip
-                          </a>
+                          </button>
                         </div>
                       )}
 
