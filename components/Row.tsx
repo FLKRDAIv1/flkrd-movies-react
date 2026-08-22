@@ -73,9 +73,10 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
       const data = await fetchData(getPagedUrl(fetchUrl, 1), language);
       if (data && Array.isArray(data)) {
         // data coming from fetchData is already filtered by isForbidden
-        setContent(limit ? data.slice(0, limit) : data);
+        const rowLimit = limit !== undefined ? limit : 10;
+        setContent(data.slice(0, rowLimit));
         setPage(1);
-        setHasMore(limit ? false : data.length >= 15); 
+        setHasMore(false);
       } else if (data === null) {
         setHasError(true);
       } else {

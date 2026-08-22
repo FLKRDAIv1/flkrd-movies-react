@@ -232,9 +232,9 @@ const HomePage: React.FC = () => {
     setLoadingKurdishCC(true);
     try {
       // Use the curated registry and fetch from TMDB directly (no CORS issues)
-      const top12 = KURDISH_CC_REGISTRY.slice(0, 12);
+      const top10 = KURDISH_CC_REGISTRY.slice(0, 10);
       const results = await Promise.all(
-        top12.map(async entry => {
+        top10.map(async entry => {
           try {
             const endpoint = `/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}`;
             const d = await fetchData(endpoint, language);
