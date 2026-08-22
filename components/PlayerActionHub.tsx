@@ -110,7 +110,7 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
         </AnimatePresence>
       </motion.button>
 
-      {/* ═══ Ultra-Compact 100% Kurdish Action Hub ═══ */}
+      {/* ═══ Ultra-Compact 100% Kurdish Action Hub (Mobile & Desktop Safe) ═══ */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -118,7 +118,7 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: -6 }}
             transition={{ type: 'spring', damping: 24, stiffness: 380 }}
-            className="absolute top-11 left-0 sm:left-auto sm:right-0 w-[calc(100vw-36px)] max-w-[290px] sm:max-w-[310px] rounded-2xl bg-[#08080a]/95 backdrop-blur-2xl border border-red-600/30 p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.95)] overflow-hidden"
+            className="fixed top-14 right-3 sm:absolute sm:top-12 sm:right-0 sm:left-auto w-[calc(100vw-24px)] max-w-[310px] sm:max-w-[320px] max-h-[82vh] overflow-y-auto scrollbar-hide rounded-2xl bg-[#0a0a0d]/95 backdrop-blur-2xl border border-red-600/40 p-3 sm:p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(220,38,38,0.2)] z-[1000]"
           >
             {/* Header with FLKRD Studio Intro & Close */}
             <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/10">
@@ -213,21 +213,21 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
                     }}
                     className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-red-500/30 transition-all text-right group active:scale-[0.98]"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/25">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/25 shrink-0">
                         <MessageSquare size={14} />
                       </div>
-                      <div>
-                        <span className="text-[11px] font-bold text-white block">
+                      <div className="min-w-0 text-right">
+                        <span className="text-[11px] font-bold text-white block truncate">
                           ژێرنووسی کوردی و فرەزمان
                         </span>
-                        <span className="text-[9px] text-neutral-400 block font-medium">
+                        <span className="text-[9px] text-neutral-400 block font-medium truncate">
                           {activeSubtitleLabel || 'هەڵبژاردنی ژێرنووس'}
                         </span>
                       </div>
                     </div>
                     {subtitleCount > 0 && (
-                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-red-600/20 text-red-400 border border-red-500/30">
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-red-600/20 text-red-400 border border-red-500/30 shrink-0 mr-2">
                         {subtitleCount}
                       </span>
                     )}
@@ -239,20 +239,20 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
                   onClick={() => setActiveTab('servers')}
                   className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-red-500/30 transition-all text-right group active:scale-[0.98]"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
                       <Globe size={14} />
                     </div>
-                    <div>
-                      <span className="text-[11px] font-bold text-white block">
+                    <div className="min-w-0 text-right">
+                      <span className="text-[11px] font-bold text-white block truncate">
                         گۆڕینی سێرڤەر (8 سێرڤەر)
                       </span>
-                      <span className="text-[9px] text-emerald-400 block font-medium">
+                      <span className="text-[9px] text-emerald-400 block font-medium truncate">
                         {getSourceDisplayName(activeSource, true)}
                       </span>
                     </div>
                   </div>
-                  <ChevronRight size={14} className="text-neutral-400 group-hover:-translate-x-0.5 transition-transform rotate-180" />
+                  <ChevronRight size={14} className="text-neutral-400 group-hover:-translate-x-0.5 transition-transform rotate-180 shrink-0 mr-1" />
                 </button>
 
                 {/* 3. Episodes Selector (if TV Show) */}
@@ -264,20 +264,20 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
                     }}
                     className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/5 hover:border-red-500/30 transition-all text-right group active:scale-[0.98]"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/25">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0">
                         <Tv size={14} />
                       </div>
-                      <div>
-                        <span className="text-[11px] font-bold text-white block">
+                      <div className="min-w-0 text-right">
+                        <span className="text-[11px] font-bold text-white block truncate">
                           ئەڵقە و وەرزەکان
                         </span>
-                        <span className="text-[9px] text-neutral-400 block font-medium">
+                        <span className="text-[9px] text-neutral-400 block font-medium truncate">
                           هەڵبژاردنی ئەڵقەی خێرا
                         </span>
                       </div>
                     </div>
-                    <ChevronRight size={14} className="text-neutral-400 group-hover:-translate-x-0.5 transition-transform rotate-180" />
+                    <ChevronRight size={14} className="text-neutral-400 group-hover:-translate-x-0.5 transition-transform rotate-180 shrink-0 mr-1" />
                   </button>
                 )}
 
