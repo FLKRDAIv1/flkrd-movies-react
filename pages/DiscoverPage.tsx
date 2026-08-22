@@ -268,7 +268,7 @@ const DiscoverPage: React.FC = () => {
         : t(selection! as any);
 
     return (
-        <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8 relative pb-32 bg-main-bg">
+        <div className="min-h-screen pt-28 md:pt-32 container mx-auto px-4 sm:px-6 lg:px-8 relative pb-32 bg-main-bg">
             <AnimatePresence mode="wait">
                 <motion.div key={selection || activeCountry || 'selection-root'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
                     {!selection && <SelectionScreen />}
@@ -319,7 +319,7 @@ const DiscoverPage: React.FC = () => {
                     )}
                     {(selection && (selection !== 'country' || activeCountry)) && (
                         <div className="flex flex-col">
-                            <div className={`sticky top-20 md:top-24 z-[45] mb-6 transition-all duration-500 ease-in-out`}>
+                            <div className={`sticky top-24 md:top-28 z-[45] mb-6 transition-all duration-500 ease-in-out`}>
                                 <div 
                                     className={`relative transition-all duration-500 overflow-hidden border`}
                                     style={{

@@ -1,0 +1,70 @@
+{
+  "buildCommand" : {
+    "command" : "build",
+    "skipDependencies" : false,
+    "style" : "buildOnly"
+  },
+  "configuredTargets" : [
+    {
+      "guid" : "d1ea3d6891a7e4eb11dd4d1c8ea3a9289ed20e0a0b7a46548cd922d0526822c8"
+    }
+  ],
+  "containerPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES.xcodeproj",
+  "continueBuildingAfterErrors" : false,
+  "dependencyScope" : "workspace",
+  "enableIndexBuildArena" : false,
+  "hideShellScriptEnvironment" : false,
+  "parameters" : {
+    "action" : "build",
+    "activeArchitecture" : "arm64",
+    "activeRunDestination" : {
+      "disableOnlyActiveArch" : false,
+      "hostTargetedPlatform" : null,
+      "platform" : "macosx",
+      "sdk" : "macosx26.5",
+      "sdkVariant" : "macos",
+      "supportedArchitectures" : [
+        "arm64e",
+        "arm64",
+        "x86_64"
+      ],
+      "targetArchitecture" : "arm64"
+    },
+    "arenaInfo" : {
+      "buildIntermediatesPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex",
+      "buildProductsPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Products",
+      "derivedDataPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build",
+      "indexDataStoreFolderPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Index.noindex/DataStore",
+      "indexEnableDataStore" : true,
+      "indexPCHPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Index.noindex/PrecompiledHeaders",
+      "pchPath" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/PrecompiledHeaders"
+    },
+    "configurationName" : "Release",
+    "overrides" : {
+      "commandLine" : {
+        "table" : {
+          "CODE_SIGN_IDENTITY" : "",
+          "CODE_SIGNING_ALLOWED" : "NO",
+          "CODE_SIGNING_REQUIRED" : "NO"
+        }
+      },
+      "synthesized" : {
+        "table" : {
+          "ACTION" : "build",
+          "CLANG_COVERAGE_MAPPING" : "YES",
+          "CLANG_PROFILE_DATA_DIRECTORY" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/ProfileData",
+          "ENABLE_PREVIEWS" : "NO",
+          "ENABLE_XOJIT_PREVIEWS" : "YES",
+          "ONLY_ACTIVE_ARCH" : "YES",
+          "TOOLCHAINS" : "com.apple.dt.toolchain.Metal.32023.883 $(inherited)"
+        }
+      }
+    }
+  },
+  "schemeCommand" : "launch",
+  "showNonLoggedProgress" : true,
+  "useDryRun" : false,
+  "useImplicitDependencies" : true,
+  "useLegacyBuildLocations" : false,
+  "useParallelTargets" : true
+}

@@ -1,0 +1,96 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/WhatsNewModalView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "FLKRD MOVIES",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 148
+        }
+      },
+      {
+        "comment": "",
+        "key": "VERSION %@ • WHAT'S NEW",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 151
+        }
+      },
+      {
+        "comment": "",
+        "key": "0%lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 188
+        }
+      },
+      {
+        "comment": "",
+        "key": "پێشوو",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "Previous",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 321
+        }
+      },
+      {
+        "comment": "",
+        "key": "داخستن",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Skip",
+        "location": {
+          "startingColumn": 63,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "دواتر",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "Next Step",
+        "location": {
+          "startingColumn": 65,
+          "startingLine": 353
+        }
+      },
+      {
+        "comment": "",
+        "key": "دەستپێکردن و سەیرکردن",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 379
+        }
+      },
+      {
+        "comment": "",
+        "key": "Start Watching Now",
+        "location": {
+          "startingColumn": 95,
+          "startingLine": 379
+        }
+      }
+    ]
+  },
+  "version": 1
+}

@@ -195,17 +195,17 @@ const MovieCard = memo(
             }}
             onMouseLeave={() => setIsHovered(false)}
             onPointerDown={handlePrefetch}
-            className={`flex-shrink-0 group/card relative cursor-pointer py-1.5 touch-manipulation focus:outline-none transform-gpu transition-transform duration-200 hover:scale-[1.03] active:scale-95 ${
-              className || 'w-44 md:w-72'
+            className={`group/card relative cursor-pointer py-1 touch-manipulation focus:outline-none transform-gpu transition-all duration-200 hover:scale-[1.03] active:scale-95 ${
+              className || 'w-full'
             }`}
             style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}
           >
-            {/* Seamless Cinematic Poster Card (No separated capsule) */}
+            {/* Seamless Cinematic Poster Card */}
             <div
-              className={`relative aspect-[2/3] w-full rounded-2xl md:rounded-[2rem] overflow-hidden border transition-all duration-300 bg-neutral-950 shadow-xl ${
+              className={`relative aspect-[2/3] w-full rounded-2xl md:rounded-[1.75rem] overflow-hidden border transition-all duration-300 bg-neutral-950 shadow-xl ${
                 isActiveState
-                  ? 'border-brand/60 shadow-[0_16px_40px_rgba(229,9,20,0.35)]'
-                  : 'border-white/10 hover:border-white/25 shadow-[0_10px_30px_rgba(0,0,0,0.6)]'
+                  ? 'border-brand/70 shadow-[0_12px_32px_rgba(229,9,20,0.35)] ring-1 ring-brand/30'
+                  : 'border-white/10 hover:border-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
               }`}
             >
               {/* Image loader placeholder */}
@@ -239,55 +239,42 @@ const MovieCard = memo(
                 }}
               />
 
-              {/* Bottom Cinematic Gradient Vignette */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-transparent pointer-events-none" />
+              {/* Top-to-bottom subtle shadow & Deep bottom vignette */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
 
-              {/* Top Badges (IMDb Rating & Year) */}
-              <div className="absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1.5 pointer-events-none">
+              {/* Top Badges (IMDb Rating & Custom Badges) */}
+              <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20 flex flex-wrap items-center gap-1 pointer-events-none max-w-[70%]">
                 {rating > 0 && (
-                  <div className="flex items-center gap-1 bg-[#F5C518] text-black px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg font-black text-[8px] md:text-xs shadow-md border border-[#F5C518]/50">
-                    <span className="font-[1000] text-[7px] md:text-[9px] uppercase tracking-wider">IMDb</span>
+                  <div className="flex items-center gap-1 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md font-black text-[8px] md:text-[9.5px] shadow-md border border-[#F5C518]/60">
+                    <span className="font-[1000] text-[7px] md:text-[8px] uppercase tracking-wider">IMDb</span>
                     <span>{rating.toFixed(1)}</span>
                   </div>
                 )}
 
-                {year && (
-                  <div className="bg-black/70 backdrop-blur-md text-white/90 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg font-bold text-[8px] md:text-[10px] border border-white/15 shadow-md">
-                    {year}
+                {item.level ? (
+                  <div
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[7px] md:text-[8.5px] font-black uppercase tracking-wider shadow-md backdrop-blur-sm ${
+                      item.level === 'KING'
+                        ? 'bg-amber-500 text-black border border-amber-400/50'
+                        : 'bg-brand text-white border border-brand/50'
+                    }`}
+                  >
+                    {item.level === 'KING' && <Star size={7} fill="currentColor" />}
+                    <span>{item.level}</span>
                   </div>
+                ) : (
+                  mediaType === 'dubbed' && (
+                    <div className="flex items-center gap-1 bg-brand text-white px-1.5 py-0.5 rounded-md shadow-md border border-brand/50">
+                      <Mic2 size={8} className="text-white" />
+                      <span className="font-black text-[7px] md:text-[8.5px] leading-none uppercase">DUBBED</span>
+                    </div>
+                  )
                 )}
               </div>
 
-              {/* Kurdish CC / Dubbed Badge */}
-              {!isCustom && (
-                <div className="absolute bottom-14 left-2.5 md:bottom-16 md:left-3.5 z-20 pointer-events-none">
-                  <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
-                </div>
-              )}
-
-              {item.level ? (
-                <div
-                  className={`absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1 px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[7px] md:text-[9px] font-black uppercase tracking-widest shadow-md backdrop-blur-sm ${
-                    item.level === 'KING'
-                      ? 'bg-yellow-500 text-black border border-yellow-500/40'
-                      : 'bg-brand text-white border border-brand/40'
-                  }`}
-                >
-                  {item.level === 'KING' && <Star size={8} fill="currentColor" className="md:w-2.5 md:h-2.5" />}
-                  <span>{item.level}</span>
-                </div>
-              ) : (
-                mediaType === 'dubbed' && (
-                  <div className="absolute top-2.5 left-2.5 md:top-3.5 md:left-3.5 z-20 flex items-center gap-1 bg-brand text-white px-2 py-0.5 md:px-2.5 md:py-1 rounded-lg shadow-md border border-brand/40">
-                    <Mic2 size={10} className="text-white" />
-                    <span className="font-black text-[8px] md:text-xs leading-none">DUBBED</span>
-                  </div>
-                )
-              )}
-
               {/* Action Buttons (List Add / Remove / Share / Ban) */}
               <div
-                className={`absolute top-2.5 right-2.5 md:top-3.5 md:right-3.5 flex flex-col gap-1.5 z-30 transition-opacity duration-200 ${
+                className={`absolute top-2 right-2 md:top-3 md:right-3 flex flex-col gap-1 z-30 transition-all duration-200 ${
                   isMyListPage || isProgressRow || isAdded || IS_TOUCH_DEVICE
                     ? 'opacity-100'
                     : 'opacity-0 group-hover/card:opacity-100'
@@ -296,7 +283,7 @@ const MovieCard = memo(
                 {isMyListPage && (
                   <button
                     onClick={handleToggleMyList}
-                    className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg border border-red-500/40 active:scale-90 transition-all"
+                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all"
                     aria-label={t('myListRemoveSuccess') || 'Remove from my list'}
                     title="Remove from List"
                   >
@@ -307,7 +294,7 @@ const MovieCard = memo(
                 {!isProgressRow && !isMyListPage && (
                   <button
                     onClick={handleToggleMyList}
-                    className={`p-2 rounded-xl transition-all shadow-lg active:scale-90 ${
+                    className={`p-1.5 md:p-2 rounded-lg transition-all shadow-lg active:scale-90 ${
                       isAdded
                         ? 'bg-brand text-white border border-brand/60'
                         : 'bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95'
@@ -325,7 +312,7 @@ const MovieCard = memo(
                 {isProgressRow && (
                   <button
                     onClick={handleRemoveProgress}
-                    className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-xl shadow-lg border border-red-500/40 active:scale-90 transition-all"
+                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all"
                     aria-label="Remove watch progress"
                     title="Remove from progress"
                   >
@@ -335,7 +322,7 @@ const MovieCard = memo(
 
                 <button
                   onClick={handleShare}
-                  className="p-2 rounded-xl bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95 shadow-lg active:scale-90 transition-all"
+                  className="p-1.5 md:p-2 rounded-lg bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95 shadow-lg active:scale-90 transition-all"
                   aria-label="Share movie"
                 >
                   <Share2 className="w-3.5 h-3.5" />
@@ -344,7 +331,7 @@ const MovieCard = memo(
                 {isAdmin && (
                   <button
                     onClick={handleBan}
-                    className="p-2 bg-red-950/80 hover:bg-red-700 text-red-300 hover:text-white rounded-xl shadow-lg border border-red-700/50 active:scale-90 transition-all"
+                    className="p-1.5 md:p-2 bg-red-950/80 hover:bg-red-700 text-red-300 hover:text-white rounded-lg shadow-lg border border-red-700/50 active:scale-90 transition-all"
                     aria-label="Ban content from global registry"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -359,19 +346,26 @@ const MovieCard = memo(
                 </div>
               )}
 
-              {/* Clean Integrated Title Overlay at Bottom */}
-              <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-20 flex flex-col justify-end pointer-events-none">
+              {/* Clean Integrated Title & Badges Overlay at Bottom */}
+              <div className="absolute bottom-0 inset-x-0 p-2.5 md:p-3.5 z-20 flex flex-col justify-end pointer-events-none">
+                {/* Kurdish CC Badge */}
+                {!isCustom && (
+                  <div className="mb-1">
+                    <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
+                  </div>
+                )}
+
                 <h4
-                  className={`text-xs md:text-sm text-white font-extrabold truncate drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover/card:text-brand ${
+                  className={`text-xs md:text-[13px] text-white font-extrabold line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover/card:text-brand ${
                     isRtl ? 'font-kurdish leading-snug font-bold' : 'tracking-tight leading-snug'
                   }`}
                 >
                   {title}
                 </h4>
 
-                <div className="flex items-center justify-between mt-1 text-[8px] md:text-[10px] font-bold text-white/70">
-                  <span className="text-brand font-[1000] tracking-wider uppercase text-[7px] md:text-[9px]">FLKRD</span>
-                  {year && <span className="text-white/60 font-semibold">{year}</span>}
+                <div className="flex items-center justify-between mt-1 text-[8px] md:text-[9.5px] font-bold text-white/70">
+                  <span className="text-brand font-[1000] tracking-wider uppercase text-[7px] md:text-[8.5px]">FLKRD</span>
+                  {year && <span className="text-white/75 font-semibold text-[8px] md:text-[9.5px]">{year}</span>}
                 </div>
               </div>
             </div>

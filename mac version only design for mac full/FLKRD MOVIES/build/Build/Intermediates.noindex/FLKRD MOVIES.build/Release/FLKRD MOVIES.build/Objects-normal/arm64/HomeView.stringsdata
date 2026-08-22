@@ -1,0 +1,56 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/HomeView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Season %lld • Episode %lld",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Movie",
+        "location": {
+          "startingColumn": 111,
+          "startingLine": 639
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kurdish Audio",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 737
+        }
+      },
+      {
+        "comment": "",
+        "key": "TOP 10 TODAY",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 871
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 913
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 918
+        }
+      }
+    ]
+  },
+  "version": 1
+}

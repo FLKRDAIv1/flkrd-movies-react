@@ -1,0 +1,328 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/SettingsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Preferences",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 65
+        }
+      },
+      {
+        "comment": "",
+        "key": "FLKRD MOVIES PRO",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 127
+        }
+      },
+      {
+        "comment": "",
+        "key": "Build 2.0 • Native macOS",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 130
+        }
+      },
+      {
+        "comment": "",
+        "key": "Storage & Cache Management",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 248
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear Stream & Poster Image Cache",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 255
+        }
+      },
+      {
+        "comment": "",
+        "key": "Frees up temporary cached posters, subtitles and video chunks.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 258
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cleared!",
+        "location": {
+          "startingColumn": 49,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Clear Cache",
+        "location": {
+          "startingColumn": 62,
+          "startingLine": 272
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quality & Decoding",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 301
+        }
+      },
+      {
+        "comment": "",
+        "key": "GPU & Energy Efficiency",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 375
+        }
+      },
+      {
+        "comment": "",
+        "key": "Optimize Rendering on Battery Power",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 381
+        }
+      },
+      {
+        "comment": "",
+        "key": "Hardware Metal Shader Acceleration",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 389
+        }
+      },
+      {
+        "comment": "",
+        "key": "Glass Shaders & Materials",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 408
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vibrancy Blur Strength",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 434
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpx",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 438
+        }
+      },
+      {
+        "comment": "",
+        "key": "Specular Highlight Intensity",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 448
+        }
+      },
+      {
+        "comment": "",
+        "key": "Panel Corner Smoothness",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 462
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpx",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 466
+        }
+      },
+      {
+        "comment": "",
+        "key": "LIVE SUBTITLE PREVIEW",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 492
+        }
+      },
+      {
+        "comment": "",
+        "key": "ژێرنووسکراوە لەلایەن: زانا فاروق • zana.fkurd.pro",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 507
+        }
+      },
+      {
+        "comment": "",
+        "key": "Google Apps Script Neural Translation Engine",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 537
+        }
+      },
+      {
+        "comment": "",
+        "key": "Connected to FLKRD PRO macro servers • High Precision Kurdish Translation",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 540
+        }
+      },
+      {
+        "comment": "",
+        "key": "Auto-Translate English Subtitles to Kurdish",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 552
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subtitle Font Size",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 561
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpt",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 565
+        }
+      },
+      {
+        "comment": "",
+        "key": "Background Box Opacity",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 575
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin Password (e.g. zana123)",
+        "location": {
+          "startingColumn": 33,
+          "startingLine": 612
+        }
+      },
+      {
+        "comment": "",
+        "key": "Administrator Authentication",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 603
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter passkey to manage Supabase database entries and banned movies.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 606
+        }
+      },
+      {
+        "comment": "",
+        "key": "Authorize Portal Access",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 638
+        }
+      },
+      {
+        "comment": "",
+        "key": "Currently Banned Content (Synced with Supabase):",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 660
+        }
+      },
+      {
+        "comment": "",
+        "key": "Authenticated as Administrator",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 654
+        }
+      },
+      {
+        "comment": "",
+        "key": "No banned movies currently in the database.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 669
+        }
+      },
+      {
+        "comment": "",
+        "key": "Banned ID: %@",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 681
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unban",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 690
+        }
+      },
+      {
+        "comment": "",
+        "key": "Designed and engineered exclusively for macOS with Apple VisionOS aesthetics, real-time Kurdish subtitle translations, multi-server 4K streaming, and Co-Watching watch parties.",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 736
+        }
+      },
+      {
+        "comment": "",
+        "key": "FLKRD MOVIES PRO",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 725
+        }
+      },
+      {
+        "comment": "",
+        "key": "Native macOS Edition • Liquid Glass 2.0",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 728
+        }
+      },
+      {
+        "comment": "",
+        "key": "Curated by Zana Faroq • Powered by FLKRD Studio",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 746
+        }
+      },
+      {
+        "comment": "",
+        "key": "Visit: zana.fkurd.pro",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 749
+        }
+      }
+    ]
+  },
+  "version": 1
+}

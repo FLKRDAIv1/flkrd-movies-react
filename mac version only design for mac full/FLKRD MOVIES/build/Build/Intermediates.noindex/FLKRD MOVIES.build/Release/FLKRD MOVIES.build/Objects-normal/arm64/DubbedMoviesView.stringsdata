@@ -1,0 +1,512 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/DubbedMoviesView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Tuning Signals to Supabase...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 204
+        }
+      },
+      {
+        "comment": "",
+        "key": "Exclusively curated Kurdish dubbed cinema portal synchronized with Supabase backend.",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 136
+        }
+      },
+      {
+        "comment": "",
+        "key": "Live Database Sync",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 150
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search dubbed titles...",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 167
+        }
+      },
+      {
+        "comment": "",
+        "key": "KURDISH DUBBED PORTAL",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 250
+        }
+      },
+      {
+        "comment": "",
+        "key": "Share Portal",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 297
+        }
+      },
+      {
+        "comment": "",
+        "key": "No dubbed movies fit your search filters.",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 335
+        }
+      },
+      {
+        "comment": "",
+        "key": "Administrative Portal Entry",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 427
+        }
+      },
+      {
+        "comment": "",
+        "key": "Authorize server administrative capabilities.",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 431
+        }
+      },
+      {
+        "comment": "",
+        "key": "ADMIN EMAIL",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 439
+        }
+      },
+      {
+        "comment": "",
+        "key": "flkrdstudio@gmail.com",
+        "location": {
+          "startingColumn": 39,
+          "startingLine": 442
+        }
+      },
+      {
+        "comment": "",
+        "key": "SECURITY ACCESS CODE",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 451
+        }
+      },
+      {
+        "comment": "",
+        "key": "Zanabarzani1919@",
+        "location": {
+          "startingColumn": 41,
+          "startingLine": 454
+        }
+      },
+      {
+        "comment": "",
+        "key": "Cancel",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 468
+        }
+      },
+      {
+        "comment": "",
+        "key": "Authorize",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 481
+        }
+      },
+      {
+        "comment": "",
+        "key": "FLKRD Dubbed Administration Dashboard",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 511
+        }
+      },
+      {
+        "comment": "",
+        "key": "Upload New Film",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 539
+        }
+      },
+      {
+        "comment": "",
+        "key": "Archive Catalog Management",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 555
+        }
+      },
+      {
+        "comment": "",
+        "key": "TMDB ID AUTOCOMPLETE",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 575
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter TMDB ID (e.g. 550)...",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 578
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sync Details",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 594
+        }
+      },
+      {
+        "comment": "",
+        "key": "ENGLISH/ORIGINAL TITLE",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 610
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter movie title...",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 613
+        }
+      },
+      {
+        "comment": "",
+        "key": "SYNOPSIS/DESCRIPTION",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 622
+        }
+      },
+      {
+        "comment": "",
+        "key": "VIDEO SERVER STREAM URL",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 634
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter stream link (.mp4, .m3u8)...",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 637
+        }
+      },
+      {
+        "comment": "",
+        "key": "CATALOG LEVEL",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 647
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 48,
+          "startingLine": 651
+        }
+      },
+      {
+        "comment": "",
+        "key": "NEW",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 652
+        }
+      },
+      {
+        "comment": "",
+        "key": "TRENDING",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 653
+        }
+      },
+      {
+        "comment": "",
+        "key": "CLASSIC",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 654
+        }
+      },
+      {
+        "comment": "",
+        "key": "KING",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 655
+        }
+      },
+      {
+        "comment": "",
+        "key": "IMDB ID",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 663
+        }
+      },
+      {
+        "comment": "",
+        "key": "tt1234567",
+        "location": {
+          "startingColumn": 51,
+          "startingLine": 666
+        }
+      },
+      {
+        "comment": "",
+        "key": "POSTER PORTRAIT IMAGE",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 677
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Poster File",
+        "location": {
+          "startingColumn": 82,
+          "startingLine": 689
+        }
+      },
+      {
+        "comment": "",
+        "key": "Poster Uploaded ✓",
+        "location": {
+          "startingColumn": 105,
+          "startingLine": 689
+        }
+      },
+      {
+        "comment": "",
+        "key": "BANNER LANDSCAPE IMAGE",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 702
+        }
+      },
+      {
+        "comment": "",
+        "key": "Select Banner File",
+        "location": {
+          "startingColumn": 83,
+          "startingLine": 714
+        }
+      },
+      {
+        "comment": "",
+        "key": "Banner Uploaded ✓",
+        "location": {
+          "startingColumn": 106,
+          "startingLine": 714
+        }
+      },
+      {
+        "comment": "",
+        "key": "Broadcast Dubbed Movie Live",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 736
+        }
+      },
+      {
+        "comment": "",
+        "key": "Quick search archive...",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 758
+        }
+      },
+      {
+        "comment": "",
+        "key": "No matching catalog elements found in archive.",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 774
+        }
+      },
+      {
+        "comment": "",
+        "key": "Edit Movie Data Record",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 859
+        }
+      },
+      {
+        "comment": "",
+        "key": "TMDB ID AUTOCOMPLETE",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 886
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter TMDB ID...",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 889
+        }
+      },
+      {
+        "comment": "",
+        "key": "Sync Details",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 905
+        }
+      },
+      {
+        "comment": "",
+        "key": "ENGLISH/ORIGINAL TITLE",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 921
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter movie title...",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 924
+        }
+      },
+      {
+        "comment": "",
+        "key": "SYNOPSIS/DESCRIPTION",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 933
+        }
+      },
+      {
+        "comment": "",
+        "key": "VIDEO SERVER STREAM URL",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 945
+        }
+      },
+      {
+        "comment": "",
+        "key": "Enter stream link...",
+        "location": {
+          "startingColumn": 43,
+          "startingLine": 948
+        }
+      },
+      {
+        "comment": "",
+        "key": "LEVEL",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 958
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 44,
+          "startingLine": 962
+        }
+      },
+      {
+        "comment": "",
+        "key": "NEW",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 963
+        }
+      },
+      {
+        "comment": "",
+        "key": "TRENDING",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 964
+        }
+      },
+      {
+        "comment": "",
+        "key": "CLASSIC",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 965
+        }
+      },
+      {
+        "comment": "",
+        "key": "KING",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 966
+        }
+      },
+      {
+        "comment": "",
+        "key": "IMDB ID",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 974
+        }
+      },
+      {
+        "comment": "",
+        "key": "tt1234567",
+        "location": {
+          "startingColumn": 47,
+          "startingLine": 977
+        }
+      },
+      {
+        "comment": "",
+        "key": "Replace Poster File",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 995
+        }
+      },
+      {
+        "comment": "",
+        "key": "Replace Banner File",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 1014
+        }
+      },
+      {
+        "comment": "",
+        "key": "Apply Changes and Sync Devices",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 1035
+        }
+      }
+    ]
+  },
+  "version": 1
+}

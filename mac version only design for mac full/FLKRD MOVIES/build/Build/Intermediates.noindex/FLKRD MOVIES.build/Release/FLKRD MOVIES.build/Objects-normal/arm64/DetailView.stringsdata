@@ -1,0 +1,120 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/DetailView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "TV Series Details",
+        "location": {
+          "startingColumn": 64,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "Movie Details",
+        "location": {
+          "startingColumn": 86,
+          "startingLine": 69
+        }
+      },
+      {
+        "comment": "",
+        "key": "",
+        "location": {
+          "startingColumn": 40,
+          "startingLine": 386
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ %lld",
+        "location": {
+          "startingColumn": 58,
+          "startingLine": 425
+        }
+      },
+      {
+        "comment": "",
+        "key": "Remove Movie Globally?",
+        "location": {
+          "startingColumn": 29,
+          "startingLine": 502
+        }
+      },
+      {
+        "comment": "",
+        "key": "Are you sure you want to block or remove '%@'? It will be removed from all users across web and macOS apps.",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 503
+        }
+      },
+      {
+        "comment": "",
+        "key": "Block / Remove",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 504
+        }
+      },
+      {
+        "comment": "",
+        "key": "STREAMING SERVERS",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 515
+        }
+      },
+      {
+        "comment": "",
+        "key": "Admin Security Mode",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 566
+        }
+      },
+      {
+        "comment": "",
+        "key": "Password (e.g. zana123)...",
+        "location": {
+          "startingColumn": 25,
+          "startingLine": 570
+        }
+      },
+      {
+        "comment": "",
+        "key": "Unlock Admin Mode",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 582
+        }
+      },
+      {
+        "comment": "",
+        "key": ":",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 708
+        }
+      },
+      {
+        "comment": "",
+        "key": ":",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 710
+        }
+      },
+      {
+        "comment": "",
+        "key": ":",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 712
+        }
+      }
+    ]
+  },
+  "version": 1
+}

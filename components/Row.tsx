@@ -292,7 +292,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
           <div 
             ref={rowRef} 
             onScroll={handleScroll} 
-            className="flex overflow-x-scroll scrollbar-hide space-x-4 md:space-x-8 py-4 px-1 scroll-smooth overflow-visible"
+            className="flex overflow-x-scroll scrollbar-hide gap-3.5 sm:gap-4 md:gap-5 lg:gap-6 py-3 px-1 scroll-smooth overflow-visible"
           >
             {content.map((item, index) => {
                 const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;
@@ -304,6 +304,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                     item={item}
                     type={mediaType as 'movie' | 'tv' | 'dubbed'}
                     isProgressRow={isProgressRow}
+                    className="w-36 sm:w-44 md:w-52 lg:w-56 shrink-0"
                     onRemove={(removed) => {
                       setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
                     }}

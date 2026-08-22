@@ -1,0 +1,88 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/ContentView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "FLKRD",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 96
+        }
+      },
+      {
+        "comment": "",
+        "key": "STUDIO CINEMA",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 100
+        }
+      },
+      {
+        "comment": "",
+        "key": "FLKRD VIP",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 191
+        }
+      },
+      {
+        "comment": "",
+        "key": "Online",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 198
+        }
+      },
+      {
+        "comment": "",
+        "key": "Toggle Sidebar (⌘B)",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 270
+        }
+      },
+      {
+        "comment": "",
+        "key": "FLKRD",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 274
+        }
+      },
+      {
+        "comment": "",
+        "key": "›",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 277
+        }
+      },
+      {
+        "comment": "",
+        "key": "What's New",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 387
+        }
+      },
+      {
+        "comment": "",
+        "key": "DUBBED HD",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 808
+        }
+      },
+      {
+        "comment": "",
+        "key": "%@ \"%@\"...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 918
+        }
+      }
+    ]
+  },
+  "version": 1
+}

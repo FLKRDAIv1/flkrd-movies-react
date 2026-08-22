@@ -1,0 +1,40 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/KurdishCCView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Kurdish Subtitles (CC)",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 45
+        }
+      },
+      {
+        "comment": "",
+        "key": "Strictly curated collection of cinematic releases with confirmed Kurdish CC",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 48
+        }
+      },
+      {
+        "comment": "",
+        "key": "Syncing OpenSubtitles registry...",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 67
+        }
+      },
+      {
+        "comment": "",
+        "key": "KU CC",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 184
+        }
+      }
+    ]
+  },
+  "version": 1
+}

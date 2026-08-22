@@ -1,0 +1,16 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/SmartZoomImageView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Double-tap any point on the image to zoom in/out.",
+        "location": {
+          "startingColumn": 1,
+          "startingLine": 74
+        }
+      }
+    ]
+  },
+  "version": 1
+}

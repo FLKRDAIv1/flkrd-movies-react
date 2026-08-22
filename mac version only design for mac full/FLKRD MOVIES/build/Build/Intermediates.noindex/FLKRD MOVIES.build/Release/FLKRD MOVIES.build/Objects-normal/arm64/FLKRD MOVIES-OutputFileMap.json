@@ -1,0 +1,126 @@
+{
+  "" : {
+    "const-values" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary.swiftconstvalues",
+    "dependencies" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary.d",
+    "diagnostics" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary.dia",
+    "emit-module-dependencies" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary-emit-module.dia",
+    "pch" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD MOVIES-primary.swiftdeps"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/CinemaPlayerView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CinemaPlayerView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CinemaPlayerView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CinemaPlayerView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/CoWatchView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CoWatchView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CoWatchView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/CoWatchView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/ContentView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/DetailView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DetailView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DetailView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DetailView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/DiscoverView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DiscoverView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DiscoverView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DiscoverView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/DubbedMoviesView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DubbedMoviesView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DubbedMoviesView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/DubbedMoviesView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/ExploreView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ExploreView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ExploreView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ExploreView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/FLKRD_MOVIESApp.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD_MOVIESApp.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD_MOVIESApp.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/FLKRD_MOVIESApp.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/GlassComponents.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GlassComponents.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GlassComponents.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GlassComponents.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/HomeView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/HomeView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/HomeView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/HomeView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/Item.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Item.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Item.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Item.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/KurdishCCView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/KurdishCCView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/KurdishCCView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/KurdishCCView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/LocalizationService.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/LocalizationService.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/LocalizationService.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/LocalizationService.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/Models.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Models.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Models.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/Models.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/NetworkService.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/NetworkService.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/NetworkService.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/NetworkService.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/SettingsView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SettingsView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/ShortsView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ShortsView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ShortsView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/ShortsView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/SmartZoomImageView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SmartZoomImageView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SmartZoomImageView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/SmartZoomImageView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/TVShowsView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/TVShowsView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/TVShowsView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/TVShowsView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/WatchProgressManager.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WatchProgressManager.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WatchProgressManager.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WatchProgressManager.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/WhatsNewModalView.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WhatsNewModalView.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WhatsNewModalView.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/WhatsNewModalView.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/test_all_fetch.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/test_all_fetch.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/test_all_fetch.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/test_all_fetch.o"
+  },
+  "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/build/Build/Intermediates.noindex/FLKRD MOVIES.build/Release/FLKRD MOVIES.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  }
+}

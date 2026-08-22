@@ -1,0 +1,440 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/CinemaPlayerView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "Back to Details",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 271
+        }
+      },
+      {
+        "comment": "",
+        "key": "Season %lld • Episode %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 286
+        }
+      },
+      {
+        "comment": "",
+        "key": "✨ %lld%%",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 324
+        }
+      },
+      {
+        "comment": "",
+        "key": "Subtitles",
+        "location": {
+          "startingColumn": 76,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kurdish CC (%lld)",
+        "location": {
+          "startingColumn": 90,
+          "startingLine": 328
+        }
+      },
+      {
+        "comment": "",
+        "key": "S%lld E%lld",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 380
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading cinema stream...",
+        "location": {
+          "startingColumn": 34,
+          "startingLine": 436
+        }
+      },
+      {
+        "comment": "",
+        "key": "Co-Watching Room Active",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 465
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kurdish CC",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 481
+        }
+      },
+      {
+        "comment": "",
+        "key": "Tracks & AI",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 729
+        }
+      },
+      {
+        "comment": "",
+        "key": "Style Studio",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 747
+        }
+      },
+      {
+        "comment": "",
+        "key": "Kurdish AI Auto-Translate",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 781
+        }
+      },
+      {
+        "comment": "",
+        "key": "Fetching from Stremio & OpenSubtitles...",
+        "location": {
+          "startingColumn": 56,
+          "startingLine": 847
+        }
+      },
+      {
+        "comment": "",
+        "key": "No matching subtitles found.",
+        "location": {
+          "startingColumn": 101,
+          "startingLine": 847
+        }
+      },
+      {
+        "comment": "",
+        "key": "SUBTITLE REGISTRY (%lld)",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 797
+        }
+      },
+      {
+        "comment": "",
+        "key": "Search subtitles (e.g. Kurdish, English)...",
+        "location": {
+          "startingColumn": 27,
+          "startingLine": 819
+        }
+      },
+      {
+        "comment": "",
+        "key": "• %@",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 872
+        }
+      },
+      {
+        "comment": "",
+        "key": "Translate Target Language",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 905
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld%%",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 912
+        }
+      },
+      {
+        "comment": "",
+        "key": "Progressively translating dialogue... (%lld%% applied)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 923
+        }
+      },
+      {
+        "comment": "",
+        "key": "سڵاو، بەخێربێن بۆ FLKRD MOVIES",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 968
+        }
+      },
+      {
+        "comment": "",
+        "key": "BACKGROUND PRESETS / باکگراوند",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 992
+        }
+      },
+      {
+        "comment": "",
+        "key": "🚫 None (لابردن)",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1004
+        }
+      },
+      {
+        "comment": "",
+        "key": "💧 Glass",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1021
+        }
+      },
+      {
+        "comment": "",
+        "key": "⬛ Semi",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1038
+        }
+      },
+      {
+        "comment": "",
+        "key": "⬛⬛ Solid",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1054
+        }
+      },
+      {
+        "comment": "",
+        "key": "Opacity",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1066
+        }
+      },
+      {
+        "comment": "",
+        "key": "TEXT COLOR / ڕەنگ",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1082
+        }
+      },
+      {
+        "comment": "",
+        "key": "Black Outline",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1087
+        }
+      },
+      {
+        "comment": "",
+        "key": "Font Size",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1134
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpx",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1138
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpx",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1149
+        }
+      },
+      {
+        "comment": "",
+        "key": "Vertical Height on Screen",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1162
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lldpx",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1166
+        }
+      },
+      {
+        "comment": "",
+        "key": "Lip-Sync Audio Delay",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1178
+        }
+      },
+      {
+        "comment": "",
+        "key": "-0.5s",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1194
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1208
+        }
+      },
+      {
+        "comment": "",
+        "key": "+0.5s",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1222
+        }
+      },
+      {
+        "comment": "",
+        "key": "SELECT STREAM SERVER",
+        "location": {
+          "startingColumn": 18,
+          "startingLine": 1238
+        }
+      },
+      {
+        "comment": "",
+        "key": "Video Lighting & Filters",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1293
+        }
+      },
+      {
+        "comment": "",
+        "key": "Reset",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1302
+        }
+      },
+      {
+        "comment": "",
+        "key": "Brightness",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1314
+        }
+      },
+      {
+        "comment": "",
+        "key": "Contrast",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1327
+        }
+      },
+      {
+        "comment": "",
+        "key": "Saturation",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1340
+        }
+      },
+      {
+        "comment": "",
+        "key": "%lld Episodes",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1372
+        }
+      },
+      {
+        "comment": "",
+        "key": "SEASONS & EPISODES",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1361
+        }
+      },
+      {
+        "comment": "",
+        "key": "Season %lld • Episode %lld",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1364
+        }
+      },
+      {
+        "comment": "",
+        "key": "Season %lld",
+        "location": {
+          "startingColumn": 38,
+          "startingLine": 1403
+        }
+      },
+      {
+        "comment": "",
+        "key": "Loading Season %lld...",
+        "location": {
+          "startingColumn": 30,
+          "startingLine": 1435
+        }
+      },
+      {
+        "comment": "",
+        "key": "No episodes available for Season %lld.",
+        "location": {
+          "startingColumn": 26,
+          "startingLine": 1444
+        }
+      },
+      {
+        "comment": "",
+        "key": "E%lld",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 1485
+        }
+      },
+      {
+        "comment": "",
+        "key": "PLAYING",
+        "location": {
+          "startingColumn": 50,
+          "startingLine": 1514
+        }
+      },
+      {
+        "comment": "",
+        "key": "Co-Watch Room Messages",
+        "location": {
+          "startingColumn": 22,
+          "startingLine": 1549
+        }
+      },
+      {
+        "comment": "",
+        "key": "Say something...",
+        "location": {
+          "startingColumn": 31,
+          "startingLine": 1584
+        }
+      }
+    ]
+  },
+  "version": 1
+}

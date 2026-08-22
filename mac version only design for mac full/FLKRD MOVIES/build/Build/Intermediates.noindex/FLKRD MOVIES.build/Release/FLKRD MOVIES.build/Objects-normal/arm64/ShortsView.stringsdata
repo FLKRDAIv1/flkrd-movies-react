@@ -1,0 +1,48 @@
+{
+  "source": "/Users/zanafaroqhado/Downloads/flkrd-movies (27) 2/mac version only design for mac full/FLKRD MOVIES/FLKRD MOVIES/ShortsView.swift",
+  "tables": {
+    "Localizable": [
+      {
+        "comment": "",
+        "key": "#cinematic",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 90
+        }
+      },
+      {
+        "comment": "",
+        "key": "#trailers",
+        "location": {
+          "startingColumn": 42,
+          "startingLine": 102
+        }
+      },
+      {
+        "comment": "",
+        "key": "102",
+        "location": {
+          "startingColumn": 83,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "101",
+        "location": {
+          "startingColumn": 91,
+          "startingLine": 135
+        }
+      },
+      {
+        "comment": "",
+        "key": "Full Movie",
+        "location": {
+          "startingColumn": 46,
+          "startingLine": 151
+        }
+      }
+    ]
+  },
+  "version": 1
+}
