@@ -198,7 +198,6 @@ const MovieCard = memo(
             className={`group/card relative cursor-pointer py-1 touch-manipulation focus:outline-none transform-gpu transition-all duration-200 hover:scale-[1.03] active:scale-95 ${
               className || 'w-full'
             }`}
-            style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}
           >
             {/* Seamless Cinematic Poster Card */}
             <div

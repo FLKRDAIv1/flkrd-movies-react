@@ -40,7 +40,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   if (loading || !item) return null;
 
   return (
-    <div className="px-6 md:px-32 mb-24 content-visibility-auto">
+    <div className="px-6 md:px-32 mb-24">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         whileInView={{ opacity: 1, scale: 1 }}

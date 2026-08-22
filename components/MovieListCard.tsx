@@ -152,7 +152,6 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={`group/listcard relative w-full rounded-2xl sm:rounded-3xl cursor-pointer overflow-visible transform-gpu will-change-transform touch-manipulation focus:outline-none ${className}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 160px' }}
       whileHover={!IS_TOUCH_DEVICE ? { scale: 1.012, x: isRtl ? -3 : 3 } : undefined}
       whileTap={{ scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}

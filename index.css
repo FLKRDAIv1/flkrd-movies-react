@@ -1055,23 +1055,12 @@ a,
    Omni-Channel 60FPS Pure-GPU Hardware Engine (TV / Mobile / PC)
    ═══════════════════════════════════════════════ */
 
-/* Global Reflow Isolation & Auto Content Visibility Engine (Mobile / Laptop / PC) */
+/* Global Reflow Isolation Engine (Mobile / Laptop / PC) */
 .movie-row-container,
 .movie-row-deferred,
 .movie-grid-container,
 .content-visibility-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 340px;
-  contain: layout paint style;
-}
-
-@media (max-width: 768px) {
-  .movie-row-container,
-  .movie-row-deferred,
-  .movie-grid-container,
-  .content-visibility-auto {
-    contain-intrinsic-size: auto 260px;
-  }
+  contain: none;
 }
 
 /* Hardware Acceleration & WebKit Anti-Flicker Fixes */
