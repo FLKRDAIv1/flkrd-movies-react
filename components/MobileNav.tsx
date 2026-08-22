@@ -85,6 +85,20 @@ const MobileNav: React.FC = () => {
     return key;
   };
 
+  const prefetchPage = (to: string) => {
+    const componentMap: Record<string, () => Promise<any>> = {
+      '/': () => import('../pages/HomePage'),
+      '/tv': () => import('../pages/TVShowsPage'),
+      '/dubbed': () => import('../pages/DubbedMoviesPage'),
+      '/discover': () => import('../pages/DiscoverPage'),
+      '/shorts': () => import('../pages/ShortsPage'),
+      '/search': () => import('../pages/SearchPage'),
+      '/my-list': () => import('../pages/MyListPage'),
+      '/kurdish-cc': () => import('../pages/KurdishCCPage'),
+    };
+    if (componentMap[to]) componentMap[to]();
+  };
+
   const discoveryCategories: Category[] = [
     {
       id: 'home',
@@ -93,7 +107,10 @@ const MobileNav: React.FC = () => {
       activeColor: 'rgba(239, 68, 68, 0.2)',
       activeTextColor: '#ef4444',
       to: '/',
-      onClick: () => navigate('/'),
+      onClick: () => {
+        prefetchPage('/');
+        navigate('/');
+      },
     },
     {
       id: 'discover',
@@ -102,7 +119,10 @@ const MobileNav: React.FC = () => {
       activeColor: 'rgba(239, 68, 68, 0.2)',
       activeTextColor: '#ef4444',
       to: '/discover',
-      onClick: () => navigate('/discover'),
+      onClick: () => {
+        prefetchPage('/discover');
+        navigate('/discover');
+      },
     },
     {
       id: 'dubbed',
@@ -111,7 +131,10 @@ const MobileNav: React.FC = () => {
       activeColor: 'rgba(239, 68, 68, 0.2)',
       activeTextColor: '#ef4444',
       to: '/dubbed',
-      onClick: () => navigate('/dubbed'),
+      onClick: () => {
+        prefetchPage('/dubbed');
+        navigate('/dubbed');
+      },
     },
     {
       id: 'more',
@@ -141,6 +164,7 @@ const MobileNav: React.FC = () => {
       label: isRtl ? 'زنجیرەکان' : 'TV Shows',
       icon: <Tv size={20} />,
       onClick: () => {
+        prefetchPage('/tv');
         setIsMoreMenuOpen(false);
         navigate('/tv');
       }
@@ -149,6 +173,7 @@ const MobileNav: React.FC = () => {
       label: isRtl ? 'ترێندینگ' : 'Trending',
       icon: <PlayCircle size={20} />,
       onClick: () => {
+        prefetchPage('/shorts');
         setIsMoreMenuOpen(false);
         navigate('/shorts');
       }

@@ -156,27 +156,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  const sidebarVariants = useMemo(() => {
-    const e = Math.max(0.01, glassConfig?.elasticity || 0.35);
-    return {
-      open: {
-        width: '16.5rem',
-        transition: {
-          type: 'spring',
-          stiffness: Math.min(2000, 400 * (e / 0.35)),
-          damping: Math.min(200, 40 * (0.35 / e)),
-        },
+  const sidebarVariants = {
+    open: {
+      width: '16.5rem',
+      transition: {
+        duration: 0.22,
+        ease: [0.16, 1, 0.3, 1],
       },
-      closed: {
-        width: '4.5rem',
-        transition: {
-          type: 'spring',
-          stiffness: Math.min(2000, 400 * (e / 0.35)),
-          damping: Math.min(200, 40 * (0.35 / e)),
-        },
+    },
+    closed: {
+      width: '4.5rem',
+      transition: {
+        duration: 0.18,
+        ease: [0.16, 1, 0.3, 1],
       },
-    };
-  }, [glassConfig?.elasticity]);
+    },
+  };
 
   return (
     <>
