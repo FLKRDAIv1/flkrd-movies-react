@@ -64,7 +64,13 @@ export default defineConfig(({ mode }) => {
           name: 'local-api-middleware',
           configureServer(server) {
             server.middlewares.use(async (req, res, next) => {
-              if (req.url?.startsWith('/api/translate') || req.url?.startsWith('/api/subtitle') || req.url?.startsWith('/api/mobileconfig') || req.url?.startsWith('/api/webclip')) {
+              if (
+                req.url?.startsWith('/api/admin-auth') ||
+                req.url?.startsWith('/api/translate') ||
+                req.url?.startsWith('/api/subtitle') ||
+                req.url?.startsWith('/api/mobileconfig') ||
+                req.url?.startsWith('/api/webclip')
+              ) {
                 // Populate process.env with Vite env variables
                 Object.keys(env).forEach(key => {
                   if (!process.env[key]) {
@@ -134,6 +140,11 @@ export default defineConfig(({ mode }) => {
                 };
 
                 try {
+                  if (urlObj.pathname === '/api/admin-auth') {
+                    const module = await server.ssrLoadModule(path.resolve(__dirname, 'api/admin-auth.ts'));
+                    await module.default(mockReq, mockRes);
+                    return;
+                  }
                   if (urlObj.pathname === '/api/translate') {
                     const modulePath = path.resolve(__dirname, 'api/translate.js');
                     const { default: handler } = await import(modulePath + '?t=' + Date.now());
