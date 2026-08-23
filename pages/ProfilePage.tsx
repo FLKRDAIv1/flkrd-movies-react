@@ -489,10 +489,10 @@ const ProfilePage: React.FC = () => {
                         muted
                         playsInline
                         disablePictureInPicture
-                        className="w-full h-full object-cover opacity-60 scale-105 transform-gpu transition-opacity duration-1000"
+                        className="w-full h-full object-cover opacity-85 scale-105 transform-gpu transition-opacity duration-1000"
                         src={authVideo}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/70 pointer-events-none" />
+                    <div className="absolute inset-0 bg-black/20 pointer-events-none" />
                 </div>
                 <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
@@ -570,11 +570,10 @@ const ProfilePage: React.FC = () => {
                         muted
                         playsInline
                         disablePictureInPicture
-                        className="w-full h-full object-cover opacity-65 scale-105 transform-gpu transition-opacity duration-1000"
+                        className="w-full h-full object-cover opacity-85 scale-105 transform-gpu transition-opacity duration-1000"
                         src={authVideo}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/75 pointer-events-none" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/80 pointer-events-none" />
+                    <div className="absolute inset-0 bg-black/20 pointer-events-none" />
                 </div>
 
                 <motion.div 
@@ -857,7 +856,7 @@ const ProfilePage: React.FC = () => {
     const profileVideo = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
 
     return (
-        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden" style={{ background: 'transparent' }}>
+        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden bg-black">
 
             {/* Fullscreen Ambient Background Video Layer */}
             <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none -z-10">
@@ -868,10 +867,10 @@ const ProfilePage: React.FC = () => {
                     muted
                     playsInline
                     disablePictureInPicture
-                    className="w-full h-full object-cover opacity-45 scale-105 transform-gpu transition-opacity duration-1000"
+                    className="w-full h-full object-cover opacity-85 scale-105 transform-gpu transition-opacity duration-1000"
                     src={profileVideo}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c0f] via-black/60 to-black/80 pointer-events-none" />
+                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
             </div>
 
             <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
