@@ -1,6 +1,6 @@
 // api/admin-auth.ts
 // Secure Serverless Admin Authentication Endpoint for FLKRD MOVIES
-// Provides HMAC-SHA256 Token Generation, Server-Side Verification, and DDoS/Brute-Force Rate Limiting
+// Provides HMAC-SHA256 Token Generation, Server-Side Verification, Multi-Admin Management, and DDoS/Brute-Force Rate Limiting
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
@@ -8,10 +8,12 @@ import crypto from 'crypto';
 // Secret key for HMAC token signing (server-side only, never exposed to client)
 const JWT_SECRET = process.env.FLKRD_ADMIN_SECRET || 'flkrd_quantum_security_master_key_2026_x89_sign';
 
-// Master Admin Password Hash (SHA-256 of Zanabarzani1919@ with salt)
-// Plaintext password is NEVER stored or bundled in client-side code!
+// Master Admin Password Hash (SHA-256 with salt) for Pirasali1919@01
 const MASTER_EMAIL = 'flkrdstudio@gmail.com';
-const MASTER_HASH = crypto.createHmac('sha256', JWT_SECRET).update('Zanabarzani1919@').digest('hex');
+const MASTER_HASH = crypto.createHmac('sha256', JWT_SECRET).update('Pirasali1919@01').digest('hex');
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ofddaeofptotnxeoxfko.supabase.co';
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mZGRhZW9mcHRvdG54ZW94ZmtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDk1NDIsImV4cCI6MjEwMDMyNTU0Mn0.Y502Vk2zlev9d4Hbkjt6VniV_xFXjl41YW4EE26wCNc';
 
 // In-Memory Sliding Window Rate Limiter for DDoS & Brute-Force Protection
 interface RateLimitEntry {
@@ -75,7 +77,7 @@ function recordSuccessfulAttempt(ip: string) {
 }
 
 // Token generation and verification using cryptographic HMAC-SHA256
-function createSessionToken(email: string, role: string): string {
+function createSessionToken(email: string, role: string, permissions?: any): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + 24 * 60 * 60; // 24 hours validity
@@ -83,6 +85,7 @@ function createSessionToken(email: string, role: string): string {
   const payload = Buffer.from(JSON.stringify({
     email,
     role,
+    permissions,
     iat,
     exp,
     issuer: 'flkrd-secure-auth'
@@ -136,6 +139,32 @@ function verifySessionToken(token: string): { valid: boolean; payload?: any; err
   }
 }
 
+// Fetch Sub-Admins from Supabase server_config securely
+async function fetchSubAdminsFromSupabase(): Promise<any[]> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/server_config?select=id,server_name,priority`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (!res.ok) return [];
+    const rows: any[] = await res.json();
+    const subAdmins: any[] = [];
+    for (const row of rows) {
+      if (row.server_name && row.server_name.startsWith('subadmin:')) {
+        try {
+          const parsed = JSON.parse(row.server_name.replace(/^subadmin:/, ''));
+          subAdmins.push(parsed);
+        } catch {}
+      }
+    }
+    return subAdmins;
+  } catch (e) {
+    return [];
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set hardened security and CORS headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -170,7 +199,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       authenticated: true,
       user: {
         email: verification.payload.email,
-        role: verification.payload.role
+        role: verification.payload.role,
+        permissions: verification.payload.permissions
       }
     });
   }
@@ -219,6 +249,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             email: MASTER_EMAIL,
             username: 'FLKRD Owner (CEO)',
             role: 'owner',
+            isActive: true
+          }
+        });
+      } else {
+        recordFailedAttempt(ip);
+        return res.status(401).json({
+          success: false,
+          message: 'پاسپۆردەکەت هەڵەیە!'
+        });
+      }
+    }
+
+    // Check Sub-Admin Credentials securely from Supabase
+    const subAdmins = await fetchSubAdminsFromSupabase();
+    const match = subAdmins.find((a: any) => a.email && a.email.toLowerCase() === cleanEmail);
+
+    if (match) {
+      if (!match.isActive) {
+        recordFailedAttempt(ip);
+        return res.status(403).json({
+          success: false,
+          message: 'ئەم ئەکاونتەی ئادمن ناچالاک کراوە!'
+        });
+      }
+
+      // Timing safe password comparison
+      const matchPass = match.password || '';
+      const providedBuffer = Buffer.from(password);
+      const targetBuffer = Buffer.from(matchPass);
+
+      if (providedBuffer.length === targetBuffer.length && crypto.timingSafeEqual(providedBuffer, targetBuffer)) {
+        recordSuccessfulAttempt(ip);
+        const token = createSessionToken(cleanEmail, match.role || 'manager', match.permissions);
+
+        return res.status(200).json({
+          success: true,
+          token,
+          admin: {
+            id: match.id,
+            email: match.email,
+            username: match.username || 'Sub Admin',
+            role: match.role || 'manager',
+            permissions: match.permissions,
             isActive: true
           }
         });
