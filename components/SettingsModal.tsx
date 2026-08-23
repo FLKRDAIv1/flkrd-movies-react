@@ -1149,7 +1149,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                 try {
                                     const { db } = await import('../utils/db');
                                     await db.clearCache();
-                                    const preserveKeys = ['flkrd_theme', 'flkrd_language', 'flkrd_avatar_url', 'flkrd_user_token', 'flkrd_performance_turbo'];
+                                    const preserveKeys = [
+                                      'flkrd_theme', 'flkrd_language', 'flkrd_avatar_url', 'flkrd_user_token', 
+                                      'flkrd_performance_turbo', 'isFlkrdAdmin', 'flkrd_admin_session_token', 
+                                      'flkrd_admin_email', 'flkrd_admin_login_at', 'flkrd_sub_admins', 'flkrd_avatar_effect'
+                                    ];
                                     const allKeys = Object.keys(localStorage);
                                     allKeys.forEach(k => {
                                         if (!preserveKeys.includes(k) && (k.startsWith('flkrd_') || k.includes('cache') || k.includes('sub'))) {

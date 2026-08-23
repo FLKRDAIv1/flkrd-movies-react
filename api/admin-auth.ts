@@ -90,7 +90,7 @@ function recordSuccessfulAttempt(ip: string) {
 function createSessionToken(email: string, role: string, permissions?: any): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + 24 * 60 * 60; // 24 hours validity
+  const exp = iat + 7 * 24 * 60 * 60; // 7 days (1 week) validity
 
   const payload = Buffer.from(JSON.stringify({
     email,

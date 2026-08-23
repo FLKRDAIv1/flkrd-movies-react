@@ -272,8 +272,8 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const loginAt = localStorage.getItem('flkrd_admin_login_at');
     if (!loginAt) return false;
     
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const isExpired = Date.now() - parseInt(loginAt) > oneDayInMs;
+    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+    const isExpired = Date.now() - parseInt(loginAt) > sevenDaysInMs;
     
     if (isExpired) {
         localStorage.removeItem('isFlkrdAdmin');

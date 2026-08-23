@@ -479,7 +479,21 @@ const ProfilePage: React.FC = () => {
         const AUTH_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4';
         const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
         return (
-            <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20">
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20 bg-black">
+                {/* Fullscreen Atmospheric Background Video Layer */}
+                <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                    <video
+                        key={authVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        disablePictureInPicture
+                        className="w-full h-full object-cover opacity-60 scale-105 transform-gpu transition-opacity duration-1000"
+                        src={authVideo}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/70 pointer-events-none" />
+                </div>
                 <motion.div
                     initial={{ opacity: 0, y: 30, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -545,7 +559,23 @@ const ProfilePage: React.FC = () => {
         const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
 
         return (
-            <div className="h-[100dvh] w-full flex items-center justify-center relative overflow-hidden px-4 py-0 select-none">
+            <div className="h-[100dvh] w-full flex items-center justify-center relative overflow-hidden px-4 py-0 select-none bg-black">
+
+                {/* Fullscreen Atmospheric Background Video Layer */}
+                <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                    <video
+                        key={authVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        disablePictureInPicture
+                        className="w-full h-full object-cover opacity-65 scale-105 transform-gpu transition-opacity duration-1000"
+                        src={authVideo}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/75 pointer-events-none" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/80 pointer-events-none" />
+                </div>
 
                 <motion.div 
                     initial={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -828,6 +858,21 @@ const ProfilePage: React.FC = () => {
 
     return (
         <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden" style={{ background: 'transparent' }}>
+
+            {/* Fullscreen Ambient Background Video Layer */}
+            <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+                <video
+                    key={profileVideo}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    disablePictureInPicture
+                    className="w-full h-full object-cover opacity-45 scale-105 transform-gpu transition-opacity duration-1000"
+                    src={profileVideo}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c0f] via-black/60 to-black/80 pointer-events-none" />
+            </div>
 
             <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
                 <button

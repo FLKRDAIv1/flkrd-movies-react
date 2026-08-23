@@ -28,17 +28,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setIsPasswordRecovery(true);
     }
 
-    // 1. Get initial session
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+    // 1. Get initial session with 7-day max lifetime check
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const loginAt = localStorage.getItem('flkrd_user_login_at');
+      if (session?.user && loginAt && Date.now() - parseInt(loginAt) > SEVEN_DAYS_MS) {
+        console.warn('[SECURITY] User session expired after 7 days. Performing secure logout...');
+        supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        localStorage.removeItem('flkrd_username');
+        localStorage.removeItem('flkrd_user_login_at');
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         localStorage.setItem('flkrd_username', session.user.user_metadata?.user_name || session.user.email?.split('@')[0] || 'Guest');
+        if (!localStorage.getItem('flkrd_user_login_at')) {
+          localStorage.setItem('flkrd_user_login_at', Date.now().toString());
+        }
       }
       setLoading(false);
     });
 
-    // 2. Listen for auth state changes — including PASSWORD_RECOVERY
+    // 2. Periodic heartbeat check for user session expiry (every 5 mins)
+    const checkUserExpiry = () => {
+      const loginAt = localStorage.getItem('flkrd_user_login_at');
+      if (loginAt && Date.now() - parseInt(loginAt) > SEVEN_DAYS_MS) {
+        console.warn('[SECURITY] Periodic check: user session expired after 7 days.');
+        supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        localStorage.removeItem('flkrd_username');
+        localStorage.removeItem('flkrd_user_login_at');
+      }
+    };
+    const userInterval = setInterval(checkUserExpiry, 5 * 60 * 1000);
+
+    // 3. Listen for auth state changes — including PASSWORD_RECOVERY
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -51,13 +82,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (session?.user) {
         localStorage.setItem('flkrd_username', session.user.user_metadata?.user_name || session.user.email?.split('@')[0] || 'Guest');
+        if (event === 'SIGNED_IN' || !localStorage.getItem('flkrd_user_login_at')) {
+          localStorage.setItem('flkrd_user_login_at', Date.now().toString());
+        }
       } else {
         localStorage.removeItem('flkrd_username');
+        localStorage.removeItem('flkrd_user_login_at');
       }
       setLoading(false);
     });
 
     return () => {
+      clearInterval(userInterval);
       subscription.unsubscribe();
     };
   }, []);
@@ -68,6 +104,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(data.session);
       setUser(data.session.user);
       localStorage.setItem('flkrd_username', data.session.user.user_metadata?.user_name || data.session.user.email?.split('@')[0] || 'Guest');
+      localStorage.setItem('flkrd_user_login_at', Date.now().toString());
     }
     return { error };
   };
@@ -82,6 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(data.session);
       setUser(data.session.user);
       localStorage.setItem('flkrd_username', userName || 'Guest');
+      localStorage.setItem('flkrd_user_login_at', Date.now().toString());
     }
     return { error };
   };
@@ -91,6 +129,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     setSession(null);
     localStorage.removeItem('flkrd_username');
+    localStorage.removeItem('flkrd_user_login_at');
     const { error } = await supabase.auth.signOut();
     return { error };
   };

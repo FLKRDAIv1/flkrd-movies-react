@@ -43,11 +43,30 @@ export const initSecurityShield = () => {
 };
 
 /**
- * Validates a session token against the secure backend
+ * Validates a session token against the secure backend with 7-day lifespan & offline resilience
  */
 export const verifyServerSession = async (token: string): Promise<boolean> => {
   if (!token || typeof token !== 'string') return false;
 
+  // 1. Local cryptographic payload expiration check (7 days)
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        console.warn('[SECURITY] Admin session expired after 7 days.');
+        return false;
+      }
+    } else {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+
+  // 2. Server verification
   try {
     const res = await fetch('/api/admin-auth?action=verify', {
       method: 'GET',
@@ -60,10 +79,13 @@ export const verifyServerSession = async (token: string): Promise<boolean> => {
     if (res.ok) {
       const data = await res.json();
       return !!data.authenticated;
+    } else if (res.status === 401 || res.status === 403) {
+      return false;
     }
-    return false;
+    // If 404 (local dev) or 500 (transient server hiccup), honor valid local 7-day token
+    return true;
   } catch (e) {
-    // If offline or network error, fallback safely
-    return false;
+    // If offline or network error, do not logout unless token has expired
+    return true;
   }
 };
