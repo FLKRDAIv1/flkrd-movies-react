@@ -713,3 +713,5 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   </Portal>
 );
 };
+
+export default AdminManagementModal;

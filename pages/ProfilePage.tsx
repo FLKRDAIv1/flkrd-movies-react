@@ -22,11 +22,17 @@ import ElasticStack from '../components/ui/elastic-stack';
 import MovieBentoGrid from '../components/ui/movie-bento-grid';
 import Portal from '../components/Portal';
 import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfileModal';
+import VisitorAnalyticsModal from '../components/VisitorAnalyticsModal';
+import AdminManagementModal from '../components/AdminManagementModal';
+import AdminBroadcastModal from '../components/AdminBroadcastModal';
+import SubtitleManagerPanel from '../components/SubtitleManagerPanel';
+import AdminPanelModal from '../components/AdminPanelModal';
+import { TrendingUp, Radio, Users, Captions } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
-    const { theme, toggleTheme, accentColor, setIsSettingsOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin, setIsAdmin } = useUI();
+    const { theme, toggleTheme, accentColor, setIsSettingsOpen, isAdminModalOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin, setIsAdmin, hasPermission } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +55,12 @@ const ProfilePage: React.FC = () => {
     const [uploadStatusText, setUploadStatusText] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+
+    // Admin Command Center Modals states
+    const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
+    const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+    const [showAdminModal, setShowAdminModal] = useState(false);
+    const [showSubtitleModal, setShowSubtitleModal] = useState(false);
 
     // Known TMDB backdrop paths — displayed immediately, no API wait
     const STATIC_BACKDROPS = [
@@ -1253,48 +1265,217 @@ const ProfilePage: React.FC = () => {
                             </div>
                         </motion.div>
 
-                        {/* Admin Action Hub for Admins */}
+                        {/* Admin Command Center Suite for Admins & Super Owners */}
                         {(isAdmin || user?.email?.toLowerCase() === 'flkrdstudio@gmail.com') && (
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="bg-gradient-to-r from-red-950/60 via-black to-neutral-950 border border-red-500/40 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group"
+                                className="space-y-4"
                             >
-                                <div className="absolute top-0 right-0 w-48 h-48 bg-red-600/10 blur-3xl pointer-events-none" />
-                                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
-                                    <div className="flex items-center gap-4 text-left">
-                                        <div className="p-4 bg-red-600/20 border border-red-500/30 rounded-2xl text-red-500 shadow-lg shadow-red-600/20">
-                                            <ShieldCheck size={28} className="animate-pulse" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xl font-[1000] text-white uppercase italic tracking-wider flex items-center gap-2">
-                                                {(language === 'ku' || language === 'badini') ? 'بەشی بەڕێوەبردن و دەسەڵاتەکان' : 'Admin Management & Control Center'}
-                                                <span className="text-[8px] bg-red-600 text-white font-black px-2.5 py-0.5 rounded-full uppercase">
-                                                    AUTHORIZED
+                                <div className="flex items-center justify-between px-2">
+                                    <div className="flex items-center gap-2">
+                                        <ShieldCheck size={18} className="text-red-500" />
+                                        <h3 className="text-xs font-[1000] text-white uppercase italic tracking-wider">
+                                            {(language === 'ku' || language === 'badini') ? 'بەشی تایبەتی بەڕێوەبەرایەتی • ADMIN COMMAND HUB' : 'Executive Management Command Center • ADMIN'}
+                                        </h3>
+                                    </div>
+                                    <span className="text-[8px] bg-red-600/20 text-red-400 border border-red-500/30 font-black px-2.5 py-0.5 rounded-full uppercase">
+                                        AUTHORIZED ACCESS
+                                    </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {/* 1. Master Admin Control Hub */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setIsAdminModalOpen(true)}
+                                        className="bg-gradient-to-br from-red-950/50 via-black to-neutral-950 border border-red-500/30 hover:border-red-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-600/10 blur-2xl group-hover:scale-150 transition-transform" />
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/40">
+                                                    <Sliders size={18} className="animate-pulse" />
+                                                </div>
+                                                <span className="text-[8px] bg-red-600 text-white font-black px-2 py-0.5 rounded-full uppercase">
+                                                    ALL 10 TOOLS
                                                 </span>
-                                            </h4>
-                                            <p className="text-xs text-gray-400 font-bold mt-1">
-                                                {(language === 'ku' || language === 'badini') 
-                                                    ? 'دەستکاریکردنی سێرڤەرەکان، دیزاینی شووشە، فیلمەکان، بینەرەکان، و ئادمنەکان' 
-                                                    : 'Manage servers, liquid glass design, movies, visitor analytics & sub-admins'}
-                                            </p>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'سەنتەری گشتی بەڕێوەبردن' : 'Master Control Hub'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان، شووشە، فیلمەکان و بەنەرەکان' : 'Servers, Glass, Movie Manager & Banners'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-red-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'کردنەوەی پانێڵ' : 'Launch Panel'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-3 w-full md:w-auto">
-                                        <button
-                                            onClick={() => setIsAdminModalOpen(true)}
-                                            className="flex-1 md:flex-initial px-6 py-3.5 bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 text-white text-xs font-[1000] uppercase tracking-widest rounded-2xl shadow-xl shadow-red-600/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 border border-red-400/40"
-                                        >
-                                            <Sliders size={16} />
-                                            <span>{(language === 'ku' || language === 'badini') ? 'کردنەوەی پانێڵی ئەدمین' : 'Open Admin Panel'}</span>
-                                        </button>
-                                        <button
-                                            onClick={() => setIsSettingsOpen(true)}
-                                            className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded-2xl border border-white/10 transition-all active:scale-95"
-                                        >
-                                            {(language === 'ku' || language === 'badini') ? 'سێتینگ' : 'Settings'}
-                                        </button>
-                                    </div>
+                                    </motion.div>
+
+                                    {/* 2. Visitor Analytics & Live Audience */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowAnalyticsModal(true)}
+                                        className="bg-gradient-to-br from-emerald-950/40 via-black to-neutral-950 border border-emerald-500/30 hover:border-emerald-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/10 blur-2xl group-hover:scale-150 transition-transform" />
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/40">
+                                                    <TrendingUp size={18} className="animate-pulse" />
+                                                </div>
+                                                <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-black px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                                    LIVE STATS
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'ئاماری بینەران و سەردانیکەران' : 'Visitor Analytics & Audience'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'بینەرانی ڕاستەوخۆ، وڵاتەکان و خێرایی' : 'Live users, countries, speed & PDF'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-emerald-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'بینینی ئامارەکان' : 'View Analytics'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* 3. Admin Broadcaster (Live Push Toasts) */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowBroadcastModal(true)}
+                                        className="bg-gradient-to-br from-indigo-950/40 via-black to-neutral-950 border border-indigo-500/30 hover:border-indigo-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 blur-2xl group-hover:scale-150 transition-transform" />
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/40">
+                                                    <Radio size={18} className="animate-pulse" />
+                                                </div>
+                                                <span className="text-[8px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2 py-0.5 rounded-full uppercase">
+                                                    BROADCAST
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'ناردنی ئاگاداری ڕاستەوخۆ' : 'Live Broadcaster'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'ناردنی پەیامی ئاگاداری بۆ هەموو بینەران' : 'Push instant announcement toasts'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-indigo-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'ناردنی پەیام' : 'Send Alert'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* 4. Sub-Admin Management */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowAdminModal(true)}
+                                        className="bg-gradient-to-br from-amber-950/40 via-black to-neutral-950 border border-amber-500/30 hover:border-amber-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-600/10 blur-2xl group-hover:scale-150 transition-transform" />
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/40">
+                                                    <Users size={18} />
+                                                </div>
+                                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black px-2 py-0.5 rounded-full uppercase">
+                                                    SECURITY
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'بەڕێوەبردنی ئادمنەکان' : 'Sub-Admin Manager'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'زیادکردنی ئەدمین و دیاریکردنی دەسەڵاتەکان' : 'Manage admins & security roles'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-amber-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'بەڕێوەبردن' : 'Manage Roles'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* 5. Kurdish Subtitles & Cloud Sync */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setShowSubtitleModal(true)}
+                                        className="bg-gradient-to-br from-cyan-950/40 via-black to-neutral-950 border border-cyan-500/30 hover:border-cyan-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-600/10 blur-2xl group-hover:scale-150 transition-transform" />
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-cyan-600 flex items-center justify-center text-white shadow-lg shadow-cyan-600/40">
+                                                    <Captions size={18} />
+                                                </div>
+                                                <span className="text-[8px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-black px-2 py-0.5 rounded-full uppercase">
+                                                    SUBTITLES
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'بەڕێوەبەری ژێرنووسی کوردی' : 'Subtitle Manager'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'ژێرنووسەکان و سینککردنی کلاود' : 'Kurdish subtitle uploads & cloud sync'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-cyan-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'کردنەوە' : 'Open Subtitles'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+
+                                    {/* 6. Settings Modal Launcher */}
+                                    <motion.div
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setIsSettingsOpen(true)}
+                                        className="bg-gradient-to-br from-neutral-900 via-black to-neutral-950 border border-white/10 hover:border-white/25 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                    >
+                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white">
+                                                    <Sliders size={18} />
+                                                </div>
+                                                <span className="text-[8px] bg-white/10 text-gray-300 font-black px-2 py-0.5 rounded-full uppercase">
+                                                    PREFERENCES
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
+                                                    {(language === 'ku' || language === 'badini') ? 'ڕێکخستنە گشتییەکان' : 'App Settings'}
+                                                </h4>
+                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
+                                                    {(language === 'ku' || language === 'badini') ? 'زمان، ڕەنگ، دەنگ، تێم و کاش' : 'Language, colors, sound, theme & cache'}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">
+                                                <span>{(language === 'ku' || language === 'badini') ? 'سێتینگ' : 'Open Settings'}</span>
+                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                            </div>
+                                        </div>
+                                    </motion.div>
                                 </div>
                             </motion.div>
                         )}
@@ -1358,6 +1539,30 @@ const ProfilePage: React.FC = () => {
                     {t('profileHeading')}
                 </p>
             </div>
+
+            {/* Standalone Admin Command Center Modals */}
+            <VisitorAnalyticsModal 
+                isOpen={showAnalyticsModal} 
+                onClose={() => setShowAnalyticsModal(false)} 
+            />
+            <AdminBroadcastModal 
+                isOpen={showBroadcastModal} 
+                onClose={() => setShowBroadcastModal(false)} 
+            />
+            <AdminManagementModal 
+                isOpen={showAdminModal} 
+                onClose={() => setShowAdminModal(false)} 
+                accentColor={accentColor} 
+                language={language} 
+            />
+            <SubtitleManagerPanel 
+                isOpen={showSubtitleModal} 
+                onClose={() => setShowSubtitleModal(false)} 
+            />
+            <AdminPanelModal 
+                isOpen={isAdminModalOpen} 
+                onClose={() => setIsAdminModalOpen(false)} 
+            />
         </div>
     );
 };
