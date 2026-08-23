@@ -1099,9 +1099,9 @@ const DubbedMoviesPage: React.FC = () => {
     };
 
     // --- Admin Handlers ---
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        const res = loginAsAdmin(adminEmail, adminPassword);
+        const res = await loginAsAdmin(adminEmail, adminPassword);
         if (res.success && res.admin) {
             setShowLoginModal(false);
             addNotification({ 

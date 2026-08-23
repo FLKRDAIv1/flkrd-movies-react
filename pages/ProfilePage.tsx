@@ -198,7 +198,7 @@ const ProfilePage: React.FC = () => {
         const cleanEmail = email.trim().toLowerCase();
 
         // Check Sub-Admin / Master Admin login credentials
-        const adminRes = loginAsAdmin(cleanEmail, password);
+        const adminRes = await loginAsAdmin(cleanEmail, password);
         if (adminRes.success && adminRes.admin) {
             signIn(cleanEmail, password).catch(() => {});
             setFormSubmitting(false);

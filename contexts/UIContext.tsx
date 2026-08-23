@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
+import { initSecurityShield, verifyServerSession } from '../utils/securityGuard';
 
 type Theme = 'light' | 'dark' | 'premium-gradient-1' | 'premium-gradient-2' | 'premium-particles-galaxy' | 'premium-particles-moon' | 'premium-particles-stardust';
 
@@ -109,7 +110,7 @@ interface UIContextType {
   setViewMode: (mode: 'grid' | 'list') => void;
   hasPermission: (permKey: string) => boolean;
   currentAdminEmail: string;
-  loginAsAdmin: (email: string, pass: string) => { success: boolean; admin?: any; message?: string };
+  loginAsAdmin: (email: string, pass: string) => Promise<{ success: boolean; admin?: any; message?: string }>;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -254,23 +255,63 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       localStorage.setItem('flkrd_glass_config', JSON.stringify(glassConfig));
     } catch (e) {}
   }, [glassConfig]);
+
+  // 1. Initialize Security Shield (Production DevTools Hook Neutralizer & Console Protection)
+  useEffect(() => {
+    initSecurityShield();
+  }, []);
+
+  // 2. Cryptographically protected Admin state
   const [isAdmin, setIsAdminState] = useState(() => {
     const isAdminStored = localStorage.getItem('isFlkrdAdmin') === 'true';
-    if (!isAdminStored) return false;
+    const token = localStorage.getItem('flkrd_admin_session_token');
+    
+    // Strict requirement: Admin privileges CANNOT exist without a signed server token
+    if (!isAdminStored || !token) return false;
     
     const loginAt = localStorage.getItem('flkrd_admin_login_at');
-    if (!loginAt) return true; // Legacy support
+    if (!loginAt) return false;
     
-    const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-    const isExpired = Date.now() - parseInt(loginAt) > sevenDaysInMs;
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    const isExpired = Date.now() - parseInt(loginAt) > oneDayInMs;
     
     if (isExpired) {
         localStorage.removeItem('isFlkrdAdmin');
+        localStorage.removeItem('flkrd_admin_session_token');
         localStorage.removeItem('flkrd_admin_login_at');
         return false;
     }
     return true;
   });
+
+  // 3. Cryptographic Server-Side Heartbeat Validation (Prevents DevTools LocalStorage Tampering)
+  useEffect(() => {
+    const validateAdminSession = async () => {
+      const token = localStorage.getItem('flkrd_admin_session_token');
+      if (isAdmin && token) {
+        const isValid = await verifyServerSession(token);
+        if (!isValid) {
+          console.warn('[SECURITY] Admin session token verification failed. Revoking admin privileges...');
+          setIsAdminState(false);
+          localStorage.removeItem('isFlkrdAdmin');
+          localStorage.removeItem('flkrd_admin_session_token');
+          localStorage.removeItem('flkrd_admin_login_at');
+          localStorage.removeItem('flkrd_admin_email');
+        }
+      } else if (isAdmin && !token) {
+        // Tampered localStorage detected!
+        console.warn('[SECURITY] Unsigned admin state detected in storage. Purging forged credentials...');
+        setIsAdminState(false);
+        localStorage.removeItem('isFlkrdAdmin');
+        localStorage.removeItem('flkrd_admin_login_at');
+        localStorage.removeItem('flkrd_admin_email');
+      }
+    };
+
+    validateAdminSession();
+    const interval = setInterval(validateAdminSession, 5 * 60 * 1000); // Heartbeat check every 5 minutes
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   useEffect(() => {
     const syncServerPriorities = async () => {
@@ -1031,55 +1072,47 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     return localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com';
   });
 
-  const loginAsAdmin = useCallback((email: string, pass: string) => {
+  const loginAsAdmin = useCallback(async (email: string, pass: string): Promise<{ success: boolean; admin?: any; message?: string }> => {
     const cleanEmail = email.trim().toLowerCase();
     
-    // Master Owner Check
-    if (cleanEmail === 'flkrdstudio@gmail.com') {
-      if (pass === 'Zanabarzani1919@') {
-        localStorage.setItem('flkrd_admin_email', 'flkrdstudio@gmail.com');
-        setCurrentAdminEmail('flkrdstudio@gmail.com');
-        setIsAdmin(true);
+    try {
+      const response = await fetch('/api/admin-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: pass
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.token) {
+        localStorage.setItem('flkrd_admin_session_token', data.token);
+        localStorage.setItem('flkrd_admin_email', cleanEmail);
+        localStorage.setItem('flkrd_admin_login_at', Date.now().toString());
+        localStorage.setItem('isFlkrdAdmin', 'true');
+        setCurrentAdminEmail(cleanEmail);
+        setIsAdminState(true);
         return {
           success: true,
-          admin: {
-            id: 'admin_master_001',
-            email: 'flkrdstudio@gmail.com',
-            username: 'FLKRD Owner (CEO)',
-            role: 'owner',
-            isActive: true
-          }
+          admin: data.admin
         };
       } else {
-        return { success: false, message: 'پاسپۆردەکەت هەڵەیە!' };
+        return {
+          success: false,
+          message: data.message || 'پاسپۆردەکەت هەڵەیە یان ڕێگەپێدراو نیت!'
+        };
       }
+    } catch (err: any) {
+      return {
+        success: false,
+        message: 'کێشە لە پەیوەستبوون بە سێرڤەری ئاسایش هەیە!'
+      };
     }
-
-    // Sub-Admin Credentials Check
-    try {
-      const stored = localStorage.getItem('flkrd_sub_admins');
-      if (stored) {
-        const subAdmins = JSON.parse(stored);
-        const match = subAdmins.find((a: any) => a.email.toLowerCase() === cleanEmail);
-        
-        if (match) {
-          if (!match.isActive) {
-            return { success: false, message: 'ئەم ئەکاونتەی ئادمن ناچالاک کراوە!' };
-          }
-          if (match.password === pass) {
-            localStorage.setItem('flkrd_admin_email', match.email);
-            setCurrentAdminEmail(match.email);
-            setIsAdmin(true);
-            return { success: true, admin: match };
-          } else {
-            return { success: false, message: 'پاسپۆردەکەت هەڵەیە!' };
-          }
-        }
-      }
-    } catch (e) {}
-
-    return { success: false, message: 'ئەم ئیمەیڵە وەک ئادمن تۆمارنەکراوە!' };
-  }, [setIsAdmin]);
+  }, []);
 
   return (
     <UIContext.Provider value={{ 
