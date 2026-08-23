@@ -103,13 +103,13 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Missing text in request body' });
         }
 
-        const isBadini = target === 'badini' || target === 'kmr' || target === 'ku';
+        const isBadini = target === 'badini' || target === 'kmr';
         // Google Translate language codes:
         //   'ckb' = Central Kurdish / Sorani (Arabic script) ✅
         //   'ku'  = Northern Kurdish / Kurmanji / Badini (Latin script) ✅
         const actualTarget =
-            (target === 'ckb' || target === 'sorani') ? 'ckb' :   // Kurdish Sorani
-            (target === 'badini' || target === 'ku' || target === 'kmr') ? 'ku' : // Kurdish Badini/Kurmanji
+            (target === 'badini' || target === 'kmr') ? 'ku' : // Kurdish Badini/Kurmanji
+            (target === 'ckb' || target === 'sorani' || target === 'ku') ? 'ckb' :   // Kurdish Sorani
             target; // pass-through for all other languages (en, ar, tr, etc.)
 
         const isArray = Array.isArray(text);
@@ -201,9 +201,9 @@ export default async function handler(req, res) {
                 [/\bمی\u200Cدیدم\b/g, 'بینیم'],
                 [/\bمی دیدم\b/g, 'بینیم'],
                 [/\bدیدم\b/g, 'بینیم'],
-                [/\bمی\u200Cگفتم\b/g, 'گوتم'],
-                [/\bمی گفتم\b/g, 'گوتم'],
-                [/\bگفتم\b/g, 'گوتم'],
+                [/\bمی\u200Cگفتم\b/g, 'وتم'],
+                [/\bمی گفتم\b/g, 'وتم'],
+                [/\bگفتم\b/g, 'وتم'],
                 [/\bمی\u200Cخوردم\b/g, 'خواردم'],
                 [/\bمی خوردم\b/g, 'خواردم'],
                 [/\bمی\u200Cنشستم\b/g, 'نیشتم'],
@@ -212,8 +212,8 @@ export default async function handler(req, res) {
                 [/\bمی خوابیدم\b/g, 'خەوتم'],
                 [/\bمی\u200Cایستادم\b/g, 'وەستام'],
                 [/\bمی ایستادم\b/g, 'وەستام'],
-                [/\bمی\u200Cدویدم\b/g, 'ڕاوەدایم'],
-                [/\bمی دویدم\b/g, 'ڕاوەدایم'],
+                [/\bمی\u200Cدویدم\b/g, 'ڕامکرد'],
+                [/\bمی دویدم\b/g, 'ڕامکرد'],
                 // --- Modal / auxiliary ---
                 [/\bباید\b/g, 'دەبێت'],
                 // --- Interrogative & common function words ---

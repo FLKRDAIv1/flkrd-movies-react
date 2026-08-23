@@ -854,7 +854,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     mediaType: string,
     season: number = 0,
     episode: number = 0,
-    targetLang: string = 'ku'
+    targetLang: string = 'ckb'
   ) => {
     // If translation for the EXACT SAME subtitle track is ALREADY running, ignore duplicate start call!
     if (

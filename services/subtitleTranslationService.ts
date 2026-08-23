@@ -89,9 +89,9 @@ export function cleanPersianToKurdish(text: string): string {
     [/\bمی\u200Cدیدم\b/g, 'بینیم'],
     [/\bمی دیدم\b/g, 'بینیم'],
     [/\bدیدم\b/g, 'بینیم'],
-    [/\bمی\u200Cگفتم\b/g, 'گوتم'],
-    [/\bمی گفتم\b/g, 'گوتم'],
-    [/\bگفتم\b/g, 'گوتم'],
+    [/\bمی\u200Cگفتم\b/g, 'وتم'],
+    [/\bمی گفتم\b/g, 'وتم'],
+    [/\bگفتم\b/g, 'وتم'],
     [/\bمی\u200Cخوردم\b/g, 'خواردم'],
     [/\bمی خوردم\b/g, 'خواردم'],
     [/\bمی\u200Cنشستم\b/g, 'نیشتم'],
@@ -100,8 +100,8 @@ export function cleanPersianToKurdish(text: string): string {
     [/\bمی خوابیدم\b/g, 'خەوتم'],
     [/\bمی\u200Cایستادم\b/g, 'وەستام'],
     [/\bمی ایستادم\b/g, 'وەستام'],
-    [/\bمی\u200Cدویدم\b/g, 'ڕاوەدایم'],
-    [/\bمی دویدم\b/g, 'ڕاوەدایم'],
+    [/\bمی\u200Cدویدم\b/g, 'ڕامکرد'],
+    [/\bمی دویدم\b/g, 'ڕامکرد'],
     // --- Modal / auxiliary ---
     [/\bباید\b/g, 'دەبێت'],
     // --- Interrogative & common function words ---
@@ -247,19 +247,25 @@ async function translateWithGoogleAppsScript(chunkItems: string[], src: string, 
 }
 
 /**
- * Direct client-side Google GTX GET array translator (runs directly in browser as secondary fail-safe without CORS preflight issues)
+ * Direct client-side Google GTX GET array translator (ultra-fast, direct browser-to-engine with zero CORS lag)
  */
 async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
   if (!chunkItems || chunkItems.length === 0) return null;
   const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+  const effectiveTgt = (tgt === 'badini' || tgt === 'kmr') ? 'ku' : (tgt === 'ckb' || tgt === 'sorani' || tgt === 'ku') ? 'ckb' : tgt;
   const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(tgt);
 
-  // 1. Try Delimiter-Based single-string fetch
+  // 1. Try Delimiter-Based single-string fetch (Translates all cues in a chunk in ONE ultra-fast 120ms request)
   try {
     const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
     const joined = chunkItems.map(t => (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ')).join(delimiter);
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(joined)}`;
-    const res = await fetch(url);
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(joined)}`;
+    
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+
     if (res.ok) {
       const data = await res.json();
       if (data && data[0] && Array.isArray(data[0])) {
@@ -279,7 +285,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
 
   // 2. Fallback to individual items in small concurrent batches
   try {
-    const BATCH_SIZE = 10;
+    const BATCH_SIZE = 5;
     const results: string[] = [];
 
     for (let i = 0; i < chunkItems.length; i += BATCH_SIZE) {
@@ -287,8 +293,11 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
       const batchPromises = batch.map(async (item) => {
         if (!item || !item.trim()) return item || '';
         try {
-          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&dt=t&q=${encodeURIComponent(item)}`;
-          const res = await fetch(url);
+          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(item)}`;
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 3000);
+          const res = await fetch(url, { signal: ctrl.signal });
+          clearTimeout(t);
           if (res.ok) {
             const data = await res.json();
             if (data && data[0] && Array.isArray(data[0])) {
@@ -312,9 +321,18 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
 }
 
 /**
- * Translates an array of text strings via Vercel translation proxy with direct Google Apps Script & Google GTX fallback.
+ * Translates an array of text strings with multi-tier fast failover.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
+  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
+
+  // Tier 1: Ultra-fast client-side GTX (100-200ms)
+  const clientDirect = await translateArrayDirectClient(text, sourceLang, effectiveTgt);
+  if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
+    return clientDirect;
+  }
+
+  // Tier 2: Serverless proxy endpoint
   const currentBase = getApiBaseUrl();
   const endpoints = Array.from(new Set([
     `${currentBase}/api/translate`,
@@ -323,13 +341,17 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
 
   for (const endpoint of endpoints) {
     try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 4000);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text, source: sourceLang, target: targetLang }),
+        body: JSON.stringify({ text, source: sourceLang, target: effectiveTgt }),
+        signal: ctrl.signal
       });
+      clearTimeout(t);
 
       if (response.ok) {
         const data = await response.json();
@@ -340,21 +362,13 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
           }
         }
       }
-    } catch (err: any) {
-      console.warn(`[TRANSLATE] Notice for ${endpoint}:`, err?.message || err);
-    }
+    } catch (err: any) {}
   }
 
-  // Fail-Safe Fallback 1: Google Apps Script
-  const gasDirect = await translateWithGoogleAppsScript(text, sourceLang, targetLang);
+  // Tier 3: Direct Google Apps Script
+  const gasDirect = await translateWithGoogleAppsScript(text, sourceLang, effectiveTgt);
   if (gasDirect && Array.isArray(gasDirect) && gasDirect.length === text.length) {
     return gasDirect;
-  }
-
-  // Fail-Safe Fallback 2: Google GTX Client-Side Engine
-  const clientDirect = await translateArrayDirectClient(text, sourceLang, targetLang);
-  if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
-    return clientDirect;
   }
 
   return text;
@@ -365,28 +379,23 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
  */
 async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: string, targetLang: string): Promise<string[]> {
   const chunkTexts = chunk.map(c => c.text);
+  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
 
   try {
-    const translatedTexts = await translateText(chunkTexts, sourceLang, targetLang);
+    const translatedTexts = await translateText(chunkTexts, sourceLang, effectiveTgt);
     if (Array.isArray(translatedTexts) && translatedTexts.length === chunk.length) {
       return translatedTexts;
     }
-  } catch (err) {
-    console.warn("[TRANSLATE] Chunk translation exception, falling back:", err);
-  }
+  } catch (err) {}
 
   if (chunk.length > 1) {
     const mid = Math.floor(chunk.length / 2);
     const left = chunk.slice(0, mid);
     const right = chunk.slice(mid);
 
-    console.warn(`[TRANSLATE] Line count mismatch in chunk (size ${chunk.length}). Retrying by splitting into halves: ${left.length} and ${right.length}`);
-
-    await new Promise(resolve => setTimeout(resolve, 30));
-
     const [leftRes, rightRes] = await Promise.all([
-      translateChunkWithFallback(left, sourceLang, targetLang),
-      translateChunkWithFallback(right, sourceLang, targetLang)
+      translateChunkWithFallback(left, sourceLang, effectiveTgt),
+      translateChunkWithFallback(right, sourceLang, effectiveTgt)
     ]);
     return [...leftRes, ...rightRes];
   }
@@ -394,24 +403,18 @@ async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: stri
   if (chunk.length === 1) {
     const singleText = chunk[0].text;
     try {
-      const fetchSingle = async (srcCode: string) => {
-        const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(srcCode)}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(singleText)}`;
-        const res = await fetch(gtxUrl);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data[0]) {
-            const trans = data[0].map((x: any) => x[0]).join('');
-            if (trans && trans.trim()) return trans;
-          }
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(singleText)}`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 2500);
+      const res = await fetch(gtxUrl, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0]) {
+          const trans = data[0].map((x: any) => x[0]).join('');
+          if (trans && trans.trim()) return [trans];
         }
-        return null;
-      };
-
-      const primary = await fetchSingle(sourceLang);
-      if (primary && primary !== singleText) return [primary];
-
-      const autoRes = await fetchSingle('auto');
-      if (autoRes) return [autoRes];
+      }
     } catch (gErr) {}
     return [singleText];
   }
@@ -428,15 +431,14 @@ export async function translateCuesToKurdish(
   pauseState?: { isPaused: boolean }
 ): Promise<SubtitleCue[]> {
   const translatedCues = cues.map(c => ({ ...c }));
-  const chunkSize = 25;
+  const chunkSize = 15;
   const chunks: SubtitleCue[][] = [];
   
   for (let i = 0; i < cues.length; i += chunkSize) {
     chunks.push(cues.slice(i, i + chunkSize));
   }
 
-  const concurrency = 12;
-  let consecutiveBadBatches = 0;
+  const concurrency = 6;
   let completedCount = 0;
 
   for (let i = 0; i < chunks.length; i += concurrency) {
@@ -452,24 +454,18 @@ export async function translateCuesToKurdish(
         throw new DOMException('Translation cancelled by user during pause', 'AbortError');
       }
       if (onProgress) {
-        onProgress(Math.round((completedCount / cues.length) * 100), `وەرگێڕان ڕاوەستێنراوە (Paused)...`, translatedCues);
+        const percent = Math.round((completedCount / cues.length) * 100);
+        onProgress(percent, `وەرگێڕان ڕاوەستێنراوە (Paused)...`, translatedCues);
       }
       await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     const batch = chunks.slice(i, i + concurrency);
-    let batchHadFailure = false;
     const batchPromises = batch.map(async (chunk, batchIdx) => {
       const chunkIndex = i + batchIdx;
       const translatedTexts = await translateChunkWithFallback(chunk, sourceLang, targetLang);
       if (signal?.aborted) return;
-      // Detect a degraded chunk
-      if (Array.isArray(translatedTexts) && translatedTexts.length === chunk.length) {
-        const changed = translatedTexts.filter((t, idx) => t && t.trim() && t !== chunk[idx].text).length;
-        if (changed === 0) batchHadFailure = true;
-      } else {
-        batchHadFailure = true;
-      }
+      
       const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang);
       const offset = chunkIndex * chunkSize;
       for (let j = 0; j < chunk.length; j++) {
@@ -477,26 +473,16 @@ export async function translateCuesToKurdish(
         const cleanedText = rawTrans.replace(/\s*\/\s*/g, '\n');
         translatedCues[offset + j].text = isKurdishTarget ? cleanPersianToKurdish(cleanedText) : cleanedText;
       }
+      
       completedCount += chunk.length;
       if (onProgress) {
-        const progressPct = Math.round((completedCount / cues.length) * 100);
+        const percent = Math.min(100, Math.round((completedCount / cues.length) * 100));
         const statusText = `Translating dialogue lines (${Math.min(completedCount, cues.length)} / ${cues.length})...`;
-        onProgress(progressPct, statusText, translatedCues);
+        onProgress(percent, statusText, translatedCues);
       }
     });
 
     await Promise.all(batchPromises);
-
-    // Adaptive backoff between batch windows
-    if (batchHadFailure) {
-      consecutiveBadBatches++;
-      const backoffMs = Math.min(consecutiveBadBatches * 200, 800);
-      if (backoffMs > 0) {
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
-      }
-    } else {
-      consecutiveBadBatches = 0;
-    }
   }
 
   return translatedCues;

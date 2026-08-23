@@ -1698,7 +1698,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       onClick={() => {
                         const sub = confirmTranslateSub;
                         setConfirmTranslateSub(null);
-                        onStartTranslation?.(sub, 'ku');
+                        onStartTranslation?.(sub, 'ckb');
                       }}
                       className="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-2xl text-[13px] font-[1000] uppercase tracking-wider transition-all active:scale-[0.98] shadow-lg shadow-red-600/20 flex items-center justify-center gap-2"
                       style={{ fontFamily: "'Zain', sans-serif" }}
