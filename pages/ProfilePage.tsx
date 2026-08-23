@@ -89,8 +89,11 @@ const ProfilePage: React.FC = () => {
             setTempUserName(user.user_metadata.user_name);
         } else if (user?.email) {
             setTempUserName(user.email.split('@')[0]);
+        } else if (isAdmin || (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true')) {
+            const adminEmail = typeof window !== 'undefined' ? (localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com') : 'flkrdstudio@gmail.com';
+            setTempUserName(adminEmail === 'flkrdstudio@gmail.com' ? 'Zana Barzani (CEO)' : adminEmail.split('@')[0]);
         }
-    }, [user]);
+    }, [user, isAdmin]);
 
     const [backdropUrl, setBackdropUrl] = useState(
         () => STATIC_BACKDROPS[Math.floor(Math.random() * STATIC_BACKDROPS.length)]
@@ -561,7 +564,8 @@ const ProfilePage: React.FC = () => {
     }
 
     // ─── UNAUTHENTICATED GUEST AUTHENTICATION VIEW (LIQUID GLASS) ──────────────────────
-    if (!user && !isAdmin) {
+    const isStoredAdmin = typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true';
+    if (!user && !isAdmin && !isStoredAdmin) {
         const isRTL = language === 'ku' || language === 'badini';
 
         const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';

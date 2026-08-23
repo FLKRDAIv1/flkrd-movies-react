@@ -444,17 +444,38 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // 🔴 AUTO-ADMIN AUTHORIZATION: Automatically detect if logged-in user is CEO or active Sub-Admin
   useEffect(() => {
     const checkAndAuthorizeAdmin = (emailStr?: string | null) => {
+      // 0. If already authenticated via 7-day localStorage admin key, preserve session
+      const isStoredAdmin = localStorage.getItem('isFlkrdAdmin') === 'true';
+      const storedAdminEmail = localStorage.getItem('flkrd_admin_email');
+      const adminLoginAt = localStorage.getItem('flkrd_admin_login_at');
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+
+      if (isStoredAdmin && (!adminLoginAt || (Date.now() - parseInt(adminLoginAt)) <= sevenDaysInMs)) {
+        setIsAdminState(true);
+        if (storedAdminEmail) {
+          setCurrentAdminEmail(storedAdminEmail);
+        }
+        return;
+      }
+
       if (!emailStr) {
-        setIsAdmin(false);
-        setCurrentAdminEmail(null);
+        if (!isStoredAdmin) {
+          setIsAdminState(false);
+          setCurrentAdminEmail(null);
+        }
         return;
       }
       const cleanEmail = emailStr.trim().toLowerCase();
 
       // 1. CEO Master Check
       if (cleanEmail === 'flkrdstudio@gmail.com') {
-        setIsAdmin(true);
+        setIsAdminState(true);
         setCurrentAdminEmail('flkrdstudio@gmail.com');
+        localStorage.setItem('isFlkrdAdmin', 'true');
+        localStorage.setItem('flkrd_admin_email', 'flkrdstudio@gmail.com');
+        if (!localStorage.getItem('flkrd_admin_login_at')) {
+          localStorage.setItem('flkrd_admin_login_at', Date.now().toString());
+        }
         return;
       }
 
@@ -465,16 +486,23 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           const subAdmins = JSON.parse(stored);
           const match = subAdmins.find((a: any) => a.email && a.email.toLowerCase() === cleanEmail);
           if (match && match.isActive) {
-            setIsAdmin(true);
+            setIsAdminState(true);
             setCurrentAdminEmail(match.email);
+            localStorage.setItem('isFlkrdAdmin', 'true');
+            localStorage.setItem('flkrd_admin_email', match.email);
+            if (!localStorage.getItem('flkrd_admin_login_at')) {
+              localStorage.setItem('flkrd_admin_login_at', Date.now().toString());
+            }
             return;
           }
         }
       } catch (e) {}
 
-      // Default: clear admin state if not matching
-      setIsAdmin(false);
-      setCurrentAdminEmail(null);
+      // Default: clear admin state if not matching and not in localStorage
+      if (!isStoredAdmin) {
+        setIsAdminState(false);
+        setCurrentAdminEmail(null);
+      }
     };
 
     // Check active session on mount
