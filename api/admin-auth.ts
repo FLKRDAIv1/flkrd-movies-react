@@ -1,9 +1,19 @@
-// api/admin-auth.ts
-// Secure Serverless Admin Authentication Endpoint for FLKRD MOVIES
-// Provides HMAC-SHA256 Token Generation, Server-Side Verification, Multi-Admin Management, and DDoS/Brute-Force Rate Limiting
-
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
+
+interface AdminAuthRequest {
+  query: Record<string, string | string[] | undefined>;
+  body?: any;
+  method?: string;
+  headers: Record<string, string | string[] | undefined>;
+  socket: { remoteAddress?: string };
+}
+
+interface AdminAuthResponse {
+  setHeader(name: string, value: string): void;
+  status(code: number): AdminAuthResponse;
+  json(body: any): void;
+  end(): void;
+}
 
 // Secret key for HMAC token signing (server-side only, never exposed to client)
 const JWT_SECRET = process.env.FLKRD_ADMIN_SECRET || 'flkrd_quantum_security_master_key_2026_x89_sign';
@@ -27,12 +37,12 @@ const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes window
 const LOCKOUT_MS = 30 * 60 * 1000; // 30 minutes lockout after exceeding max attempts
 
-function getClientIp(req: VercelRequest): string {
+function getClientIp(req: AdminAuthRequest): string {
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
     return forwarded.split(',')[0].trim();
   }
-  return req.socket.remoteAddress || 'unknown-ip';
+  return req.socket?.remoteAddress || 'unknown-ip';
 }
 
 function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
@@ -165,7 +175,7 @@ async function fetchSubAdminsFromSupabase(): Promise<any[]> {
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: AdminAuthRequest, res: AdminAuthResponse) {
   // Set hardened security and CORS headers
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
