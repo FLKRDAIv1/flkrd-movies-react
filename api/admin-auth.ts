@@ -287,10 +287,12 @@ export default async function handler(req: AdminAuthRequest, res: AdminAuthRespo
         });
       }
 
-      // Timing safe password comparison
-      const matchPass = match.password || '';
-      const providedBuffer = Buffer.from(password);
-      const targetBuffer = Buffer.from(matchPass);
+      // Timing safe salted SHA-256 password hash comparison
+      const providedHash = crypto.createHash('sha256').update(password + '_flkrd_subadmin_salt_2026').digest('hex');
+      const targetHash = match.passwordHash || (match.password ? crypto.createHash('sha256').update(match.password + '_flkrd_subadmin_salt_2026').digest('hex') : '');
+
+      const providedBuffer = Buffer.from(providedHash);
+      const targetBuffer = Buffer.from(targetHash);
 
       if (providedBuffer.length === targetBuffer.length && crypto.timingSafeEqual(providedBuffer, targetBuffer)) {
         recordSuccessfulAttempt(ip);

@@ -45,6 +45,24 @@ const MASTER_OWNER: AdminUser = {
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
 };
 
+async function sha256Hex(text: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(text + '_flkrd_subadmin_salt_2026');
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function sanitizeAdminForStorage(admin: any): Promise<any> {
+  const sanitized = { ...admin };
+  if (sanitized.password) {
+    if (!sanitized.passwordHash) {
+      sanitized.passwordHash = await sha256Hex(sanitized.password);
+    }
+    delete sanitized.password; // NEVER store plaintext password in DB or storage!
+  }
+  return sanitized;
+}
+
 export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   isOpen,
   onClose,
@@ -79,18 +97,23 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Sync Sub-Admins to Supabase & LocalStorage
+  // Sync Sub-Admins securely to Supabase & LocalStorage (Zero Plaintext Passwords!)
   useEffect(() => {
-    const subAdminsOnly = admins.filter(a => a.id !== MASTER_OWNER.id);
-    try {
-      localStorage.setItem('flkrd_sub_admins', JSON.stringify(subAdminsOnly));
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flkrd-subadmins-updated'));
+    const syncSubAdmins = async () => {
+      const subAdminsOnly = admins.filter(a => a.id !== MASTER_OWNER.id);
+      const sanitizedList: any[] = [];
+      for (const a of subAdminsOnly) {
+        sanitizedList.push(await sanitizeAdminForStorage(a));
       }
-    } catch (e) {}
 
-    // Async push to Supabase server_config
-    (async () => {
+      try {
+        localStorage.setItem('flkrd_sub_admins', JSON.stringify(sanitizedList));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flkrd-subadmins-updated'));
+        }
+      } catch (e) {}
+
+      // Async push to Supabase server_config without plaintext passwords
       try {
         const { data: currentRows } = await supabase
           .from('server_config')
@@ -108,8 +131,8 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         }
 
         let nextId = maxId + 1;
-        const upserts = subAdminsOnly.map(admin => {
-          const jsonStr = JSON.stringify(admin);
+        const upserts = sanitizedList.map(admin => {
+          const jsonStr = JSON.stringify(admin); // Contains ONLY passwordHash, NO plaintext password!
           const serverName = `subadmin:${jsonStr}`;
 
           const emailMatch = existingSubAdminRows.find(r => {
@@ -143,7 +166,9 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
       } catch (err) {
         console.warn('[ADMIN SYNC] Failed to sync sub-admins to Supabase:', err);
       }
-    })();
+    };
+
+    syncSubAdmins();
   }, [admins]);
 
   const generateRandomPassword = () => {
@@ -155,7 +180,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     setPassword(pass);
   };
 
-  const handleSaveAdmin = (e: React.FormEvent) => {
+  const handleSaveAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -175,18 +200,20 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
       return;
     }
 
+    const passwordHash = password.trim() ? await sha256Hex(password.trim()) : undefined;
+
     if (editingAdminId) {
       // Update existing Sub-Admin
       setAdmins(prev => prev.map(admin => {
         if (admin.id === editingAdminId) {
           return {
             ...admin,
-            email,
-            username,
+            email: email.trim().toLowerCase(),
+            username: username.trim(),
             role,
             permissions,
             avatarUrl: avatarUrl.trim() || admin.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
-            ...(password ? { password } : {})
+            ...(passwordHash ? { passwordHash } : {})
           };
         }
         return admin;
@@ -199,11 +226,11 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         return;
       }
 
-      const newAdmin: AdminUser = {
+      const newAdmin: any = {
         id: `admin_sub_${Date.now()}`,
         email: email.trim().toLowerCase(),
         username: username.trim(),
-        password,
+        passwordHash,
         role,
         permissions,
         createdAt: new Date().toISOString().split('T')[0],
