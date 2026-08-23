@@ -21,11 +21,9 @@ import { db } from '../utils/db';
 import ElasticStack from '../components/ui/elastic-stack';
 import MovieBentoGrid from '../components/ui/movie-bento-grid';
 import Portal from '../components/Portal';
-import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfileModal';
 import VisitorAnalyticsModal from '../components/VisitorAnalyticsModal';
-import AdminManagementModal from '../components/AdminManagementModal';
-import AdminBroadcastModal from '../components/AdminBroadcastModal';
-import SubtitleManagerPanel from '../components/SubtitleManagerPanel';
+import { AdminManagementModal } from '../components/AdminManagementModal';
+import { AdminBroadcastModal } from '../components/AdminBroadcastModal';
 import AdminPanelModal from '../components/AdminPanelModal';
 import { TrendingUp, Radio, Users, Captions } from 'lucide-react';
 
@@ -60,7 +58,6 @@ const ProfilePage: React.FC = () => {
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
     const [showAdminModal, setShowAdminModal] = useState(false);
-    const [showSubtitleModal, setShowSubtitleModal] = useState(false);
 
     // Known TMDB backdrop paths — displayed immediately, no API wait
     const STATIC_BACKDROPS = [
@@ -1418,7 +1415,7 @@ const ProfilePage: React.FC = () => {
                                     <motion.div
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={() => setShowSubtitleModal(true)}
+                                        onClick={() => navigate('/kurdish-cc')}
                                         className="bg-gradient-to-br from-cyan-950/40 via-black to-neutral-950 border border-cyan-500/30 hover:border-cyan-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
                                     >
                                         <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-600/10 blur-2xl group-hover:scale-150 transition-transform" />
@@ -1554,10 +1551,6 @@ const ProfilePage: React.FC = () => {
                 onClose={() => setShowAdminModal(false)} 
                 accentColor={accentColor} 
                 language={language} 
-            />
-            <SubtitleManagerPanel 
-                isOpen={showSubtitleModal} 
-                onClose={() => setShowSubtitleModal(false)} 
             />
             <AdminPanelModal 
                 isOpen={isAdminModalOpen} 
