@@ -196,7 +196,8 @@ export default async function handler(req: AdminAuthRequest, res: AdminAuthRespo
     const authHeader = (Array.isArray(rawAuth) ? rawAuth[0] : rawAuth) || '';
     const rawQueryToken = req.query.token;
     const queryToken = Array.isArray(rawQueryToken) ? rawQueryToken[0] : rawQueryToken;
-    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (queryToken as string);
+    const bodyToken = req.body && typeof req.body.token === 'string' ? req.body.token : undefined;
+    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (queryToken as string) || bodyToken;
 
     const verification = verifySessionToken(token);
     if (!verification.valid) {
