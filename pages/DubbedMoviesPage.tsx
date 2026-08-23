@@ -1066,24 +1066,44 @@ const DubbedMoviesPage: React.FC = () => {
 
     const handleBan = async (e: React.MouseEvent, movie: any) => {
         e.stopPropagation();
-        const cleanId = String(movie.id).replace('custom_', '');
+        const rawId = String(movie.id);
+        const cleanId = rawId.replace('custom_', '');
+        const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
         const mediaType = 'dubbed';
 
-        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
+        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL DELETE]`)) return;
 
         try {
-            // 1. Universal Ban Registry
-            const banSignal = await bannedService.banContent(cleanId, mediaType);
-            if (!banSignal) throw new Error("Registry reject");
+            // 1. Dubbed Physical Deletion from Supabase
+            const { error: delErr } = await supabase
+                .from('dubbed_movies')
+                .delete()
+                .or(`id.eq.${dbId},id.eq.${cleanId}`);
 
-            // 2. Dubbed Physical Deletion
-            const dbId = String(movie.id).startsWith('custom_') ? movie.id : `custom_${movie.id}`;
-            await supabase.from('dubbed_movies').delete().eq('id', dbId);
+            if (delErr) {
+                console.warn('[DUBBED DELETE ERROR]', delErr);
+            }
+
+            // 2. Ban registry (non-blocking)
+            try {
+                await bannedService.banContent(cleanId, mediaType);
+            } catch {}
+
+            // 3. Local IndexedDB cleanup
+            try {
+                await db.deleteMovie(dbId);
+                await db.deleteMovie(cleanId);
+            } catch {}
 
             addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
 
-            // Refresh local state
-            setDubbedContent(prev => prev.filter(m => m.id !== movie.id));
+            // 4. Refresh local state
+            setDubbedContent(prev => {
+                const next = prev.filter(m => String(m.id) !== rawId && String(m.id) !== dbId && String(m.id) !== cleanId);
+                db.saveMovies(next).catch(() => {});
+                return next;
+            });
+            window.dispatchEvent(new CustomEvent('banned-list-updated'));
         } catch (err) {
             console.error("Moderation failure:", err);
             addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Action rejected.' });
@@ -1341,56 +1361,37 @@ const DubbedMoviesPage: React.FC = () => {
         if (!movieToDelete) return;
         setIsUpdating(true);
         try {
-            // 1. Robust ID Normalization: DB expects ID starting with 'custom_'
-            const dbId = movieToDelete.startsWith('custom_')
-                ? movieToDelete
-                : `custom_${movieToDelete}`;
+            const rawId = String(movieToDelete);
+            const cleanId = rawId.replace('custom_', '');
+            const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
 
             console.log(`[ZANA PROTOCOL] Attempting high-level termination of Node: ${dbId}`);
 
-            // 2. Database Execution (Try RPC Call first, fallback to direct DELETE if it fails)
-            console.log(`[ZANA PROTOCOL] Executing deletion RPC for Node: ${dbId}`);
-            let deleteSuccess = false;
+            // Direct Table Deletion
+            const { error: directError } = await supabase
+                .from('dubbed_movies')
+                .delete()
+                .or(`id.eq.${dbId},id.eq.${cleanId}`);
 
+            if (directError) {
+                console.error('[SUPABASE DIRECT DELETE ERROR]', directError);
+                throw new Error(`Direct deletion failed: ${directError.message}`);
+            }
+
+            // Ban registry
             try {
-                const { error: rpcError } = await supabase
-                    .rpc('delete_dubbed_movie', { target_id: dbId });
+                await bannedService.banContent(cleanId, 'dubbed');
+            } catch {}
 
-                if (!rpcError) {
-                    deleteSuccess = true;
-                    console.log('[ZANA PROTOCOL] RPC deletion completed successfully.');
-                } else {
-                    console.warn('[ZANA PROTOCOL] RPC deletion failed, attempting standard table delete fallback:', rpcError);
-                }
-            } catch (rpcErr) {
-                console.warn('[ZANA PROTOCOL] RPC call threw exception, trying direct table delete:', rpcErr);
-            }
-
-            if (!deleteSuccess) {
-                console.log(`[ZANA PROTOCOL] Falling back to standard direct deletion on 'dubbed_movies' table for ID: ${dbId}`);
-                const { error: directError } = await supabase
-                    .from('dubbed_movies')
-                    .delete()
-                    .eq('id', dbId);
-
-                if (directError) {
-                    console.error('[SUPABASE DIRECT DELETE ERROR]', directError);
-                    throw new Error(`Direct deletion failed: ${directError.message}`);
-                }
-                console.log('[ZANA PROTOCOL] Direct table deletion completed successfully.');
-            }
-
-            // --- Synchronization Protocols ---
-
+            // IndexedDB cleanup
             try {
-                // Redis is decommissioned, syncing via direct Supabase alignment
-            } catch (cacheErr) {
-                console.warn('[SYNC WARN] State alignment heartbeat failed, but DB delete succeeded.', cacheErr);
-            }
+                await db.deleteMovie(dbId);
+                await db.deleteMovie(cleanId);
+            } catch {}
 
             // 4. Update Local UI State and IndexedDB
             setDubbedContent(prev => {
-                const next = prev.filter(m => String(m.id) !== String(movieToDelete));
+                const next = prev.filter(m => String(m.id) !== rawId && String(m.id) !== dbId && String(m.id) !== cleanId);
                 db.saveMovies(next).catch(err => console.error('[DB RECOVERY ERROR]', err));
                 return next;
             });
@@ -1398,8 +1399,6 @@ const DubbedMoviesPage: React.FC = () => {
             // Reset Hero Index and Cleanup Modals
             setCurrentHeroIndex(0);
             setMovieToDelete(null);
-            setIsAdminModalOpen(false);
-
             addNotification({
                 type: 'success',
                 title: 'Node Terminated',

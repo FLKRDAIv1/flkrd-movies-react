@@ -8,6 +8,8 @@ import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { bannedService } from '../services/bannedService';
 import { fetchData } from '../services/tmdbService';
+import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import KurdishCCBadge from './KurdishCCBadge';
 import ListMoviePreviewDrawer from './ListMoviePreviewDrawer';
 
@@ -104,22 +106,35 @@ const MovieCard = memo(
 
       const handleBan = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!isAdmin || !user) return;
-        const confirmBan = window.confirm(`Ban "${item.title || item.name}" permanently from FLKRD?`);
+        if (!isAdmin) return;
+        const confirmBan = window.confirm(`Ban/Delete "${item.title || item.name}" from FLKRD?`);
         if (!confirmBan) return;
         try {
-          const success = await bannedService.banContent(
-            item.id,
+          const rawId = String(item.id);
+          const cleanId = rawId.replace('custom_', '');
+          const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
+          
+          // 1. If it's a dubbed or custom movie, delete it directly from Supabase dubbed_movies
+          if (mediaType === 'dubbed' || isCustom || rawId.startsWith('custom_')) {
+            await supabase.from('dubbed_movies').delete().or(`id.eq.${dbId},id.eq.${cleanId}`);
+            try {
+              await db.deleteMovie(dbId);
+              await db.deleteMovie(cleanId);
+            } catch {}
+          }
+
+          // 2. Add to banned registry
+          await bannedService.banContent(
+            cleanId,
             mediaType === 'tv' ? 'tv' : 'movie'
           );
-          if (success) {
-            addNotification({ type: 'success', title: 'Content Terminated', message: `${item.title || item.name} banned.` });
-            if (onRemove) onRemove();
-          } else {
-            addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
-          }
-        } catch {
-          addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination protocol.' });
+
+          addNotification({ type: 'success', title: 'Content Removed', message: `${item.title || item.name} removed successfully.` });
+          window.dispatchEvent(new CustomEvent('banned-list-updated'));
+          if (onRemove) onRemove();
+        } catch (err) {
+          console.error('[CARD DELETE ERROR]', err);
+          addNotification({ type: 'error', title: 'Action Failed', message: 'Could not complete deletion.' });
         }
       };
 

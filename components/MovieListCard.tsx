@@ -8,6 +8,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import KurdishCCBadge from './KurdishCCBadge';
 import { BorderBeam } from './ui/border-beam';
 import { ListMoviePreviewDrawer } from './ListMoviePreviewDrawer';
@@ -109,19 +110,28 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
 
   const handleBan = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isAdmin) return;
     const cleanId = String(item.id).replace('custom_', '');
-    if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
+    const rawId = String(item.id);
+    const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
+
+    if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL DELETE]`)) return;
     try {
-      const success = await bannedService.banContent(cleanId, mediaType);
-      if (!success) throw new Error('Registry reject');
-      if (isCustom) {
-        await supabase.rpc('delete_dubbed_movie', { target_id: String(item.id) });
+      if (isCustom || mediaType === 'dubbed' || rawId.startsWith('custom_')) {
+        await supabase.from('dubbed_movies').delete().or(`id.eq.${dbId},id.eq.${cleanId}`);
+        try {
+          await db.deleteMovie(dbId);
+          await db.deleteMovie(cleanId);
+        } catch {}
       }
+
+      await bannedService.banContent(cleanId, mediaType);
       addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
       window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      if (onRemove) onRemove();
     } catch (err) {
       console.error('Moderation failure:', err);
-      addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Database refused termination.' });
+      addNotification({ type: 'error', title: 'SIGNAL FAILED', message: 'Deletion error.' });
     }
   };
 
