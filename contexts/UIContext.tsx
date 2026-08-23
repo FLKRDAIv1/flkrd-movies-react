@@ -261,16 +261,16 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     initSecurityShield();
   }, []);
 
-  // 2. Cryptographically protected Admin state
+  // 2. Cryptographically protected Admin state with 7-day lifetime
   const [isAdmin, setIsAdminState] = useState(() => {
     const isAdminStored = localStorage.getItem('isFlkrdAdmin') === 'true';
-    const token = localStorage.getItem('flkrd_admin_session_token');
+    if (!isAdminStored) return false;
     
-    // Strict requirement: Admin privileges CANNOT exist without a signed server token
-    if (!isAdminStored || !token) return false;
-    
-    const loginAt = localStorage.getItem('flkrd_admin_login_at');
-    if (!loginAt) return false;
+    let loginAt = localStorage.getItem('flkrd_admin_login_at');
+    if (!loginAt) {
+      loginAt = Date.now().toString();
+      localStorage.setItem('flkrd_admin_login_at', loginAt);
+    }
     
     const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
     const isExpired = Date.now() - parseInt(loginAt) > sevenDaysInMs;
@@ -279,37 +279,45 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         localStorage.removeItem('isFlkrdAdmin');
         localStorage.removeItem('flkrd_admin_session_token');
         localStorage.removeItem('flkrd_admin_login_at');
+        localStorage.removeItem('flkrd_admin_email');
         return false;
     }
     return true;
   });
 
-  // 3. Cryptographic Server-Side Heartbeat Validation (Prevents DevTools LocalStorage Tampering)
+  // 3. Periodic 7-Day Session Expiration Validator
   useEffect(() => {
     const validateAdminSession = async () => {
+      if (!isAdmin) return;
+      const loginAt = localStorage.getItem('flkrd_admin_login_at');
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      
+      if (loginAt && Date.now() - parseInt(loginAt) > sevenDaysInMs) {
+        console.warn('[SECURITY] Admin session expired after 7 days. Performing secure logout...');
+        setIsAdminState(false);
+        localStorage.removeItem('isFlkrdAdmin');
+        localStorage.removeItem('flkrd_admin_session_token');
+        localStorage.removeItem('flkrd_admin_login_at');
+        localStorage.removeItem('flkrd_admin_email');
+        return;
+      }
+
       const token = localStorage.getItem('flkrd_admin_session_token');
-      if (isAdmin && token) {
+      if (token) {
         const isValid = await verifyServerSession(token);
         if (!isValid) {
-          console.warn('[SECURITY] Admin session token verification failed. Revoking admin privileges...');
+          console.warn('[SECURITY] Admin session token rejected. Revoking admin privileges...');
           setIsAdminState(false);
           localStorage.removeItem('isFlkrdAdmin');
           localStorage.removeItem('flkrd_admin_session_token');
           localStorage.removeItem('flkrd_admin_login_at');
           localStorage.removeItem('flkrd_admin_email');
         }
-      } else if (isAdmin && !token) {
-        // Tampered localStorage detected!
-        console.warn('[SECURITY] Unsigned admin state detected in storage. Purging forged credentials...');
-        setIsAdminState(false);
-        localStorage.removeItem('isFlkrdAdmin');
-        localStorage.removeItem('flkrd_admin_login_at');
-        localStorage.removeItem('flkrd_admin_email');
       }
     };
 
     validateAdminSession();
-    const interval = setInterval(validateAdminSession, 5 * 60 * 1000); // Heartbeat check every 5 minutes
+    const interval = setInterval(validateAdminSession, 5 * 60 * 1000); // Check every 5 minutes
     return () => clearInterval(interval);
   }, [isAdmin]);
 

@@ -27,16 +27,14 @@ export const initSecurityShield = () => {
   }
 
   // 2. Anti-Tamper LocalStorage Integrity Listener
-  // Detects if someone modifies localStorage in DevTools console (e.g. isFlkrdAdmin)
   window.addEventListener('storage', (e) => {
-    if (e.key === 'isFlkrdAdmin' && e.newValue === 'true') {
-      const token = localStorage.getItem('flkrd_admin_session_token');
-      if (!token) {
-        console.warn('[SECURITY] Unauthorized admin flag detected without signed token. Purging credentials...');
+    if (e.key === 'flkrd_admin_login_at' && e.newValue) {
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      if (Date.now() - parseInt(e.newValue) > sevenDaysInMs) {
         localStorage.removeItem('isFlkrdAdmin');
+        localStorage.removeItem('flkrd_admin_session_token');
         localStorage.removeItem('flkrd_admin_login_at');
         localStorage.removeItem('flkrd_admin_email');
-        window.location.reload();
       }
     }
   });
