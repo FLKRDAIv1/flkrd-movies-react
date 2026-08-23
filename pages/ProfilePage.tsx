@@ -200,8 +200,8 @@ const ProfilePage: React.FC = () => {
         // Check Sub-Admin / Master Admin login credentials
         const adminRes = await loginAsAdmin(cleanEmail, password);
         if (adminRes.success && adminRes.admin) {
-            signIn(cleanEmail, password).catch(() => {});
             setFormSubmitting(false);
+            setTempUserName(adminRes.admin.username || 'ADMIN');
             addNotification({ 
                 type: 'success', 
                 title: (language === 'ku' || language === 'badini') ? 'بەخێربێیتەوە ئادمن' : 'Admin Authorized', 
@@ -614,11 +614,14 @@ const ProfilePage: React.FC = () => {
                                     dir={isRTL ? 'rtl' : 'ltr'}
                                 >
                                     <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="login-email" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <div className="relative">
                                             <input 
+                                                id="login-email"
+                                                name="email"
+                                                autoComplete="email"
                                                 type="email" required
                                                 value={email} onChange={e => setEmail(e.target.value)}
                                                 placeholder={isRTL ? 'ئیمەیڵەکەت بنووسە' : 'Enter your email'}
@@ -628,11 +631,14 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="login-password" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پاسوۆرد' : 'Password'}
                                         </label>
                                         <div className="relative">
                                             <input 
+                                                id="login-password"
+                                                name="password"
+                                                autoComplete="current-password"
                                                 type={showPassword ? "text" : "password"} required
                                                 value={password} onChange={e => setPassword(e.target.value)}
                                                 placeholder={isRTL ? 'پاسوۆردەکەت بنووسە' : 'Enter your password'}
@@ -649,8 +655,10 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between py-0.5 px-1">
-                                        <label className="flex items-center gap-2 text-[10px] font-bold text-gray-300 cursor-pointer select-none">
+                                        <label htmlFor="login-remember" className="flex items-center gap-2 text-[10px] font-bold text-gray-300 cursor-pointer select-none">
                                             <input 
+                                                id="login-remember"
+                                                name="rememberMe"
                                                 type="checkbox" 
                                                 checked={rememberMe} onChange={e => setRememberMe(e.target.checked)}
                                                 className="rounded border-white/20 accent-brand w-3.5 h-3.5 bg-transparent"
@@ -679,10 +687,13 @@ const ProfilePage: React.FC = () => {
                                     dir={isRTL ? 'rtl' : 'ltr'}
                                 >
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="signup-username" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ناوی بەکارهێنەر' : 'Username'}
                                         </label>
                                         <input 
+                                            id="signup-username"
+                                            name="username"
+                                            autoComplete="username"
                                             type="text" required
                                             value={regUserName} onChange={e => setRegUserName(e.target.value)}
                                             placeholder={isRTL ? 'ناو بنووسە' : 'Enter your username'}
@@ -691,10 +702,13 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="signup-email" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <input 
+                                            id="signup-email"
+                                            name="email"
+                                            autoComplete="email"
                                             type="email" required
                                             value={email} onChange={e => setEmail(e.target.value)}
                                             placeholder={isRTL ? 'ئیمەیڵ بنووسە' : 'Enter your email'}
@@ -703,10 +717,13 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="signup-password" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پاسوۆرد' : 'Password'}
                                         </label>
                                         <input 
+                                            id="signup-password"
+                                            name="password"
+                                            autoComplete="new-password"
                                             type="password" required
                                             value={password} onChange={e => setPassword(e.target.value)}
                                             placeholder={isRTL ? 'پاسوۆردێکی بەهێز بنووسە' : 'Enter your password'}
@@ -715,10 +732,13 @@ const ProfilePage: React.FC = () => {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="signup-confirm-password" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'پشتڕاستکردنەوەی پاسوۆرد' : 'Confirm password'}
                                         </label>
                                         <input 
+                                            id="signup-confirm-password"
+                                            name="confirmPassword"
+                                            autoComplete="new-password"
                                             type="password" required
                                             value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
                                             placeholder={isRTL ? 'پاسوۆرد دووبارە بکەرەوە' : 'Confirm your password'}
@@ -749,10 +769,13 @@ const ProfilePage: React.FC = () => {
                                         {isRTL ? 'ئیمەیڵەکەت بنووسە بۆ ناردنی کۆدی دانانەوەی پاسوۆرد.' : 'Enter your email to receive a password reset link.'}
                                     </p>
                                     <div className="space-y-1.5">
-                                        <label className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
+                                        <label htmlFor="reset-email" className="text-[9px] font-black uppercase tracking-widest text-gray-300 block px-1 drop-shadow-sm">
                                             {isRTL ? 'ئیمەیڵ' : 'Email'}
                                         </label>
                                         <input 
+                                            id="reset-email"
+                                            name="email"
+                                            autoComplete="email"
                                             type="email" required
                                             value={email} onChange={e => setEmail(e.target.value)}
                                             placeholder="Enter your email"
