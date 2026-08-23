@@ -6,7 +6,7 @@ import {
   ChevronRight, Activity, Cpu, RefreshCw, Download,
   Smartphone, Laptop, ArrowUpRight, Apple,
   BookOpen, Layers, HelpCircle, FileText, ShieldCheck, Copy,
-  Tablet, Users, Eye, Globe, TrendingUp, Search, ArrowLeft, Calendar, Radio
+  Tablet, Users, Eye, Globe, TrendingUp, Search, ArrowLeft, Calendar, Radio, Sliders
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -363,6 +363,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     viewMode, setViewMode,
     glassConfig,
     isAdmin,
+    setIsAdminModalOpen,
     hasPermission
   } = useUI();
   const { addNotification } = useNotification();
@@ -1175,11 +1176,49 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                 </Card>
               </Section>
 
-              {/* Admin Tools: Visitor Analytics & Live Broadcast Notifier */}
+              {/* Admin Tools: Master Dashboard, Visitor Analytics, Glass & Server Controls */}
               {isAdmin && (
                 <Section delay={0.15}>
-                  <SectionLabel icon={<TrendingUp size={14} />} label={t('visitorAnalytics') + " • ADMIN"} />
+                  <SectionLabel icon={<ShieldCheck size={14} />} label={(language === 'ku' || language === 'badini') ? 'بەشی تایبەتی بەڕێوەبەرایەتی • ADMIN' : 'Management Control Hub • ADMIN'} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    
+                    {/* Master Admin Panel Launcher (All 10 Management Tools) */}
+                    <Card 
+                      className="p-5 cursor-pointer border-red-500/30 hover:border-red-500/60 bg-gradient-to-r from-red-950/40 via-red-900/20 to-black hover:bg-red-900/30 transition-all duration-300 group md:col-span-2 shadow-lg shadow-red-950/50" 
+                      glow="#e50914"
+                    >
+                      <div 
+                        onClick={() => setIsAdminModalOpen(true)}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3.5">
+                          <div 
+                            className="w-12 h-12 rounded-2xl flex items-center justify-center border bg-red-600 border-red-400 text-white transition-all duration-300 group-hover:scale-110 shadow-lg shadow-red-600/40"
+                          >
+                            <Sliders size={22} className="animate-pulse" />
+                          </div>
+                          <div>
+                            <h3 className="text-xs font-[1000] text-white uppercase tracking-widest flex items-center gap-2">
+                              {(language === 'ku' || language === 'badini') ? 'سەنتەری گشتی بەڕێوەبردن (Admin Control Hub)' : 'Master Admin Control Center'}
+                              <span className="text-[8px] bg-red-500 text-white font-black uppercase px-2 py-0.5 rounded-full shadow-sm">
+                                ALL CONTROLS
+                              </span>
+                            </h3>
+                            <p className="text-[10px] text-gray-300 font-bold uppercase mt-1">
+                              {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان، شووشە، فیلمەکان، بەنەرەکان، و هەموو بەشەکانی سیستەم' : 'Servers, Glass Design, Movie Manager, Banners & All Hubs'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1.5 bg-red-600/30 border border-red-500/40 rounded-xl text-[9px] font-black text-red-300 uppercase tracking-widest group-hover:bg-red-600 group-hover:text-white transition-all">
+                            {(language === 'ku' || language === 'badini') ? 'کردنەوەی پانێڵ' : 'Launch Panel'}
+                          </span>
+                          <ChevronRight size={18} className="text-gray-400 group-hover:text-white transition-colors transform group-hover:translate-x-1 duration-300" />
+                        </div>
+                      </div>
+                    </Card>
+
+                    {/* Visitor Analytics */}
                     <Card 
                       className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group" 
                       glow={accentColor}
@@ -1223,6 +1262,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     </Card>
 
+                    {/* Admin Broadcaster */}
                     <Card 
                       className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group" 
                       glow="#10b981"
@@ -1250,6 +1290,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     </Card>
 
+                    {/* Multi-Admin Management */}
                     {hasPermission('canManageAdmins') && (
                       <Card 
                         className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group md:col-span-2" 

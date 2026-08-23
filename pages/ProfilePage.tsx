@@ -4,7 +4,7 @@ import {
     User, Shield, Zap, Bell, Moon, Sun, Languages,
     Save, Edit3, Camera, Clock, Activity, Award,
     ChevronRight, ArrowLeft, Check, Sparkles, Monitor, Smartphone, Download,
-    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2, Crown, CheckCircle2
+    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2, Crown, CheckCircle2, Sliders
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -26,7 +26,7 @@ import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfi
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
-    const { theme, toggleTheme, accentColor, setIsSettingsOpen, loginAsAdmin, isAdmin } = useUI();
+    const { theme, toggleTheme, accentColor, setIsSettingsOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -1230,6 +1230,52 @@ const ProfilePage: React.FC = () => {
                                 </div>
                             </div>
                         </motion.div>
+
+                        {/* Admin Action Hub for Admins */}
+                        {(isAdmin || user?.email?.toLowerCase() === 'flkrdstudio@gmail.com') && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-gradient-to-r from-red-950/60 via-black to-neutral-950 border border-red-500/40 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group"
+                            >
+                                <div className="absolute top-0 right-0 w-48 h-48 bg-red-600/10 blur-3xl pointer-events-none" />
+                                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className="p-4 bg-red-600/20 border border-red-500/30 rounded-2xl text-red-500 shadow-lg shadow-red-600/20">
+                                            <ShieldCheck size={28} className="animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-xl font-[1000] text-white uppercase italic tracking-wider flex items-center gap-2">
+                                                {(language === 'ku' || language === 'badini') ? 'بەشی بەڕێوەبردن و دەسەڵاتەکان' : 'Admin Management & Control Center'}
+                                                <span className="text-[8px] bg-red-600 text-white font-black px-2.5 py-0.5 rounded-full uppercase">
+                                                    AUTHORIZED
+                                                </span>
+                                            </h4>
+                                            <p className="text-xs text-gray-400 font-bold mt-1">
+                                                {(language === 'ku' || language === 'badini') 
+                                                    ? 'دەستکاریکردنی سێرڤەرەکان، دیزاینی شووشە، فیلمەکان، بینەرەکان، و ئادمنەکان' 
+                                                    : 'Manage servers, liquid glass design, movies, visitor analytics & sub-admins'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 w-full md:w-auto">
+                                        <button
+                                            onClick={() => setIsAdminModalOpen(true)}
+                                            className="flex-1 md:flex-initial px-6 py-3.5 bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 text-white text-xs font-[1000] uppercase tracking-widest rounded-2xl shadow-xl shadow-red-600/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 border border-red-400/40"
+                                        >
+                                            <Sliders size={16} />
+                                            <span>{(language === 'ku' || language === 'badini') ? 'کردنەوەی پانێڵی ئەدمین' : 'Open Admin Panel'}</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setIsSettingsOpen(true)}
+                                            className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded-2xl border border-white/10 transition-all active:scale-95"
+                                        >
+                                            {(language === 'ku' || language === 'badini') ? 'سێتینگ' : 'Settings'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-gradient-to-r from-[var(--brand-red)] via-red-800 to-black rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">

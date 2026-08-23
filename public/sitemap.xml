@@ -1390,25 +1390,19 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/movie/1240889</loc>
+    <loc>https://fkurd.pro/details/movie/1621552</loc>
     <lastmod>2026-08-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://fkurd.pro/details/movie/1232569</loc>
+    <loc>https://fkurd.pro/details/movie/1400940</loc>
     <lastmod>2026-08-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://fkurd.pro/details/movie/1242419</loc>
-    <lastmod>2026-08-23</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://fkurd.pro/details/movie/1621552</loc>
     <lastmod>2026-08-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1427,6 +1421,12 @@
   </url>
   <url>
     <loc>https://fkurd.pro/details/movie/1418582</loc>
+    <lastmod>2026-08-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://fkurd.pro/details/movie/1232569</loc>
     <lastmod>2026-08-23</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>

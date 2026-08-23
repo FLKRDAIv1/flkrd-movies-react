@@ -453,15 +453,12 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     <button
                       onClick={() => setIsAdminModalOpen(true)}
                       className={cn(
-                        "h-7 px-3.5 rounded-full flex items-center justify-center gap-1.5 border transition-all active:scale-[0.97] select-none shadow-sm shrink-0 font-black text-[9px] uppercase tracking-widest",
-                        isDarkNavbar 
-                          ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
-                          : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90 shadow-red-500/5 shadow-inner"
+                        "h-7 px-3.5 rounded-full flex items-center justify-center gap-1.5 border transition-all active:scale-[0.97] select-none shadow-sm shrink-0 font-[1000] text-[9px] uppercase tracking-widest bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 text-white border-red-400/40 shadow-[0_0_12px_rgba(229,9,20,0.35)]",
                       )}
-                      title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
+                      title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر (FLKRD Console)' : 'FLKRD Admin Console'}
                     >
-                      <ShieldAlert size={12} />
-                      <span>{language === 'ku' || language === 'badini' ? 'بەڕێوەبەر' : 'Admin'}</span>
+                      <ShieldAlert size={12} className="animate-pulse" />
+                      <span>{language === 'ku' || language === 'badini' ? 'کۆنسۆڵ' : 'Console'}</span>
                     </button>
                   )}
 
@@ -609,16 +606,12 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                         {isAdmin && (
                           <button
                             onClick={() => setIsAdminModalOpen(true)}
-                            className={cn(
-                              "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
-                              isDarkNavbar 
-                                ? "bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500/20" 
-                                : "bg-red-50/90 border-red-200 text-red-600 hover:bg-red-100/90"
-                            )}
-                            title={language === 'ku' || language === 'badini' ? 'پانێڵی بەڕێوەبەر' : 'Admin Panel'}
-                            aria-label="Admin Panel"
+                            className="h-7 px-2.5 rounded-full flex items-center justify-center gap-1 border transition-all active:scale-90 select-none shadow-sm shrink-0 bg-gradient-to-r from-red-600 to-brand text-white border-red-400/40 shadow-[0_0_10px_rgba(229,9,20,0.35)] font-[1000] text-[9px] uppercase tracking-wider"
+                            title={language === 'ku' || language === 'badini' ? 'کۆنسۆڵی بەڕێوەبەر (FLKRD Console)' : 'FLKRD Console'}
+                            aria-label="FLKRD Console"
                           >
-                            <ShieldAlert size={13} />
+                            <ShieldAlert size={12} className="animate-pulse" />
+                            <span>{language === 'ku' || language === 'badini' ? 'کۆنسۆڵ' : 'Console'}</span>
                           </button>
                         )}
 

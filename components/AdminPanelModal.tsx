@@ -252,7 +252,7 @@ export const AdminPanelModal: React.FC = () => {
     const isKurdish = language === 'ku' || language === 'badini';
 
     // Build the permitted tabs list dynamically based on sub-admin rules
-    const visibleTabs = TABS.filter(tab => hasPermission(tab.perm));
+    const visibleTabs = TABS.filter(tab => !tab.perm || hasPermission(tab.perm));
     const [activeAdminTab, setActiveAdminTab] = useState('analytics');
 
     // Sync active tab to first available visible tab when modal opens
