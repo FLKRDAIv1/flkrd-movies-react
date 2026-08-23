@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldAlert, ShieldCheck, UserPlus, Trash2, Key, Mail, User, Check, X, 
   Crown, Lock, Eye, EyeOff, ToggleLeft, ToggleRight, Sparkles, RefreshCw,
-  Film, MessageSquare, TrendingUp, Sliders, AlertTriangle
+  Film, MessageSquare, TrendingUp, Sliders, AlertTriangle, Phone, Shield
 } from 'lucide-react';
 import { AdminUser, AdminPermission } from '../types';
 import { useUI } from '../contexts/UIContext';
@@ -31,6 +31,7 @@ const MASTER_OWNER: AdminUser = {
   id: 'admin_master_001',
   email: 'flkrdstudio@gmail.com',
   username: 'FLKRD Owner (CEO)',
+  phoneNumber: '+964 750 000 0000',
   role: 'owner',
   permissions: {
     canManageMovies: true,
@@ -70,7 +71,10 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   language = 'ku'
 }) => {
   const { t } = useTranslation();
+  const { currentAdminEmail } = useUI();
   const isKurdish = language === 'ku' || language === 'badini';
+
+  const isSuperOwner = (currentAdminEmail || localStorage.getItem('flkrd_admin_email') || '').toLowerCase() === MASTER_OWNER.email.toLowerCase();
 
   const [admins, setAdmins] = useState<AdminUser[]>(() => {
     try {
@@ -89,6 +93,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   // Form State
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -203,13 +208,14 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     const passwordHash = password.trim() ? await sha256Hex(password.trim()) : undefined;
 
     if (editingAdminId) {
-      // Update existing Sub-Admin
+      // Update existing Sub-Admin (Owner can always change their name, phone, role, password, permissions)
       setAdmins(prev => prev.map(admin => {
         if (admin.id === editingAdminId) {
           return {
             ...admin,
             email: email.trim().toLowerCase(),
             username: username.trim(),
+            phoneNumber: phoneNumber.trim(),
             role,
             permissions,
             avatarUrl: avatarUrl.trim() || admin.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username)}`,
@@ -218,7 +224,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         }
         return admin;
       }));
-      setSuccessMsg(isKurdish ? 'زانیارییەکانی ئادمن بە سەرکەوتوویی تازەکرانەوە!' : 'Admin details updated successfully!');
+      setSuccessMsg(isKurdish ? 'زانیاری و ژمارەی مۆبایلی ئادمن بە سەرکەوتوویی تازەکرانەوە!' : 'Admin details and phone number updated successfully!');
     } else {
       // Check duplicate email
       if (admins.some(a => a.email.toLowerCase() === email.trim().toLowerCase())) {
@@ -230,6 +236,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
         id: `admin_sub_${Date.now()}`,
         email: email.trim().toLowerCase(),
         username: username.trim(),
+        phoneNumber: phoneNumber.trim(),
         passwordHash,
         role,
         permissions,
@@ -245,6 +252,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     // Reset Form
     setEmail('');
     setUsername('');
+    setPhoneNumber('');
     setPassword('');
     setAvatarUrl('');
     setPermissions(DEFAULT_PERMISSIONS);
@@ -253,11 +261,12 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   };
 
   const handleEditAdmin = (admin: AdminUser) => {
-    if (admin.id === MASTER_OWNER.id) return;
+    if (admin.id === MASTER_OWNER.id || admin.email.toLowerCase() === MASTER_OWNER.email.toLowerCase()) return;
     setEditingAdminId(admin.id);
     setEmail(admin.email);
     setUsername(admin.username);
-    setPassword(admin.password || '');
+    setPhoneNumber(admin.phoneNumber || '');
+    setPassword('');
     setAvatarUrl(admin.avatarUrl || '');
     setRole(admin.role as any);
     setPermissions(admin.permissions);
@@ -267,7 +276,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const handleDeleteAdmin = (adminId: string) => {
     if (adminId === MASTER_OWNER.id) return;
     if (window.confirm(isKurdish ? 'دڵنیایت لە سڕینەوەی ئەم ئادمنە؟' : 'Are you sure you want to delete this Sub-Admin?')) {
-      setAdmins(prev => prev.filter(a => a.id !== adminId));
+      setAdmins(prev => prev.filter(a => a.id !== adminId && a.email.toLowerCase() !== MASTER_OWNER.email.toLowerCase()));
     }
   };
 
@@ -277,6 +286,32 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  if (!isSuperOwner) {
+    return (
+      <Portal>
+        <AnimatePresence>
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/90 backdrop-blur-2xl" />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="relative bg-[#09090b] border border-red-500/30 rounded-3xl p-8 max-w-md w-full text-center space-y-4 shadow-2xl z-10" dir={isKurdish ? 'rtl' : 'ltr'}>
+              <div className="w-16 h-16 rounded-2xl bg-red-600/10 border border-red-500/30 text-red-500 flex items-center justify-center mx-auto">
+                <Lock size={32} />
+              </div>
+              <h3 className="text-base font-black text-white uppercase tracking-wider">
+                {isKurdish ? 'دەستگەیشتن قەدەغەیە (تەنها خاوەن)' : 'Restricted To Super Owner'}
+              </h3>
+              <p className="text-xs text-zinc-400 font-medium leading-relaxed">
+                {isKurdish ? 'تەنها خاوەنی سەرەکی (flkrdstudio@gmail.com) دەتوانێت ئادمنەکان بەڕێوەببات و دەسەڵات یان ژمارەیان بگۆڕێت.' : 'Only the Super Owner (flkrdstudio@gmail.com) is authorized to manage administrator accounts, phone numbers, and permissions.'}
+              </p>
+              <button onClick={onClose} className="w-full py-3 bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase rounded-xl transition-all">
+                {isKurdish ? 'داخستن' : 'Close'}
+              </button>
+            </motion.div>
+          </div>
+        </AnimatePresence>
+      </Portal>
+    );
+  }
 
   return (
     <Portal>
@@ -386,7 +421,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     {/* Username */}
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black uppercase text-zinc-400 flex items-center gap-1.5">
@@ -414,6 +449,22 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="admin2@flkrd.com"
                         className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-red-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-zinc-400 flex items-center gap-1.5">
+                        <Phone size={12} />
+                        {isKurdish ? 'ژمارەی مۆبایل' : 'Phone Number'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        placeholder="+964 750 000 0000"
+                        className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-red-500 transition-colors"
+                        dir="ltr"
                       />
                     </div>
 
@@ -580,10 +631,18 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
                               {isOwner ? 'SUPER OWNER' : admin.role.toUpperCase()}
                             </span>
                           </div>
-                          <p className="text-[11px] text-zinc-400 font-medium flex items-center gap-1.5 mt-0.5">
-                            <Mail size={12} className="text-zinc-500" />
-                            {admin.email}
-                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 mt-1">
+                            <p className="text-[11px] text-zinc-400 font-medium flex items-center gap-1.5">
+                              <Mail size={12} className="text-zinc-500" />
+                              {admin.email}
+                            </p>
+                            {admin.phoneNumber && (
+                              <p className="text-[11px] text-zinc-400 font-medium flex items-center gap-1.5" dir="ltr">
+                                <Phone size={11} className="text-red-500/80" />
+                                <span>{admin.phoneNumber}</span>
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
 

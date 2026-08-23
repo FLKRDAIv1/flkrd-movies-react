@@ -362,7 +362,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
     isPerformanceMode, setIsPerformanceMode,
     viewMode, setViewMode,
     glassConfig,
-    isAdmin
+    isAdmin,
+    hasPermission
   } = useUI();
   const { addNotification } = useNotification();
   const [permission, setPermission] = useState<NotificationPermission>('default');
@@ -1245,35 +1246,37 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                       </div>
                     </Card>
 
-                    <Card 
-                      className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group md:col-span-2" 
-                      glow="#e50914"
-                    >
-                      <div 
-                        onClick={() => setShowAdminModal(true)}
-                        className="flex items-center justify-between"
+                    {hasPermission('canManageAdmins') && (
+                      <Card 
+                        className="p-5 cursor-pointer border-white/10 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 group md:col-span-2" 
+                        glow="#e50914"
                       >
-                        <div className="flex items-center gap-3.5">
-                          <div 
-                            className="w-11 h-11 rounded-2xl flex items-center justify-center border bg-red-600/15 border-red-500/30 text-red-500 transition-all duration-300 group-hover:scale-105 shadow-lg shadow-red-600/20"
-                          >
-                            <ShieldCheck size={20} className="animate-pulse" />
+                        <div 
+                          onClick={() => setShowAdminModal(true)}
+                          className="flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <div 
+                              className="w-11 h-11 rounded-2xl flex items-center justify-center border bg-red-600/15 border-red-500/30 text-red-500 transition-all duration-300 group-hover:scale-105 shadow-lg shadow-red-600/20"
+                            >
+                              <ShieldCheck size={20} className="animate-pulse" />
+                            </div>
+                            <div>
+                              <h3 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
+                                {(language === 'ku' || language === 'badini') ? 'بەرێوەبەرایەتی ئادمنەکان' : 'Multi-Admin Roles & Permissions'}
+                                <span className="text-[8px] bg-red-500/20 border border-red-500/30 text-red-400 font-bold uppercase px-2 py-0.5 rounded-full">
+                                  SUPER OWNER
+                                </span>
+                              </h3>
+                              <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">
+                                {(language === 'ku' || language === 'badini') ? 'زیادکردنی ئادمن ۲ و گۆڕینی ژمارە و دەسەڵاتەکان' : 'Manage Sub-Admins, Phone Numbers & Permissions'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="text-[11px] font-black text-white uppercase tracking-widest flex items-center gap-1.5">
-                              {(language === 'ku' || language === 'badini') ? 'بەرێوەبەرایەتی ئادمنەکان' : 'Multi-Admin Roles & Permissions'}
-                              <span className="text-[8px] bg-red-500/20 border border-red-500/30 text-red-400 font-bold uppercase px-2 py-0.5 rounded-full">
-                                ADMIN 2
-                              </span>
-                            </h3>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase mt-1">
-                              {(language === 'ku' || language === 'badini') ? 'زیادکردنی ئادمن ۲ و دیاریکردنی دەسەڵاتەکان' : 'Add Co-Admins & Configure System Permissions'}
-                            </p>
-                          </div>
+                          <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors transform group-hover:translate-x-1 duration-300" />
                         </div>
-                        <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors transform group-hover:translate-x-1 duration-300" />
-                      </div>
-                    </Card>
+                      </Card>
+                    )}
                   </div>
                 </Section>
               )}

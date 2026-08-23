@@ -139,7 +139,9 @@ export interface AdminUser {
   id: string;
   email: string;
   username: string;
+  phoneNumber?: string;
   password?: string;
+  passwordHash?: string;
   role: 'owner' | 'co_ceo' | 'manager' | 'editor' | 'moderator';
   permissions: AdminPermission;
   createdAt: string;
