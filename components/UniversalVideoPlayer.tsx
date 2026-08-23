@@ -1595,7 +1595,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                     if (foundBaseSub) {
                         console.log("[UNIVERSAL-PLAYER] 🤖 Zero-click Kurdish Auto-Pipeline: Translating base subtitle to Kurdish...", foundBaseSub.attributes?.language);
-                        const targetLang = (language === 'badini') ? 'badini' : 'ku';
+                        const targetLang = (language === 'badini') ? 'badini' : 'ckb';
                         handleStartTranslation(foundBaseSub, targetLang);
                     }
                 }
@@ -1901,7 +1901,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 // Wait a small delay for state and network to stabilize
                 const timer = setTimeout(() => {
                     console.log("[UNIVERSAL-PLAYER] Resuming translation for:", cache.sub.attributes?.display_name);
-                    handleStartTranslation(cache.sub, cache.targetLang || 'ku');
+                    handleStartTranslation(cache.sub, cache.targetLang || 'ckb');
                 }, 1500);
 
                 return () => clearTimeout(timer);

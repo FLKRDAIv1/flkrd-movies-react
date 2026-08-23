@@ -887,7 +887,7 @@ export default function PremiumVidLinkPlayer({
         const isKurdish = lang === 'ku' || lang === 'ckb' || lang === 'badini' || lang.includes('kurd');
 
         if (!isKurdish) {
-          const targetLang = (language === 'badini') ? 'badini' : 'ku';
+          const targetLang = (language === 'badini') ? 'badini' : 'ckb';
           handleStartTranslation(sub, targetLang);
         }
       }
@@ -898,7 +898,7 @@ export default function PremiumVidLinkPlayer({
     }
   };
 
-  const handleStartTranslation = async (sub: any, targetLang: string = 'ku') => {
+  const handleStartTranslation = async (sub: any, targetLang: string = 'ckb') => {
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
