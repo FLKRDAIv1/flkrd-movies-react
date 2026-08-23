@@ -26,7 +26,7 @@ import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfi
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
-    const { theme, toggleTheme, accentColor, setIsSettingsOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin } = useUI();
+    const { theme, toggleTheme, accentColor, setIsSettingsOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin, setIsAdmin } = useUI();
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -1305,6 +1305,7 @@ const ProfilePage: React.FC = () => {
                                 whileHover={{ scale: 1.02 }} 
                                 onClick={async () => {
                                     if (window.confirm(language === 'ku' || language === 'badini' ? 'دڵنیای لە چوونەدەرەوە؟' : 'Are you sure you want to log out?')) {
+                                        setIsAdmin(false);
                                         await signOut();
                                         addNotification({ type: 'info', title: 'Signed Out', message: 'Session terminated.' });
                                     }
