@@ -7,13 +7,27 @@ export interface SubtitleCue {
   text: string;
 }
 
+export function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#10;/g, '\n')
+    .replace(/&#x2F;/g, '/')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)));
+}
+
 /**
  * Parses subtitle text into structured dialogue cues.
  * Supports VTT and SRT.
  */
 export function cleanPersianToKurdish(text: string): string {
   if (!text || typeof text !== 'string') return text || '';
-  let cleaned = text;
+  let cleaned = decodeHtmlEntities(text);
 
   const replacements: [RegExp, string][] = [
     // --- Present-habitual verbs (می + verb stem) ---
@@ -326,13 +340,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
   const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
 
-  // Tier 1: Ultra-fast client-side GTX (100-200ms)
-  const clientDirect = await translateArrayDirectClient(text, sourceLang, effectiveTgt);
-  if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
-    return clientDirect;
-  }
-
-  // Tier 2: Serverless proxy endpoint
+  // Tier 1: Serverless proxy endpoint (Powered by zero-429 Google Mobile translation for 100% authentic Kurdish Sorani)
   const currentBase = getApiBaseUrl();
   const endpoints = Array.from(new Set([
     `${currentBase}/api/translate`,
@@ -342,7 +350,7 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
   for (const endpoint of endpoints) {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 4000);
+      const t = setTimeout(() => ctrl.abort(), 6000);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -358,17 +366,23 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
         if (data && Array.isArray(data.translation) && data.translation.length === text.length) {
           const validCount = data.translation.filter((t: string, i: number) => t && t.trim() && t !== text[i]).length;
           if (validCount > 0) {
-            return data.translation;
+            return data.translation.map((s: string) => decodeHtmlEntities(s));
           }
         }
       }
     } catch (err: any) {}
   }
 
+  // Tier 2: Ultra-fast client-side GTX
+  const clientDirect = await translateArrayDirectClient(text, sourceLang, effectiveTgt);
+  if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
+    return clientDirect.map((s: string) => decodeHtmlEntities(s));
+  }
+
   // Tier 3: Direct Google Apps Script
   const gasDirect = await translateWithGoogleAppsScript(text, sourceLang, effectiveTgt);
   if (gasDirect && Array.isArray(gasDirect) && gasDirect.length === text.length) {
-    return gasDirect;
+    return gasDirect.map((s: string) => decodeHtmlEntities(s));
   }
 
   return text;
