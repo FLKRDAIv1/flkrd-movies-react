@@ -7,7 +7,7 @@ import { requests, IMAGE_BASE_URL } from '../constants';
 import { WatchProgress, Content } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { fetchData, getMediaType } from '../services/tmdbService';
-import { Play, Sparkles, Subtitles } from 'lucide-react';
+import { Play, Sparkles, Subtitles, Info, Star } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
@@ -20,6 +20,7 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t, language } = useTranslation();
+  const isKurdish = language === 'ku' || language === 'badini';
 
   useEffect(() => {
     const getData = async () => {
@@ -39,58 +40,94 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
 
   if (loading || !item) return null;
 
+  const year = item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0];
+  const rating = item.vote_average ? Number(item.vote_average).toFixed(1) : null;
+
   return (
-    <div className="px-6 md:px-32 mb-24">
+    <div className="px-4 sm:px-6 md:px-12 lg:px-20 mb-16 md:mb-20">
       <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        whileInView={{ opacity: 1, scale: 1 }}
+        initial={{ opacity: 0, y: 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         onClick={() => navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } })}
-        className="relative h-[450px] md:h-[700px] rounded-[3.5rem] md:rounded-[5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.6)] transition-all duration-500 hover:border-brand/40"
+        className="relative h-[360px] sm:h-[420px] md:h-[500px] rounded-3xl md:rounded-[2.5rem] overflow-hidden group cursor-pointer border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.7)] transition-all duration-500 hover:border-red-500/40"
       >
+        {/* Backdrop Image */}
         <img
           src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
           width={1280}
           height={720}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           alt={item.title || item.name || "Weekly Spotlight Movie Backdrop"}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent hidden md:block" />
-        
-        <div className={`absolute bottom-6 md:bottom-16 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-32' : 'left-6 md:left-32'} z-20 flex flex-col ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'} max-w-[95%] md:max-w-3xl p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] border border-white/15 bg-black/80 backdrop-blur-md transition-all duration-300 hover:border-brand/40 shadow-2xl`}
+
+        {/* Ambient Dark Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent" />
+        <div className={`absolute inset-0 hidden md:block ${isKurdish ? 'bg-gradient-to-l from-black/80 via-black/20 to-transparent' : 'bg-gradient-to-r from-black/80 via-black/20 to-transparent'}`} />
+
+        {/* Floating Compact Glass Card */}
+        <div
+          className={`absolute bottom-4 sm:bottom-6 md:bottom-8 ${isKurdish ? 'right-4 sm:right-6 md:right-8 items-end text-right' : 'left-4 sm:left-6 md:left-8 items-start text-left'} z-20 flex flex-col max-w-[calc(100%-2rem)] sm:max-w-md md:max-w-lg p-4 sm:p-5 md:p-6 rounded-2xl md:rounded-3xl border border-white/15 bg-black/60 backdrop-blur-2xl transition-all duration-300 group-hover:border-red-500/40 shadow-[0_20px_40px_rgba(0,0,0,0.8)]`}
+          dir={isKurdish ? 'rtl' : 'ltr'}
         >
-          {/* Metadata Grid (Corner-Style) */}
-          <div className={`hidden md:flex flex-col gap-6 mb-12 ${(language === 'ku' || language === 'badini') ? 'items-end' : 'items-start'}`}>
-              <div className="flex items-center gap-4">
-                  <div className="p-3 bg-red-600 rounded-2xl shadow-[0_0_30px_#e50914] flex items-center gap-2">
-                    <Sparkles className="text-white animate-pulse" size={16} />
-                    <span className="text-[10px] font-[1000] text-white uppercase tracking-[0.4em]">{t('weeklySpotlight') || 'SPOTLIGHT'}</span>
-                  </div>
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-5 py-3 rounded-2xl text-xs font-[1000] uppercase tracking-[0.2em]">
-                      {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0]}
-                  </div>
+          {/* Top Pill Badges */}
+          <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+            <div className="px-3 py-1 bg-gradient-to-r from-red-600 to-rose-600 rounded-xl shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center gap-1.5 border border-red-400/30">
+              <Sparkles className="text-white animate-pulse" size={12} />
+              <span className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider">
+                {t('weeklySpotlight') || 'SPOTLIGHT'}
+              </span>
+            </div>
+
+            {year && (
+              <div className="bg-white/10 border border-white/10 text-gray-200 px-2.5 py-1 rounded-xl text-[10px] md:text-xs font-bold">
+                {year}
               </div>
+            )}
+
+            {rating && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 px-2.5 py-1 rounded-xl text-[10px] md:text-xs font-bold flex items-center gap-1">
+                <Star size={11} fill="currentColor" />
+                <span>{rating}</span>
+              </div>
+            )}
           </div>
 
-          {/* Mobile Spotlight Badge */}
-          <div className={`md:hidden p-2.5 bg-red-600 rounded-2xl shadow-lg flex items-center gap-2 mb-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
-             <Sparkles className="text-white" size={12} />
-             <span className="text-[8px] font-black text-white uppercase tracking-[0.2em]">{t('weeklySpotlight')}</span>
-          </div>
-
-          <h3 className={`text-5xl md:text-9xl font-[1000] text-white uppercase italic tracking-tighter mb-8 line-clamp-1 leading-[0.85] drop-shadow-[0_20px_40px_rgba(0,0,0,1)] ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
+          {/* Title */}
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-[900] text-white uppercase italic tracking-tight mb-2 line-clamp-1 drop-shadow-md leading-tight">
             {item.title || item.name}
           </h3>
-          <p className={`text-gray-300 text-sm md:text-2xl line-clamp-3 mb-14 font-bold italic leading-relaxed opacity-90 drop-shadow-lg max-w-3xl ${(language === 'ku' || language === 'badini') ? 'text-right' : 'text-left'}`}>
-            {item.overview}
-          </p>
-          <div className={`flex flex-wrap items-center gap-6 ${(language === 'ku' || language === 'badini') ? 'flex-row-reverse' : ''}`}>
+
+          {/* Synopsis (Compact 2-line preview) */}
+          {item.overview && (
+            <p className="text-gray-300 text-xs sm:text-sm line-clamp-2 leading-relaxed mb-4 font-normal opacity-90">
+              {item.overview}
+            </p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
             <button
-                onClick={(e) => { e.stopPropagation(); navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } }); }}
-                className="text-white font-[1000] px-10 md:px-20 py-5 md:py-6 rounded-[1.5rem] md:rounded-[2.5rem] flex items-center gap-4 text-xs md:text-xl uppercase italic tracking-tighter bg-brand hover:bg-brand/90 active:scale-95 transition-all shadow-[0_20px_40px_rgba(229,9,20,0.4)]"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } });
+              }}
+              className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl md:rounded-2xl bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 text-white font-black text-xs md:text-sm flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 active:scale-95 transition-all border border-red-400/30"
             >
-                <Play fill="currentColor" size={20} className="md:w-8 md:h-8" /> {t('play')}
+              <Play fill="currentColor" size={14} />
+              <span>{t('play')}</span>
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/details/${getMediaType(item)}/${item.id}`, { state: { customData: item } });
+              }}
+              className="px-3.5 py-2.5 rounded-xl md:rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              title={isKurdish ? 'زانیاری زیاتر' : 'More Info'}
+            >
+              <Info size={14} />
+              <span className="hidden sm:inline">{isKurdish ? 'زانیاری' : 'Info'}</span>
             </button>
           </div>
         </div>
