@@ -21,6 +21,7 @@ import { db } from '../utils/db';
 import ElasticStack from '../components/ui/elastic-stack';
 import MovieBentoGrid from '../components/ui/movie-bento-grid';
 import Portal from '../components/Portal';
+import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfileModal';
 import VisitorAnalyticsModal from '../components/VisitorAnalyticsModal';
 import { AdminManagementModal } from '../components/AdminManagementModal';
 import { AdminBroadcastModal } from '../components/AdminBroadcastModal';
