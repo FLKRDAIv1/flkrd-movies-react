@@ -192,8 +192,11 @@ export default async function handler(req: AdminAuthRequest, res: AdminAuthRespo
 
   // 1. Session Token Verification Action
   if (action === 'verify' || req.method === 'GET') {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.query.token as string);
+    const rawAuth = req.headers.authorization;
+    const authHeader = (Array.isArray(rawAuth) ? rawAuth[0] : rawAuth) || '';
+    const rawQueryToken = req.query.token;
+    const queryToken = Array.isArray(rawQueryToken) ? rawQueryToken[0] : rawQueryToken;
+    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (queryToken as string);
 
     const verification = verifySessionToken(token);
     if (!verification.valid) {
