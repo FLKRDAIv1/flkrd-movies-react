@@ -1558,6 +1558,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         </div>
                         {/* Interactive Slider */}
                         <input 
+                          id="settings-scale-slider"
+                          name="scalePercent"
+                          aria-label="UI Scale Slider"
                           type="range"
                           min="40" max="150" step="1"
                           value={scalePercent}
@@ -3099,6 +3102,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                           {!viewingSessionId && (
                             <div className="relative min-w-[200px]">
                               <input
+                                id="settings-analytics-search"
+                                name="analyticsSearch"
+                                aria-label="Search Analytics Logs"
                                 type="text"
                                 placeholder={language === 'ku' || language === 'badini' ? 'بگەڕێ بۆ لاپەڕە، وڵات، ڕێڕەو...' : 'Search path, country, referrer...'}
                                 value={searchQuery}

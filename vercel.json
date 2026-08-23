@@ -55,6 +55,10 @@
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com; script-src-elem * 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://challenges.cloudflare.com; style-src * 'self' 'unsafe-inline'; img-src * 'self' data: content: blob: https:; media-src * 'self' blob: data: https: https://*.strem.io; frame-src *; worker-src * blob: data:; connect-src * 'self' blob: data: gap: https:;"
         }
       ]
     }
