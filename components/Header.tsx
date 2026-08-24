@@ -283,28 +283,64 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     ? "text-zinc-800" 
     : "text-zinc-200";
 
-  // Dynamic status bar/notch theme-color syncing for PWAs
+  // Dynamic status bar/notch theme-color & iOS status bar style syncing for PWAs / Add-to-Home-Screen
   useEffect(() => {
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    const headerColor = isDarkNavbar ? '#000000' : '#ffffff';
+    
+    // 1. Update or create theme-color meta tag
+    let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
-      const headerColor = isDarkNavbar ? '#000000' : '#ffffff';
       themeColorMeta.setAttribute('content', headerColor);
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      meta.content = headerColor;
+      document.head.appendChild(meta);
+    }
+
+    // 2. Update or create apple-mobile-web-app-status-bar-style
+    // 'default' enables black/dark system text (clock, battery) in light mode; 'black-translucent' enables white text in dark mode
+    let appleStatusMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+    const statusBarStyle = isDarkNavbar ? 'black-translucent' : 'default';
+    if (appleStatusMeta) {
+      appleStatusMeta.setAttribute('content', statusBarStyle);
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'apple-mobile-web-app-status-bar-style';
+      meta.content = statusBarStyle;
+      document.head.appendChild(meta);
     }
   }, [isDarkNavbar]);
 
   return (
     <>
-      {/* Mobile Top Header Bar (Sleek Floating Glass Capsule Shape matching PC style) */}
+      {/* Mobile Top Safe-Area Status Bar Solid/Glass Backdrop Filler (PWA / Add to Home Screen Shield) */}
+      <div 
+        className={cn(
+          "mobile-statusbar-backdrop fixed top-0 inset-x-0 z-[52] pointer-events-none transition-all duration-300",
+          isDarkNavbar 
+            ? "bg-black/95 backdrop-blur-xl border-b border-white/[0.08]" 
+            : "bg-white/95 backdrop-blur-xl border-b border-zinc-200/90 shadow-xs"
+        )}
+        style={{ 
+          height: 'env(safe-area-inset-top, 0px)' 
+        }}
+      />
+
+      {/* Mobile Top Header Bar (Sleek Floating Glass Capsule Shape matching PC style - Safe Area Aware) */}
       <header
-        className="global-header-mobile flex md:hidden fixed top-0 inset-x-0 z-50 px-2.5 pt-2 select-none"
+        className="global-header-mobile flex md:hidden fixed inset-x-0 z-50 px-2.5 transition-all duration-300 select-none"
+        style={{ 
+          top: 'calc(env(safe-area-inset-top, 0px) + 0.35rem)' 
+        }}
         dir="ltr"
       >
         <div
           className={cn(
             "w-full h-12 rounded-2xl flex items-center justify-between px-3 border transition-all duration-300 backdrop-blur-2xl",
             isDarkNavbar
-              ? "bg-zinc-950/85 border-white/10 text-white shadow-2xl shadow-black/80"
-              : "bg-white/90 border-zinc-200 text-zinc-900 shadow-xl shadow-zinc-300/40"
+              ? "bg-zinc-950/90 border-white/12 text-white shadow-2xl shadow-black/90"
+              : "bg-white/95 border-zinc-200/90 text-zinc-900 shadow-lg shadow-zinc-400/25"
           )}
         >
           {/* Left: Logo */}
@@ -716,8 +752,10 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className={`fixed top-0 bottom-0 ${
                 (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
-              } z-[160] w-[82%] max-w-sm flex flex-col p-6 shadow-2xl md:hidden overflow-hidden`}
+              } z-[160] w-[82%] max-w-sm flex flex-col px-6 shadow-2xl md:hidden overflow-hidden`}
               style={{
+                paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
+                paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
                 borderRadius: `${glassConfig.cornerRadius}px`,
               }}
             >

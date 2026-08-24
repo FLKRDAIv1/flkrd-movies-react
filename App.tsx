@@ -1000,7 +1000,7 @@ const AppContent: React.FC<{
             {!isWatchPage && <Header scrolled={scrolled} />}
             <div className="flex flex-1 h-full overflow-hidden relative">
                 {!isWatchPage && <Sidebar />}
-                <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : (isFullBleedPage ? 'pt-0 tauri-only-pt' : 'pt-14 md:pt-18 tauri-only-pt')}`}>
+                <div className={`flex-1 flex flex-col min-w-0 h-full overflow-hidden ${isWatchPage ? 'p-0 pt-0 tauri-only-pt-0' : (isFullBleedPage ? 'pt-0 tauri-only-pt' : 'pt-[calc(4.25rem+env(safe-area-inset-top,0px))] md:pt-18 tauri-only-pt')}`}>
                     <ChunkErrorBoundary>
                       <React.Suspense fallback={
                         <div className="flex-1 w-full min-h-screen">

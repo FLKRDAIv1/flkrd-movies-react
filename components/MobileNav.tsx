@@ -19,6 +19,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import Portal from './Portal';
 import { MorphingDiscoveryBar, Category } from './ui/morphing-discovery-bar';
+import { cn } from '../lib/utils';
 
 const MobileNav: React.FC = () => {
   const { t, language } = useTranslation();
@@ -213,6 +214,17 @@ const MobileNav: React.FC = () => {
 
   return (
     <>
+      {/* Mobile Bottom Safe-Area Home Indicator Backdrop Filler */}
+      <div 
+        className={cn(
+          "mobile-homebar-backdrop fixed bottom-0 inset-x-0 z-[49] pointer-events-none transition-all duration-300",
+          theme === 'light' 
+            ? "bg-white/85 backdrop-blur-md border-t border-zinc-200/50" 
+            : "bg-black/85 backdrop-blur-md border-t border-white/[0.04]"
+        )}
+        style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
+      />
+
       {/* Floating Dynamic Island Mobile Navigation */}
       <div 
         className="global-mobilenav fixed inset-x-2 sm:inset-x-6 z-[999] md:hidden flex justify-center select-none pointer-events-auto transform-gpu"
