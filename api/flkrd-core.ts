@@ -48,7 +48,7 @@ export default async function handler(req: Request): Promise<Response> {
     const forwardHeaders = new Headers();
     req.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
-      // Skip host and connection headers
+      // Skip host, connection, and origin headers
       if (lowerKey !== 'host' && lowerKey !== 'connection') {
         forwardHeaders.set(key, value);
       }
@@ -82,12 +82,13 @@ export default async function handler(req: Request): Promise<Response> {
     const responseHeaders = new Headers();
     upstreamRes.headers.forEach((value, key) => {
       const lowerKey = key.toLowerCase();
-      // Strip any Supabase, project ref, or tracking headers
+      // Strip any Supabase, project ref, tracking headers, or supabase.co cookies
       if (
         lowerKey.startsWith('sb-') ||
         lowerKey.startsWith('x-supabase') ||
         lowerKey === 'cf-ray' ||
-        lowerKey === 'server-timing'
+        lowerKey === 'server-timing' ||
+        (lowerKey === 'set-cookie' && value.toLowerCase().includes('supabase.co'))
       ) {
         return;
       }
