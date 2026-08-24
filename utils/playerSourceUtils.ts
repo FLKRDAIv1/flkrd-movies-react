@@ -163,15 +163,22 @@ export const getSourceUrl = (
   const isTv = type === 'tv';
   const isAnime = type === 'anime';
   const playerColor = accentColor?.replace('#', '') || 'e50914';
-  const subParam = subtitleUrl ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}` : '';
+  
+  // Strictly sanitize subtitleUrl: only allow public http/https URLs (never local blob: or data: URIs)
+  const isCleanHttpSub = subtitleUrl && 
+    (subtitleUrl.startsWith('http://') || subtitleUrl.startsWith('https://')) && 
+    !subtitleUrl.startsWith('blob:') && 
+    !subtitleUrl.startsWith('data:');
+  const cleanSubUrl = isCleanHttpSub ? subtitleUrl : '';
+  const subParam = cleanSubUrl ? `&sub=${encodeURIComponent(cleanSubUrl)}&subtitle=${encodeURIComponent(cleanSubUrl)}` : '';
   const s = season || 1;
   const e = episode || 1;
 
   switch (name) {
-    case 'FLKRD SERVER': { // 1. 111Movies Ultra 4K
+    case 'FLKRD SERVER': { // 1. 111Movies Ultra 4K / VidLove Direct
       return isTv
-        ? `https://111movies.com/tv/${id}/${s}/${e}`
-        : `https://111movies.com/movie/${id}`;
+        ? `https://player.vidlove.cc/embed/tv/${id}/${s}/${e}?autoplay=false&nextbutton=true`
+        : `https://player.vidlove.cc/embed/movie/${id}?autoplay=false`;
     }
 
     case 'FLKRD SERVER 1': { // 2. VidLove 4K Pro (player.vidlove.cc)
@@ -182,7 +189,7 @@ export const getSourceUrl = (
     }
 
     case 'FLKRD SERVER 2': { // 3. VidLink Pro 4K
-      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startTime=${Math.floor(progress)}` : ''}${subtitleUrl ? `&subtitles=${encodeURIComponent(subtitleUrl)}&subLabel=Kurdish` : ''}`;
+      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startTime=${Math.floor(progress)}` : ''}${cleanSubUrl ? `&subtitles=${encodeURIComponent(cleanSubUrl)}&subLabel=Kurdish` : ''}`;
       return isTv
         ? `https://vidlink.pro/tv/${id}/${s}/${e}${vlParams}`
         : `https://vidlink.pro/movie/${id}${vlParams}`;
@@ -192,16 +199,16 @@ export const getSourceUrl = (
       const veParams = `?color=${playerColor}&overlay=true${progress > 5 ? `&progress=${Math.floor(progress)}` : ''}`;
       if (isAnime) {
         return e
-          ? `https://player.videasy.net/anime/${id}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
-          : `https://player.videasy.net/anime/${id}${veParams}`;
+          ? `https://player.videasy.to/anime/${id}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
+          : `https://player.videasy.to/anime/${id}${veParams}`;
       }
       return isTv
-        ? `https://player.videasy.net/tv/${id}/${s}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
-        : `https://player.videasy.net/movie/${id}${veParams}`;
+        ? `https://player.videasy.to/tv/${id}/${s}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
+        : `https://player.videasy.to/movie/${id}${veParams}`;
     }
 
     case 'FLKRD SERVER 4': { // 5. VidKing 4K
-      const vkParams = `&color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1&sub_file=${encodeURIComponent(subtitleUrl || '')}&sub_label=Kurdish${subParam}`;
+      const vkParams = `&color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1${cleanSubUrl ? `&sub_file=${encodeURIComponent(cleanSubUrl)}&sub_label=Kurdish${subParam}` : ''}`;
       return isTv
         ? `https://www.vidking.net/embed/tv/${id}/${s}/${e}?${vkParams}&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
@@ -214,7 +221,7 @@ export const getSourceUrl = (
     }
 
     case 'FLKRD SERVER 6': { // 7. VidSrc VIP
-      const vsParams = subtitleUrl ? `&sub=${encodeURIComponent(subtitleUrl)}&subtitle=${encodeURIComponent(subtitleUrl)}&sub.ku=${encodeURIComponent(subtitleUrl)}` : '';
+      const vsParams = cleanSubUrl ? `&sub=${encodeURIComponent(cleanSubUrl)}&subtitle=${encodeURIComponent(cleanSubUrl)}&sub.ku=${encodeURIComponent(cleanSubUrl)}` : '';
       return isTv
         ? `https://vidsrc.pm/embed/tv/${id}/${s}/${e}${vsParams}`
         : `https://vidsrc.pm/embed/movie/${id}${vsParams}`;
@@ -223,7 +230,7 @@ export const getSourceUrl = (
     case 'FLKRD SERVER 7': { // 8. SuperEmbed Multi-Mirror
       const isImdb = id.startsWith('tt');
       const tmdbParam = isImdb ? '' : '&tmdb=1';
-      const seParams = subtitleUrl ? `&subtitle=${encodeURIComponent(subtitleUrl)}&sub=${encodeURIComponent(subtitleUrl)}` : '';
+      const seParams = cleanSubUrl ? `&subtitle=${encodeURIComponent(cleanSubUrl)}&sub=${encodeURIComponent(cleanSubUrl)}` : '';
       return isTv
         ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${s}&e=${e}${seParams}`
         : `https://multiembed.mov/?video_id=${id}${tmdbParam}${seParams}`;
@@ -231,8 +238,8 @@ export const getSourceUrl = (
 
     default: {
       return isTv
-        ? `https://111movies.com/tv/${id}/${s}/${e}`
-        : `https://111movies.com/movie/${id}`;
+        ? `https://player.vidlove.cc/embed/tv/${id}/${s}/${e}?autoplay=false&nextbutton=true`
+        : `https://player.vidlove.cc/embed/movie/${id}?autoplay=false`;
     }
   }
 };

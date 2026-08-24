@@ -284,15 +284,35 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [activeEpNum, setActiveEpNum] = useState<number>(episode || 1);
     const [playerReloadKey, setPlayerReloadKey] = useState<number>(0);
 
-    const seasonsScrollRef = useRef<HTMLDivElement>(null);
-    const episodesScrollRef = useRef<HTMLDivElement>(null);
-
     const scrollHorizontally = useCallback((ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
         if (ref.current) {
-            const amount = direction === 'left' ? -360 : 360;
-            ref.current.scrollBy({ left: amount, behavior: 'smooth' });
+            const isRtl = language === 'ku' || language === 'badini';
+            const amount = 340;
+            // In RTL browsers, scroll direction is flipped
+            const delta = direction === 'left' ? (isRtl ? amount : -amount) : (isRtl ? -amount : amount);
+            ref.current.scrollBy({ left: delta, behavior: 'smooth' });
         }
-    }, []);
+    }, [language]);
+
+    // Auto-scroll active episode & season cards into center view when portal opens or selection changes
+    useEffect(() => {
+        if (!showEpisodesPortal) return;
+        const timer = setTimeout(() => {
+            if (episodesScrollRef.current) {
+                const activeEpEl = episodesScrollRef.current.querySelector('[data-active-episode="true"]');
+                if (activeEpEl) {
+                    activeEpEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+            if (seasonsScrollRef.current) {
+                const activeSeasonEl = seasonsScrollRef.current.querySelector('[data-active-season="true"]');
+                if (activeSeasonEl) {
+                    activeSeasonEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+        }, 80);
+        return () => clearTimeout(timer);
+    }, [showEpisodesPortal, effectiveSeasonDetails, activeEpNum, activeSeasonNum, season, episode]);
 
     const isDubbedMovie = contentType === 'dubbed' || (sources && sources.some(s => s.name?.includes('DUBBED')));
 
@@ -3037,10 +3057,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             // Do NOT force muted — Videasy handles this internally
         }
 
-        const activeSubUrl = localSubtitleUrl || subtitleUrl;
-        if (activeSubUrl && finalSrc && !finalSrc.includes('&sub=') && !finalSrc.includes('&subtitles=')) {
+        // Only attach publicly accessible HTTP/HTTPS subtitle URLs to external iframes.
+        // NEVER pass local blob: or base64 data: URLs, as external iframes and Cloudflare reject them with 400 Bad Request / Connection Reset.
+        const cleanSubForIframe = (subtitleUrl && (subtitleUrl.startsWith('http://') || subtitleUrl.startsWith('https://')) && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : null;
+        if (cleanSubForIframe && finalSrc && !finalSrc.includes('&sub=') && !finalSrc.includes('&subtitles=')) {
             const sep = finalSrc.includes('?') ? '&' : '?';
-            finalSrc += `${sep}sub=${encodeURIComponent(activeSubUrl)}&sub_file=${encodeURIComponent(activeSubUrl)}&subtitles=${encodeURIComponent(activeSubUrl)}&sub_label=Kurdish`;
+            finalSrc += `${sep}sub=${encodeURIComponent(cleanSubForIframe)}&sub_file=${encodeURIComponent(cleanSubForIframe)}&subtitles=${encodeURIComponent(cleanSubForIframe)}&sub_label=Kurdish`;
         }
 
         if (frozenSrcRef.current && currentContentKey === lastContentKeyRef.current) {
@@ -3819,81 +3841,90 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
-                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
                         dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                         onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        onTouchEnd={(e) => e.stopPropagation()}
-                        className="absolute top-0 left-0 right-0 max-h-[78vh] min-h-[340px] border-b border-white/10 z-[200] flex flex-col gap-3 select-none shadow-[0_24px_60px_rgba(0,0,0,0.95)] overflow-hidden"
+                        className="absolute top-0 left-0 right-0 max-h-[82vh] min-h-[350px] border-b border-white/10 z-[200] flex flex-col gap-3.5 select-none shadow-[0_24px_70px_rgba(0,0,0,0.95)] overflow-hidden"
                         style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
-                            background: 'radial-gradient(circle at 50% -20%, rgba(220, 38, 38, 0.22), transparent 75%), linear-gradient(to bottom, rgba(10, 10, 15, 0.95) 0%, rgba(5, 5, 8, 0.98) 100%)',
-                            backdropFilter: 'blur(35px) saturate(210%)',
-                            WebkitBackdropFilter: 'blur(35px) saturate(210%)',
-                            boxShadow: '0 20px 80px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-                            paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+                            background: 'radial-gradient(ellipse at 50% 0%, rgba(220, 38, 38, 0.16), transparent 70%), linear-gradient(180deg, rgba(9, 9, 14, 0.97) 0%, rgba(5, 5, 8, 0.99) 100%)',
+                            backdropFilter: 'blur(40px) saturate(200%)',
+                            WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                            boxShadow: '0 24px 80px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+                            paddingTop: 'calc(0.85rem + env(safe-area-inset-top, 0px))',
                             paddingLeft: 'calc(1.25rem + env(safe-area-inset-left, 0px))',
                             paddingRight: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
                             paddingBottom: '1rem'
                         }}
                     >
                         {/* Header Row */}
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
+                        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 shrink-0">
                             <div className="flex items-center gap-3">
-                                <div className="bg-red-600/15 border border-red-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-md">
-                                    <Tv size={13} className="text-red-500 animate-pulse" />
-                                    <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
+                                <div className="bg-red-600/15 border border-red-500/30 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.25)]">
+                                    <Tv size={14} className="text-red-500 animate-pulse" />
+                                    <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
                                         {contentType === 'tv'
                                             ? ((language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL')
                                             : ((language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'SIMILAR FILMS')}
                                     </span>
                                 </div>
-                                <span className={`font-bold text-white/90 tracking-wider truncate max-w-[200px] sm:max-w-xs ${(language === 'ku' || language === 'badini') ? 'text-[14px] font-black' : 'text-[11px]'}`}>
+                                <span className={`font-black text-white/95 tracking-wide truncate max-w-[200px] sm:max-w-md ${(language === 'ku' || language === 'badini') ? 'text-[16px]' : 'text-sm'}`}>
                                     {title}
                                 </span>
+                                {contentType === 'tv' && effectiveSeasonDetails?.episodes && (
+                                    <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-white/60 font-black text-[11px]">
+                                        {(language === 'ku' || language === 'badini')
+                                            ? `${effectiveSeasonDetails.episodes.length} ئەڵقە`
+                                            : `${effectiveSeasonDetails.episodes.length} Episodes`}
+                                    </span>
+                                )}
                             </div>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }}
                                 className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white active:scale-90"
+                                aria-label="Close Portal"
                             >
-                                <X size={18} />
+                                <X size={20} />
                             </button>
                         </div>
 
                         {contentType === 'tv' ? (
                             <>
-                                {/* Season Buttons Horizontal Row with Left/Right Scroll Controls */}
+                                {/* Season Buttons Horizontal Row */}
                                 <div className="flex flex-col gap-1.5 shrink-0 relative">
                                     <div className="flex items-center justify-between">
-                                        <span className={`font-black text-gray-400 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
+                                        <span className={`font-black text-white/50 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
                                             {(language === 'ku' || language === 'badini') ? 'وەرزەکان' : 'SEASONS'}
                                         </span>
                                         <div className="flex items-center gap-1.5 dir-ltr">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'left'); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
+                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                                 title="Scroll left"
                                             >
-                                                <ChevronLeft size={14} />
+                                                <ChevronLeft size={15} />
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'right'); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
+                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                                 title="Scroll right"
                                             >
-                                                <ChevronRight size={14} />
+                                                <ChevronRight size={15} />
                                             </button>
                                         </div>
                                     </div>
-                                    <div ref={seasonsScrollRef} className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-hide scroll-smooth">
+                                    <div 
+                                        ref={seasonsScrollRef} 
+                                        className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide touch-pan-x overscroll-x-contain select-none"
+                                        style={{ WebkitOverflowScrolling: 'touch' }}
+                                    >
                                         {effectiveSeasons.map((s) => {
                                             const activeSNum = season || activeSeasonNum || 1;
                                             const isCurrentSeason = activeSNum === s.season_number;
                                             return (
                                                 <button
                                                     key={s.id || `season-${s.season_number}`}
+                                                    data-active-season={isCurrentSeason ? 'true' : 'false'}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setActiveSeasonNum(s.season_number);
@@ -3908,10 +3939,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 .catch(err => console.warn('Failed to fetch season details:', err));
                                                         }
                                                     }}
-                                                    className={`relative px-4 py-1.5 rounded-xl font-black uppercase tracking-wider transition-all duration-300 shrink-0 cursor-pointer overflow-hidden border active:scale-95 ${isCurrentSeason
-                                                            ? 'border-red-500/50 bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white'
-                                                            : 'border-white/10 bg-white/[0.04] text-white/80 hover:border-white/20 hover:bg-white/[0.10]'
-                                                        } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}
+                                                    className={`relative px-4 py-1.5 rounded-xl font-black uppercase tracking-wider transition-all duration-200 shrink-0 cursor-pointer overflow-hidden border active:scale-95 transform-gpu ${isCurrentSeason
+                                                            ? 'border-red-500/60 bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_24px_rgba(220,38,38,0.55)] text-white'
+                                                            : 'border-white/10 bg-white/[0.04] text-white/80 hover:border-white/25 hover:bg-white/[0.09]'
+                                                        } ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[11px]'}`}
                                                 >
                                                     <span className="relative z-10 font-black">
                                                         {(language === 'ku' || language === 'badini')
@@ -3927,22 +3958,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 {/* Episodes Horizontal Swiper Container */}
                                 <div className="flex-1 flex flex-col gap-1.5 overflow-hidden relative">
                                     <div className="flex items-center justify-between shrink-0">
-                                        <span className={`font-black text-gray-400 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
-                                            {(language === 'ku' || language === 'badini')
-                                                ? `ئەڵقەکانی وەرزی ${season || activeSeasonNum || 1}`
-                                                : `SEASON ${season || activeSeasonNum || 1} EPISODES`}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
+                                                {(language === 'ku' || language === 'badini')
+                                                    ? `ئەڵقەکانی وەرزی ${season || activeSeasonNum || 1}`
+                                                    : `SEASON ${season || activeSeasonNum || 1} EPISODES`}
+                                            </span>
+                                        </div>
                                         <div className="flex items-center gap-1.5 dir-ltr">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'left'); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                                 title="Scroll left"
                                             >
                                                 <ChevronLeft size={16} />
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'right'); }}
-                                                className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                                 title="Scroll right"
                                             >
                                                 <ChevronRight size={16} />
@@ -3950,21 +3983,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         </div>
                                     </div>
 
-                                    <div className="relative flex-1 overflow-hidden mt-1">
-                                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
-                                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
+                                    <div className="relative flex-1 overflow-hidden mt-0.5">
+                                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
+                                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
 
-                                        <motion.div
+                                        <div
                                             ref={episodesScrollRef}
-                                            variants={containerVariants}
-                                            initial="hidden"
-                                            animate="show"
-                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-4 py-2 px-1 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-white/[0.01] [&::-webkit-scrollbar-thumb]:bg-white/[0.08] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-red-600/50 scroll-smooth"
+                                            onWheel={(e) => {
+                                                if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && episodesScrollRef.current) {
+                                                    episodesScrollRef.current.scrollLeft += e.deltaY;
+                                                }
+                                            }}
+                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-2 px-1 scrollbar-hide touch-pan-x overscroll-x-contain select-none scroll-smooth"
+                                            style={{
+                                                WebkitOverflowScrolling: 'touch',
+                                                scrollbarWidth: 'none',
+                                                msOverflowStyle: 'none'
+                                            }}
                                         >
                                             {!effectiveSeasonDetails ? (
-                                                <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
+                                                <div className="flex items-center gap-3 px-8 py-12 opacity-60 justify-center w-full">
                                                     <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                                    <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
+                                                    <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[10px]'}`}>
                                                         {(language === 'ku' || language === 'badini') ? 'داگرتنی زانیاری ئەڵقەکان...' : 'SYNCHRONIZING EPISODES...'}
                                                     </span>
                                                 </div>
@@ -3975,19 +4015,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     const activeSNum = season || activeSeasonNum || 1;
                                                     const activeEP = episode || activeEpNum || 1;
                                                     const isActive = activeEP === ep.episode_number && activeSNum === effectiveSeasonDetails.season_number;
-                                                    const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
                                                     const isKurdish = language === 'ku' || language === 'badini';
 
-                                                    // Deduplicate episode titles like "Episode 1" vs "ئەڵقەی 1"
                                                     const rawName = ep.name?.trim() || '';
                                                     const isGenericName = !rawName || /^episode\s*\d+$/i.test(rawName) || /^ئەڵقەی\s*\d+$/i.test(rawName) || rawName === `Episode ${ep.episode_number}`;
 
                                                     return (
-                                                        <motion.div
-                                                            key={ep.id}
-                                                            variants={cardVariants}
-                                                            whileHover={{ y: -5, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
-                                                            whileTap={{ scale: 0.98 }}
+                                                        <div
+                                                            key={ep.id || `ep-${ep.episode_number}`}
+                                                            data-active-episode={isActive ? 'true' : 'false'}
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setActiveEpNum(ep.episode_number);
@@ -3996,110 +4032,120 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                     onEpisodeChange(targetSNum, ep.episode_number);
                                                                 }
                                                                 if (tmdbId) {
+                                                                    const cleanSub = (subtitleUrl && subtitleUrl.startsWith('http') && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : undefined;
                                                                     const newSrc = getSourceUrl(
                                                                         activeSource || 'FLKRD SERVER',
                                                                         String(tmdbId),
                                                                         'tv',
                                                                         targetSNum,
-                                                                        ep.episode_number
+                                                                        ep.episode_number,
+                                                                        0,
+                                                                        accentColor,
+                                                                        cleanSub
                                                                     );
                                                                     setOverrideSrc(newSrc);
                                                                 }
                                                                 setShowEpisodesPortal(false);
                                                             }}
-                                                            className={`w-48 sm:w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${isActive
-                                                                    ? 'bg-gradient-to-br from-red-600/[0.16] to-rose-500/[0.05] border-red-500/70 shadow-[0_8px_32px_rgba(220,38,38,0.35)]'
-                                                                    : 'bg-white/[0.03] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
+                                                            className={`w-52 sm:w-60 md:w-68 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu will-change-transform active:scale-[0.98] ${isActive
+                                                                    ? 'bg-gradient-to-br from-red-600/[0.22] to-rose-500/[0.08] border-red-500/80 shadow-[0_8px_32px_rgba(220,38,38,0.45)] ring-1 ring-red-500/40'
+                                                                    : 'bg-white/[0.03] border-white/[0.07] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_36px_rgba(0,0,0,0.6)]'
                                                                 }`}
                                                         >
-                                                            {/* Sheen sweep animation */}
-                                                            <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
-
-                                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                            {/* Card Thumbnail Box */}
+                                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/5 shadow-md flex-shrink-0">
                                                                 {ep.still_path ? (
                                                                     <img
-                                                                        src={`${IMAGE_BASE_URL}${ep.still_path}`}
+                                                                        src={`https://image.tmdb.org/t/p/w300${ep.still_path}`}
                                                                         alt=""
-                                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                                         loading="lazy"
                                                                     />
                                                                 ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-500">No Image</div>
                                                                 )}
 
-                                                                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                                {/* Dark Bottom Gradient */}
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
+                                                                {/* Play Overlay Button */}
+                                                                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-200">
                                                                         <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
                                                                     </div>
                                                                 </div>
 
+                                                                {/* Rating Badge */}
                                                                 {ep.vote_average > 0 && (
-                                                                    <div className={`absolute top-2 left-2 bg-black/70 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
+                                                                    <div className={`absolute top-2 left-2 bg-black/75 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
                                                                         <span className="text-[8px] leading-none">★</span>
                                                                         <span>{ep.vote_average.toFixed(1)}</span>
                                                                     </div>
                                                                 )}
 
+                                                                {/* Active / Now Playing Pill */}
                                                                 {isActive && (
-                                                                    <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${isKurdish ? 'text-[10px] py-[2px] px-1.5 font-black' : 'text-[7px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                    <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_12px_rgba(220,38,38,0.7)] ${isKurdish ? 'text-[11px] py-[2px] px-2 font-black' : 'text-[8px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
                                                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                                                                         <span>{isKurdish ? 'ئێستا پەخش دەکرێت' : 'NOW PLAYING'}</span>
                                                                     </div>
                                                                 )}
 
+                                                                {/* Watched Badge */}
                                                                 {isWatched && !isActive && (
-                                                                    <div className={`absolute top-2 right-2 bg-green-500/30 backdrop-blur-md text-green-400 rounded-lg border border-green-500/40 flex items-center gap-0.5 z-20 ${isKurdish ? 'text-[9px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
+                                                                    <div className={`absolute top-2 right-2 bg-emerald-500/30 backdrop-blur-md text-emerald-400 rounded-lg border border-emerald-500/40 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
                                                                         <span>✓</span>
                                                                         <span>{isKurdish ? 'بینراوە' : 'WATCHED'}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className="flex flex-col px-1">
+                                                            {/* Text Metadata */}
+                                                            <div className="flex flex-col px-0.5 text-right" dir={isKurdish ? 'rtl' : 'ltr'}>
                                                                 {!isGenericName ? (
                                                                     <>
-                                                                        <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-400'} ${isKurdish ? 'text-[12px] font-black' : 'text-[9px] font-black'}`}>
+                                                                        <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-400'} ${isKurdish ? 'text-[13px] font-black' : 'text-[10px] font-black'}`}>
                                                                             {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
                                                                         </span>
-                                                                        <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[14px]' : 'text-xs'}`} title={ep.name}>
+                                                                        <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
                                                                             {ep.name}
                                                                         </h4>
                                                                     </>
                                                                 ) : (
-                                                                    <h4 className={`font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isActive ? 'text-red-400' : 'text-white'} ${isKurdish ? 'text-[15px]' : 'text-xs'}`}>
+                                                                    <h4 className={`font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isActive ? 'text-red-400' : 'text-white'} ${isKurdish ? 'text-[16px]' : 'text-xs'}`}>
                                                                         {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
                                                                     </h4>
                                                                 )}
-                                                                <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-300 ${isKurdish ? 'text-[12px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
+                                                                <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-200 ${isKurdish ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
                                                                     {ep.overview || (isKurdish ? 'هیچ ڕوونکردنەوەیەک بۆ ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
                                                                 </p>
                                                             </div>
-                                                        </motion.div>
+                                                        </div>
                                                     );
                                                 })
                                             )}
-                                        </motion.div>
+                                        </div>
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            /* Movie Swiper Container with Horizontal Scroll Controls */
+                            /* Movie Recommendations Swiper Container */
                             <div className="flex-1 flex flex-col gap-1.5 overflow-hidden relative">
                                 <div className="flex items-center justify-between shrink-0">
-                                    <span className={`font-black text-gray-400 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
+                                    <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
                                         {(language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'RECOMMENDED MOVIES'}
                                     </span>
                                     <div className="flex items-center gap-1.5 dir-ltr">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'left'); }}
-                                            className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                                            className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                             title="Scroll left"
                                         >
                                             <ChevronLeft size={16} />
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'right'); }}
-                                            className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-md"
+                                            className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
                                             title="Scroll right"
                                         >
                                             <ChevronRight size={16} />
@@ -4107,42 +4153,45 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </div>
                                 </div>
 
-                                <div className="relative flex-1 overflow-hidden mt-1">
-                                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
-                                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/80 to-transparent pointer-events-none z-10 hidden md:block" />
+                                <div className="relative flex-1 overflow-hidden mt-0.5">
+                                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
+                                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
 
-                                    <motion.div
+                                    <div
                                         ref={episodesScrollRef}
-                                        variants={containerVariants}
-                                        initial="hidden"
-                                        animate="show"
-                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-4 py-2 px-1 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-white/[0.01] [&::-webkit-scrollbar-thumb]:bg-white/[0.08] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-red-600/50 scroll-smooth"
+                                        onWheel={(e) => {
+                                            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && episodesScrollRef.current) {
+                                                episodesScrollRef.current.scrollLeft += e.deltaY;
+                                            }
+                                        }}
+                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-2 px-1 scrollbar-hide touch-pan-x overscroll-x-contain select-none scroll-smooth"
+                                        style={{
+                                            WebkitOverflowScrolling: 'touch',
+                                            scrollbarWidth: 'none',
+                                            msOverflowStyle: 'none'
+                                        }}
                                     >
                                         {movieRecommendations.length === 0 ? (
-                                            <div className="flex items-center gap-3 px-8 py-12 opacity-50 justify-center w-full">
+                                            <div className="flex items-center gap-3 px-8 py-12 opacity-60 justify-center w-full">
                                                 <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                                <span className={`font-black uppercase tracking-widest text-gray-400 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[9px]'}`}>
+                                                <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[10px]'}`}>
                                                     {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING MOVIES...'}
                                                 </span>
                                             </div>
                                         ) : (
                                             movieRecommendations.map((movie) => {
                                                 const isActive = String(movie.id) === String(tmdbId);
+                                                const isKurdish = language === 'ku' || language === 'badini';
 
                                                 return (
-                                                    <motion.div
+                                                    <div
                                                         key={movie.id}
-                                                        variants={cardVariants}
-                                                        whileHover={{ y: -6, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 20 } }}
-                                                        whileTap={{ scale: 0.98 }}
                                                         onClick={() => {
-                                                            // Detect content type — TMDB always provides media_type
                                                             const recType: 'movie' | 'tv' = (movie.media_type === 'tv') ? 'tv' : 'movie';
                                                             const recId = String(movie.id);
                                                             const topSrc = activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER';
                                                             const recTitle = movie.title || movie.name || '';
 
-                                                            // Play directly in the player
                                                             if (setGlobalActiveVideo) {
                                                                 setGlobalActiveVideo({
                                                                     tmdbId: recId,
@@ -4158,60 +4207,57 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             }
                                                             setShowEpisodesPortal(false);
                                                         }}
-                                                        className={`w-56 shrink-0 flex flex-col gap-2 rounded-2xl border p-2 transition-all group relative cursor-pointer overflow-hidden ${isActive
-                                                                ? 'bg-gradient-to-br from-red-600/[0.08] to-rose-500/[0.02] border-red-500/50 shadow-[0_8px_32px_rgba(220,38,38,0.25)]'
-                                                                : 'bg-white/[0.02] border-white/[0.04] hover:border-white/12 hover:bg-white/[0.06] hover:shadow-[0_12px_40px_rgba(0,0,0,0.6)]'
+                                                        className={`w-56 sm:w-64 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu will-change-transform active:scale-[0.98] ${isActive
+                                                                ? 'bg-gradient-to-br from-red-600/[0.18] to-rose-500/[0.05] border-red-500/60 shadow-[0_8px_32px_rgba(220,38,38,0.35)]'
+                                                                : 'bg-white/[0.03] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_36px_rgba(0,0,0,0.6)]'
                                                             }`}
                                                     >
-                                                        {/* Sheen sweep animation */}
-                                                        <div className="absolute inset-0 w-[200%] -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent transition-transform duration-1000 ease-out pointer-events-none" />
-
-                                                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black border border-white/5 shadow-md flex-shrink-0">
+                                                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/5 shadow-md flex-shrink-0">
                                                             {movie.backdrop_path ? (
                                                                 <img
                                                                     src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`}
                                                                     alt=""
-                                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                                                     loading="lazy"
                                                                 />
                                                             ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-600">No Image</div>
+                                                                <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-500">No Image</div>
                                                             )}
 
-                                                            <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                                                            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-200">
                                                                     <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
                                                                 </div>
                                                             </div>
 
                                                             {movie.vote_average > 0 && (
-                                                                <div className={`absolute top-2 left-2 bg-black/60 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/5 flex items-center gap-1 z-20 ${(language === 'ku' || language === 'badini') ? 'text-[10px] py-[1px] px-1 font-black' : 'text-[7px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
+                                                                <div className={`absolute top-2 left-2 bg-black/75 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
                                                                     <span className="text-[8px] leading-none">★</span>
                                                                     <span>{movie.vote_average.toFixed(1)}</span>
                                                                 </div>
                                                             )}
 
                                                             {isActive && (
-                                                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)] ${(language === 'ku' || language === 'badini') ? 'text-[9px] py-[2px] px-1.5 font-black' : 'text-[6px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.6)] ${isKurdish ? 'text-[10px] py-[2px] px-1.5 font-black' : 'text-[7px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                                                    <span>{(language === 'ku' || language === 'badini') ? 'ئێستا' : 'NOW PLAYING'}</span>
+                                                                    <span>{isKurdish ? 'ئێستا پەخش دەکرێت' : 'NOW PLAYING'}</span>
                                                                 </div>
                                                             )}
                                                         </div>
 
-                                                        <div className="flex flex-col px-1 text-left">
-                                                            <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${(language === 'ku' || language === 'badini') ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
+                                                        <div className="flex flex-col px-0.5 text-right" dir={isKurdish ? 'rtl' : 'ltr'}>
+                                                            <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
                                                                 {movie.title || movie.name}
                                                             </h4>
-                                                            <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-300 ${(language === 'ku' || language === 'badini') ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={movie.overview}>
-                                                                {movie.overview || ((language === 'ku' || language === 'badini') ? 'کورتەی ئەم فیلمە بەردەست نییە' : 'No description available for this movie.')}
+                                                            <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-200 ${isKurdish ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={movie.overview}>
+                                                                {movie.overview || (isKurdish ? 'کورتەی ئەم فیلمە بەردەست نییە' : 'No description available for this movie.')}
                                                             </p>
                                                         </div>
-                                                    </motion.div>
+                                                    </div>
                                                 );
                                             })
                                         )}
-                                    </motion.div>
+                                    </div>
                                 </div>
                             </div>
                         )}
