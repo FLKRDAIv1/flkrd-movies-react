@@ -81,6 +81,10 @@
       "destination": "/api/seo?type=dubbed&id=:id"
     },
     {
+      "source": "/api/flkrd-core/(.*)",
+      "destination": "/api/flkrd-core"
+    },
+    {
       "source": "/((?!assets/|.*\\..*$).*)",
       "destination": "/index.html"
     }

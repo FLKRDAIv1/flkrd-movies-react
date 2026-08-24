@@ -18,6 +18,13 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
         proxy: {
+          '/api/flkrd-core': {
+            target: 'https://ofddaeofptotnxeoxfko.supabase.co',
+            rewrite: (path) => path.replace(/^\/api\/flkrd-core/, ''),
+            changeOrigin: true,
+            secure: true,
+            agent: new Agent({ family: 4 }),
+          },
           '/api/tmdb': {
             target: 'https://api.tmdb.org/3',
             rewrite: (path) => path.replace(/^\/api\/tmdb/, ''),
@@ -25,7 +32,6 @@ export default defineConfig(({ mode }) => {
             agent: new Agent({ family: 4 }),
             configure: (proxy, _options) => {
               proxy.on('error', (err, _req, res) => {
-                console.warn('[Vite Proxy Error] Failed to reach TMDB API:', err.message);
                 if (!res.headersSent) {
                   res.writeHead(502, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({ error: 'TMDB API is currently unreachable. Please check your internet connection or DNS settings.' }));
