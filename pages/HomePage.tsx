@@ -335,7 +335,7 @@ const HomePage: React.FC = () => {
             style={{
               background: theme === 'dark' 
                 ? 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.65) 50%, rgba(7,7,8,0.98) 100%)'
-                : 'linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.65) 50%, rgba(248,249,250,0.98) 100%)'
+                : 'linear-gradient(to bottom, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.65) 50%, rgba(255,255,255,1) 100%)'
             }}
           />
           <img
@@ -347,7 +347,7 @@ const HomePage: React.FC = () => {
       )}
       {viewMode !== 'list' && <HeroBanner onActiveItemChange={setActiveItem} />}
 
-      <div className={`relative z-20 ${viewMode === 'list' ? 'pt-24 md:pt-32 space-y-12' : 'mt-8 md:mt-12'}`}>
+      <div className={`relative z-20 ${viewMode === 'list' ? 'pt-24 md:pt-32 space-y-12' : 'mt-1 md:mt-12'}`}>
         <AnimatePresence>
           {continueWatchingItems.length > 0 && (
             <motion.div

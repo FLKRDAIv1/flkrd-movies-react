@@ -1,32 +1,29 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     User, Shield, Zap, Bell, Moon, Sun, Languages,
     Save, Edit3, Camera, Clock, Activity, Award,
     ChevronRight, ArrowLeft, Check, Sparkles, Monitor, Smartphone, Download,
-    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2, Crown, CheckCircle2, Sliders
+    ShieldCheck, LogOut, Mail, Lock, Eye, EyeOff, KeyRound, Loader2, Crown,
+    CheckCircle2, Sliders, TrendingUp, Radio, Users, Captions, Play, Trash2,
+    Film, Tv, Mic2, Compass, RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { SkeletonProfile } from '../components/Skeleton';
-import { downloadMobileConfig } from '../utils/appleProfileUtils';
 import AnimatedThemeToggler from '../components/ui/animated-theme-toggler';
 import { useAuth } from '../contexts/AuthContext';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
-import ElasticStack from '../components/ui/elastic-stack';
-import MovieBentoGrid from '../components/ui/movie-bento-grid';
-import Portal from '../components/Portal';
 import { AvatarEffectContainer, AvatarEffectType } from '../components/UserProfileModal';
 import VisitorAnalyticsModal from '../components/VisitorAnalyticsModal';
 import { AdminManagementModal } from '../components/AdminManagementModal';
 import { AdminBroadcastModal } from '../components/AdminBroadcastModal';
 import AdminPanelModal from '../components/AdminPanelModal';
-import { TrendingUp, Radio, Users, Captions } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
@@ -35,6 +32,9 @@ const ProfilePage: React.FC = () => {
     const { addNotification } = useNotification();
     const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
+
+    // Tab state: 'history' | 'preferences' | 'admin'
+    const [activeTab, setActiveTab] = useState<'history' | 'preferences' | 'admin'>('history');
 
     // Local states
     const [authScreen, setAuthScreen] = useState<'login' | 'signup' | 'reset'>('login');
@@ -60,14 +60,43 @@ const ProfilePage: React.FC = () => {
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
     const [showAdminModal, setShowAdminModal] = useState(false);
 
-    // Known TMDB backdrop paths — displayed immediately, no API wait
-    const STATIC_BACKDROPS = [
-        'https://image.tmdb.org/t/p/w1280/rAiYTfKGqDCRIIqo664sY9XZIvQ.jpg',
-        'https://image.tmdb.org/t/p/w1280/f1AQhx6ZfGhPkFzvgARFNoeavvg.jpg',
-        'https://image.tmdb.org/t/p/w1280/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',
-        'https://image.tmdb.org/t/p/w1280/drulhSX7P5TQlEMQZ3JoXKSDEfz.jpg',
-        'https://image.tmdb.org/t/p/w1280/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
-    ];
+    // Watch Progress History
+    const [historyList, setHistoryList] = useState<any[]>(() => {
+        try {
+            const raw = localStorage.getItem('watchProgress');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.sort((a: any, b: any) => (b.lastWatched || 0) - (a.lastWatched || 0)) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    useEffect(() => {
+        const refreshHistory = () => {
+            try {
+                const raw = localStorage.getItem('watchProgress');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    setHistoryList(Array.isArray(parsed) ? parsed.sort((a: any, b: any) => (b.lastWatched || 0) - (a.lastWatched || 0)) : []);
+                } else {
+                    setHistoryList([]);
+                }
+            } catch {
+                setHistoryList([]);
+            }
+        };
+        refreshHistory();
+        window.addEventListener('storage', refreshHistory);
+        window.addEventListener('watchProgressUpdated', refreshHistory);
+        return () => {
+            window.removeEventListener('storage', refreshHistory);
+            window.removeEventListener('watchProgressUpdated', refreshHistory);
+        };
+    }, []);
+
+    const isStoredAdmin = typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true';
+    const isMasterAdmin = isAdmin || isStoredAdmin || user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
 
     // Load avatar from IndexedDB, LocalStorage or user metadata on mount / user change
     useEffect(() => {
@@ -89,34 +118,13 @@ const ProfilePage: React.FC = () => {
             setTempUserName(user.user_metadata.user_name);
         } else if (user?.email) {
             setTempUserName(user.email.split('@')[0]);
-        } else if (isAdmin || (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true')) {
+        } else if (isMasterAdmin) {
             const adminEmail = typeof window !== 'undefined' ? (localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com') : 'flkrdstudio@gmail.com';
             setTempUserName(adminEmail === 'flkrdstudio@gmail.com' ? 'Zana Barzani (CEO)' : adminEmail.split('@')[0]);
         }
-    }, [user, isAdmin]);
+    }, [user, isAdmin, isStoredAdmin, isMasterAdmin]);
 
-    const [backdropUrl, setBackdropUrl] = useState(
-        () => STATIC_BACKDROPS[Math.floor(Math.random() * STATIC_BACKDROPS.length)]
-    );
-
-    useEffect(() => {
-        const loadBackdrop = async () => {
-            try {
-                const data = await fetchData(requests.fetchTrending('en-US'), 'en');
-                if (data && data.length > 0) {
-                    const pick = data.find((m: any) => m.backdrop_path) || data[0];
-                    if (pick?.backdrop_path) {
-                        setBackdropUrl(`https://image.tmdb.org/t/p/w1280${pick.backdrop_path}`);
-                    }
-                }
-            } catch (e) {
-                // already showing static fallback, no change needed
-            }
-        };
-        loadBackdrop();
-    }, []);
-
-    // Override body background so the profile video background is actually visible
+    // Override body background so the profile ambient video background is visible
     useEffect(() => {
         const prev = document.body.style.backgroundColor;
         document.body.style.backgroundColor = 'transparent';
@@ -127,56 +135,26 @@ const ProfilePage: React.FC = () => {
         };
     }, []);
 
-    const [notifEnabled, setNotifEnabled] = useState(() => Notification.permission === 'granted');
+    const [notifEnabled, setNotifEnabled] = useState(() => (typeof Notification !== 'undefined' ? Notification.permission === 'granted' : false));
 
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-    const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream;
-    const isMac = /Macintosh|MacIntel|MacPPC|Mac68K/.test(userAgent);
-    const isApple = isIOS || isMac || (isMac && "ontouchend" in document);
+    const requestNotificationPermission = async () => {
+        if (typeof Notification !== 'undefined') {
+            const perm = await Notification.requestPermission();
+            setNotifEnabled(perm === 'granted');
+            if (perm === 'granted') {
+                addNotification({ type: 'success', title: 'Notifications Enabled', message: 'You will receive movie release and system alerts.' });
+            }
+        }
+    };
 
     const stats = {
         memberSince: user?.created_at ? new Date(user.created_at).getFullYear().toString() : '2026',
-        watchedCount: JSON.parse(localStorage.getItem('watchProgress') || '[]').length,
-        rank: t('userRank')
-    };
-
-    const watchedHistory = React.useMemo(() => {
-        try {
-            const raw = localStorage.getItem('watchProgress');
-            if (!raw) return [];
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
-    }, []);
-
-    const elasticStackItems = React.useMemo(() => {
-        return watchedHistory
-            .filter((item: any) => item && item.poster_path)
-            .map((item: any) => ({
-                id: `${item.id}-${item.type}`,
-                image: item.poster_path?.startsWith('http') 
-                    ? item.poster_path 
-                    : `https://image.tmdb.org/t/p/w200${item.poster_path}`,
-                name: item.title || item.name || 'Movie',
-                raw: item
-            }))
-            .slice(0, 7);
-    }, [watchedHistory]);
-
-    const handleElasticItemClick = (item: any) => {
-        const raw = item.raw;
-        if (!raw) return;
-        if (String(raw.type) === 'dubbed') {
-            navigate(`/dubbed-details/${raw.id}`);
-        } else {
-            navigate(`/details/${raw.type}/${raw.id}`);
-        }
+        watchedCount: historyList.length,
+        rank: isMasterAdmin ? (language === 'ku' || language === 'badini' ? 'بەڕێوەبەری سەرەکی' : 'Master Administrator') : t('userRank')
     };
 
     useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 600);
+        const timer = setTimeout(() => setLoading(false), 500);
         return () => clearTimeout(timer);
     }, []);
 
@@ -190,14 +168,27 @@ const ProfilePage: React.FC = () => {
         if (!tempUserName.trim()) return;
         localStorage.setItem('flkrd_username', tempUserName);
         setIsEditingName(false);
-        addNotification({ type: 'success', title: 'Profile Updated', message: 'User identity synchronized.' });
+        try {
+            if (user) {
+                await supabase.auth.updateUser({
+                    data: { user_name: tempUserName }
+                });
+            }
+        } catch (e) {
+            // local update already saved
+        }
+        addNotification({ 
+            type: 'success', 
+            title: language === 'ku' || language === 'badini' ? 'پرۆفایل نوێکرایەوە' : 'Profile Updated', 
+            message: language === 'ku' || language === 'badini' ? 'ناوی بەکارهێنەر بە سەرکەوتوویی پاشەکەوت کرا.' : 'User identity synchronized.' 
+        });
     };
 
     const handleLanguageChange = (lang: 'en' | 'ku' | 'badini') => {
         setLanguage(lang);
         let langName = 'English';
-        if (lang === 'ku') langName = 'Kurdish Sorani';
-        if (lang === 'badini') langName = 'Kurdish Badini';
+        if (lang === 'ku') langName = 'Kurdish Sorani (سۆرانی)';
+        if (lang === 'badini') langName = 'Kurdish Badini (بادینی)';
         addNotification({ type: 'info', title: 'Language Sync', message: `Interface language set to ${langName}.` });
     };
 
@@ -270,7 +261,6 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    // Upload avatar to Supabase Storage and save URL to user metadata
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newPassword || newPassword.length < 6) {
@@ -294,36 +284,20 @@ const ProfilePage: React.FC = () => {
         }
     };
 
-    const [avatarEffect, setAvatarEffect] = useState<AvatarEffectType>(() => {
-        if (typeof window !== 'undefined') {
-            return (localStorage.getItem('flkrd_avatar_effect') as AvatarEffectType) || 'none';
-        }
-        return 'none';
-    });
-
-    const handleSelectAvatarEffect = async (eff: AvatarEffectType) => {
-        setAvatarEffect(eff);
-        localStorage.setItem('flkrd_avatar_effect', eff);
-        addNotification({ type: 'success', title: 'Effect Applied', message: `Avatar animation effect updated!` });
-    };
-
     const safeSetAvatarStorage = (avatarDataUrl: string) => {
         try {
             localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
         } catch (err) {
-            console.warn("[AVATAR] LocalStorage quota exceeded, clearing old caches...");
             try {
-                // Clear non-essential cached items in localStorage to free up space
                 localStorage.removeItem('flkrd_fallback_movies');
                 localStorage.removeItem('flkrd_fallback_tmdb');
                 localStorage.removeItem('tmdb_cache');
                 localStorage.setItem('flkrd_avatar_url', avatarDataUrl);
             } catch (retryErr) {
-                console.warn("[AVATAR] LocalStorage still full. Using sessionStorage fallback.");
                 try {
                     sessionStorage.setItem('flkrd_avatar_url', avatarDataUrl);
                 } catch (sErr) {
-                    console.warn("[AVATAR] SessionStorage fallback error", sErr);
+                    console.warn("[AVATAR] Storage error", sErr);
                 }
             }
         }
@@ -335,12 +309,10 @@ const ProfilePage: React.FC = () => {
             const reader = new FileReader();
 
             if (isGif) {
-                // Keep 100% full quality animation for GIF files
                 reader.readAsDataURL(file);
                 reader.onload = (event) => resolve(event.target?.result as string);
                 reader.onerror = (err) => reject(err);
             } else {
-                // Auto-resize static images (PNG, JPG, WEBP, SVG) to crisp 400x400 HD WebP for zero quota strain
                 reader.readAsDataURL(file);
                 reader.onload = (event) => {
                     const img = new Image();
@@ -368,7 +340,7 @@ const ProfilePage: React.FC = () => {
                             ctx.imageSmoothingEnabled = true;
                             ctx.imageSmoothingQuality = 'high';
                             ctx.drawImage(img, 0, 0, width, height);
-                            resolve(canvas.toDataURL('image/webp', 0.85));
+                            resolve(canvas.toDataURL('image/webp', 0.88));
                         } else {
                             resolve(event.target?.result as string);
                         }
@@ -383,8 +355,8 @@ const ProfilePage: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file || !user) return;
         setAvatarUploading(true);
-        setUploadProgress(10);
-        setUploadStatusText(language === 'ku' || language === 'badini' ? 'دەستپێکردنی بارکردن...' : 'Preparing file...');
+        setUploadProgress(15);
+        setUploadStatusText(language === 'ku' || language === 'badini' ? 'ئامادەکردنی وێنە...' : 'Preparing image...');
         try {
             let finalUrl = '';
             const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
@@ -392,10 +364,9 @@ const ProfilePage: React.FC = () => {
             const mimeType = file.type || (ext === 'gif' ? 'image/gif' : (ext === 'png' ? 'image/png' : 'image/jpeg'));
             const storagePath = `user_avatars/${user.id}_${Date.now()}.${ext}`;
 
-            setUploadProgress(35);
-            setUploadStatusText(language === 'ku' || language === 'badini' ? 'بارکردن بۆ سێرڤەری هەور (Supabase)...' : 'Uploading to cloud storage...');
+            setUploadProgress(40);
+            setUploadStatusText(language === 'ku' || language === 'badini' ? 'بارکردن بۆ سێرڤەر...' : 'Uploading to server...');
 
-            // 1. Primary path: Upload directly to Supabase Storage 'avatars' bucket with explicit contentType
             try {
                 const { data: uploadRes, error: uploadErr } = await supabase.storage
                     .from('avatars')
@@ -405,48 +376,35 @@ const ProfilePage: React.FC = () => {
                         upsert: true 
                     });
 
-                setUploadProgress(65);
-                setUploadStatusText(language === 'ku' || language === 'badini' ? 'وەرگرتنەوەی بەستەری گشتی...' : 'Generating public URL...');
+                setUploadProgress(70);
 
                 if (!uploadErr && uploadRes) {
                     const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
                     if (pubData?.publicUrl) {
                         finalUrl = pubData.publicUrl;
                     }
-                } else if (uploadErr) {
-                    console.warn("[AVATAR] Supabase Storage upload returned error:", uploadErr.message);
                 }
             } catch (storageErr: any) {
-                console.warn("[AVATAR] Supabase Storage exception, falling back to local DataURL", storageErr?.message);
+                console.warn("[AVATAR] Cloud storage fallback to local DataURL", storageErr);
             }
 
-            // 2. Fallback path: Process as local DataURL if cloud upload failed or bucket missing
             if (!finalUrl) {
-                setUploadProgress(75);
-                setUploadStatusText(language === 'ku' || language === 'badini' ? 'پرۆسێسکردنی لۆکاڵی...' : 'Processing local format...');
+                setUploadProgress(80);
                 finalUrl = await processAvatarFile(file);
             }
             await db.saveAvatar('current_user_avatar', finalUrl);
 
-            setUploadProgress(85);
-            setUploadStatusText(language === 'ku' || language === 'badini' ? 'نوێکردنەوە لەسەر داتابەیس و پرۆفایل...' : 'Syncing user metadata...');
+            setUploadProgress(90);
 
-            // 3. Update Supabase Auth User Metadata with finalUrl so ALL users & sessions see the new avatar
             try {
                 await supabase.auth.updateUser({
-                    data: { 
-                        avatar_url: finalUrl,
-                        avatar_effect: avatarEffect || 'none'
-                    }
+                    data: { avatar_url: finalUrl }
                 });
             } catch (authErr) {
-                console.warn("[AVATAR] Supabase Auth metadata update warning:", authErr);
+                console.warn("[AVATAR] Auth metadata warning:", authErr);
             }
 
             setUploadProgress(100);
-            setUploadStatusText(language === 'ku' || language === 'badini' ? 'تەواوبوو!' : 'Upload complete!');
-
-            // 4. Save to local storage & state, then dispatch events across app
             safeSetAvatarStorage(finalUrl);
             setAvatarUrl(finalUrl);
             window.dispatchEvent(new Event('storage'));
@@ -454,10 +412,10 @@ const ProfilePage: React.FC = () => {
 
             addNotification({
                 type: 'success',
-                title: isGif ? 'ئەنیمەیشن/جیف سەرکەوتوو بوو' : 'وێنەی پرۆفایل سەرکەوتوو بوو',
-                message: isGif 
-                    ? 'وێنەی ئەنیمەیشنی پرۆفایلەکەت (GIF / Live Wallpaper) بە سەرکەوتوویی لەسەر هەموو بەرنامەکە نوێکرایەوە!' 
-                    : 'وێنەی پرۆفایلەکەت بە سەرکەوتوویی بارکرا و لەسەر هەموو شوێنێک دیار دەبێت.'
+                title: language === 'ku' || language === 'badini' ? 'وێنەی پرۆفایل نوێکرایەوە' : 'Avatar Updated',
+                message: language === 'ku' || language === 'badini' 
+                    ? 'وێنەی پرۆفایلەکەت بە سەرکەوتوویی لەسەر هەموو بەرنامەکە نوێکرایەوە.' 
+                    : 'Your profile avatar has been updated successfully.'
             });
         } catch (err: any) {
             console.error("[AVATAR] Handler error:", err);
@@ -480,6 +438,56 @@ const ProfilePage: React.FC = () => {
             }
         } else {
             addNotification({ type: 'info', title: 'Apple Auth', message: 'Apple sign-in coming soon.' });
+        }
+    };
+
+    const handleNavigateItem = (item: any) => {
+        if (!item) return;
+        if (String(item.type) === 'dubbed') {
+            navigate(`/dubbed-details/${item.id}`);
+        } else if (String(item.type) === 'tv') {
+            navigate(`/details/tv/${item.id}`);
+        } else {
+            navigate(`/details/movie/${item.id}`);
+        }
+    };
+
+    const handleRemoveHistoryItem = (e: React.MouseEvent, id: number | string, type?: string) => {
+        e.stopPropagation();
+        try {
+            const raw = localStorage.getItem('watchProgress');
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                const updated = parsed.filter((item: any) => !(String(item.id) === String(id) && (!type || String(item.type) === String(type))));
+                localStorage.setItem('watchProgress', JSON.stringify(updated));
+                setHistoryList(updated);
+                window.dispatchEvent(new Event('storage'));
+                window.dispatchEvent(new Event('watchProgressUpdated'));
+                addNotification({
+                    type: 'info',
+                    title: language === 'ku' || language === 'badini' ? 'سڕایەوە' : 'Removed',
+                    message: language === 'ku' || language === 'badini' ? 'فیلمەکە لە مێژووی سەیرکردن سڕایەوە.' : 'Item removed from watch history.'
+                });
+            }
+        } catch (err) {
+            console.error("Failed to remove history item", err);
+        }
+    };
+
+    const handleClearAllHistory = () => {
+        const confirmMsg = language === 'ku' || language === 'badini' 
+            ? 'دڵنیای لە سڕینەوەی تەواوی مێژووی سەیرکردن؟' 
+            : 'Are you sure you want to clear your entire watch history?';
+        if (window.confirm(confirmMsg)) {
+            localStorage.removeItem('watchProgress');
+            setHistoryList([]);
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('watchProgressUpdated'));
+            addNotification({
+                type: 'info',
+                title: language === 'ku' || language === 'badini' ? 'مێژوو پاککرایەوە' : 'History Cleared',
+                message: language === 'ku' || language === 'badini' ? 'تەواوی مێژووی سەیرکردن سڕایەوە.' : 'Your watch history has been reset.'
+            });
         }
     };
 
@@ -512,7 +520,6 @@ const ProfilePage: React.FC = () => {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     className="w-full max-w-[420px] bg-black/40 backdrop-blur-[35px] backdrop-saturate-[1.8] border border-white/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.3)] relative z-10"
                 >
-                    {/* Top brand accent */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
                     <div className="text-center mb-8">
                         <div className="w-16 h-16 bg-gradient-to-br from-[var(--brand-red)] to-red-900 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-900/40">
@@ -564,7 +571,6 @@ const ProfilePage: React.FC = () => {
     }
 
     // ─── UNAUTHENTICATED GUEST AUTHENTICATION VIEW (LIQUID GLASS) ──────────────────────
-    const isStoredAdmin = typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true';
     if (!user && !isAdmin && !isStoredAdmin) {
         const isRTL = language === 'ku' || language === 'badini';
 
@@ -574,7 +580,6 @@ const ProfilePage: React.FC = () => {
 
         return (
             <div className="h-[100dvh] w-full flex items-center justify-center relative overflow-hidden px-4 py-0 select-none bg-black">
-
                 {/* Fullscreen Atmospheric Background Video Layer */}
                 <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
                     <video
@@ -821,7 +826,7 @@ const ProfilePage: React.FC = () => {
                                 <button 
                                     type="button"
                                     onClick={() => handleOAuth('google')}
-                                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all text-white active:scale-95 shadow-lg"
+                                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all text-white active:scale-95 shadow-lg cursor-pointer"
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                                     Google
@@ -830,20 +835,20 @@ const ProfilePage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Integrated Bottom Tab Switching Bar (Mockup Style) */}
+                    {/* Integrated Bottom Tab Switching Bar */}
                     <div className="mt-8 border-t border-white/10 pt-5 flex items-center justify-around text-xs font-black uppercase tracking-wider">
                         {authScreen === 'login' ? (
                             <>
                                 <button 
                                     onClick={() => setAuthScreen('signup')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'دروستکردنی ئەکاونت' : 'Create Account'}
                                 </button>
                                 <span className="text-white/20">|</span>
                                 <button 
                                     onClick={() => setAuthScreen('reset')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'دانانەوەی پاسوۆرد' : 'Reset Password'}
                                 </button>
@@ -852,14 +857,14 @@ const ProfilePage: React.FC = () => {
                             <>
                                 <button 
                                     onClick={() => setAuthScreen('login')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'چوونەژوورەوە' : 'Log In'}
                                 </button>
                                 <span className="text-white/20">|</span>
                                 <button 
                                     onClick={() => setAuthScreen('reset')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'دانانەوەی پاسوۆرد' : 'Reset Password'}
                                 </button>
@@ -868,14 +873,14 @@ const ProfilePage: React.FC = () => {
                             <>
                                 <button 
                                     onClick={() => setAuthScreen('login')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'چوونەژوورەوە' : 'Log In'}
                                 </button>
                                 <span className="text-white/20">|</span>
                                 <button 
                                     onClick={() => setAuthScreen('signup')}
-                                    className="text-gray-400 hover:text-white transition-colors"
+                                    className="text-gray-400 hover:text-white transition-colors cursor-pointer"
                                 >
                                     {isRTL ? 'دروستکردنی ئەکاونت' : 'Create Account'}
                                 </button>
@@ -887,15 +892,18 @@ const ProfilePage: React.FC = () => {
         );
     }
 
-    // ─── AUTHENTICATED PROFILE VIEW ──────────────────────────────────────────────────
+    // ─── AUTHENTICATED MODERN APPLE TV / NETFLIX PROFILE DASHBOARD ───────────────────
+    const isRtl = language === 'ku' || language === 'badini';
+    const isDark = theme !== 'light';
+
     const PROFILE_VIDEO_DARK = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260506_031045_0e1165dd-ab48-46e3-ad3d-5fe77f217647.mp4';
     const PROFILE_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260405_171521_25968ba2-b594-4b32-aab7-f6b69398a6fa.mp4';
-    const profileVideo = theme === 'dark' ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
+    const profileVideo = isDark ? PROFILE_VIDEO_DARK : PROFILE_VIDEO_LIGHT;
 
     return (
-        <div className="min-h-screen pt-32 pb-40 relative overflow-x-hidden bg-black">
+        <div className={`min-h-screen pt-20 md:pt-24 pb-36 relative overflow-x-hidden ${isDark ? 'bg-black text-white' : 'bg-zinc-100 text-zinc-900'}`}>
 
-            {/* Fullscreen Ambient Background Video Layer */}
+            {/* Ambient Background Layer */}
             <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none -z-10">
                 <video
                     key={profileVideo}
@@ -904,32 +912,44 @@ const ProfilePage: React.FC = () => {
                     muted
                     playsInline
                     disablePictureInPicture
-                    className="w-full h-full object-cover opacity-85 scale-105 transform-gpu transition-opacity duration-1000"
+                    className="w-full h-full object-cover opacity-35 dark:opacity-40 scale-105 transform-gpu transition-opacity duration-1000"
                     src={profileVideo}
                 />
-                <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+                <div className={`absolute inset-0 ${isDark ? 'bg-black/60' : 'bg-white/70'} backdrop-blur-3xl pointer-events-none`} />
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 md:px-8 relative z-10">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 relative z-10">
+                
+                {/* Back Button */}
                 <button
                     onClick={() => navigate(-1)}
-                    className="mb-8 flex items-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-xl group w-fit"
+                    className={`mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-black uppercase tracking-wider backdrop-blur-xl transition-all shadow-sm active:scale-95 cursor-pointer ${
+                        isDark 
+                            ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' 
+                            : 'bg-white/80 border-zinc-200 hover:bg-white text-zinc-800'
+                    }`}
                 >
-                    {language === 'ku' || language === 'badini' ? <ArrowLeft size={20} className="rotate-180 group-hover:translate-x-1 transition-transform" /> : <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />}
-                    <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
+                    {isRtl ? <ArrowLeft size={16} className="rotate-180" /> : <ArrowLeft size={16} />}
+                    <span>{t('back')}</span>
                 </button>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
-                    <div className="lg:col-span-4 space-y-8">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[3rem] p-10 text-center relative overflow-hidden shadow-2xl transition-colors duration-500"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1.5 bg-[var(--brand-red)]" />
-
-                            <div className="relative inline-block mb-6">
-                                {/* Hidden file input */}
+                {/* ── 1. Top Profile Hero Card (Apple TV Style) ── */}
+                <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-3xl p-6 sm:p-8 border shadow-2xl backdrop-blur-2xl transition-colors duration-300 relative overflow-hidden mb-8 ${
+                        isDark 
+                            ? 'bg-zinc-950/70 border-white/10 text-white' 
+                            : 'bg-white/85 border-zinc-200 text-zinc-900'
+                    }`}
+                >
+                    <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 md:gap-8">
+                        
+                        {/* Avatar & User Details */}
+                        <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                            
+                            {/* Avatar with Camera upload */}
+                            <div className="relative shrink-0">
                                 <input
                                     ref={avatarInputRef}
                                     type="file"
@@ -937,609 +957,680 @@ const ProfilePage: React.FC = () => {
                                     className="hidden"
                                     onChange={handleAvatarUpload}
                                 />
-                                <AvatarEffectContainer
-                                    url={avatarUrl}
-                                    name={tempUserName}
-                                    effect={avatarEffect}
-                                    email={user?.email}
-                                    size={140}
-                                />
-                                {avatarUploading && (
-                                    <div className="absolute inset-0 rounded-full bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-3 z-40 border-2 border-red-500/50 shadow-2xl animate-fade-in">
-                                        <div className="relative w-12 h-12 flex items-center justify-center mb-1">
-                                            <span className="absolute inset-0 rounded-full border-2 border-red-500/20"></span>
-                                            <span className="absolute inset-0 rounded-full border-2 border-t-red-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></span>
-                                            <span className="text-[11px] font-black text-red-500">{uploadProgress}%</span>
+                                
+                                <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-2 shadow-2xl relative flex items-center justify-center ${
+                                    isMasterAdmin ? 'border-amber-400 ring-4 ring-amber-400/20' : 'border-red-500 ring-4 ring-red-500/20'
+                                }`}>
+                                    {avatarUrl ? (
+                                        <img 
+                                            src={avatarUrl} 
+                                            alt={tempUserName} 
+                                            className="w-full h-full object-cover" 
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-tr from-red-600 via-red-500 to-amber-500 text-white flex items-center justify-center font-black text-2xl uppercase">
+                                            {tempUserName[0] || 'U'}
                                         </div>
-                                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden mb-1 border border-white/10">
-                                            <div 
-                                                className="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 transition-all duration-300 rounded-full"
-                                                style={{ width: `${uploadProgress}%` }}
-                                            />
+                                    )}
+
+                                    {/* Uploading Spinner Overlay */}
+                                    {avatarUploading && (
+                                        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-2 z-20">
+                                            <Loader2 size={24} className="animate-spin text-red-500 mb-1" />
+                                            <span className="text-[10px] font-black text-white">{uploadProgress}%</span>
                                         </div>
-                                        <span className="text-[8px] font-black text-zinc-300 truncate max-w-[110px]">
-                                            {uploadStatusText || 'بارکردن...'}
-                                        </span>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+
+                                {/* Camera Upload Button */}
                                 <button
                                     onClick={() => avatarInputRef.current?.click()}
-                                    className="absolute bottom-1 right-1 bg-[var(--brand-red)] text-white p-2.5 rounded-full border-4 border-black hover:scale-110 transition-all z-30 shadow-xl"
-                                    title="Upload photo or animated GIF"
+                                    className="absolute bottom-0 right-0 p-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white border-2 border-black dark:border-zinc-950 shadow-lg active:scale-90 transition-transform cursor-pointer"
+                                    title="Upload new avatar"
+                                    aria-label="Upload avatar"
                                 >
-                                    <Camera size={18} />
+                                    <Camera size={14} />
                                 </button>
                             </div>
 
-                            {/* Animated Avatar Effects Selector Grid */}
-                            <div className="w-full mb-6 p-4 bg-white/[0.02] border border-white/10 rounded-2xl flex flex-col gap-2.5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 text-left flex items-center gap-1.5">
-                                    <Sparkles size={11} className="text-amber-400" />
-                                    {language === 'ku' || language === 'badini' ? 'کاریگەرییە وێنەییەکان (Avatar Effects)' : 'Nitro Animated Avatar Rings'}
-                                </span>
-
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' || tempUserName.toLowerCase().includes('zana faroq') || tempUserName.toLowerCase().includes('zana barzani')) && (
-                                        <button
-                                            onClick={() => handleSelectAvatarEffect('creator-ceo-aura')}
-                                            className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all ${
-                                                avatarEffect === 'creator-ceo-aura' 
-                                                    ? 'bg-amber-500/20 border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(234,179,8,0.3)]' 
-                                                    : 'bg-white/5 border-white/10 text-zinc-300 hover:border-amber-400/40'
-                                            }`}
-                                        >
-                                            👑 CREATOR CEO
-                                        </button>
+                            {/* Info */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-center sm:justify-start gap-2">
+                                    {isEditingName ? (
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={tempUserName}
+                                                onChange={(e) => setTempUserName(e.target.value)}
+                                                className={`px-3 py-1 text-sm font-bold rounded-xl border outline-none ${
+                                                    isDark ? 'bg-zinc-900 border-red-500 text-white' : 'bg-white border-red-500 text-zinc-900'
+                                                }`}
+                                                autoFocus
+                                            />
+                                            <button 
+                                                onClick={handleSaveName}
+                                                className="p-1.5 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
+                                            >
+                                                <Check size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <h1 className="text-xl sm:text-2xl font-black uppercase italic tracking-tight">
+                                                {tempUserName}
+                                            </h1>
+                                            <button 
+                                                onClick={() => setIsEditingName(true)}
+                                                className="text-zinc-400 hover:text-red-500 transition-colors p-1"
+                                                title="Edit username"
+                                            >
+                                                <Edit3 size={15} />
+                                            </button>
+                                        </div>
                                     )}
-                                    <button
-                                        onClick={() => handleSelectAvatarEffect('cosmic-pulsar')}
-                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
-                                            avatarEffect === 'cosmic-pulsar' ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
-                                        }`}
-                                    >
-                                        🌀 Pulsar
-                                    </button>
-                                    <button
-                                        onClick={() => handleSelectAvatarEffect('cyber-glitch')}
-                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
-                                            avatarEffect === 'cyber-glitch' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
-                                        }`}
-                                    >
-                                        ⚡ Cyber
-                                    </button>
-                                    <button
-                                        onClick={() => handleSelectAvatarEffect('ruby-phoenix')}
-                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
-                                            avatarEffect === 'ruby-phoenix' ? 'bg-red-500/20 border-red-400 text-red-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
-                                        }`}
-                                    >
-                                        🔥 Phoenix
-                                    </button>
-                                    <button
-                                        onClick={() => handleSelectAvatarEffect('quantum-vortex')}
-                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
-                                            avatarEffect === 'quantum-vortex' ? 'bg-purple-500/20 border-purple-400 text-purple-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
-                                        }`}
-                                    >
-                                        🌌 Vortex
-                                    </button>
-                                    <button
-                                        onClick={() => handleSelectAvatarEffect('emerald-shield')}
-                                        className={`p-2 rounded-xl border text-[8px] font-black uppercase tracking-wider transition-all ${
-                                            avatarEffect === 'emerald-shield' ? 'bg-lime-500/20 border-lime-400 text-lime-300 shadow-md' : 'bg-white/5 border-white/10 text-zinc-300'
-                                        }`}
-                                    >
-                                        🛡️ Shield
-                                    </button>
+                                </div>
+
+                                <p className="text-xs text-zinc-400 font-medium flex items-center justify-center sm:justify-start gap-1.5">
+                                    <Mail size={13} className="text-zinc-500" />
+                                    <span>{user?.email || 'member@flkrd.stream'}</span>
+                                </p>
+
+                                {/* Badge */}
+                                <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                                    {isMasterAdmin ? (
+                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-400 shadow-sm">
+                                            <Crown size={12} className="text-amber-400" />
+                                            <span>{language === 'ku' || language === 'badini' ? 'بەڕێوەبەری سەرەکی' : 'Master Administrator'}</span>
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-500/15 border border-red-500/30 text-red-500 shadow-sm">
+                                            <Film size={12} />
+                                            <span>{language === 'ku' || language === 'badini' ? 'ئەندامی تایبەت' : 'VIP Cinephile'}</span>
+                                        </span>
+                                    )}
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                        <CheckCircle2 size={11} />
+                                        <span>Active</span>
+                                    </span>
                                 </div>
                             </div>
-
-                            <div className="flex flex-col items-center">
-                                {isEditingName ? (
-                                    <div className="flex items-center gap-2 mb-2 w-full">
-                                        <input
-                                            type="text"
-                                            value={tempUserName}
-                                            onChange={(e) => setTempUserName(e.target.value)}
-                                            className="bg-black border border-[var(--brand-red)]/50 rounded-xl px-4 py-2 text-white font-bold w-full outline-none focus:border-[var(--brand-red)]"
-                                        />
-                                        <button onClick={handleSaveName} className="p-2.5 bg-green-600 rounded-xl text-white"><Check size={20} /></button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <h2 className="text-3xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{tempUserName}</h2>
-                                        <button onClick={() => setIsEditingName(true)} className="text-gray-500 hover:text-[var(--brand-red)]"><Edit3 size={18} /></button>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-2 bg-[var(--brand-red)]/10 px-4 py-1.5 rounded-full border border-[var(--brand-red)]/20">
-                                    <Shield size={12} className="text-[var(--brand-red)]" />
-                                    <span className="text-[10px] font-black uppercase text-[var(--brand-red)] tracking-[0.2em]">{stats.rank}</span>
-                                </div>
-                            </div>
-                        </motion.div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <StatCard icon={<Clock size={16} />} label={t('memberSince')} value={stats.memberSince} />
-                            <StatCard icon={<Activity size={16} />} label={t('totalWatched')} value={stats.watchedCount} />
                         </div>
 
-                        {elasticStackItems.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden"
-                            >
-                                <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
-                                    <div className="flex items-center gap-2">
-                                        <Activity size={16} className="text-[var(--brand-red)]" />
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                            {language === 'ku' || language === 'badini' ? 'سەیرکراوەکانی کۆتایی' : 'Recently Watched'}
-                                        </span>
-                                    </div>
-                                </div>
-                                <ElasticStack 
-                                    items={elasticStackItems} 
-                                    itemSize={64} 
-                                    overlap={28} 
-                                    pushForce={12}
-                                    onItemClick={handleElasticItemClick}
-                                    className="py-4 justify-start"
-                                />
-                            </motion.div>
-                        )}
-                    </div>
-
-                    <div className="lg:col-span-8 space-y-8">
-                        <motion.div
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[3rem] p-8 md:p-12 shadow-2xl relative"
-                        >
-                            <div className="flex items-center gap-4 mb-10">
-                                <div className="p-3 bg-[var(--brand-red)]/20 rounded-2xl border border-[var(--brand-red)]/20">
-                                    <Zap size={24} className="text-[var(--brand-red)]" />
-                                </div>
-                                <h3 className="text-3xl font-[1000] uppercase italic tracking-tighter text-[var(--text-primary)]">{t('preferences')}</h3>
+                        {/* Quick Apple-style Info Pills */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full md:w-auto">
+                            <div className={`p-3.5 rounded-2xl border text-center flex flex-col justify-center ${
+                                isDark ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-50 border-zinc-200'
+                            }`}>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-0.5">
+                                    {t('memberSince')}
+                                </span>
+                                <span className="text-sm font-black font-mono">
+                                    {stats.memberSince}
+                                </span>
                             </div>
 
-                            <div className="space-y-10">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-10 border-b border-white/5">
-                                    <div className="flex items-center gap-5">
-                                        <div className="p-4 bg-white/5 rounded-2xl">
-                                            {theme === 'dark' ? <Moon size={24} className="text-indigo-400" /> : <Sun size={24} className="text-yellow-500" />}
+                            <div className={`p-3.5 rounded-2xl border text-center flex flex-col justify-center ${
+                                isDark ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-50 border-zinc-200'
+                            }`}>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-0.5">
+                                    {isRtl ? 'سەیرکراو' : 'Watched'}
+                                </span>
+                                <span className="text-sm font-black text-red-500 font-mono">
+                                    {historyList.length} {isRtl ? 'فیلم' : 'Titles'}
+                                </span>
+                            </div>
+
+                            <div className={`col-span-2 sm:col-span-1 p-3.5 rounded-2xl border text-center flex flex-col justify-center ${
+                                isDark ? 'bg-white/[0.03] border-white/5' : 'bg-zinc-50 border-zinc-200'
+                            }`}>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 mb-0.5">
+                                    {isRtl ? 'هەور' : 'Cloud Sync'}
+                                </span>
+                                <span className="text-sm font-black text-emerald-400 font-mono flex items-center justify-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                    Online
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+
+                {/* ── 2. Segmented Navigation Tabs (Apple TV Pill Style) ── */}
+                <div className="flex items-center justify-center mb-8">
+                    <div className={`p-1.5 rounded-2xl border backdrop-blur-2xl flex items-center gap-1 shadow-lg max-w-md w-full ${
+                        isDark ? 'bg-zinc-950/80 border-white/10' : 'bg-white/90 border-zinc-200'
+                    }`}>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer relative ${
+                                activeTab === 'history'
+                                    ? (isDark ? 'bg-white text-zinc-950 shadow-md font-[1000]' : 'bg-zinc-900 text-white shadow-md font-[1000]')
+                                    : 'text-zinc-400 hover:text-zinc-200'
+                            }`}
+                        >
+                            <Film size={14} />
+                            <span>{isRtl ? 'تەماشاکراوەکان' : 'Watch History'}</span>
+                            {historyList.length > 0 && (
+                                <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
+                                    activeTab === 'history' 
+                                        ? (isDark ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900') 
+                                        : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                    {historyList.length}
+                                </span>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={() => setActiveTab('preferences')}
+                            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer relative ${
+                                activeTab === 'preferences'
+                                    ? (isDark ? 'bg-white text-zinc-950 shadow-md font-[1000]' : 'bg-zinc-900 text-white shadow-md font-[1000]')
+                                    : 'text-zinc-400 hover:text-zinc-200'
+                            }`}
+                        >
+                            <Sliders size={14} />
+                            <span>{isRtl ? 'ڕێکخستنەکان' : 'Settings'}</span>
+                        </button>
+
+                        {isMasterAdmin && (
+                            <button
+                                onClick={() => setActiveTab('admin')}
+                                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer relative ${
+                                    activeTab === 'admin'
+                                        ? 'bg-red-600 text-white shadow-md shadow-red-600/40 font-[1000]'
+                                        : 'text-zinc-400 hover:text-red-400'
+                                }`}
+                            >
+                                <ShieldCheck size={14} />
+                                <span>{isRtl ? 'بەڕێوەبردن' : 'Admin'}</span>
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── 3. Tab Contents ── */}
+                <AnimatePresence mode="wait">
+                    
+                    {/* TAB 1: WATCH HISTORY & CONTINUE WATCHING */}
+                    {activeTab === 'history' && (
+                        <motion.div
+                            key="history-tab"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-6"
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <Clock size={18} className="text-red-500" />
+                                    <h2 className="text-lg font-black uppercase italic tracking-tight">
+                                        {isRtl ? 'مێژووی سەیرکردن و بەردەوامبوون' : 'Continue Watching & History'}
+                                    </h2>
+                                    <span className="text-xs text-zinc-400 font-mono">
+                                        ({historyList.length})
+                                    </span>
+                                </div>
+
+                                {historyList.length > 0 && (
+                                    <button
+                                        onClick={handleClearAllHistory}
+                                        className="text-xs font-black uppercase tracking-wider text-zinc-400 hover:text-red-500 transition-colors flex items-center gap-1.5 py-1 px-3 rounded-full border border-white/5 hover:border-red-500/30 cursor-pointer"
+                                    >
+                                        <Trash2 size={13} />
+                                        <span>{isRtl ? 'سڕینەوەی هەمووی' : 'Clear All'}</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Cards Grid */}
+                            {historyList.length === 0 ? (
+                                <div className={`rounded-3xl p-12 text-center border backdrop-blur-xl ${
+                                    isDark ? 'bg-zinc-950/40 border-white/5' : 'bg-white/60 border-zinc-200'
+                                }`}>
+                                    <div className="w-16 h-16 rounded-full bg-red-600/10 text-red-500 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                                        <Film size={28} />
+                                    </div>
+                                    <h3 className="text-base font-black uppercase italic tracking-tight mb-1">
+                                        {isRtl ? 'هیچ فیلم یان زنجیرەیەک سەیر نەکراوە' : 'No Watch History Yet'}
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 max-w-sm mx-auto mb-6">
+                                        {isRtl 
+                                            ? 'دەستبکە بە سەیرکردنی هەزاران فیلم، زنجیرە و ئەنیمەیشنی دۆبلاژکراوی کوردی لە FLKRD.' 
+                                            : 'Explore thousands of movies, TV series, and Kurdish dubbed films to start your history.'}
+                                    </p>
+                                    <button
+                                        onClick={() => navigate('/discover')}
+                                        className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-red-600/30 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                        <Compass size={16} />
+                                        <span>{isRtl ? 'دەستپێکردنی گەڕان و سەیرکردن' : 'Browse Catalog'}</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5 sm:gap-4">
+                                    {historyList.map((item: any) => {
+                                        const rawPoster = item.poster_path || item.image || item.backdrop_path;
+                                        const posterUrl = rawPoster?.startsWith('http') 
+                                            ? rawPoster 
+                                            : (rawPoster ? `https://image.tmdb.org/t/p/w500${rawPoster}` : '/flkrd-logo.png');
+                                        
+                                        const title = item.title || item.name || 'Movie';
+                                        const duration = item.duration || 3600;
+                                        const progressSec = item.progress || 0;
+                                        const percent = Math.min(100, Math.max(5, Math.round((progressSec / duration) * 100)));
+
+                                        return (
+                                            <motion.div
+                                                key={`${item.id}-${item.type}`}
+                                                whileHover={{ y: -4, scale: 1.02 }}
+                                                onClick={() => handleNavigateItem(item)}
+                                                className={`group rounded-2xl overflow-hidden border cursor-pointer relative flex flex-col shadow-lg transition-all ${
+                                                    isDark ? 'bg-zinc-950/80 border-white/10 hover:border-red-500/50' : 'bg-white border-zinc-200 hover:border-red-500/50'
+                                                }`}
+                                            >
+                                                {/* Poster Frame */}
+                                                <div className="relative aspect-[2/3] w-full overflow-hidden bg-zinc-900">
+                                                    <img 
+                                                        src={posterUrl} 
+                                                        alt={title}
+                                                        loading="lazy"
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = '/flkrd-logo.png';
+                                                        }}
+                                                    />
+
+                                                    {/* Gradient overlay */}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/30 opacity-70 group-hover:opacity-90 transition-opacity" />
+
+                                                    {/* Top Badges */}
+                                                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between z-10">
+                                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-md shadow-sm ${
+                                                            String(item.type) === 'dubbed'
+                                                                ? 'bg-amber-500 text-black'
+                                                                : (String(item.type) === 'tv' ? 'bg-cyan-500 text-black' : 'bg-red-600 text-white')
+                                                        }`}>
+                                                            {String(item.type) === 'dubbed' ? (isRtl ? 'دۆبلاژ' : 'DUBBED') : (String(item.type) === 'tv' ? 'TV' : 'MOVIE')}
+                                                        </span>
+
+                                                        <button
+                                                            onClick={(e) => handleRemoveHistoryItem(e, item.id, item.type)}
+                                                            className="w-6 h-6 rounded-full bg-black/60 hover:bg-red-600 text-white/80 hover:text-white flex items-center justify-center transition-colors shadow-md cursor-pointer"
+                                                            title="Remove from history"
+                                                            aria-label="Remove"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Play Hover Icon */}
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
+                                                        <div className="w-12 h-12 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl shadow-red-600/50">
+                                                            <Play size={20} className="fill-white translate-x-0.5" />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Progress Bar at Bottom of Image */}
+                                                    <div className="absolute bottom-0 inset-x-0 h-1.5 bg-white/20">
+                                                        <div 
+                                                            className="h-full bg-gradient-to-r from-red-600 to-rose-500 rounded-r-full shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                                                            style={{ width: `${percent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Meta Info */}
+                                                <div className="p-3 flex flex-col justify-between flex-grow">
+                                                    <div>
+                                                        <h4 className="text-xs font-black truncate text-white" title={title}>
+                                                            {title}
+                                                        </h4>
+                                                        {item.season && item.episode && (
+                                                            <span className="text-[9px] text-zinc-400 font-medium block">
+                                                                S{item.season} : E{item.episode}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-wider text-zinc-400 mt-2">
+                                                        <span className="text-red-400 font-mono">{percent}% {isRtl ? 'تەواوکراوە' : 'watched'}</span>
+                                                        <span className="text-zinc-500 font-mono">
+                                                            {Math.floor(progressSec / 60)}m / {Math.floor(duration / 60)}m
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
+
+                    {/* TAB 2: PREFERENCES & ACCOUNT SETTINGS */}
+                    {activeTab === 'preferences' && (
+                        <motion.div
+                            key="preferences-tab"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-6"
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                
+                                {/* 1. Appearance / Theme */}
+                                <div className={`p-6 rounded-3xl border backdrop-blur-2xl flex items-center justify-between ${
+                                    isDark ? 'bg-zinc-950/70 border-white/10' : 'bg-white/80 border-zinc-200'
+                                }`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                            {isDark ? <Moon size={22} /> : <Sun size={22} />}
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-black uppercase italic tracking-widest text-[var(--text-primary)]">{t('appearance')}</h4>
-                                            <p className="text-sm text-gray-500 font-bold">{theme === 'dark' ? t('dark') : t('light')} Mode Enabled</p>
+                                            <h3 className="text-sm font-black uppercase tracking-wider">
+                                                {t('appearance')}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 font-medium">
+                                                {isDark ? t('dark') : t('light')} Mode Enabled
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-center p-2 rounded-full bg-black/40 border border-white/10 shadow-inner">
+                                    <div className="p-1 rounded-full bg-black/30 border border-white/10">
                                         <AnimatedThemeToggler />
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-10 border-b border-white/5">
-                                    <div className="flex items-center gap-5">
-                                        <div className="p-4 bg-white/5 rounded-2xl">
-                                            <Languages size={24} className="text-blue-400" />
+                                {/* 2. Language Selector */}
+                                <div className={`p-6 rounded-3xl border backdrop-blur-2xl flex flex-col justify-between gap-4 ${
+                                    isDark ? 'bg-zinc-950/70 border-white/10' : 'bg-white/80 border-zinc-200'
+                                }`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                            <Languages size={22} />
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-black uppercase italic tracking-widest text-[var(--text-primary)]">{t('language')}</h4>
-                                            <p className="text-sm text-gray-500 font-bold">Region Sync</p>
+                                            <h3 className="text-sm font-black uppercase tracking-wider">
+                                                {t('language')}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 font-medium">
+                                                {language === 'ku' ? 'Kurdish Sorani' : (language === 'badini' ? 'Kurdish Badini' : 'English')}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex p-1 bg-black/40 rounded-2xl border border-white/5">
+
+                                    {/* Segmented language buttons */}
+                                    <div className="flex p-1 rounded-2xl bg-black/40 border border-white/10">
                                         <button
                                             onClick={() => handleLanguageChange('en')}
-                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'en' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                                language === 'en' ? 'bg-white text-zinc-950 shadow-md' : 'text-zinc-400 hover:text-white'
+                                            }`}
                                         >
                                             {t('english')}
                                         </button>
                                         <button
                                             onClick={() => handleLanguageChange('ku')}
-                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'ku' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                                language === 'ku' ? 'bg-white text-zinc-950 shadow-md' : 'text-zinc-400 hover:text-white'
+                                            }`}
                                         >
                                             سۆرانی
                                         </button>
                                         <button
                                             onClick={() => handleLanguageChange('badini')}
-                                            className={`px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${language === 'badini' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-[var(--text-primary)]'}`}
+                                            className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                                                language === 'badini' ? 'bg-white text-zinc-950 shadow-md' : 'text-zinc-400 hover:text-white'
+                                            }`}
                                         >
                                             بادینی
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <div className="flex items-center gap-5">
-                                        <div className="p-4 bg-white/5 rounded-2xl">
-                                            <Bell size={24} className="text-green-400" />
+                                {/* 3. Notifications */}
+                                <div className={`p-6 rounded-3xl border backdrop-blur-2xl flex items-center justify-between ${
+                                    isDark ? 'bg-zinc-950/70 border-white/10' : 'bg-white/80 border-zinc-200'
+                                }`}>
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            <Bell size={22} />
                                         </div>
                                         <div>
-                                            <h4 className="text-lg font-black uppercase italic tracking-widest text-[var(--text-primary)]">{t('notifications')}</h4>
-                                            <p className="text-sm text-gray-500 font-bold">{notifEnabled ? 'Transmission Active' : 'Offline'}</p>
+                                            <h3 className="text-sm font-black uppercase tracking-wider">
+                                                {t('notifications')}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 font-medium">
+                                                {notifEnabled ? (isRtl ? 'چالاککراوە' : 'Push notifications active') : (isRtl ? 'ناچالاکە' : 'Notifications disabled')}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className={`px-4 py-1.5 rounded-full border text-[8px] font-black uppercase tracking-widest ${notifEnabled ? 'bg-green-500/10 border-green-500/20 text-green-500' : 'bg-white/5 border-white/10 text-gray-500'}`}>
-                                            {notifEnabled ? 'Live Sync' : 'Muted'}
+                                    <button
+                                        onClick={requestNotificationPermission}
+                                        className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer ${
+                                            notifEnabled 
+                                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' 
+                                                : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                                        }`}
+                                    >
+                                        {notifEnabled ? 'Enabled' : 'Enable'}
+                                    </button>
+                                </div>
+
+                                {/* 4. Full App Settings Modal Launcher */}
+                                <div 
+                                    onClick={() => setIsSettingsOpen(true)}
+                                    className={`p-6 rounded-3xl border backdrop-blur-2xl flex items-center justify-between cursor-pointer hover:border-white/20 transition-all ${
+                                        isDark ? 'bg-zinc-950/70 border-white/10' : 'bg-white/80 border-zinc-200'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                            <Sliders size={22} />
                                         </div>
-                                        <ChevronRight size={20} className="text-gray-700" />
+                                        <div>
+                                            <h3 className="text-sm font-black uppercase tracking-wider">
+                                                {isRtl ? 'ڕێکخستنە پێشکەوتووەکان' : 'Advanced Preferences'}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 font-medium">
+                                                {isRtl ? 'شووشە، خێرایی، دەنگ و کاش' : 'Glass, player engine, cache & sound'}
+                                            </p>
+                                        </div>
                                     </div>
+                                    <ChevronRight size={18} className="text-zinc-500" />
+                                </div>
+                            </div>
+
+                            {/* Sign Out Card */}
+                            <div className="pt-4">
+                                <div className={`p-6 rounded-3xl border backdrop-blur-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border-red-500/20 ${
+                                    isDark ? 'bg-red-950/10' : 'bg-red-50/50'
+                                }`}>
+                                    <div className="flex items-center gap-4 text-center sm:text-left">
+                                        <div className="p-3.5 rounded-2xl bg-red-600/10 text-red-500 border border-red-500/20">
+                                            <LogOut size={22} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-black uppercase tracking-wider text-red-500">
+                                                {isRtl ? 'چوونەدەرەوە لە ئەکاونت' : 'Sign Out of Account'}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 font-medium">
+                                                {isRtl ? 'کۆتایی هێنان بە دانیشتنی ئێستات.' : 'Safely end your active profile session.'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (window.confirm(isRtl ? 'دڵنیای لە چوونەدەرەوە؟' : 'Are you sure you want to log out?')) {
+                                                setIsAdmin(false);
+                                                await signOut();
+                                                addNotification({ type: 'info', title: 'Signed Out', message: 'Session terminated.' });
+                                            }
+                                        }}
+                                        className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-red-600/30 active:scale-95 transition-all cursor-pointer"
+                                    >
+                                        {isRtl ? 'چوونەدەرەوە' : 'Log Out'}
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>
+                    )}
 
+                    {/* TAB 3: ADMIN COMMAND HUB (Only rendered for Admins) */}
+                    {activeTab === 'admin' && isMasterAdmin && (
                         <motion.div
-                            initial={{ opacity: 0, y: 20 }}
+                            key="admin-tab"
+                            initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="bg-black/10 border border-white/5 rounded-[3rem] p-6 shadow-2xl relative"
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="space-y-5"
                         >
-                            <h3 className="text-xl font-black uppercase italic tracking-wider text-white mb-6 border-b border-white/5 pb-3">
-                                {language === 'ku' || language === 'badini' ? 'ئامارەکانی سەیرکردن' : 'WATCHING ANALYTICS'}
-                            </h3>
-                            <MovieBentoGrid />
-                        </motion.div>
-
-                        {/* System Privilege & Gamified XP Card */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="bg-gradient-to-br from-black/50 via-zinc-900/40 to-black/60 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden"
-                        >
-                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                            <div className="flex items-center justify-between px-1">
                                 <div className="flex items-center gap-2">
-                                    <Sparkles size={18} className="text-amber-400" />
-                                    <span className="text-[11px] font-[1000] uppercase tracking-wider text-white">
-                                        {language === 'ku' || language === 'badini' ? 'پلەی ئادمن و ئەزموونی ئاست' : 'System Privilege & Level XP'}
-                                    </span>
+                                    <ShieldCheck size={18} className="text-red-500" />
+                                    <h2 className="text-sm font-black uppercase italic tracking-wider">
+                                        {isRtl ? 'کۆنسۆڵی سەرەکی بەڕێوەبردن' : 'Executive Management Command Suite'}
+                                    </h2>
                                 </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                                    Lvl {Math.floor((watchedHistory.length * 120 + 350) / 500) + 1}
+                                <span className="text-[9px] bg-red-600/20 text-red-400 border border-red-500/30 font-black px-2.5 py-0.5 rounded-full uppercase">
+                                    AUTHORIZED ROOT
                                 </span>
                             </div>
 
-                            {/* Level Progress Bar */}
-                            <div className="space-y-2 mb-6">
-                                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-zinc-400">
-                                    <span>XP Progress</span>
-                                    <span className="text-amber-400 font-mono">
-                                        {((watchedHistory.length * 120 + 350) % 500)} / 500 XP
-                                    </span>
-                                </div>
-                                <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden p-0.5 border border-white/10 shadow-inner">
-                                    <div 
-                                        className="h-full bg-gradient-to-r from-amber-500 via-red-500 to-rose-600 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]"
-                                        style={{ width: `${Math.min(100, Math.round((((watchedHistory.length * 120 + 350) % 500) / 500) * 100))}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Daily Cinephile Quests / Tasks */}
-                            <div className="space-y-2 mb-6">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block text-left mb-2">
-                                    {language === 'ku' || language === 'badini' ? 'تاسک و ئەرکەکانی ڕۆژانە (Daily Quests)' : 'Cinephile Daily Tasks'}
-                                </span>
-
-                                {[
-                                    { id: 1, title: language === 'ku' || language === 'badini' ? 'سەیرکردنی 🎬 فیلم یان زنجیرەیەک' : 'Watch 1 Movie or Episode', xp: 100, done: watchedHistory.length > 0 },
-                                    { id: 2, title: language === 'ku' || language === 'badini' ? 'تۆمارکردنی 💬 بۆچوون / کامێنت' : 'Post a Cinephile Review', xp: 50, done: true },
-                                    { id: 3, title: language === 'ku' || language === 'badini' ? 'نیشانەکردنی 🔖 ٣ فیلم لە لیستەکەت' : 'Bookmark 3 Favorites', xp: 50, done: watchedHistory.length >= 3 },
-                                    { id: 4, title: language === 'ku' || language === 'badini' ? 'چوونەژوورەوەی رۆژانە ⚡ Daily Check-In' : 'Daily System Check-In', xp: 25, done: true }
-                                ].map((task) => (
-                                    <div key={task.id} className="flex items-center justify-between p-2.5 bg-white/[0.03] border border-white/5 rounded-xl text-[10px] font-bold text-zinc-300">
-                                        <div className="flex items-center gap-2">
-                                            <span className={task.done ? "text-emerald-400" : "text-zinc-500"}>
-                                                {task.done ? <CheckCircle2 size={14} /> : <Zap size={14} />}
-                                            </span>
-                                            <span className={task.done ? "line-through opacity-70" : ""}>{task.title}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                
+                                {/* 1. Master Control Hub */}
+                                <div
+                                    onClick={() => setIsAdminModalOpen(true)}
+                                    className="p-6 rounded-3xl border border-red-500/30 hover:border-red-500/60 bg-gradient-to-br from-red-950/40 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/40">
+                                            <Sliders size={20} />
                                         </div>
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${task.done ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'}`}>
-                                            +{task.xp} XP
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-red-600/20 text-red-400 border border-red-500/30">
+                                            MASTER HUB
                                         </span>
                                     </div>
-                                ))}
-                            </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'سەنتەری گشتی بەڕێوەبردن' : 'Master Control Hub'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'سێرڤەرەکان، فیلمەکان، بەنەرەکان و ژێرنووسەکان' : 'Servers, Movie Manager, Banners & Sources'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-red-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'کردنەوەی پانێڵ' : 'Launch Panel'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
+                                </div>
 
-                            {/* Achievement Badges Grid */}
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-400 block text-left mb-2.5">
-                                    {language === 'ku' || language === 'badini' ? 'مەدالیا و دەستکەوتەکان (Badges & Achievements)' : 'Cinephile Achievements'}
-                                </span>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {[
-                                        { icon: '🏆', title: 'Pioneer Member', desc: 'FLKRD Founder' },
-                                        { icon: '🎬', title: 'Film Marathoner', desc: `${watchedHistory.length}+ Streamed` },
-                                        { icon: '⚡', title: '60 FPS Engine', desc: 'Ultra Fast Mode' },
-                                        { icon: '👑', title: 'System Elite', desc: 'Privileged Rank' }
-                                    ].map((b, i) => (
-                                        <div key={i} className="p-2.5 bg-white/[0.03] border border-white/10 rounded-2xl flex items-center gap-2.5 text-left hover:bg-white/[0.07] transition-all">
-                                            <span className="text-xl shrink-0">{b.icon}</span>
-                                            <div className="min-w-0">
-                                                <span className="text-[9px] font-black text-white block truncate uppercase">{b.title}</span>
-                                                <span className="text-[8px] text-zinc-400 font-medium block truncate">{b.desc}</span>
-                                            </div>
+                                {/* 2. Visitor Analytics */}
+                                <div
+                                    onClick={() => setShowAnalyticsModal(true)}
+                                    className="p-6 rounded-3xl border border-emerald-500/30 hover:border-emerald-500/60 bg-gradient-to-br from-emerald-950/30 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/40">
+                                            <TrendingUp size={20} />
                                         </div>
-                                    ))}
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                            LIVE STATS
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'ئاماری بینەران و سەردانیکەران' : 'Visitor Analytics & Audience'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'بینەرانی ڕاستەوخۆ، وڵاتەکان و خێرایی' : 'Live users, countries, speed & reports'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-emerald-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'بینینی ئامارەکان' : 'View Analytics'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
+                                </div>
+
+                                {/* 3. Live Broadcaster */}
+                                <div
+                                    onClick={() => setShowBroadcastModal(true)}
+                                    className="p-6 rounded-3xl border border-indigo-500/30 hover:border-indigo-500/60 bg-gradient-to-br from-indigo-950/30 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/40">
+                                            <Radio size={20} />
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                                            BROADCAST
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'ناردنی ئاگاداری ڕاستەوخۆ' : 'Live Broadcaster'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'ناردنی پەیامی ئاگاداری بۆ هەموو بینەران' : 'Push instant announcement toasts to active users'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-indigo-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'ناردنی پەیام' : 'Send Alert'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
+                                </div>
+
+                                {/* 4. Sub-Admin Security */}
+                                <div
+                                    onClick={() => setShowAdminModal(true)}
+                                    className="p-6 rounded-3xl border border-amber-500/30 hover:border-amber-500/60 bg-gradient-to-br from-amber-950/30 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/40">
+                                            <Users size={20} />
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                            SECURITY
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'بەڕێوەبردنی ئادمنەکان' : 'Sub-Admin Manager'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'زیادکردنی ئەدمین و دیاریکردنی دەسەڵاتەکان' : 'Manage sub-admin credentials & roles'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-amber-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'بەڕێوەبردن' : 'Manage Roles'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
+                                </div>
+
+                                {/* 5. Kurdish Subtitles */}
+                                <div
+                                    onClick={() => navigate('/kurdish-cc')}
+                                    className="p-6 rounded-3xl border border-cyan-500/30 hover:border-cyan-500/60 bg-gradient-to-br from-cyan-950/30 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-cyan-600 flex items-center justify-center text-white shadow-lg shadow-cyan-600/40">
+                                            <Captions size={20} />
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                            SUBTITLES
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'بەڕێوەبەری ژێرنووسی کوردی' : 'Subtitle Manager'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'ژێرنووسەکان و سینککردنی کلاود' : 'Upload Kurdish subtitle files & sync to cloud'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-cyan-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'کردنەوە' : 'Open CC Hub'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
-
-                        {/* Admin Command Center Suite for Admins & Super Owners */}
-                        {(isAdmin || user?.email?.toLowerCase() === 'flkrdstudio@gmail.com') && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="space-y-4"
-                            >
-                                <div className="flex items-center justify-between px-2">
-                                    <div className="flex items-center gap-2">
-                                        <ShieldCheck size={18} className="text-red-500" />
-                                        <h3 className="text-xs font-[1000] text-white uppercase italic tracking-wider">
-                                            {(language === 'ku' || language === 'badini') ? 'بەشی تایبەتی بەڕێوەبەرایەتی • ADMIN COMMAND HUB' : 'Executive Management Command Center • ADMIN'}
-                                        </h3>
-                                    </div>
-                                    <span className="text-[8px] bg-red-600/20 text-red-400 border border-red-500/30 font-black px-2.5 py-0.5 rounded-full uppercase">
-                                        AUTHORIZED ACCESS
-                                    </span>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {/* 1. Master Admin Control Hub */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setIsAdminModalOpen(true)}
-                                        className="bg-gradient-to-br from-red-950/50 via-black to-neutral-950 border border-red-500/30 hover:border-red-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-600/10 blur-2xl group-hover:scale-150 transition-transform" />
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/40">
-                                                    <Sliders size={18} className="animate-pulse" />
-                                                </div>
-                                                <span className="text-[8px] bg-red-600 text-white font-black px-2 py-0.5 rounded-full uppercase">
-                                                    ALL 10 TOOLS
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'سەنتەری گشتی بەڕێوەبردن' : 'Master Control Hub'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'سێرڤەرەکان، شووشە، فیلمەکان و بەنەرەکان' : 'Servers, Glass, Movie Manager & Banners'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-red-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'کردنەوەی پانێڵ' : 'Launch Panel'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-
-                                    {/* 2. Visitor Analytics & Live Audience */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setShowAnalyticsModal(true)}
-                                        className="bg-gradient-to-br from-emerald-950/40 via-black to-neutral-950 border border-emerald-500/30 hover:border-emerald-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-600/10 blur-2xl group-hover:scale-150 transition-transform" />
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/40">
-                                                    <TrendingUp size={18} className="animate-pulse" />
-                                                </div>
-                                                <span className="text-[8px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-black px-2 py-0.5 rounded-full uppercase flex items-center gap-1">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                                                    LIVE STATS
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'ئاماری بینەران و سەردانیکەران' : 'Visitor Analytics & Audience'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'بینەرانی ڕاستەوخۆ، وڵاتەکان و خێرایی' : 'Live users, countries, speed & PDF'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-emerald-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'بینینی ئامارەکان' : 'View Analytics'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-
-                                    {/* 3. Admin Broadcaster (Live Push Toasts) */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setShowBroadcastModal(true)}
-                                        className="bg-gradient-to-br from-indigo-950/40 via-black to-neutral-950 border border-indigo-500/30 hover:border-indigo-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 blur-2xl group-hover:scale-150 transition-transform" />
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-600/40">
-                                                    <Radio size={18} className="animate-pulse" />
-                                                </div>
-                                                <span className="text-[8px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-black px-2 py-0.5 rounded-full uppercase">
-                                                    BROADCAST
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'ناردنی ئاگاداری ڕاستەوخۆ' : 'Live Broadcaster'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'ناردنی پەیامی ئاگاداری بۆ هەموو بینەران' : 'Push instant announcement toasts'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-indigo-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'ناردنی پەیام' : 'Send Alert'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-
-                                    {/* 4. Sub-Admin Management */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setShowAdminModal(true)}
-                                        className="bg-gradient-to-br from-amber-950/40 via-black to-neutral-950 border border-amber-500/30 hover:border-amber-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-600/10 blur-2xl group-hover:scale-150 transition-transform" />
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-lg shadow-amber-600/40">
-                                                    <Users size={18} />
-                                                </div>
-                                                <span className="text-[8px] bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black px-2 py-0.5 rounded-full uppercase">
-                                                    SECURITY
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'بەڕێوەبردنی ئادمنەکان' : 'Sub-Admin Manager'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'زیادکردنی ئەدمین و دیاریکردنی دەسەڵاتەکان' : 'Manage admins & security roles'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-amber-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'بەڕێوەبردن' : 'Manage Roles'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-
-                                    {/* 5. Kurdish Subtitles & Cloud Sync */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => navigate('/kurdish-cc')}
-                                        className="bg-gradient-to-br from-cyan-950/40 via-black to-neutral-950 border border-cyan-500/30 hover:border-cyan-500/60 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-600/10 blur-2xl group-hover:scale-150 transition-transform" />
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-cyan-600 flex items-center justify-center text-white shadow-lg shadow-cyan-600/40">
-                                                    <Captions size={18} />
-                                                </div>
-                                                <span className="text-[8px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-black px-2 py-0.5 rounded-full uppercase">
-                                                    SUBTITLES
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'بەڕێوەبەری ژێرنووسی کوردی' : 'Subtitle Manager'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'ژێرنووسەکان و سینککردنی کلاود' : 'Kurdish subtitle uploads & cloud sync'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-cyan-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'کردنەوە' : 'Open Subtitles'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-
-                                    {/* 6. Settings Modal Launcher */}
-                                    <motion.div
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setIsSettingsOpen(true)}
-                                        className="bg-gradient-to-br from-neutral-900 via-black to-neutral-950 border border-white/10 hover:border-white/25 rounded-[2rem] p-5 cursor-pointer shadow-xl relative overflow-hidden group transition-all"
-                                    >
-                                        <div className="relative z-10 flex flex-col justify-between h-full space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white">
-                                                    <Sliders size={18} />
-                                                </div>
-                                                <span className="text-[8px] bg-white/10 text-gray-300 font-black px-2 py-0.5 rounded-full uppercase">
-                                                    PREFERENCES
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-[1000] text-white uppercase italic tracking-tight">
-                                                    {(language === 'ku' || language === 'badini') ? 'ڕێکخستنە گشتییەکان' : 'App Settings'}
-                                                </h4>
-                                                <p className="text-[10px] text-gray-400 font-semibold mt-0.5">
-                                                    {(language === 'ku' || language === 'badini') ? 'زمان، ڕەنگ، دەنگ، تێم و کاش' : 'Language, colors, sound, theme & cache'}
-                                                </p>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[9px] font-black uppercase tracking-widest text-gray-400 group-hover:text-white">
-                                                <span>{(language === 'ku' || language === 'badini') ? 'سێتینگ' : 'Open Settings'}</span>
-                                                <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                </div>
-                            </motion.div>
-                        )}
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-gradient-to-r from-[var(--brand-red)] via-red-800 to-black rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative overflow-hidden group">
-                                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 blur-xl md:blur-[60px] group-hover:scale-150 transition-transform duration-[2s]" />
-                                <div className="relative z-10 flex flex-col justify-between h-full">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Crown size={20} className="text-amber-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/70">System Privilege</span>
-                                        </div>
-                                        <h4 className="text-2xl font-[1000] text-white uppercase italic tracking-tighter">
-                                            {(user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' || tempUserName.toLowerCase().includes('zana faroq') || tempUserName.toLowerCase().includes('zana barzani')) 
-                                                ? 'CREATOR & CEO (ZANA BARZANI)' 
-                                                : (isAdmin ? 'SYSTEM PRIVILEGE: MASTER ADMIN' : `ELITE MEMBER (LVL ${Math.floor((watchedHistory.length * 120 + 350) / 500) + 1})`)}
-                                        </h4>
-                                    </div>
-                                    <div className="mt-8 flex items-center justify-between">
-                                        <Award size={44} className="text-white/30" />
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-300 bg-black/40 px-3 py-1.5 rounded-full border border-amber-400/30 backdrop-blur-md">
-                                            VERIFIED CINEPHILE
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <motion.div 
-                                whileHover={{ scale: 1.02 }} 
-                                onClick={async () => {
-                                    if (window.confirm(language === 'ku' || language === 'badini' ? 'دڵنیای لە چوونەدەرەوە؟' : 'Are you sure you want to log out?')) {
-                                        setIsAdmin(false);
-                                        await signOut();
-                                        addNotification({ type: 'info', title: 'Signed Out', message: 'Session terminated.' });
-                                    }
-                                }}
-                                className="bg-black/30 backdrop-blur-[10px] border border-white/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group flex flex-col justify-between cursor-pointer hover:border-red-500/30 transition-all"
-                            >
-                                <div className="absolute inset-0 bg-red-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <LogOut size={20} className="text-brand" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Auth Security</span>
-                                    </div>
-                                    <h4 className="text-xl font-[1000] text-[var(--text-primary)] uppercase italic tracking-tighter leading-tight mb-2">
-                                        {language === 'ku' || language === 'badini' ? 'چوونەدەرەوە' : 'Sign Out'}
-                                    </h4>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase leading-relaxed">
-                                        {language === 'ku' || language === 'badini' ? 'کۆتایی هێنان بە دانیشتنی ئێستات.' : 'Terminate current secure session.'}
-                                    </p>
-                                </div>
-                            </motion.div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-20 pb-10 text-center relative z-10">
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.5em] opacity-40 italic">
-                    {t('profileHeading')}
-                </p>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Standalone Admin Command Center Modals */}
@@ -1564,15 +1655,5 @@ const ProfilePage: React.FC = () => {
         </div>
     );
 };
-
-const StatCard = ({ icon, label, value }: any) => (
-    <div className="bg-[var(--card-bg)] border border-white/5 rounded-[2rem] p-6 text-center hover:bg-white/[0.06] transition-all group shadow-xl">
-        <div className="bg-black/40 w-fit mx-auto p-3 rounded-xl mb-4 group-hover:scale-110 transition-transform text-[var(--brand-red)] shadow-inner border border-white/5">
-            {icon}
-        </div>
-        <p className="text-[7px] font-black text-gray-500 uppercase tracking-[0.3em] mb-1">{label}</p>
-        <p className="text-xl font-black text-[var(--text-primary)] italic tracking-tighter">{value}</p>
-    </div>
-);
 
 export default ProfilePage;

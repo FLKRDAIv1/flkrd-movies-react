@@ -273,7 +273,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     { path: '/dubbed', labelKey: 'dubbedMovies' },
   ];
 
-  const isDarkNavbar = theme === 'light';
+  const isDarkNavbar = theme !== 'light';
   
   const notchBgClass = isDarkNavbar
     ? "bg-black"
@@ -294,10 +294,100 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
   return (
     <>
-      {/* NotchNavbar Style Header (Outer wrapper always LTR for correct notch shape clip-paths) */}
+      {/* Mobile Top Header Bar (Sleek Floating Glass Capsule Shape matching PC style) */}
+      <header
+        className="global-header-mobile flex md:hidden fixed top-0 inset-x-0 z-50 px-2.5 pt-2 select-none"
+        dir="ltr"
+      >
+        <div
+          className={cn(
+            "w-full h-12 rounded-2xl flex items-center justify-between px-3 border transition-all duration-300 backdrop-blur-2xl",
+            isDarkNavbar
+              ? "bg-zinc-950/85 border-white/10 text-white shadow-2xl shadow-black/80"
+              : "bg-white/90 border-zinc-200 text-zinc-900 shadow-xl shadow-zinc-300/40"
+          )}
+        >
+          {/* Left: Logo */}
+          <Link to="/" className="flex items-center gap-1.5 active:scale-95 transition-transform focus:outline-none">
+            <img 
+              src="/flkrd-logo.png" 
+              alt="FLKRD" 
+              className="h-7 w-auto object-contain" 
+            />
+            <span className={cn(
+              "text-xs font-black uppercase italic tracking-tighter",
+              isDarkNavbar
+                ? "bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent"
+                : "bg-gradient-to-r from-zinc-900 to-zinc-600 bg-clip-text text-transparent"
+            )}>
+              FLKRD
+            </span>
+          </Link>
+
+          {/* Right: Actions (Search, Theme Toggle, Admin, Avatar, Menu) */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Search Trigger */}
+            <button
+              onClick={() => navigate('/search')}
+              className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 shadow-sm cursor-pointer",
+                isDarkNavbar 
+                  ? "bg-zinc-900 border-white/10 text-zinc-300 hover:text-white" 
+                  : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black"
+              )}
+              aria-label="Search"
+            >
+              <Search size={13} />
+            </button>
+
+            {/* Theme Toggler */}
+            <div className="scale-75 origin-center">
+              <AnimatedThemeToggler />
+            </div>
+
+            {/* Admin Button if Admin */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsAdminModalOpen(true)}
+                className="h-7 px-2 rounded-full flex items-center justify-center gap-1 bg-gradient-to-r from-red-600 to-brand text-white border border-red-400/40 shadow-sm font-black text-[9px] uppercase tracking-wider active:scale-95 cursor-pointer"
+              >
+                <ShieldAlert size={11} className="animate-pulse" />
+                <span>{language === 'ku' || language === 'badini' ? 'کۆنسۆڵ' : 'Console'}</span>
+              </button>
+            )}
+
+            {/* Avatar Link */}
+            <div 
+              onClick={() => navigate('/profile')}
+              className={cn(
+                "relative w-7 h-7 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer active:scale-95",
+                (user || isAdmin) ? "border-red-500 ring-1 ring-red-500/50" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-300")
+              )}
+            >
+              {renderAvatar()}
+            </div>
+
+            {/* Hamburger Menu Drawer */}
+            <button
+              onClick={() => setIsDrawerOpen(true)}
+              className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 focus:outline-none cursor-pointer",
+                isDarkNavbar 
+                  ? "bg-zinc-900 border-white/10 text-white" 
+                  : "bg-zinc-100 border-zinc-200 text-zinc-800"
+              )}
+              aria-label="Open Menu"
+            >
+              <Menu size={14} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop NotchNavbar Style Header (Hidden on Mobile) */}
       <header 
         className={cn(
-          "global-header fixed top-0 inset-x-0 z-50 h-16 flex px-0 transition-all duration-300 w-full select-none",
+          "global-header hidden md:flex fixed top-0 inset-x-0 z-50 h-16 px-0 transition-all duration-300 w-full select-none",
           localScrolled ? (isDarkNavbar ? 'shadow-[0_4px_30px_rgba(255,255,255,0.03)]' : 'shadow-[0_4px_30px_rgba(0,0,0,0.15)]') : ''
         )}
         dir="ltr"
@@ -333,7 +423,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
           </div>
 
           {/* Center Slice (Flexible Content Area) */}
-          <div className="flex h-full relative min-w-[200px] sm:min-w-[260px] md:min-w-[700px] lg:min-w-[900px] -ml-px">
+          <div className="flex h-full relative min-w-[700px] lg:min-w-[900px] -ml-px">
              {/* Background & Lines Layer */}
              <div className={cn("absolute inset-0 transition-all duration-300", notchBgClass)}>
                  <svg className="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
@@ -431,6 +521,11 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
                   {/* Header View Mode Toggle (Grid vs List) */}
                   <ViewToggle size="sm" />
+
+                  {/* Desktop Theme Toggler (Sun / Moon Morph) */}
+                  <div className="scale-80 origin-center shrink-0">
+                    <AnimatedThemeToggler />
+                  </div>
 
                   {/* Subtle Native Fullscreen Button (Desktop) */}
                   <button
@@ -569,76 +664,6 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                    </AnimatePresence>
                  </div>
                </div>
-
-                {/* 3. Mobile Layout (Hidden on Desktop) */}
-                <div className="flex md:hidden items-center justify-between w-full min-w-0 gap-1.5 overflow-hidden">
-                  {/* Logo */}
-                  <Link to="/" className="flex items-center flex-shrink-0 active:scale-95 focus:outline-none">
-                    <img 
-                      src="/flkrd-logo.png" 
-                      alt="FLKRD" 
-                      className="h-6 sm:h-7 w-auto object-contain" 
-                    />
-                  </Link>
-
-                  {/* Mobile Menu Action Triggers */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 ml-auto">
-                    {/* Compact Header View Mode Toggle (Mobile) */}
-                    <ViewToggle size="sm" showText={false} />
-
-                    {/* Subtle Native Fullscreen Button (Mobile Header) */}
-                    <button
-                      onClick={toggleAppFullscreen}
-                      className={cn(
-                        "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 select-none shadow-sm shrink-0",
-                        isDarkNavbar 
-                          ? "bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800" 
-                          : "bg-zinc-100 border-zinc-200 text-zinc-700 hover:text-black hover:bg-zinc-200",
-                        isFullscreen && "border-red-500/50 text-red-500 bg-red-500/10"
-                      )}
-                      title={isFullscreen ? (language === 'ku' || language === 'badini' ? 'چوونەدەرەوە لە سکرین بەتاڵ' : 'Exit Fullscreen') : (language === 'ku' || language === 'badini' ? 'تەواوی سکرین' : 'Native Fullscreen')}
-                      aria-label="Toggle Fullscreen"
-                    >
-                      {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
-                    </button>
-
-                        {/* Dedicated Admin Panel Icon Button (Mobile Header) */}
-                        {isAdmin && (
-                          <button
-                            onClick={() => setIsAdminModalOpen(true)}
-                            className="h-7 px-2.5 rounded-full flex items-center justify-center gap-1 border transition-all active:scale-90 select-none shadow-sm shrink-0 bg-gradient-to-r from-red-600 to-brand text-white border-red-400/40 shadow-[0_0_10px_rgba(229,9,20,0.35)] font-[1000] text-[9px] uppercase tracking-wider"
-                            title={language === 'ku' || language === 'badini' ? 'کۆنسۆڵی بەڕێوەبەر (FLKRD Console)' : 'FLKRD Console'}
-                            aria-label="FLKRD Console"
-                          >
-                            <ShieldAlert size={12} className="animate-pulse" />
-                            <span>{language === 'ku' || language === 'badini' ? 'کۆنسۆڵ' : 'Console'}</span>
-                          </button>
-                        )}
-
-                        {/* Avatar Link */}
-                        <div 
-                          onClick={() => navigate('/profile')}
-                          className={cn(
-                            "relative w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden border shadow-md flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0",
-                            (user || isAdmin) ? "border-red-500/80 ring-2 ring-red-500/30 shadow-[0_0_12px_rgba(239,68,68,0.4)]" : (isDarkNavbar ? "border-zinc-800" : "border-zinc-200")
-                          )}
-                        >
-                          {renderAvatar()}
-                        </div>
-
-                        {/* Hamburger Menu Icon */}
-                        <button
-                          onClick={() => setIsDrawerOpen(true)}
-                          className={cn(
-                            "w-8 h-8 flex items-center justify-center focus:outline-none active:scale-90 shrink-0",
-                            isDarkNavbar ? "text-white" : "text-black"
-                          )}
-                          aria-label="Open Menu"
-                        >
-                          <Menu size={20} />
-                        </button>
-                      </div>
-                </div>
 
              </div>
           </div>

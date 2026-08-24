@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Content } from '../types';
 import { fetchData, getMediaType } from '../services/tmdbService';
-import { requests, IMAGE_BASE_URL, API_KEY, GENRES_T } from '../constants';
+import { requests, IMAGE_BASE_URL, IMAGE_BASE_URL_LOGO, API_KEY, GENRES_T } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
 import Spinner from './Spinner';
 import { useUI } from '../contexts/UIContext';
@@ -208,11 +208,13 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
     navigate(`/details/${image.media_type}/${image.id}`, { state: { customData: originalItem } });
   };
 
+  const isLight = theme === 'light';
+
   return (
-    <div className="w-full relative px-4 md:px-6 lg:px-8 max-w-[1920px] mx-auto pt-24 md:pt-28 pb-8 bg-transparent overflow-hidden isolate">
+    <div className="w-full relative px-0 md:px-6 lg:px-8 max-w-[1920px] mx-auto pt-0 md:pt-28 pb-0 md:pb-8 bg-transparent overflow-hidden isolate">
 
       {/* Desktop Design: Skiper49 3D Coverflow Perspective Carousel */}
-      <div className="hidden md:block relative z-10">
+      <div className="hidden md:block relative z-10 px-4">
         <Carousel_003
           images={carouselImages}
           showPagination
@@ -224,50 +226,134 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
         />
       </div>
 
-      {/* Mobile Design: Diagonal Carousel matching Vengence UI preview */}
-      <div className="block md:hidden relative z-10">
-        <div className="h-[350px] w-full relative mb-4">
-          <DiagonalCarousel
-            items={mobileCarouselItems}
-            loop
-            activeIndex={currentIndex}
-            onActiveIndexChange={(index) => setCurrentIndex(index)}
-            onItemClick={handleItemClick}
-            slideSize={165}
-            rotationStep={22}
-            verticalStep={32}
-            inactiveScale={0.7}
-            showControls={true}
-            showLabels={true}
-            aspectRatio="square"
-            labelClassName="text-white text-base font-bold tracking-wide drop-shadow-md mb-3"
-            controlsClassName="bg-black/60 border border-white/10 text-white backdrop-blur-md bottom-2"
-          />
-        </div>
-        
-        {/* Dynamic Detail Card */}
+      {/* Mobile Design: Ultra-Premium Full-Bleed Extended Hero Banner Attached to Top Header */}
+      <div className="block md:hidden relative z-10 w-full mb-0">
         {currentItem && (
-          <div className="px-4 text-center flex flex-col items-center gap-2 animate-fade-in">
-            <div className="flex items-center gap-2 text-xs text-neutral-400 font-medium">
-              <span>{currentItem.release_date?.split('-')[0] || (currentItem as any).first_air_date?.split('-')[0]}</span>
-              <span>•</span>
-              <span className="text-brand font-semibold">{currentItem.vote_average ? `${currentItem.vote_average.toFixed(1)} ★` : ''}</span>
-              {currentItem.genre_ids && currentItem.genre_ids.length > 0 && (
-                <>
-                  <span>•</span>
-                  <span>{getGenreName(currentItem.genre_ids[0])}</span>
-                </>
+          <div className={`relative w-full h-[72vh] min-h-[500px] max-h-[620px] overflow-hidden ${
+            isLight ? 'bg-white' : 'bg-neutral-950'
+          }`}>
+            {/* Full-Bleed High-Res Movie Poster / Backdrop */}
+            <img
+              src={
+                currentItem.poster_path
+                  ? `${IMAGE_BASE_URL.replace('w1280', 'w780')}${currentItem.poster_path}`
+                  : (currentItem.backdrop_path ? `${IMAGE_BASE_URL.replace('w1280', 'w1280')}${currentItem.backdrop_path}` : '')
+              }
+              alt={currentItem.title || currentItem.name || ''}
+              className="w-full h-full object-cover object-top transition-transform duration-700 ease-out scale-105"
+            />
+
+            {/* Seamless Top & Bottom Cinematic Gradient Overlays */}
+            <div className={`absolute inset-x-0 top-0 h-36 bg-gradient-to-b z-10 pointer-events-none ${
+              isLight 
+                ? 'from-white via-white/50 to-transparent' 
+                : 'from-black/90 via-black/40 to-transparent'
+            }`} />
+
+            {/* Seamless Bottom Gradient Blend into Main Page Background */}
+            <div className={`absolute inset-0 z-10 pointer-events-none ${
+              isLight
+                ? 'bg-gradient-to-t from-white via-white/90 via-45% to-transparent'
+                : 'bg-gradient-to-t from-[#050505] via-[#050505]/60 via-40% to-transparent'
+            }`} />
+
+            {/* Bottom Hero Info Area */}
+            <div className="absolute bottom-0 inset-x-0 p-5 pb-5 flex flex-col items-center text-center z-20">
+              
+              {/* Centered Movie Logo (or Title Fallback) */}
+              {currentItem.logo ? (
+                <div className="mb-3 flex items-center justify-center max-w-[260px] max-h-20 sm:max-h-24">
+                  <img
+                    src={
+                      currentItem.logo.startsWith('http')
+                        ? currentItem.logo
+                        : `${IMAGE_BASE_URL_LOGO}${currentItem.logo}`
+                    }
+                    alt={currentItem.title || currentItem.name || 'Movie Logo'}
+                    className={`max-h-16 sm:max-h-20 w-auto max-w-[260px] object-contain ${
+                      isLight ? 'drop-shadow-[0_2px_10px_rgba(0,0,0,0.15)]' : 'drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]'
+                    }`}
+                  />
+                </div>
+              ) : (
+                <h2 className={`text-2xl sm:text-3xl font-black line-clamp-2 mb-2.5 leading-tight ${
+                  isLight ? 'text-zinc-900 drop-shadow-none' : 'text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]'
+                }`}>
+                  {currentItem.title || currentItem.name}
+                </h2>
               )}
+
+              {/* Sleek Metadata Badges */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap justify-center" dir="ltr">
+                <span className="bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider shadow-sm">
+                  FLKRD SPOTLIGHT
+                </span>
+                {currentItem.vote_average > 0 && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 border ${
+                    isLight 
+                      ? 'bg-white/90 text-amber-600 border-zinc-200 shadow-sm' 
+                      : 'bg-black/75 backdrop-blur-md text-amber-400 border-white/10'
+                  }`}>
+                    ★ {currentItem.vote_average.toFixed(1)}
+                  </span>
+                )}
+                {(currentItem.release_date || (currentItem as any).first_air_date) && (
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md border ${
+                    isLight 
+                      ? 'bg-black/5 text-zinc-800 border-zinc-200' 
+                      : 'bg-white/10 backdrop-blur-md text-zinc-200 border-white/10'
+                  }`}>
+                    {(currentItem.release_date || (currentItem as any).first_air_date).split('-')[0]}
+                  </span>
+                )}
+              </div>
+
+              {/* Overview Synopsis */}
+              {currentItem.overview && (
+                <p className={`text-xs line-clamp-2 max-w-xs mb-4 leading-relaxed opacity-90 ${
+                  isLight ? 'text-zinc-700 font-medium' : 'text-zinc-300 drop-shadow'
+                }`}>
+                  {currentItem.overview}
+                </p>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 w-full max-w-xs">
+                <button
+                  onClick={() => handleItemClick({ id: currentItem.id, media_type: currentItem.media_type || 'movie' })}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(229,9,20,0.6)] active:scale-95 transition-all cursor-pointer"
+                >
+                  <span>{t('play') || 'Play Now'}</span>
+                </button>
+
+                <button
+                  onClick={() => handleItemClick({ id: currentItem.id, media_type: currentItem.media_type || 'movie' })}
+                  className={`px-5 py-3 backdrop-blur-md border rounded-xl text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer ${
+                    isLight 
+                      ? 'bg-black/5 hover:bg-black/10 border-zinc-300 text-zinc-900 font-bold shadow-sm' 
+                      : 'bg-white/15 hover:bg-white/25 border-white/20 text-white font-bold'
+                  }`}
+                >
+                  <span>{language === 'ku' || language === 'badini' ? 'زانیاری' : 'Info'}</span>
+                </button>
+              </div>
+
+              {/* Slide Pagination Dots */}
+              <div className="flex items-center gap-1.5 mt-3.5">
+                {items.slice(0, 8).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      currentIndex === idx 
+                        ? 'w-6 bg-red-600 shadow-[0_0_8px_rgba(229,9,20,0.8)]' 
+                        : (isLight ? 'w-1.5 bg-black/25' : 'w-1.5 bg-white/30')
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
             </div>
-            <p className="text-sm text-neutral-300 line-clamp-2 max-w-md mt-1 leading-relaxed">
-              {currentItem.overview}
-            </p>
-            <button
-              onClick={() => handleItemClick({ id: currentItem.id, media_type: currentItem.media_type || 'movie' })}
-              className="mt-3 px-8 py-2.5 bg-brand hover:bg-brand/90 text-white font-semibold rounded-full text-sm shadow-lg shadow-brand/20 active:scale-95 transition-transform duration-100 flex items-center gap-2"
-            >
-              <span>{t('play') || 'Play Now'}</span>
-            </button>
           </div>
         )}
       </div>

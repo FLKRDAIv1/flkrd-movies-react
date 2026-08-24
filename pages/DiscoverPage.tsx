@@ -1,432 +1,638 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Clapperboard, ChevronDown, Globe, Sparkles, Wand2, Stars, Star, Search, X, Check, Filter, Zap, ArrowLeft, ArrowRight, Settings2, Trash2, Subtitles } from 'lucide-react';
+import { 
+  Globe, Sparkles, Star, Search, X, Filter, RotateCcw, 
+  Film, Tv, Mic2, Subtitles, Flame, Calendar, SlidersHorizontal, 
+  Check, Clapperboard, Layers, ChevronDown 
+} from 'lucide-react';
 import { Content } from '../types';
-import { fetchPaginatedData, getMediaType } from '../services/tmdbService';
-import { API_KEY, IMAGE_BASE_URL_POSTER, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
+import { fetchPaginatedData, getMediaType, fetchData } from '../services/tmdbService';
+import { API_KEY, GENRES_T, FORBIDDEN_GENRE_IDS } from '../constants';
 import { SkeletonGrid } from '../components/Skeleton';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
-import { useNotification } from '../contexts/NotificationContext';
 import { bannedService } from '../services/bannedService';
-import KurdishCCBadge from '../components/KurdishCCBadge';
-import { LiquidButton } from '../components/ui/liquid-glass-button';
 import MovieCard from '../components/MovieCard';
 import { MovieLayoutManager } from '../components/MovieLayoutManager';
+import { KURDISH_CC_REGISTRY } from '../services/kurdishMovieRegistry';
+import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 
-type Selection = 'hollywood' | 'bollywood' | 'infinity' | 'country' | 'animations';
+type MediaTypeFilter = 'all' | 'movie' | 'tv' | 'dubbed' | 'kurdish_cc';
+type OriginFilter = 'all' | 'hollywood' | 'european' | 'bollywood' | 'asian' | 'animation' | 'kurdistan';
+type SortFilter = 'popularity.desc' | 'vote_average.desc' | 'primary_release_date.desc' | 'revenue.desc';
 
-interface Country {
-    name: string;
-    code: string;
-    flagUrl: string;
-    special?: boolean;
+interface OriginOption {
+  id: OriginFilter;
+  labelEn: string;
+  labelKu: string;
+  flag?: string;
 }
 
-const ColorMixtureDivider: React.FC = () => {
-    return (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-60">
-            <motion.div 
-                animate={{ 
-                    x: [-40, 60, -40],
-                    y: [-20, 30, -20],
-                    scale: [1, 1.2, 1]
-                }}
-                transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                className="absolute -left-20 -top-20 w-[500px] h-[500px] bg-brand/40 rounded-full blur-[120px]"
-            />
-            <motion.div 
-                animate={{ 
-                    x: [40, -60, 40],
-                    y: [30, -20, 30],
-                    scale: [1.2, 1, 1.2]
-                }}
-                transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-                className="absolute -right-20 -bottom-20 w-[600px] h-[600px] bg-purple-900/30 rounded-full blur-[140px]"
-            />
-        </div>
-    );
-};
+const ORIGIN_OPTIONS: OriginOption[] = [
+  { id: 'all', labelEn: 'All', labelKu: 'هەموو جیهان' },
+  { id: 'hollywood', labelEn: 'Hollywood', labelKu: 'هۆڵیوود', flag: '🇺🇸' },
+  { id: 'european', labelEn: 'Europe', labelKu: 'ئەوروپی', flag: '🇪🇺' },
+  { id: 'bollywood', labelEn: 'Bollywood', labelKu: 'بۆڵیوود', flag: '🇮🇳' },
+  { id: 'asian', labelEn: 'East Asia / KDrama', labelKu: 'ئاسیا و کۆری', flag: '🇰🇷' },
+  { id: 'animation', labelEn: 'Anime & Animation', labelKu: 'ئەنیمەیشن', flag: '🎌' },
+  { id: 'kurdistan', labelEn: 'Kurdistan', labelKu: 'کوردی', flag: '☀️' },
+];
+
+const YEAR_OPTIONS = [
+  { value: 'all', labelEn: 'All Years', labelKu: 'هەموو ساڵەکان' },
+  { value: '2026', labelEn: '2026', labelKu: '٢٠٢٦' },
+  { value: '2025', labelEn: '2025', labelKu: '٢٠٢٥' },
+  { value: '2024', labelEn: '2024', labelKu: '٢٠٢٤' },
+  { value: '2023', labelEn: '2023', labelKu: '٢٠٢٣' },
+  { value: '2020-2022', labelEn: '2020-2022', labelKu: '٢٠٢٠-٢٠٢٢' },
+  { value: '2010s', labelEn: '2010s', labelKu: '٢٠١٠کان' },
+  { value: '2000s', labelEn: '2000s', labelKu: '٢٠٠٠ەکان' },
+  { value: 'classics', labelEn: 'Classics (<2000)', labelKu: 'کلاسیک (<٢٠٠٠)' },
+];
+
+const RATING_OPTIONS = [
+  { value: '0', labelEn: 'All Ratings', labelKu: 'ڕەیتینگ' },
+  { value: '8.0', labelEn: '8.0+ ⭐', labelKu: '٨.٠+ ⭐' },
+  { value: '7.0', labelEn: '7.0+ ⭐', labelKu: '٧.٠+ ⭐' },
+  { value: '6.0', labelEn: '6.0+ ⭐', labelKu: '٦.٠+ ⭐' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'popularity.desc', labelEn: 'Popular', labelKu: 'پڕبینەر' },
+  { value: 'vote_average.desc', labelEn: 'Top Rated', labelKu: 'ڕەیتینگ' },
+  { value: 'primary_release_date.desc', labelEn: 'Newest', labelKu: 'نوێترین' },
+  { value: 'revenue.desc', labelEn: 'Revenue', labelKu: 'داهات' },
+];
 
 const DiscoverPage: React.FC = () => {
-    const { selection: urlSelection } = useParams<{ selection: Selection }>();
-    const [selection, setSelection] = useState<Selection | null>(null);
-    const [activeCountry, setActiveCountry] = useState<string | null>(null);
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
-    
-    const [results, setResults] = useState<Content[]>([]);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [loading, setLoading] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [yearFilter, setYearFilter] = useState<number | 'all'>('all');
-    const [selectedGenres, setSelectedGenres] = useState<number[]>([]);
-    const [isSticky, setIsSticky] = useState(false);
-    
-    const navigate = useNavigate();
-    const { t, language } = useTranslation();
-    const { theme, isAdmin, glassConfig = {
-        redOpacity: 0.15,
-        darkOpacity: 0.85,
-        blurAmount: 20,
-        saturation: 120,
-        borderOpacity: 0.1,
-        aberrationIntensity: 0.5
-    } } = useUI();
-    const { addNotification } = useNotification();
-    const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
-    const isRtl = (language === 'ku' || language === 'badini');
-    const observer = useRef<IntersectionObserver | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { t, language } = useTranslation();
+  const { theme } = useUI();
 
-    const countries: Country[] = [
-        { name: t('kurdistan'), code: 'KURDISTAN', flagUrl: 'https://i.imgur.com/t3yYQyv.jpeg', special: true },
-        { name: (language === 'ku' || language === 'badini') ? 'یۆنان (Yonan)' : 'Greece', code: 'GR', flagUrl: 'https://flagcdn.com/w640/gr.png' },
-        { name: 'USA', code: 'US', flagUrl: 'https://flagcdn.com/w640/us.png' },
-        { name: 'United Kingdom', code: 'GB', flagUrl: 'https://flagcdn.com/w640/gb.png' },
-        { name: 'India', code: 'IN', flagUrl: 'https://flagcdn.com/w640/in.png' },
-        { name: 'Japan', code: 'JP', flagUrl: 'https://flagcdn.com/w640/jp.png' },
-        { name: 'South Korea', code: 'KR', flagUrl: 'https://flagcdn.com/w640/kr.png' },
-        { name: 'France', code: 'FR', flagUrl: 'https://flagcdn.com/w640/fr.png' },
-        { name: 'Germany', code: 'DE', flagUrl: 'https://flagcdn.com/w640/de.png' },
-        { name: 'Spain', code: 'ES', flagUrl: 'https://flagcdn.com/w640/es.png' },
-        { name: 'Italy', code: 'IT', flagUrl: 'https://flagcdn.com/w640/it.png' },
-        { name: 'Turkey', code: 'TR', flagUrl: 'https://flagcdn.com/w640/tr.png' }
-    ];
+  const isRtl = language === 'ku' || language === 'badini';
+  const langCode = isRtl ? 'ku-TR' : 'en-US';
 
-    useEffect(() => {
-        if (urlSelection && ['hollywood', 'bollywood', 'infinity', 'country', 'animations'].includes(urlSelection)) {
-            setSelection(urlSelection as Selection);
-            if (urlSelection !== 'country') setActiveCountry(null);
-        } else {
-            setSelection(null);
-            setActiveCountry(null);
-        }
-    }, [urlSelection]);
+  // Filters State
+  const [mediaType, setMediaType] = useState<MediaTypeFilter>(() => {
+    const p = searchParams.get('type') as MediaTypeFilter;
+    return ['all', 'movie', 'tv', 'dubbed', 'kurdish_cc'].includes(p) ? p : 'movie';
+  });
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const nextSticky = window.scrollY > 120;
-            setIsSticky(prev => prev !== nextSticky ? nextSticky : prev);
-        };
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+  const [origin, setOrigin] = useState<OriginFilter>(() => {
+    const p = searchParams.get('origin') as OriginFilter;
+    return ['all', 'hollywood', 'european', 'bollywood', 'asian', 'animation', 'kurdistan'].includes(p) ? p : 'all';
+  });
 
-    const fetchMovies = async (category: Selection, pageNum: number, year: number | 'all', countryCode?: string, genres: number[] = []) => {
-        let endpoint = '';
-        const baseParams = `api_key=${API_KEY}&language=${langCode}&sort_by=popularity.desc&include_adult=false&page=${pageNum}`;
-        
-        const effectiveGenres = [...genres];
-        if (category === 'animations' && !effectiveGenres.includes(16)) effectiveGenres.push(16);
+  const [selectedGenres, setSelectedGenres] = useState<number[]>(() => {
+    const g = searchParams.get('genres');
+    return g ? g.split(',').map(Number).filter(Boolean) : [];
+  });
 
-        if (category === 'hollywood') endpoint = `/discover/movie?${baseParams}&with_origin_country=US`;
-        else if (category === 'bollywood') endpoint = `/discover/movie?${baseParams}&with_origin_country=IN&with_original_language=hi`;
-        else if (category === 'animations') endpoint = `/discover/movie?${baseParams}`;
-        else if (category === 'country' && countryCode) {
-            endpoint = countryCode === 'KURDISTAN' 
-                ? `/discover/movie?${baseParams}&with_original_language=ku` 
-                : `/discover/movie?${baseParams}&with_origin_country=${countryCode}`;
-        } else endpoint = `/discover/movie?${baseParams}`;
+  const [yearFilter, setYearFilter] = useState<string>(() => searchParams.get('year') || 'all');
+  const [minRating, setMinRating] = useState<string>(() => searchParams.get('rating') || '0');
+  const [sortBy, setSortBy] = useState<SortFilter>(() => (searchParams.get('sort') as SortFilter) || 'popularity.desc');
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
-        if (year !== 'all') endpoint += `&primary_release_year=${year}`;
-        if (effectiveGenres.length > 0) endpoint += `&with_genres=${[...new Set(effectiveGenres)].join(',')}`;
-        
-        return await fetchPaginatedData(endpoint, language);
-    };
+  // Content Data State
+  const [items, setItems] = useState<Content[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
-    useEffect(() => {
-        const loadInitialData = async () => {
-            if (!selection || (selection === 'country' && !activeCountry)) return;
-            setLoading(true);
-            const response = await fetchMovies(selection, 1, yearFilter, activeCountry || undefined, selectedGenres);
-            if (response) {
-                setResults(response.results);
-                setPage(2);
-                setHasMore(response.page < response.total_pages);
-            } else {
-                setResults([]);
-                setHasMore(false);
-            }
-            setLoading(false);
-        };
-        loadInitialData();
+  const observer = useRef<IntersectionObserver | null>(null);
 
-        window.addEventListener('banned-list-updated', loadInitialData);
-        return () => window.removeEventListener('banned-list-updated', loadInitialData);
-    }, [selection, activeCountry, yearFilter, selectedGenres, language, langCode]);
+  // Sync state to URL Query params
+  const updateQueryParams = useCallback((newParams: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([k, v]) => {
+      if (v === null || v === 'all' || v === '0' || v === '' || (k === 'sort' && v === 'popularity.desc')) {
+        params.delete(k);
+      } else {
+        params.set(k, v);
+      }
+    });
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
 
-    const loadMoreMovies = useCallback(() => {
-        if (loadingMore || !selection || !hasMore) return;
-        setLoadingMore(true);
-        fetchMovies(selection, page, yearFilter, activeCountry || undefined, selectedGenres).then(response => {
-            if (response) {
-                setResults(prev => [...prev, ...response.results]);
-                setPage(p => p + 1);
-                setHasMore(response.page < response.total_pages);
-            }
-            setLoadingMore(false);
-        });
-    }, [loadingMore, selection, page, hasMore, yearFilter, selectedGenres, activeCountry, langCode, language]);
-    
-    const handleBan = async (e: React.MouseEvent, item: Content) => {
-        e.stopPropagation();
-        const cleanId = String(item.id).replace('custom_', '');
-        const isCustom = String(item.id).startsWith('custom_');
-        const mediaType = isCustom ? 'dubbed' : getMediaType(item);
-        
-        if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL BAN]`)) return;
-        
+  // Build TMDB discovery endpoint based on active filters
+  const buildDiscoveryEndpoint = useCallback((pageNum: number) => {
+    const baseTarget = mediaType === 'tv' ? '/discover/tv' : '/discover/movie';
+    const params = new URLSearchParams();
+
+    params.set('api_key', API_KEY);
+    params.set('language', langCode);
+    params.set('sort_by', sortBy);
+    params.set('include_adult', 'false');
+    params.set('without_genres', '10749'); // Block Romance & Adult Genres globally
+    params.set('without_keywords', '190370,155477,157140,156475,207317,235555,273766,281488,9882,10714,18035');
+    params.set('page', String(pageNum));
+
+    // Minimum vote count filter so vote_average sort isn't dominated by 10/10 with 1 vote
+    if (sortBy === 'vote_average.desc') {
+      params.set('vote_count.gte', '150');
+    } else {
+      params.set('vote_count.gte', '20');
+    }
+
+    if (minRating !== '0') {
+      params.set('vote_average.gte', minRating);
+    }
+
+    // Genre filter
+    const genreList = [...selectedGenres];
+    if (origin === 'animation' && !genreList.includes(16)) {
+      genreList.push(16);
+    }
+    if (genreList.length > 0) {
+      params.set('with_genres', Array.from(new Set(genreList)).join(','));
+    }
+
+    // Origin filters
+    if (origin === 'hollywood') {
+      params.set('with_origin_country', 'US');
+    } else if (origin === 'european') {
+      params.set('with_origin_country', 'GB|FR|DE|IT|ES|SE|NO|DK');
+    } else if (origin === 'bollywood') {
+      params.set('with_origin_country', 'IN');
+      params.set('with_original_language', 'hi|te|ta');
+    } else if (origin === 'asian') {
+      params.set('with_origin_country', 'KR|JP|CN|HK|TW|TH');
+    } else if (origin === 'kurdistan') {
+      params.set('with_original_language', 'ku');
+    }
+
+    // Year filters
+    if (yearFilter === '2026') {
+      params.set('primary_release_year', '2026');
+    } else if (yearFilter === '2025') {
+      params.set('primary_release_year', '2025');
+    } else if (yearFilter === '2024') {
+      params.set('primary_release_year', '2024');
+    } else if (yearFilter === '2023') {
+      params.set('primary_release_year', '2023');
+    } else if (yearFilter === '2020-2022') {
+      params.set('primary_release_date.gte', '2020-01-01');
+      params.set('primary_release_date.lte', '2022-12-31');
+    } else if (yearFilter === '2010s') {
+      params.set('primary_release_date.gte', '2010-01-01');
+      params.set('primary_release_date.lte', '2019-12-31');
+    } else if (yearFilter === '2000s') {
+      params.set('primary_release_date.gte', '2000-01-01');
+      params.set('primary_release_date.lte', '2009-12-31');
+    } else if (yearFilter === 'classics') {
+      params.set('primary_release_date.lte', '1999-12-31');
+    }
+
+    return `${baseTarget}?${params.toString()}`;
+  }, [mediaType, langCode, sortBy, minRating, selectedGenres, origin, yearFilter]);
+
+  // Load Primary Data (Page 1)
+  const loadDiscovery = useCallback(async () => {
+    setLoading(true);
+
+    // Special Branch: Kurdish Dubbed
+    if (mediaType === 'dubbed') {
+      try {
+        let rawItems: any[] = [];
         try {
-            const success = await bannedService.banContent(cleanId, mediaType);
-            if (success) {
-                addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
-                setResults(prev => prev.filter(r => r.id !== item.id));
-            }
-        } catch (err) {
-            console.error("Ban failed:", err);
+          const { data, error } = await supabase
+            .from('dubbed_movies')
+            .select('id, title, description, imageBase64, videoUrl, created_at, level')
+            .order('created_at', { ascending: false })
+            .limit(60);
+
+          if (!error && data && data.length > 0) {
+            rawItems = data;
+          }
+        } catch (dbErr) {
+          console.warn('[DISCOVER] Supabase fetch warning:', dbErr);
         }
-    };
 
-    const loadMoreRef = useCallback(node => {
-        if (loadingMore) return;
-        if (observer.current) observer.current.disconnect();
-        observer.current = new IntersectionObserver(entries => {
-            if (entries[0].isIntersecting && hasMore) loadMoreMovies();
+        if (rawItems.length === 0) {
+          rawItems = await db.getMovies();
+        }
+
+        const bannedIds = await bannedService.fetchBannedList();
+        const formatted: Content[] = (rawItems || [])
+          .filter((m: any) => !bannedIds.has(String(m.id)))
+          .map((m: any) => ({
+            ...m,
+            id: String(m.id).startsWith('custom_') ? m.id : `custom_${m.id}`,
+            media_type: 'dubbed',
+            poster_path: m.imageBase64 || m.poster_path,
+            backdrop_path: m.bannerBase64 || m.imageBase64 || m.backdrop_path || '',
+            title: m.title,
+            kurdishTitle: m.title,
+            overview: m.description || m.overview,
+            kurdishOverview: m.description || m.kurdishOverview,
+            customStream: m.videoUrl,
+            level: m.level || 'KING'
+          }));
+
+        setItems(formatted);
+        setTotalCount(formatted.length);
+        setHasMore(false);
+      } catch (e) {
+        console.error('[DISCOVER] Dubbed load error:', e);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Special Branch: Kurdish CC Registry
+    if (mediaType === 'kurdish_cc') {
+      try {
+        const results = await Promise.all(
+          KURDISH_CC_REGISTRY.slice(0, 40).map(async (entry) => {
+            try {
+              const d = await fetchData(`/${entry.type}/${entry.tmdb_id}?api_key=${API_KEY}`, language);
+              if (!d) return null;
+              return { ...d, media_type: entry.type } as Content;
+            } catch {
+              return null;
+            }
+          })
+        );
+        const filtered = results.filter(Boolean) as Content[];
+        setItems(filtered);
+        setTotalCount(filtered.length);
+        setHasMore(false);
+      } catch (e) {
+        console.error('[DISCOVER] Kurdish CC load error:', e);
+        setItems([]);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // TMDB Paginated Fetch
+    try {
+      const endpoint = buildDiscoveryEndpoint(1);
+      const res = await fetchPaginatedData(endpoint, language);
+
+      if (res && Array.isArray(res.results)) {
+        setItems(res.results.map(r => ({ ...r, media_type: mediaType === 'tv' ? 'tv' : 'movie' })));
+        setPage(2);
+        setHasMore(res.page < res.total_pages && res.page < 50);
+        setTotalCount(res.total_results || res.results.length);
+      } else {
+        setItems([]);
+        setHasMore(false);
+        setTotalCount(0);
+      }
+    } catch (err) {
+      console.error('[DISCOVER] Fetch error:', err);
+      setItems([]);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [mediaType, buildDiscoveryEndpoint, language]);
+
+  // Trigger load on filter change
+  useEffect(() => {
+    loadDiscovery();
+  }, [loadDiscovery]);
+
+  // Infinite Scroll Pagination Handler
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || mediaType === 'dubbed' || mediaType === 'kurdish_cc') return;
+    setLoadingMore(true);
+
+    try {
+      const endpoint = buildDiscoveryEndpoint(page);
+      const res = await fetchPaginatedData(endpoint, language);
+
+      if (res && Array.isArray(res.results) && res.results.length > 0) {
+        setItems(prev => {
+          const existingIds = new Set(prev.map(i => i.id));
+          const newItems = res.results
+            .filter(i => !existingIds.has(i.id))
+            .map(i => ({ ...i, media_type: mediaType === 'tv' ? 'tv' : 'movie' }));
+          return [...prev, ...newItems];
         });
-        if (node) observer.current.observe(node);
-    }, [loadingMore, hasMore, loadMoreMovies]);
+        setPage(p => p + 1);
+        setHasMore(res.page < res.total_pages && res.page < 50);
+      } else {
+        setHasMore(false);
+      }
+    } catch (e) {
+      console.error('[DISCOVER] Load more error:', e);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, mediaType, buildDiscoveryEndpoint, page, language]);
 
-    const toggleGenre = (id: number) => {
-        setSelectedGenres(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
-    };
+  // IntersectionObserver Sentinel
+  const sentinelRef = useCallback((node: HTMLDivElement | null) => {
+    if (loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMore();
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [loadingMore, hasMore, loadMore]);
 
-    const CategoryButton = ({ title, onClick, icon, rgbColor, className = "" }: any) => (
-        <motion.button
-            whileHover={{ scale: 1.05, y: -10 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
-            className={`flex-1 p-8 md:p-10 rounded-[2.5rem] text-center group relative overflow-hidden flex flex-col items-center border transition-all duration-300 ${className}`}
-            style={{
-                background: `radial-gradient(circle at 50% 0%, rgba(${rgbColor}, ${glassConfig.redOpacity * 1.5}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                borderStyle: 'solid',
-                borderColor: `rgba(${rgbColor}, ${glassConfig.borderOpacity})`,
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                  inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                  inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                  0 25px 50px -12px rgba(0, 0, 0, 0.5)
-                `
-            }}
-        >
-            {/* Dynamic GPU-accelerated water sheen overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                opacity: (glassConfig.displacementScale / 120) * 0.9,
-                animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
-              }}
-            />
-            <div className="text-brand mb-4 group-hover:-translate-y-1 transition-transform relative z-10">{icon}</div>
-            <h2 className="text-xl md:text-3xl font-black text-main-text uppercase tracking-tighter italic relative z-10">{title}</h2>
-        </motion.button>
-    );
+  // Toggle Genre Helper
+  const toggleGenre = (genreId: number) => {
+    setSelectedGenres(prev => {
+      const updated = prev.includes(genreId) ? prev.filter(id => id !== genreId) : [...prev, genreId];
+      updateQueryParams({ genres: updated.length > 0 ? updated.join(',') : null });
+      return updated;
+    });
+  };
 
-    const SelectionScreen = () => (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 bg-main-bg overflow-y-auto pt-40 pb-20">
-            <ColorMixtureDivider />
-            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="text-center relative z-10 mb-16 px-4">
-                <div className="relative inline-block mb-6">
-                  <Clapperboard className="w-16 h-16 md:w-20 md:h-20 text-brand" />
-                </div>
-                <h1 className="text-3xl md:text-6xl font-[1000] text-main-text uppercase tracking-tighter italic drop-shadow-2xl">{t('discoverPrompt')}</h1>
-            </motion.div>
+  // Active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (origin !== 'all') count++;
+    if (selectedGenres.length > 0) count += selectedGenres.length;
+    if (yearFilter !== 'all') count++;
+    if (minRating !== '0') count++;
+    if (sortBy !== 'popularity.desc') count++;
+    return count;
+  }, [origin, selectedGenres, yearFilter, minRating, sortBy]);
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-8 w-full max-w-7xl relative z-10">
-                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'ژێرنووسی کوردی' : 'KU CC'} onClick={() => navigate('/kurdish-cc')} icon={<Subtitles className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="229, 9, 20" className="col-span-2 md:col-span-3 lg:col-span-2 shadow-[0_0_30px_rgba(229,9,20,0.3)] border-red-500/50" />
-                <CategoryButton title={t('hollywood')} onClick={() => navigate('/discover/hollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="37, 99, 235" />
-                <CategoryButton title={t('bollywood')} onClick={() => navigate('/discover/bollywood')} icon={<Stars className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="249, 115, 22" />
-                <CategoryButton title={t('animations')} onClick={() => navigate('/discover/animations')} icon={<Zap className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="234, 179, 8" />
-                <CategoryButton title={t('choiceCountry')} onClick={() => navigate('/discover/country')} icon={<Globe className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="22, 163, 74" />
-                <CategoryButton title={(language === 'ku' || language === 'badini') ? 'هەمووی' : 'ALL'} onClick={() => navigate('/discover/infinity')} icon={<Sparkles className="w-6 h-6 md:w-8 md:h-8" />} rgbColor="147, 51, 234" />
+  const resetAllFilters = () => {
+    setMediaType('movie');
+    setOrigin('all');
+    setSelectedGenres([]);
+    setYearFilter('all');
+    setMinRating('0');
+    setSortBy('popularity.desc');
+    setSearchParams({}, { replace: true });
+  };
+
+  return (
+    <div className="min-h-screen text-white pt-16 sm:pt-20 md:pt-24 pb-36 px-2 sm:px-6 md:px-12 max-w-[1920px] mx-auto select-none w-full overflow-x-hidden">
+      
+      {/* 🌟 Discovery Header Bar */}
+      <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 sm:w-2 h-6 sm:h-7 bg-red-600 rounded-full shadow-[0_0_12px_rgba(229,9,20,0.8)]" />
+            <h1 className={`text-xl sm:text-2xl md:text-4xl font-black text-white ${isRtl ? 'font-kurdish' : 'tracking-tight'}`}>
+              {isRtl ? 'گەڕانی پێشکەوتوو' : 'Discover Cinema'}
+            </h1>
+          </div>
+
+          {totalCount !== null && (
+            <span className="text-[11px] sm:text-xs font-bold text-zinc-400 bg-white/5 border border-white/10 px-2.5 py-1 rounded-full">
+              {totalCount.toLocaleString()} {isRtl ? 'ناونیشان' : 'titles'}
+            </span>
+          )}
+        </div>
+
+        {/* Media Type Segmented Tabs (Horizontal Scrollable on Mobile) */}
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-x-auto scrollbar-hide w-full sm:w-auto self-start">
+          <button
+            onClick={() => { setMediaType('movie'); updateQueryParams({ type: 'movie' }); }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+              mediaType === 'movie' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Film size={13} />
+            <span>{isRtl ? 'فیلمەکان' : 'Movies'}</span>
+          </button>
+
+          <button
+            onClick={() => { setMediaType('tv'); updateQueryParams({ type: 'tv' }); }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+              mediaType === 'tv' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Tv size={13} />
+            <span>{isRtl ? 'زنجیرەکان' : 'TV'}</span>
+          </button>
+
+          <button
+            onClick={() => { setMediaType('dubbed'); updateQueryParams({ type: 'dubbed' }); }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+              mediaType === 'dubbed' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Mic2 size={13} />
+            <span>{isRtl ? 'دۆبلاژ' : 'Dubbed'}</span>
+          </button>
+
+          <button
+            onClick={() => { setMediaType('kurdish_cc'); updateQueryParams({ type: 'kurdish_cc' }); }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+              mediaType === 'kurdish_cc' ? 'bg-red-600 text-white shadow-md' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Subtitles size={13} />
+            <span>{isRtl ? 'ژێرنووس' : 'Subtitles'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 🌍 Origin Cinema Quick Pills (Horizontal Momentum Scrollable) */}
+      {mediaType !== 'dubbed' && mediaType !== 'kurdish_cc' && (
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide py-1 mb-3 touch-pan-x">
+          {ORIGIN_OPTIONS.map((opt) => {
+            const isActive = origin === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => {
+                  setOrigin(opt.id);
+                  updateQueryParams({ origin: opt.id === 'all' ? null : opt.id });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 border cursor-pointer shrink-0 active:scale-95 ${
+                  isActive
+                    ? 'bg-red-600 text-white border-red-500 shadow-[0_0_12px_rgba(229,9,20,0.4)]'
+                    : 'bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800 border-white/5'
+                }`}
+              >
+                {opt.flag && <span className="text-xs">{opt.flag}</span>}
+                <span>{isRtl ? opt.labelKu : opt.labelEn}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 🎛️ Filter Bar & Drawer */}
+      {mediaType !== 'dubbed' && mediaType !== 'kurdish_cc' && (
+        <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 sm:p-3.5 mb-5 shadow-lg">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            {/* Filter Controls Row */}
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap flex-1 min-w-0">
+              {/* Year Select */}
+              <div className="relative">
+                <select
+                  value={yearFilter}
+                  onChange={(e) => {
+                    setYearFilter(e.target.value);
+                    updateQueryParams({ year: e.target.value === 'all' ? null : e.target.value });
+                  }}
+                  className="bg-black/70 border border-white/15 text-zinc-200 text-[11px] sm:text-xs font-bold rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer hover:border-white/30 transition-colors"
+                >
+                  {YEAR_OPTIONS.map(y => (
+                    <option key={y.value} value={y.value} className="bg-zinc-900 text-white">
+                      {isRtl ? y.labelKu : y.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Rating Select */}
+              <div className="relative">
+                <select
+                  value={minRating}
+                  onChange={(e) => {
+                    setMinRating(e.target.value);
+                    updateQueryParams({ rating: e.target.value === '0' ? null : e.target.value });
+                  }}
+                  className="bg-black/70 border border-white/15 text-amber-400 text-[11px] sm:text-xs font-bold rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer hover:border-white/30 transition-colors"
+                >
+                  {RATING_OPTIONS.map(r => (
+                    <option key={r.value} value={r.value} className="bg-zinc-900 text-white">
+                      {isRtl ? r.labelKu : r.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sort Select */}
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value as SortFilter);
+                    updateQueryParams({ sort: e.target.value });
+                  }}
+                  className="bg-black/70 border border-white/15 text-zinc-200 text-[11px] sm:text-xs font-bold rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 outline-none cursor-pointer hover:border-white/30 transition-colors"
+                >
+                  {SORT_OPTIONS.map(s => (
+                    <option key={s.value} value={s.value} className="bg-zinc-900 text-white">
+                      {isRtl ? s.labelKu : s.labelEn}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Genre Panel Toggle Button */}
+              <button
+                onClick={() => setIsFilterPanelOpen(o => !o)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all border cursor-pointer active:scale-95 ${
+                  selectedGenres.length > 0 || isFilterPanelOpen
+                    ? 'bg-red-600 text-white border-red-500 shadow-md'
+                    : 'bg-black/70 text-zinc-300 border-white/15 hover:bg-white/10'
+                }`}
+              >
+                <SlidersHorizontal size={12} />
+                <span>{isRtl ? 'ژانەرەکان' : 'Genres'}</span>
+                {selectedGenres.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-white text-red-600 font-black text-[9px] flex items-center justify-center">
+                    {selectedGenres.length}
+                  </span>
+                )}
+              </button>
             </div>
+
+            {/* Reset All Button */}
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={resetAllFilters}
+                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold text-red-400 hover:text-red-300 transition-colors cursor-pointer shrink-0"
+              >
+                <RotateCcw size={12} />
+                <span>{isRtl ? 'سڕینەوە' : 'Reset'}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Expandable Genre Pills */}
+          <AnimatePresence>
+            {isFilterPanelOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden w-full pt-3 mt-2.5 border-t border-white/10"
+              >
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto scrollbar-hide py-1">
+                  {GENRES_T.filter(g => !FORBIDDEN_GENRE_IDS.includes(g.id)).map(genre => {
+                    const isSelected = selectedGenres.includes(genre.id);
+                    return (
+                      <button
+                        key={genre.id}
+                        onClick={() => toggleGenre(genre.id)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all border cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-red-600 text-white border-red-500 shadow-sm'
+                            : 'bg-black/50 text-zinc-400 border-white/10 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {t(genre.nameKey as any)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-    );
+      )}
 
-    const years = Array.from({ length: new Date().getFullYear() - 1959 }, (_, i) => new Date().getFullYear() - i);
-    const yearsOptions = [
-        <option key="all" value="all" className="bg-[#111]">{t('allYears')}</option>,
-        ...years.map(y => <option key={y} value={y} className="bg-[#111]">{y}</option>)
-    ];
+      {/* 🎬 Content Grid */}
+      {loading ? (
+        <SkeletonGrid count={12} />
+      ) : items.length > 0 ? (
+        <>
+          <MovieLayoutManager 
+            items={items} 
+            type={mediaType === 'dubbed' ? 'dubbed' : (mediaType === 'tv' ? 'tv' : 'movie')} 
+          />
 
-    const displayTitle = activeCountry 
-        ? (activeCountry === 'KURDISTAN' ? t('kurdistan') : countries.find(c => c.code === activeCountry)?.name || activeCountry) 
-        : t(selection! as any);
-
-    return (
-        <div className="min-h-screen pt-28 md:pt-32 container mx-auto px-4 sm:px-6 lg:px-8 relative pb-32 bg-main-bg">
-            <AnimatePresence mode="wait">
-                <motion.div key={selection || activeCountry || 'selection-root'} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="w-full h-full">
-                    {!selection && <SelectionScreen />}
-                    {selection === 'country' && !activeCountry && (
-                        <div className="absolute inset-0 bg-main-bg flex flex-col items-center justify-start p-8 pt-32 overflow-y-auto">
-                            <ColorMixtureDivider />
-                            <div className="fixed top-24 left-8 z-50">
-                                <LiquidButton variant="default" onClick={() => navigate('/discover')} className="!p-4 !h-auto !w-auto !min-h-0 !min-w-0 rounded-2xl">
-                                    {isRtl ? <ArrowRight size={24} /> : <ArrowLeft size={24} />}
-                                </LiquidButton>
-                            </div>
-                            <h2 className="text-4xl md:text-6xl font-[1000] text-main-text mb-8 uppercase tracking-tighter italic text-center drop-shadow-2xl relative z-10">{t('choiceCountry')}</h2>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 w-full max-w-6xl mb-20 relative z-10">
-                                {countries.map((country) => (
-                                    <motion.button 
-                                        key={country.code} 
-                                        whileHover={{ scale: 1.05 }} 
-                                        onClick={() => setActiveCountry(country.code)} 
-                                        className="aspect-square rounded-[2.5rem] flex flex-col items-center justify-center relative overflow-hidden group border transition-all duration-300"
-                                        style={{
-                                            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-                                            backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                            WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                            borderStyle: 'solid',
-                                            borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                            boxShadow: `
-                                              inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
-                                              inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                                              0 15px 35px rgba(0,0,0,0.4)
-                                            `
-                                        }}
-                                    >
-                                        <img src={country.flagUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-15 group-hover:opacity-35 transition-opacity" />
-                                        {/* Dynamic GPU-accelerated water sheen overlay */}
-                                        <div 
-                                          className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-                                          style={{
-                                            background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                                            opacity: (glassConfig.displacementScale / 120) * 0.9,
-                                            animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
-                                          }}
-                                        />
-                                        <span className="relative z-10 text-xl font-black uppercase tracking-widest text-center px-4 text-white drop-shadow-md">{country.name}</span>
-                                    </motion.button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                    {(selection && (selection !== 'country' || activeCountry)) && (
-                        <div className="flex flex-col">
-                            <div className={`sticky top-24 md:top-28 z-[45] mb-6 transition-all duration-500 ease-in-out`}>
-                                <div 
-                                    className={`relative transition-all duration-500 overflow-hidden border`}
-                                    style={{
-                                        borderRadius: isSticky ? '16px' : '32px',
-                                        background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${isSticky ? glassConfig.darkOpacity * 1.25 : glassConfig.darkOpacity})`,
-                                        backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                        WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                                        borderStyle: 'solid',
-                                        borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                                        padding: isSticky ? '12px' : '20px 28px',
-                                        boxShadow: `
-                                          inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
-                                          inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.05),
-                                          inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.05),
-                                          inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                                          0 20px 40px rgba(0,0,0,0.5)
-                                        `
-                                    }}
-                                >
-                                    {/* Dynamic GPU-accelerated water sheen overlay */}
-                                    <div 
-                                      className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-                                      style={{
-                                        background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                                        opacity: (glassConfig.displacementScale / 120) * 0.9,
-                                        animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
-                                      }}
-                                    />
-                                    <div className={`relative z-10 flex flex-col gap-3`}>
-                                        <div className={`w-full flex items-center justify-between gap-4 ${isRtl ? 'flex-row-reverse text-right' : 'flex-row text-left'}`}>
-                                            <h2 className={`font-[1000] text-main-text uppercase italic tracking-tighter leading-none transition-all ${isSticky ? 'text-lg md:text-2xl' : 'text-2xl md:text-4xl'}`}>
-                                                {displayTitle}
-                                            </h2>
-                                            <div className={`flex items-center gap-1.5 md:gap-2.5 ${isRtl ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                <select value={yearFilter} onChange={(e) => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="bg-box-bg backdrop-blur-2xl border border-border-color rounded-xl text-main-text font-black uppercase py-1.5 px-3 md:py-2 md:px-4 text-[10px] md:text-xs outline-none cursor-pointer">
-                                                    {yearsOptions}
-                                                </select>
-                                                <LiquidButton variant={isFilterOpen ? "default" : "secondary"} onClick={() => setIsFilterOpen(!isFilterOpen)} className="rounded-xl px-3.5 py-2 md:px-5 md:py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider">GENRES</LiquidButton>
-                                                <LiquidButton variant="secondary" onClick={() => activeCountry ? setActiveCountry(null) : navigate('/discover')} className="!p-2 md:!p-2.5 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl flex items-center justify-center">
-                                                    {isRtl ? <ArrowRight size={18} /> : <ArrowLeft size={18} />}
-                                                </LiquidButton>
-                                            </div>
-                                        </div>
-                                        <AnimatePresence>
-                                            {isFilterOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden w-full"
-                                                >
-                                                    <div className="flex flex-wrap gap-2 pt-4 border-t border-white/10">
-                                                        {GENRES_T.filter(g => !FORBIDDEN_GENRE_IDS.includes(g.id)).map(genre => (
-                                                            <button
-                                                                key={genre.id}
-                                                                onClick={() => toggleGenre(genre.id)}
-                                                                className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider transition-all border ${selectedGenres.includes(genre.id) ? 'bg-brand text-white border-brand shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)]' : 'bg-white/5 text-main-text border-white/10 hover:bg-white/10 hover:border-white/20'}`}
-                                                            >
-                                                                {t(genre.nameKey as any)}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {loading ? (
-                                <SkeletonGrid count={12} />
-                            ) : results.length > 0 ? (
-                                <>
-                                    <MovieLayoutManager items={results} />
-                                    {/* Sentinel element — IntersectionObserver target */}
-                                    <div
-                                        ref={loadMoreRef}
-                                        className="w-full flex items-center justify-center py-12"
-                                        aria-hidden="true"
-                                    >
-                                        {loadingMore ? (
-                                            <div className="flex flex-col items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-                                                <span className="text-xs font-black uppercase tracking-widest text-sec-text">
-                                                    {(language === 'ku' || language === 'badini') ? 'زیاتر بار دەکرێت...' : 'Loading more...'}
-                                                </span>
-                                            </div>
-                                        ) : hasMore ? (
-                                            <div className="w-2 h-2 rounded-full bg-brand/30" />
-                                        ) : (
-                                            <span className="text-xs font-black uppercase tracking-widest text-sec-text/40">
-                                                {(language === 'ku' || language === 'badini') ? 'کۆتایی هات' : 'End of results'}
-                                            </span>
-                                        )}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-32 bg-box-bg border border-border-color rounded-[3rem] shadow-2xl">
-                                    <h2 className="text-xl md:text-2xl font-black text-sec-text uppercase italic">{t('noResultsFor')}</h2>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </motion.div>
-            </AnimatePresence>
+          {/* Infinite Scroll Sentinel */}
+          {hasMore && (
+            <div ref={sentinelRef} className="w-full flex items-center justify-center py-10">
+              {loadingMore ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-7 h-7 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
+                  <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">
+                    {isRtl ? 'باردەکرێت...' : 'Loading more...'}
+                  </span>
+                </div>
+              ) : (
+                <div className="w-2 h-2 rounded-full bg-red-600/30" />
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-20 bg-zinc-900/30 border border-white/10 rounded-3xl p-6">
+          <Clapperboard size={40} className="mx-auto mb-3 text-zinc-600" />
+          <h3 className="text-base sm:text-lg font-bold text-white mb-1">
+            {isRtl ? 'هیچ ئەنجامێک بەم فلتەرانە نەدۆزرایەوە' : 'No titles match these filters'}
+          </h3>
+          <p className="text-xs text-zinc-400 mb-4">
+            {isRtl ? 'تکایە فلتەرەکان بگۆڕە یان ڕیسیتیان بکەوە' : 'Try adjusting or clearing your filters'}
+          </p>
+          <button
+            onClick={resetAllFilters}
+            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+          >
+            {isRtl ? 'سڕینەوەی هەموو فلتەرەکان' : 'Clear All Filters'}
+          </button>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default DiscoverPage;

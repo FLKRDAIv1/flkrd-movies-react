@@ -214,9 +214,6 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('@supabase')) {
                   return 'vendor-supabase';
                 }
-                if (id.includes('@novu')) {
-                  return 'vendor-novu';
-                }
               }
               // Group heavy modals and video players into lazy chunks
               if (id.includes('components/SettingsModal')) {

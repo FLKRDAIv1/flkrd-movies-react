@@ -7,7 +7,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { bannedService } from '../services/bannedService';
-import { fetchData } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import KurdishCCBadge from './KurdishCCBadge';
@@ -20,13 +20,15 @@ interface MovieCardProps {
   onRemove?: () => void;
   className?: string;
   mediaType?: 'movie' | 'tv' | 'dubbed';
+  type?: 'movie' | 'tv' | 'dubbed';
 }
 
 const IS_TOUCH_DEVICE = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
 const MovieCard = memo(
   forwardRef<HTMLDivElement, MovieCardProps>(
-    ({ item, isMyListPage = false, isProgressRow = false, onRemove, className, mediaType = 'movie' }, ref) => {
+    ({ item, isMyListPage = false, isProgressRow = false, onRemove, className, mediaType: propMediaType, type }, ref) => {
+      const mediaType = propMediaType || type || 'movie';
       const { t, language } = useTranslation();
       const { addNotification } = useNotification();
       const { isAdmin } = useUI();
@@ -168,23 +170,14 @@ const MovieCard = memo(
         }
       };
 
-      const handlePrefetch = () => {
-        if (mediaType === 'dubbed' || isCustom) {
-          import('../pages/DubbedDetailPage');
-        } else {
-          import('../pages/DetailPage');
-          import('../pages/TVDetailPage');
-
-          if (item.id) {
-            const isTv = mediaType === 'tv';
-            const endpoint = `/${isTv ? 'tv' : 'movie'}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
-            fetchData(endpoint, language).catch(() => {});
-          }
-        }
-      };
-
-      // Extract metadata
+      // Extract metadata with accurate media type detection (prevents TMDB 404 errors)
       const isRtl = language === 'ku' || language === 'badini';
+      const effectiveMediaType = mediaType === 'dubbed' 
+        ? 'dubbed' 
+        : (item?.media_type === 'tv' || item?.media_type === 'movie' 
+            ? item.media_type 
+            : (mediaType === 'tv' ? 'tv' : getMediaType(item)));
+
       const title = isRtl && item.kurdishTitle ? item.kurdishTitle : item.title || item.name || '';
       const rating = item.vote_average || 0;
       const year = (item.release_date || item.first_air_date || '').split('-')[0] || '';
@@ -192,40 +185,51 @@ const MovieCard = memo(
       const imageSrc = item.imageBase64 || item.poster_path || '';
       const isActiveState = isHovered || isFocused;
 
+      const handlePrefetch = () => {
+        if (effectiveMediaType === 'dubbed' || isCustom) {
+          import('../pages/DubbedDetailPage');
+        } else {
+          import('../pages/DetailPage');
+          import('../pages/TVDetailPage');
+
+          if (item.id) {
+            const isTv = effectiveMediaType === 'tv';
+            const endpoint = `/${isTv ? 'tv' : 'movie'}/${item.id}?api_key=${API_KEY}&language=en-US&append_to_response=credits,similar,recommendations,images,videos&include_image_language=en,null`;
+            fetchData(endpoint, language).catch(() => {});
+          }
+        }
+      };
+
       return (
         <>
           <div
             ref={ref}
-            tabIndex={0}
             onClick={(e) => {
               e.stopPropagation();
               setIsPreviewOpen(true);
             }}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
             onMouseEnter={() => {
               setIsHovered(true);
               handlePrefetch();
             }}
             onMouseLeave={() => setIsHovered(false)}
-            onPointerDown={handlePrefetch}
-            className={`group/card relative cursor-pointer py-1 touch-manipulation focus:outline-none transform-gpu transition-all duration-200 hover:scale-[1.03] active:scale-95 ${
-              className || 'w-full'
-            }`}
+            className={`group/card relative cursor-pointer py-0.5 touch-manipulation focus:outline-none transition-transform duration-200 md:hover:scale-[1.03] active:scale-[0.98] select-none ${
+              className ? className : 'w-full min-w-0'
+            } overflow-hidden`}
           >
-            {/* Seamless Cinematic Poster Card */}
+            {/* Cinematic Poster Card */}
             <div
-              className={`relative aspect-[2/3] w-full rounded-2xl md:rounded-[1.75rem] overflow-hidden border transition-all duration-300 bg-neutral-950 shadow-xl ${
+              className={`relative aspect-[2/3] w-full rounded-xl md:rounded-2xl overflow-hidden border transition-all duration-300 bg-neutral-900 shadow-lg ${
                 isActiveState
-                  ? 'border-brand/70 shadow-[0_12px_32px_rgba(229,9,20,0.35)] ring-1 ring-brand/30'
-                  : 'border-white/10 hover:border-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
+                  ? 'border-red-500/70 shadow-[0_12px_32px_rgba(229,9,20,0.3)] ring-1 ring-red-500/20'
+                  : 'border-white/5 hover:border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
               }`}
             >
               {/* Image loader placeholder */}
               {!isImgLoaded && (
                 <div className="absolute inset-0 bg-neutral-900 animate-pulse flex items-center justify-center z-10">
-                  <div className="w-6 h-6 border-2 border-white/15 border-t-brand rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white/10 border-t-red-500 rounded-full animate-spin" />
                 </div>
               )}
 
@@ -243,7 +247,7 @@ const MovieCard = memo(
                 loading="lazy"
                 decoding="async"
                 onLoad={() => setIsImgLoaded(true)}
-                className={`object-cover w-full h-full transition-transform duration-500 transform-gpu group-hover/card:scale-105 ${
+                className={`object-cover w-full h-full transition-transform duration-500 group-hover/card:scale-105 ${
                   isImgLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 onError={(e) => {
@@ -253,45 +257,45 @@ const MovieCard = memo(
                 }}
               />
 
-              {/* Top-to-bottom subtle shadow & Deep bottom vignette */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none" />
+              {/* Seamless Dark Gradient Overlay for legible bottom titles */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent pointer-events-none opacity-90 group-hover/card:opacity-100 transition-opacity" />
 
-              {/* Top Badges (IMDb Rating & Custom Badges) */}
-              <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20 flex flex-wrap items-center gap-1 pointer-events-none max-w-[70%]">
+              {/* Top Badges (Sleek Glass Rating & Tags) */}
+              <div className="absolute top-2 left-2 md:top-2.5 md:left-2.5 z-20 flex flex-wrap items-center gap-1.5 pointer-events-none" dir="ltr">
                 {rating > 0 && (
-                  <div className="flex items-center gap-1 bg-[#F5C518] text-black px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md font-black text-[8px] md:text-[9.5px] shadow-md border border-[#F5C518]/60">
-                    <span className="font-[1000] text-[7px] md:text-[8px] uppercase tracking-wider">IMDb</span>
-                    <span>{rating.toFixed(1)}</span>
+                  <div className="flex items-center gap-1 bg-black/85 backdrop-blur-md text-amber-400 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md font-bold text-[9px] md:text-[10px] shadow-sm border border-white/10" dir="ltr">
+                    <Star size={9} className="fill-amber-400 text-amber-400 shrink-0" />
+                    <span dir="ltr" className="font-mono font-bold leading-none">{Number(rating).toFixed(1)}</span>
                   </div>
                 )}
 
                 {item.level ? (
                   <div
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[7px] md:text-[8.5px] font-black uppercase tracking-wider shadow-md backdrop-blur-sm ${
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md ${
                       item.level === 'KING'
-                        ? 'bg-amber-500 text-black border border-amber-400/50'
-                        : 'bg-brand text-white border border-brand/50'
+                        ? 'bg-amber-500/90 text-black border border-amber-400/50'
+                        : 'bg-red-600/90 text-white border border-red-500/50'
                     }`}
                   >
-                    {item.level === 'KING' && <Star size={7} fill="currentColor" />}
+                    {item.level === 'KING' && <Star size={8} fill="currentColor" />}
                     <span>{item.level}</span>
                   </div>
                 ) : (
-                  mediaType === 'dubbed' && (
-                    <div className="flex items-center gap-1 bg-brand text-white px-1.5 py-0.5 rounded-md shadow-md border border-brand/50">
-                      <Mic2 size={8} className="text-white" />
-                      <span className="font-black text-[7px] md:text-[8.5px] leading-none uppercase">DUBBED</span>
+                  effectiveMediaType === 'dubbed' && (
+                    <div className="flex items-center gap-1 bg-red-600/90 backdrop-blur-md text-white px-2 py-0.5 rounded-lg shadow-sm border border-red-500/40">
+                      <Mic2 size={9} className="text-white" />
+                      <span className="font-black text-[8px] md:text-[9px] uppercase">DUBBED</span>
                     </div>
                   )
                 )}
               </div>
 
-              {/* Action Buttons (List Add / Remove / Share / Ban) */}
+              {/* Action Buttons (List Add / Remove / Share / Ban) - Cleanly hidden on touch to avoid blocking poster artwork */}
               <div
                 className={`absolute top-2 right-2 md:top-3 md:right-3 flex flex-col gap-1 z-30 transition-all duration-200 ${
-                  isMyListPage || isProgressRow || isAdded || IS_TOUCH_DEVICE
+                  isMyListPage || isProgressRow
                     ? 'opacity-100'
-                    : 'opacity-0 group-hover/card:opacity-100'
+                    : 'opacity-0 md:group-hover/card:opacity-100'
                 }`}
               >
                 {isMyListPage && (
@@ -361,26 +365,31 @@ const MovieCard = memo(
               )}
 
               {/* Clean Integrated Title & Badges Overlay at Bottom */}
-              <div className="absolute bottom-0 inset-x-0 p-2.5 md:p-3.5 z-20 flex flex-col justify-end pointer-events-none">
+              <div className="absolute bottom-0 inset-x-0 p-1.5 sm:p-2.5 md:p-3 z-20 flex flex-col justify-end pointer-events-none">
                 {/* Kurdish CC Badge */}
                 {!isCustom && (
-                  <div className="mb-1">
-                    <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />
+                  <div className="mb-0.5 sm:mb-1">
+                    <KurdishCCBadge tmdbId={Number(item.id)} type={effectiveMediaType === 'tv' ? 'tv' : 'movie'} />
                   </div>
                 )}
 
                 <h4
-                  className={`text-xs md:text-[13px] text-white font-extrabold line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] transition-colors group-hover/card:text-brand ${
-                    isRtl ? 'font-kurdish leading-snug font-bold' : 'tracking-tight leading-snug'
+                  className={`text-[10.5px] sm:text-xs md:text-[13px] text-white font-bold line-clamp-1 sm:line-clamp-2 drop-shadow-md transition-colors group-hover/card:text-red-400 ${
+                    isRtl ? 'font-kurdish leading-tight font-bold text-right' : 'tracking-tight leading-tight text-left'
                   }`}
                 >
                   {title}
                 </h4>
 
-                <div className="flex items-center justify-between mt-1 text-[8px] md:text-[9.5px] font-bold text-white/70">
-                  <span className="text-brand font-[1000] tracking-wider uppercase text-[7px] md:text-[8.5px]">FLKRD</span>
-                  {year && <span className="text-white/75 font-semibold text-[8px] md:text-[9.5px]">{year}</span>}
-                </div>
+                {year && (
+                  <div className="flex items-center gap-1.5 mt-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold text-zinc-400">
+                    <span>{year}</span>
+                    <span className="w-0.5 h-0.5 rounded-full bg-zinc-600" />
+                    <span className="uppercase text-[7.5px] sm:text-[8px] md:text-[9px] font-bold text-zinc-500 tracking-wider">
+                      {effectiveMediaType === 'tv' ? (isRtl ? 'زنجیرە' : 'TV') : (isRtl ? 'فیلم' : 'Movie')}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -117,10 +117,10 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('flkrd_theme') as Theme;
-    // Always default to dark mode for cinematic streaming experience.
-    // If legacy auto-detected 'light' is stored, override to 'dark' unless user explicitly set it.
-    if (saved && saved !== 'light') return saved;
+    try {
+      const saved = localStorage.getItem('flkrd_theme') as Theme;
+      if (saved) return saved;
+    } catch (e) {}
     return 'dark';
   });
   const [accentColor, setAccentColorState] = useState(() =>
@@ -535,33 +535,48 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   }, []);
 
 
-  // Cinematic Experience Guard: Do NOT automatically switch to light mode on mobile emulation / system preference.
-  // The app remains in dark mode by default unless explicitly toggled by user in settings.
   useEffect(() => {
-    // Keep theme set to dark if legacy 'light' was stored automatically
-    if (localStorage.getItem('flkrd_theme') === 'light') {
-      localStorage.setItem('flkrd_theme', 'dark');
-      setThemeState('dark');
-    }
-  }, []);
+    try {
+      localStorage.setItem('flkrd_theme', theme);
+    } catch (e) {}
 
-  useEffect(() => {
-    localStorage.setItem('flkrd_theme', theme);
     const root = document.documentElement;
+    const body = document.body;
 
-    // Remove old classes
-    const classesToRemove = Array.from(root.classList).filter(c => c === 'light-mode' || c.startsWith('theme-'));
-    classesToRemove.forEach(c => root.classList.remove(c));
+    // Remove old classes from html and body
+    const classesToRemove = Array.from(root.classList).filter(c => c === 'light-mode' || c === 'dark' || c.startsWith('theme-') || c === 'premium-theme-active');
+    classesToRemove.forEach(c => {
+      root.classList.remove(c);
+      if (body) body.classList.remove(c);
+    });
 
-    // Add new class
+    // Apply active theme class
     if (theme === 'light') {
       root.classList.add('light-mode');
+      if (body) body.classList.add('light-mode');
+      root.classList.remove('dark');
+      if (body) body.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      root.style.colorScheme = 'light';
     } else {
+      root.classList.remove('light-mode');
+      if (body) body.classList.remove('light-mode');
+      root.classList.add('dark');
+      if (body) body.classList.add('dark');
       root.classList.add(`theme-${theme}`);
+      if (body) body.classList.add(`theme-${theme}`);
+      root.setAttribute('data-theme', theme);
+      root.style.colorScheme = 'dark';
       if (theme.includes('premium')) {
         root.classList.add('premium-theme-active');
+        if (body) body.classList.add('premium-theme-active');
       }
     }
+
+    // Notify window components
+    try {
+      window.dispatchEvent(new CustomEvent('flkrd-theme-changed', { detail: { theme } }));
+    } catch (e) {}
   }, [theme]);
 
   useEffect(() => {

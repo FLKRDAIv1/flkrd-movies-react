@@ -103,6 +103,8 @@ export const MovieCarousel: React.FC<MovieCarouselProps> = ({
       className="w-full mb-10 md:mb-14 px-4 md:px-8 max-w-[1920px] mx-auto select-none overflow-hidden transform-gpu"
       style={{
         contain: 'layout paint',
+        contentVisibility: 'auto',
+        containIntrinsicSize: '0 400px',
         transform: 'translateZ(0)',
       }}
     >

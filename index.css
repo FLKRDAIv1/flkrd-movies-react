@@ -14,7 +14,7 @@
    FLKRD MOVIES — Design System & Performance CSS
    ═══════════════════════════════════════════════ */
 
-:root, .theme-dark, .theme-premium-gradient-1, .theme-premium-gradient-2, .theme-premium-particles-galaxy, .theme-premium-particles-moon, .theme-premium-particles-stardust {
+:root, .dark, .theme-dark, .theme-premium-gradient-1, .theme-premium-gradient-2, .theme-premium-particles-galaxy, .theme-premium-particles-moon, .theme-premium-particles-stardust {
   --brand-red: #e50914;
   --brand-red-rgb: 229, 9, 20;
   --bg-primary: #050505;
@@ -26,6 +26,21 @@
   --border-color-rgb: 38, 38, 38;
   --global-scale: 1;
   --player-console-top: calc(7.2rem + env(safe-area-inset-top, 0px));
+}
+
+html.light-mode,
+body.light-mode,
+.light-mode,
+[data-theme="light"] {
+  --brand-red: #ef4444;
+  --brand-red-rgb: 239, 68, 68;
+  --bg-primary: #ffffff;
+  --bg-primary-rgb: 255, 255, 255;
+  --text-primary-rgb: 15, 23, 42;
+  --text-secondary-rgb: 71, 85, 105;
+  --card-bg-rgb: 255, 255, 255;
+  --box-bg-rgb: 255, 255, 255;
+  --border-color-rgb: 226, 232, 240;
 }
 
 @media (min-width: 640px) {
@@ -43,14 +58,11 @@
 
 /* Mobile & Touch Device Ultra-Smooth Performance Rules */
 @media (hover: none) and (pointer: coarse) {
-  /* On mobile touch devices, heavy backdrop-filter blurs exhaust GPU RAM & cause thermal heating.
-     Disabling costly multi-pass blurs on mobile saves ~90% GPU composite time without visual glitches. */
   [class*="backdrop-blur"] {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
 
-  /* Simplify box-shadow on mobile devices for smooth 60fps scrolling */
   .shadow-2xl, .shadow-xl {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
   }
@@ -83,7 +95,6 @@ button, a, input, select, textarea, [role="button"], [class*="card"] {
 
 /* ═══════════════════════════════════════════════════════════
    CINEMA ACTIVE SUSPENSION — Sleep Background on Player Open
-   Drastically cuts CPU/GPU usage to 0% during video playback
    ═══════════════════════════════════════════════════════════ */
 body.cinema-active {
   overflow: hidden !important;
@@ -101,41 +112,97 @@ body.cinema-active [class*="particles"] {
   animation-play-state: paused !important;
 }
 
-.light-mode {
-  --brand-red: #ef4444;
-  --brand-red-rgb: 239, 68, 68;
-  --bg-primary-rgb: 248, 249, 250;
-  --text-primary-rgb: 17, 24, 39;
-  --text-secondary-rgb: 75, 85, 99;
-  --card-bg-rgb: 255, 255, 255;
-  --box-bg-rgb: 255, 255, 255;
-  --border-color-rgb: 226, 232, 240;
+/* ═══════════════════════════════════════════════════════════
+   LIGHT MODE RULES & CLEAN THEME SWITCHING
+   ═══════════════════════════════════════════════════════════ */
+
+/* Light Mode Global Text Inversion */
+html.light-mode h1:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode h2:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode h3:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode h4:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode h5:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode p:not([class*="bg-red"]):not([class*="bg-brand"]):not(.player-container *):not([class*="player-"]):not(.movie-poster-card *),
+html.light-mode .text-main-text,
+html.light-mode [class*="text-zinc-100"],
+html.light-mode [class*="text-zinc-200"],
+html.light-mode [class*="text-zinc-300"],
+html.light-mode [class*="text-gray-100"],
+html.light-mode [class*="text-gray-200"],
+html.light-mode [class*="text-gray-300"],
+html.light-mode [class*="text-neutral-100"],
+html.light-mode [class*="text-neutral-200"],
+html.light-mode [class*="text-neutral-300"] {
+  color: #0f172a !important;
+}
+
+html.light-mode .text-sec-text,
+html.light-mode [class*="text-zinc-400"],
+html.light-mode [class*="text-zinc-500"],
+html.light-mode [class*="text-gray-400"],
+html.light-mode [class*="text-gray-500"],
+html.light-mode [class*="text-neutral-400"],
+html.light-mode [class*="text-neutral-500"] {
+  color: #475569 !important;
+}
+
+/* Light Mode Backgrounds */
+html.light-mode .bg-main-bg,
+.light-mode .bg-main-bg {
+  background-color: #ffffff !important;
+}
+html.light-mode .bg-card-bg,
+.light-mode .bg-card-bg {
+  background-color: #ffffff !important;
+}
+html.light-mode .bg-box-bg,
+.light-mode .bg-box-bg {
+  background-color: #ffffff !important;
+}
+
+/* Surface conversions for cards and panels */
+html.light-mode div:not(.player-overlay):not(.cinema-player-container):not(.video-player-root):not([class*="player-"]):not([class*="movie-card"]).bg-zinc-950,
+html.light-mode div:not(.player-overlay):not(.cinema-player-container):not(.video-player-root):not([class*="player-"]):not([class*="movie-card"]).bg-zinc-900,
+html.light-mode div:not(.player-overlay):not(.cinema-player-container):not(.video-player-root):not([class*="player-"]):not([class*="movie-card"]).bg-neutral-950,
+html.light-mode div:not(.player-overlay):not(.cinema-player-container):not(.video-player-root):not([class*="player-"]):not([class*="movie-card"]).bg-neutral-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Translucent surfaces */
+html.light-mode [class*="bg-zinc-950/"],
+html.light-mode [class*="bg-zinc-900/"],
+html.light-mode [class*="bg-neutral-950/"],
+html.light-mode [class*="bg-neutral-900/"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
 }
 
 /* Premium Light Mode Border/Line Fixes */
-.light-mode [class*="border-white"] {
-  border-color: rgba(0, 0, 0, 0.06) !important;
+html.light-mode [class*="border-white"] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
 }
-.light-mode [class*="border-t-white"] {
-  border-top-color: rgba(0, 0, 0, 0.06) !important;
+html.light-mode [class*="border-t-white"] {
+  border-top-color: rgba(0, 0, 0, 0.08) !important;
 }
-.light-mode [class*="border-b-white"] {
-  border-bottom-color: rgba(0, 0, 0, 0.06) !important;
+html.light-mode [class*="border-b-white"] {
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
 }
-.light-mode [class*="border-l-white"] {
-  border-left-color: rgba(0, 0, 0, 0.06) !important;
+html.light-mode [class*="border-l-white"] {
+  border-left-color: rgba(0, 0, 0, 0.08) !important;
 }
-.light-mode [class*="border-r-white"] {
-  border-right-color: rgba(0, 0, 0, 0.06) !important;
+html.light-mode [class*="border-r-white"] {
+  border-right-color: rgba(0, 0, 0, 0.08) !important;
 }
-.light-mode [class*="bg-white/10"],
-.light-mode [class*="bg-white/5"] {
+html.light-mode [class*="bg-white/10"],
+html.light-mode [class*="bg-white/5"] {
   background-color: rgba(0, 0, 0, 0.03) !important;
 }
-.light-mode [class*="bg-white/20"] {
+html.light-mode [class*="bg-white/20"] {
   background-color: rgba(0, 0, 0, 0.06) !important;
 }
-.light-mode [class*="bg-white/[0.02]"] {
+html.light-mode [class*="bg-white/[0.02]"] {
   background-color: rgba(0, 0, 0, 0.01) !important;
 }
 
@@ -149,14 +216,21 @@ html, body {
   font-family: 'Zain', sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #050505 !important;
-  @apply text-main-text;
+  background-color: var(--bg-primary, #050505);
+  color: rgb(var(--text-primary-rgb, 255, 255, 255));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeSpeed;
   overscroll-behavior: none;
   touch-action: manipulation;
   font-size: calc(1rem * var(--global-scale));
+}
+
+html.light-mode,
+body.light-mode,
+html.light-mode body {
+  background-color: #f8f9fa !important;
+  color: #0f172a !important;
 }
 
 /* ── Multi-Device "PRO" Scaling System ── */

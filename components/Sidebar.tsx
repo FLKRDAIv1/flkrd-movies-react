@@ -35,8 +35,9 @@ interface NavItemProps {
 
 const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: NavItemProps) => {
   const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
-  const { glassConfig } = useUI();
+  const { theme, glassConfig } = useUI();
   const elasticity = Math.max(0.01, glassConfig?.elasticity || 0.35);
+  const isLight = theme === 'light';
 
   const handlePrefetch = () => {
     const componentMap: Record<string, () => Promise<any>> = {
@@ -44,7 +45,6 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: Na
       '/tv': () => import('../pages/TVShowsPage'),
       '/dubbed': () => import('../pages/DubbedMoviesPage'),
       '/discover': () => import('../pages/DiscoverPage'),
-      '/shorts': () => import('../pages/ShortsPage'),
       '/search': () => import('../pages/SearchPage'),
       '/my-list': () => import('../pages/MyListPage'),
     };
@@ -61,12 +61,14 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: Na
         className={`group relative flex items-center h-12 px-4 mx-2 rounded-2xl transition-all duration-200 overflow-hidden border active:scale-95 ${
           isActive
             ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black'
-            : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
+            : isLight
+              ? 'bg-transparent border-transparent hover:bg-black/5 hover:border-black/5 text-neutral-700 hover:text-black font-bold'
+              : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
         }`}
       >
         <div
           className={`flex-shrink-0 transition-transform duration-200 ${
-            isActive ? 'scale-110 text-white' : 'group-hover:scale-110 text-neutral-400'
+            isActive ? 'scale-110 text-white' : isLight ? 'group-hover:scale-110 text-neutral-600' : 'group-hover:scale-110 text-neutral-400'
           }`}
         >
           {icon}
@@ -99,6 +101,8 @@ interface StudioItemProps {
 
 const StudioItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: StudioItemProps) => {
   const isActive = location.pathname.startsWith(to.split('/').slice(0, 3).join('/'));
+  const { theme } = useUI();
+  const isLight = theme === 'light';
 
   return (
     <div className="w-full">
@@ -108,12 +112,14 @@ const StudioItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }:
         className={`group flex items-center h-10 px-4 mx-2 rounded-xl transition-all duration-200 border active:scale-95 ${
           isActive
             ? 'bg-brand/20 border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]'
-            : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
+            : isLight
+              ? 'bg-transparent border-transparent hover:bg-black/5 hover:border-black/5 text-neutral-600 hover:text-black font-bold'
+              : 'bg-transparent border-transparent hover:bg-white/10 hover:border-white/10 text-neutral-400 hover:text-white'
         }`}
       >
         <div
           className={`flex-shrink-0 w-5 flex items-center justify-center transition-transform duration-200 ${
-            isActive ? 'scale-110 text-brand' : 'group-hover:rotate-12 text-neutral-400'
+            isActive ? 'scale-110 text-brand' : isLight ? 'group-hover:rotate-12 text-neutral-600' : 'group-hover:rotate-12 text-neutral-400'
           }`}
         >
           {icon}
@@ -306,7 +312,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
           <nav className="flex-grow flex flex-col space-y-2 mt-2 overflow-y-auto scrollbar-hide py-2">
             <NavItem to="/" icon={<Home size={20} />} text={t('home') || 'Home'} location={location} isCollapsed={isCollapsed} />
-            <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday') || 'Trending'} location={location} isCollapsed={isCollapsed} />
             <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows') || 'TV Shows'} location={location} isCollapsed={isCollapsed} />
             <NavItem to="/dubbed" icon={<Mic2 size={20} />} text={t('dubbedMovies') || 'Dubbed'} location={location} isCollapsed={isCollapsed} />
             <NavItem to="/discover" icon={<Globe size={20} />} text={t('discover') || 'Discover'} location={location} isCollapsed={isCollapsed} />
@@ -430,7 +435,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
 
               <nav className="flex-grow flex flex-col space-y-2 py-4 overflow-y-auto scrollbar-hide px-2">
                 <NavItem to="/" icon={<Home size={20} />} text={t('home') || 'Home'} location={location} isCollapsed={false} onItemClick={onClose} />
-                <NavItem to="/shorts" icon={<PlayCircle size={20} />} text={t('trendingToday') || 'Trending'} location={location} isCollapsed={false} onItemClick={onClose} />
                 <NavItem to="/tv" icon={<Tv size={20} />} text={t('tvShows') || 'TV Shows'} location={location} isCollapsed={false} onItemClick={onClose} />
                 <NavItem to="/dubbed" icon={<Mic2 size={20} />} text={t('dubbedMovies') || 'Dubbed'} location={location} isCollapsed={false} onItemClick={onClose} />
                 <NavItem to="/discover" icon={<Globe size={20} />} text={t('discover') || 'Discover'} location={location} isCollapsed={false} onItemClick={onClose} />

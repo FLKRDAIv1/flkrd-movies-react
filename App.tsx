@@ -11,7 +11,6 @@ const SearchPage = lazy(() => import('./pages/SearchPage'));
 const TVShowsPage = lazy(() => import('./pages/TVShowsPage'));
 const StudioPage = lazy(() => import('./pages/StudioPage'));
 const MyListPage = lazy(() => import('./pages/MyListPage'));
-const ShortsPage = lazy(() => import('./pages/ShortsPage'));
 const KurdishCCPage = lazy(() => import('./pages/KurdishCCPage'));
 const StudiosListPage = lazy(() => import('./pages/StudiosListPage'));
 const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
@@ -1008,14 +1007,13 @@ const AppContent: React.FC<{
                           <SkeletonGrid count={12} />
                         </div>
                       }>
-                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && !isAdmin && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-main-bg bg-[#050505]'))}`}>
+                          <main ref={mainRef} className={`flex-1 relative isolate ${isWatchPage ? 'overflow-hidden h-full w-full bg-black' : (!user && !isAdmin && isProfilePage ? 'overflow-hidden h-full bg-transparent' : (isProfilePage ? 'overflow-y-auto console-perspective-container bg-transparent' : 'overflow-y-auto console-perspective-container bg-main-bg transition-colors duration-300'))}`}>
                               <ViewTransitionRoutes>
                                   <Route path="/" element={<AnimatedPage><HomePage /></AnimatedPage>} />
                                   <Route path="/tv" element={<AnimatedPage><TVShowsPage /></AnimatedPage>} />
                                   <Route path="/dubbed" element={<AnimatedPage><DubbedMoviesPage /></AnimatedPage>} />
                                   <Route path="/discover" element={<AnimatedPage><DiscoverPage /></AnimatedPage>} />
                                   <Route path="/discover/:selection" element={<AnimatedPage><DiscoverPage /></AnimatedPage>} />
-                                  <Route path="/shorts" element={<AnimatedPage><ShortsPage /></AnimatedPage>} />
                                   <Route path="/kurdish-cc" element={<AnimatedPage><KurdishCCPage /></AnimatedPage>} />
                                   <Route path="/studios" element={<AnimatedPage><StudiosListPage /></AnimatedPage>} />
                                   <Route path="/studio/:id/:name" element={<AnimatedPage><StudioPage /></AnimatedPage>} />
@@ -1227,8 +1225,17 @@ const App: React.FC = () => {
 
     const Router = isTauri() ? HashRouter : BrowserRouter;
 
+    // Auto-detect low-end device: iPhone 7 / XS have ≤2 CPU cores & ≤2GB RAM
+    const isLowEndDevice = React.useMemo(() => {
+        if (typeof navigator === 'undefined') return false;
+        const cores = (navigator as any).hardwareConcurrency || 4;
+        const mem = (navigator as any).deviceMemory || 4;
+        const conn = (navigator as any).connection?.effectiveType;
+        return cores <= 2 || mem <= 2 || conn === '2g' || conn === 'slow-2g';
+    }, []);
+
     return (
-        <MotionConfig reducedMotion="user">
+        <MotionConfig reducedMotion={isLowEndDevice ? 'always' : 'user'} transition={isLowEndDevice ? { duration: 0 } : undefined}>
             <div className={`h-screen w-screen overflow-hidden transition-colors duration-500 text-[var(--text-primary)] ${theme === 'dark' || theme === 'light' ? 'bg-[var(--bg-primary)]' : 'bg-black'} flex flex-col`} dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                 <AnimatePresence mode="wait">
                     {loading && <SplashScreen key="splash" onComplete={() => setLoading(false)} />}

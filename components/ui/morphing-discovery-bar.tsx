@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Star, Sparkles, Loader2, TrendingUp } from 'lucide-react';
 import { API_KEY, IMAGE_BASE_URL_POSTER } from '../../constants';
 import { fetchData, isForbidden, getMediaType } from '../../services/tmdbService';
+import { useUI } from '../../contexts/UIContext';
 import KurdishCCBadge from '../KurdishCCBadge';
 import { ListMoviePreviewDrawer } from '../ListMoviePreviewDrawer';
 
@@ -38,6 +39,8 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
   className = "",
   isRtl = false,
 }) => {
+  const { theme } = useUI();
+  const isLight = theme === 'light';
   const [isSearching, setIsSearching] = useState(false);
   const [internalActiveTab, setInternalActiveTab] = useState(categories[0]?.id || '');
   const [searchValue, setSearchValue] = useState("");
@@ -194,25 +197,23 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
         <AnimatePresence>
           {isSearching && (
             <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.98 }}
+              initial={{ opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute bottom-[calc(100%+10px)] left-2 right-2 sm:left-4 sm:right-4 max-h-[58vh] bg-neutral-950/95 border border-white/15 rounded-3xl p-4 overflow-y-auto shadow-[0_25px_70px_rgba(0,0,0,0.9)] z-[100] flex flex-col gap-3 text-white transform-gpu"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-                overscrollBehaviorY: 'contain'
-              }}
+              exit={{ opacity: 0, y: 15, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className={`absolute bottom-full mb-3 w-full max-w-md max-h-[60vh] overflow-y-auto rounded-3xl border p-3 z-50 backdrop-blur-2xl shadow-2xl ${
+                isLight
+                  ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-400/50'
+                  : 'bg-neutral-950/95 border-white/15 text-white shadow-[0_-12px_40px_rgba(0,0,0,0.8)]'
+              }`}
             >
-              {/* Header Label */}
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  {searchValue.trim() ? (
-                    <Sparkles className="w-4 h-4 text-red-500 animate-pulse" />
-                  ) : (
-                    <TrendingUp className="w-4 h-4 text-red-500" />
-                  )}
-                  <span className="text-xs font-black uppercase tracking-wider text-zinc-300">
+              {/* Header Title inside Dropdown */}
+              <div className={`flex items-center justify-between px-2 py-1.5 mb-2 border-b ${
+                isLight ? 'border-zinc-200' : 'border-white/10'
+              }`}>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
+                  <TrendingUp size={14} />
+                  <span>
                     {searchValue.trim()
                       ? (isRtl ? 'ئەنجامەکانی گەڕان' : 'Live Results')
                       : (isRtl ? 'پێشنیازەکانی ترێندینگ' : 'Trending Suggestions')}
@@ -239,7 +240,11 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                         <div
                           key={item.id}
                           onClick={() => handleItemSelect(item)}
-                          className="flex items-center gap-3 p-2 rounded-2xl bg-white/5 hover:bg-red-600/20 border border-white/10 hover:border-red-500/40 cursor-pointer active:scale-98 transition-all group"
+                          className={`flex items-center gap-3 p-2 rounded-2xl border cursor-pointer active:scale-98 transition-all group ${
+                            isLight
+                              ? 'bg-zinc-50 hover:bg-red-500/10 border-zinc-200/80 hover:border-red-500/40'
+                              : 'bg-white/5 hover:bg-red-600/20 border-white/10 hover:border-red-500/40'
+                          }`}
                         >
                           <img
                             src={
@@ -253,7 +258,9 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                             className="w-10 h-14 rounded-xl object-cover border border-white/10 shrink-0 group-hover:scale-105 transition-transform"
                           />
                           <div className="min-w-0 flex-1 flex flex-col gap-1 text-left" dir={isRtl ? 'rtl' : 'ltr'}>
-                            <h4 className="text-xs font-bold text-white truncate group-hover:text-red-400 transition-colors">
+                            <h4 className={`text-xs font-bold truncate group-hover:text-red-500 transition-colors ${
+                              isLight ? 'text-zinc-900' : 'text-white'
+                            }`}>
                               {title}
                             </h4>
                             <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-semibold">
@@ -323,14 +330,22 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
 
         {/* BOTTOM FLOATING DYNAMIC ISLAND CAPSULE */}
         <div className="flex items-center justify-center h-14 sm:h-16 w-full max-w-md px-1">
-          <div className="flex items-center gap-1.5 p-1.5 rounded-full bg-neutral-950/90 border border-white/15 shadow-[0_12px_36px_rgba(0,0,0,0.85)] max-w-full overflow-hidden transform-gpu">
+          <div className={`flex items-center gap-1.5 p-1.5 rounded-full border max-w-full overflow-hidden transform-gpu backdrop-blur-2xl ${
+            isLight
+              ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-xl shadow-zinc-400/30'
+              : 'bg-neutral-950/90 border-white/15 text-white shadow-[0_12px_36px_rgba(0,0,0,0.85)]'
+          }`}>
             
             {/* SEARCH EXPANDABLE PILL */}
             <div
               className={`relative flex items-center transition-all duration-300 rounded-full ${
                 isSearching
-                  ? 'w-[calc(100vw-88px)] max-w-xs sm:max-w-sm h-11 bg-neutral-900 border border-red-500/60 shadow-[0_0_18px_rgba(239,68,68,0.35)]'
-                  : 'w-11 h-11 bg-neutral-900/90 border border-white/15 hover:border-red-500/40'
+                  ? isLight
+                    ? 'w-[calc(100vw-88px)] max-w-xs sm:max-w-sm h-11 bg-zinc-100 border border-red-500/60 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
+                    : 'w-[calc(100vw-88px)] max-w-xs sm:max-w-sm h-11 bg-neutral-900 border border-red-500/60 shadow-[0_0_18px_rgba(239,68,68,0.35)]'
+                  : isLight
+                    ? 'w-11 h-11 bg-zinc-100/90 border border-zinc-200 hover:border-red-500/40'
+                    : 'w-11 h-11 bg-neutral-900/90 border border-white/15 hover:border-red-500/40'
               }`}
             >
               <div className="flex items-center justify-between w-full px-2.5 h-full relative">
@@ -346,7 +361,7 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                     size={17}
                     strokeWidth={2.5}
                     className={`transition-colors ${
-                      isSearching ? 'text-red-500' : 'text-zinc-300 hover:text-white'
+                      isSearching ? 'text-red-500' : (isLight ? 'text-zinc-700 hover:text-black' : 'text-zinc-300 hover:text-white')
                     }`}
                   />
                 </button>
@@ -355,7 +370,9 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                   <input
                     ref={inputRef}
                     placeholder={placeholder}
-                    className="bg-transparent border-none outline-none w-full text-xs font-semibold mx-1.5 text-white placeholder:text-zinc-500 focus:ring-0"
+                    className={`bg-transparent border-none outline-none w-full text-xs font-semibold mx-1.5 focus:ring-0 ${
+                      isLight ? 'text-zinc-900 placeholder:text-zinc-400' : 'text-white placeholder:text-zinc-500'
+                    }`}
                     value={searchValue}
                     onChange={(e) => setSearchValue(e.target.value)}
                     onKeyDown={handleSearchKeyDown}
@@ -413,7 +430,7 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                         className={`relative z-10 shrink-0 transition-transform duration-200 ${
                           isActive
                             ? 'text-red-500 scale-110 drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]'
-                            : 'text-zinc-400 hover:text-white'
+                            : (isLight ? 'text-zinc-600 hover:text-black' : 'text-zinc-400 hover:text-white')
                         }`}
                       >
                         {cat.icon}

@@ -34,7 +34,7 @@ import MovieStageAccordion from '../components/MovieStageAccordion';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
-  const isMoon = theme.id?.includes('moon');
+  const isMoon = (theme as any)?.includes?.('moon');
 
   return (
     <div className="relative w-full h-12 md:h-20 my-12 md:my-20 overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/[0.02] backdrop-blur-2xl shadow-2xl">
@@ -773,7 +773,7 @@ const DetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-52 md:pb-40 bg-main-bg bg-[#050505] min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-main-bg min-h-screen text-[var(--text-primary)] relative overflow-x-hidden transition-colors duration-500" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60 hidden md:block">
         <img 
           src={

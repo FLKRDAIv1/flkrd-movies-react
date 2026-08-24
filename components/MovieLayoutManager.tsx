@@ -73,7 +73,7 @@ export const MovieLayoutManager: React.FC<MovieLayoutManagerProps> = ({
             initial="initial"
             animate="animate"
             exit="exit"
-            className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-6 w-full transform-gpu movie-grid-container ${gridClassName}`}
+            className={`grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-4 md:gap-6 w-full transform-gpu movie-grid-container ${gridClassName}`}
           >
             {items.map((item, idx) => (
               <MovieCard

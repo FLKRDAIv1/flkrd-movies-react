@@ -521,7 +521,7 @@ const DubbedDetailPage: React.FC = () => {
     if (!isReady) return <SkeletonDetailPage />;
 
     return (
-        <div className="min-h-screen bg-main-bg bg-[#050505] text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="min-h-screen bg-main-bg text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
             {/* Ambient Blurred Backdrop Background */}
             <div className={`fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-30 md:opacity-40`}>
                 {backdropUrl && (

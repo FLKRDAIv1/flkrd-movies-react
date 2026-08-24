@@ -39,6 +39,14 @@ export const requests = {
   fetchHorrorMovies: (lang: string) => `/discover/movie?api_key=${API_KEY}&with_genres=27&language=${lang}&include_adult=false`,
   fetchDocumentaries: (lang: string) => `/discover/movie?api_key=${API_KEY}&with_genres=99&language=${lang}&include_adult=false`,
   fetchByYear: (lang: string, year: number) => `/discover/movie?api_key=${API_KEY}&language=${lang}&primary_release_year=${year}&sort_by=popularity.desc&include_adult=false`,
+  fetchTVAction: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=10759&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVDrama: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=18&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVComedy: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=35&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVSciFi: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=10765&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVAnimation: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=16&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVCrime: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=80&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVDocumentaries: (lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=99&language=${lang}&include_adult=false&sort_by=popularity.desc`,
+  fetchTVByGenre: (genreId: number, lang: string) => `/discover/tv?api_key=${API_KEY}&with_genres=${genreId}&language=${lang}&include_adult=false&sort_by=popularity.desc`,
 };
 
 export const GENRES_T: { id: number, nameKey: keyof typeof translations['en'] }[] = [
@@ -78,33 +86,43 @@ export const STUDIOS = [
   { id: 7531, name: 'National Geographic', color: '#FFCC00' },
 ];
 
-// FLKRD PROTECTION System: Stricter blocklists
+// FLKRD FAMILY & ADULT PROTECTION SYSTEM: Strictest multi-language blocklists
+export const FORBIDDEN_GENRE_IDS: number[] = [10749]; // Blocks all Romance (10749) from TMDB
+
 export const FORBIDDEN_KEYWORDS_EN: string[] = [
   'porn', 'sex', 'erotic', 'erotica', 'lust', 'naked', 'sexy', 'nude', 'nudity',
   'explicit', 'sensual', 'sexual', 'hardcore', 'xxx', 'hentai', 'stripper', 'striptease',
   'ejaculation', 'orgasm', 'pornography', 'bdsm', 'gay porn', 'lesbian porn',
   'hot scene', 'bikini body', 'naked woman', 'naked man', 'nsfw', 'adult movie',
   'adult film', 'prostitute', 'prostitution', 'escort', 'brothel', 'intercourse',
-  'swingers', 'playboy', 'x-rated', 'fetish', 'penetration', 'softcore'
+  'swingers', 'playboy', 'x-rated', 'fetish', 'penetration', 'softcore', 'threesome',
+  'orgy', 'masturbation', 'voyeur', 'erotic thriller', 'sexually', 'sexuality',
+  'seduction', 'unrated', 'infidelity', 'affair', 'passion', 'kissing scene',
+  'intimate scenes', 'bed scene', 'sex scene', 'lovers', 'romance', 'romantic'
 ];
 
 export const FORBIDDEN_KEYWORDS_KU: string[] = [
   'پۆرن', 'سێکس', 'ئیرۆتیک', 'ڕووت', 'سێکسی', 'ڕووتی',
   'بێ پەردە', 'کاری سێکسی', 'ڕووتکردنەوە', 'ئۆرگازم', 'پۆرنۆگرافی',
-  'لەشفرۆش', 'قەحبە', 'فاحیشە', 'سێکسیی'
+  'لەشفرۆش', 'قەحبە', 'فاحیشە', 'سێکسیی', 'عەشق', 'ڕۆمانسی',
+  'دڵداری', 'ماچ', 'ڕووتکردن', 'سێکسکردن', 'بێڕەوشت', 'تەنیایی'
 ];
 
-// Block specific IDs (EKS, Risqué, Kulong, Rita, and other extreme content)
+// Block specific IDs (EKS, Risqué, Kulong, Rita, 365 Days, Fifty Shades, and other extreme content)
 export const FORBIDDEN_CONTENT_IDS: number[] = [
   1249764, // EKS
   1216223, // Risqué
   1184000, // Kulong
   1238968, // Rita
   574043,  // High School of the Dead
+  664413,  // 365 Days
+  829557,  // 365 Days: This Day
+  985939,  // The Next 365 Days
+  216015,  // Fifty Shades of Grey
+  341174,  // Fifty Shades Darker
+  337167,  // Fifty Shades Freed
   1244301, 1214309, 1205315, 1184000, 1159844, 1145325, 1131758, 1121087, 1083862,
 ];
-
-export const FORBIDDEN_GENRE_IDS: number[] = [10749]; // Blocks pure "Romance" genre
 
 
 // Global Dubbed Movies Archive - Fully Migrated to Supabase Cloud

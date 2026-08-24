@@ -40,7 +40,7 @@ const ContinueWatchingPortal: React.FC = () => {
   const g = mobileNavConfig?.colorG ?? 38;
   const b = mobileNavConfig?.colorB ?? 38;
 
-  const isExcludedPage = location.pathname.includes('/shorts') || location.pathname.includes('/search');
+  const isExcludedPage = location.pathname.includes('/search');
 
   const loadProgressHistory = useCallback(() => {
     try {
@@ -118,7 +118,6 @@ const ContinueWatchingPortal: React.FC = () => {
   // Define pages structure for the Hub
   const pagesList = [
     { name: t('home'), to: '/', icon: <Home size={20} /> },
-    { name: t('trendingToday'), to: '/shorts', icon: <PlayCircle size={20} /> },
     { name: t('tvShows'), to: '/tv', icon: <Tv size={20} /> },
     { name: t('dubbedMovies'), to: '/dubbed', icon: <Mic2 size={20} /> },
     { name: t('studios'), to: '/studios', icon: <Film size={20} /> },

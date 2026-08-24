@@ -30,7 +30,8 @@ const KurdishCCBadge: React.FC<KurdishCCBadgeProps> = React.memo(({ tmdbId, type
         }
 
         let isMounted = true;
-        ccDetectionService.checkKurdishCC(tmdbId, type).then(result => {
+        const normalizedType: 'movie' | 'tv' = type === 'tv' ? 'tv' : 'movie';
+        ccDetectionService.checkKurdishCC(tmdbId, normalizedType).then(result => {
             if (isMounted) setHasCC(result);
         });
 

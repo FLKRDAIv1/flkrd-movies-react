@@ -300,16 +300,20 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 const imageSrc = item.poster_path || (item as any).imageBase64;
                 if (!imageSrc || !mediaType) return null;
                 return (
-                  <MovieCard
+                  <div 
                     key={`${item.id || 'item'}-${index}-${mediaType || 'media'}`}
-                    item={item}
-                    type={mediaType as 'movie' | 'tv' | 'dubbed'}
-                    isProgressRow={isProgressRow}
-                    className="w-36 sm:w-44 md:w-52 lg:w-56 shrink-0"
-                    onRemove={(removed) => {
-                      setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
-                    }}
-                  />
+                    className="w-[125px] sm:w-[155px] md:w-[185px] lg:w-[210px] flex-none shrink-0 select-none"
+                  >
+                    <MovieCard
+                      item={item}
+                      mediaType={mediaType as 'movie' | 'tv' | 'dubbed'}
+                      isProgressRow={isProgressRow}
+                      className="w-full"
+                      onRemove={(removed) => {
+                        setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
+                      }}
+                    />
+                  </div>
                 );
             })}
 

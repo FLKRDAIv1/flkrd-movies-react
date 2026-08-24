@@ -30,7 +30,7 @@ import CommentSection from '../components/CommentSection';
 
 const ColorMixtureDivider: React.FC = () => {
   const { accentColor, theme } = useUI();
-  const isMoon = theme.id?.includes('moon');
+  const isMoon = (theme as any)?.includes?.('moon');
 
   return (
     <div className="relative w-full h-12 md:h-16 my-8 md:my-12 overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.01] backdrop-blur-xl">
@@ -749,7 +749,7 @@ const TVDetailPage: React.FC = () => {
   if (!content) return null;
 
   return (
-    <div className="pb-52 md:pb-40 bg-main-bg bg-[#050505] min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
+    <div className="pb-52 md:pb-40 bg-main-bg min-h-screen text-[var(--text-primary)] relative" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
       <div className="fixed inset-0 pointer-events-none z-0 transition-opacity duration-1000 opacity-60 hidden md:block">
         <img 
           src={

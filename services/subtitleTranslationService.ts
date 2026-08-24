@@ -170,8 +170,9 @@ export function parseSubtitleToCues(text: string, targetLang?: string): Subtitle
   const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
   let cleanText = normalized;
+  // Strip WEBVTT header (may have metadata on the same line or next lines before first blank)
   if (normalized.startsWith('WEBVTT')) {
-    cleanText = normalized.replace(/^WEBVTT[^\n]*\n/, '');
+    cleanText = normalized.replace(/^WEBVTT[^\n]*\n(NOTE[^\n]*\n[^\n]*\n)?/, '');
   }
 
   const sections = cleanText.split(/\n\n+/);
@@ -179,22 +180,28 @@ export function parseSubtitleToCues(text: string, targetLang?: string): Subtitle
 
   for (const section of sections) {
     const lines = section.trim().split('\n');
-    if (lines.length >= 2) {
-      const timeIndex = lines.findIndex(l => l.includes('-->'));
-      if (timeIndex !== -1) {
-        const timestamp = lines[timeIndex].trim();
-        const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
-        const textLines = lines.slice(timeIndex + 1);
-        const filteredLines = textLines.filter(line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->'));
-        const textContent = stripAllHtmlTags(filteredLines.join('\n').trim(), targetLang);
-        if (textContent) {
-          cues.push({ index, timestamp, text: textContent });
-        }
-      }
+    if (lines.length < 1) continue;
+    const timeIndex = lines.findIndex(l => l.includes('-->'));
+    if (timeIndex === -1) continue;
+
+    // Extract timestamp — strip VTT cue settings (align:, line:, position:, etc.)
+    const rawTimestamp = lines[timeIndex].trim();
+    const timestamp = rawTimestamp.replace(/\s+(align|line|position|size|vertical):[^\s]*/gi, '').trim();
+
+    // Index label: the line before the timestamp (SRT sequence number or VTT cue id)
+    const index = timeIndex > 0 ? lines[timeIndex - 1].trim() : '';
+    const textLines = lines.slice(timeIndex + 1);
+    const filteredLines = textLines.filter(
+      line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->') && line.trim() !== ''
+    );
+    const textContent = stripAllHtmlTags(filteredLines.join('\n').trim(), targetLang);
+    if (textContent && textContent.trim()) {
+      cues.push({ index, timestamp, text: textContent });
     }
   }
   return cues;
 }
+
 
 const getApiBaseUrl = (): string => {
   if (typeof window === 'undefined') return 'https://fkurd.pro';
@@ -336,9 +343,41 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
 
 /**
  * Translates an array of text strings with multi-tier fast failover.
+ * After any tier returns results, untranslated items (still equal to original) are retried
+ * individually via the GTX client endpoint so that every cue is translated.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
   const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
+  const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang);
+
+  // Helper: retry individual items that are still equal to their source via GTX
+  const retryUntranslated = async (results: string[]): Promise<string[]> => {
+    const retryIndices = results.map((r, i) => (r === text[i] || !r.trim()) ? i : -1).filter(i => i !== -1);
+    if (retryIndices.length === 0) return results;
+
+    const retried = [...results];
+    await Promise.all(retryIndices.map(async (idx) => {
+      const item = text[idx];
+      if (!item?.trim()) return;
+      try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(item)}`;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 3000);
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.[0]) {
+            const trans = data[0].map((x: any) => x?.[0] || '').join('').trim();
+            if (trans && trans !== item) {
+              retried[idx] = decodeHtmlEntities(isKurdishTarget ? cleanPersianToKurdish(trans) : trans);
+            }
+          }
+        }
+      } catch {}
+    }));
+    return retried;
+  };
 
   // Tier 1: Serverless proxy endpoint (Powered by zero-429 Google Mobile translation for 100% authentic Kurdish Sorani)
   const currentBase = getApiBaseUrl();
@@ -350,7 +389,7 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
   for (const endpoint of endpoints) {
     try {
       const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 6000);
+      const t = setTimeout(() => ctrl.abort(), 9000);
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -366,7 +405,9 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
         if (data && Array.isArray(data.translation) && data.translation.length === text.length) {
           const validCount = data.translation.filter((t: string, i: number) => t && t.trim() && t !== text[i]).length;
           if (validCount > 0) {
-            return data.translation.map((s: string) => decodeHtmlEntities(s));
+            const decoded = data.translation.map((s: string) => decodeHtmlEntities(s));
+            // Retry any untranslated items individually
+            return retryUntranslated(decoded);
           }
         }
       }
@@ -376,17 +417,21 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
   // Tier 2: Ultra-fast client-side GTX
   const clientDirect = await translateArrayDirectClient(text, sourceLang, effectiveTgt);
   if (clientDirect && Array.isArray(clientDirect) && clientDirect.length === text.length) {
-    return clientDirect.map((s: string) => decodeHtmlEntities(s));
+    const decoded = clientDirect.map((s: string) => decodeHtmlEntities(s));
+    return retryUntranslated(decoded);
   }
 
   // Tier 3: Direct Google Apps Script
   const gasDirect = await translateWithGoogleAppsScript(text, sourceLang, effectiveTgt);
   if (gasDirect && Array.isArray(gasDirect) && gasDirect.length === text.length) {
-    return gasDirect.map((s: string) => decodeHtmlEntities(s));
+    const decoded = gasDirect.map((s: string) => decodeHtmlEntities(s));
+    return retryUntranslated(decoded);
   }
 
-  return text;
+  // Last resort: translate every item individually
+  return retryUntranslated(text.map(() => ''));
 }
+
 
 /**
  * Translates an array of subtitle cues batch recursively if line mismatch occurs.

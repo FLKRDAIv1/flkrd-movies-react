@@ -262,32 +262,29 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               className="absolute inset-0 bg-black/85 backdrop-blur-2xl cursor-pointer pointer-events-auto"
             />
 
-            {/* Slide-Up Full Screen Modal Box (PC & Mobile) with Swipe-Down-To-Dismiss */}
+            {/* Slide-Up Full Screen Modal Box (PC & Mobile) with 60FPS Smooth Momentum Scrolling */}
             <motion.div
               ref={drawerRef}
-              initial={{ opacity: 0, scale: 0.9, y: 60 }}
+              initial={{ opacity: 0, scale: 0.95, y: 40 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 60 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-              drag="y"
-              dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={{ top: 0.05, bottom: 0.8 }}
-              onDragEnd={(_, info) => {
-                if (info.offset.y > 100 || info.velocity.y > 500) {
-                  handleClose();
-                }
-              }}
+              exit={{ opacity: 0, scale: 0.95, y: 40 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-neutral-950 border border-white/20 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto touch-pan-y ${
+              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c0e] border border-white/15 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
                 isRtl ? 'text-right' : 'text-left'
               }`}
+              style={{ WebkitOverflowScrolling: 'touch' }}
               dir={isRtl ? 'rtl' : 'ltr'}
             >
               {/* Glowing Border Beam */}
               <BorderBeam size={360} duration={10} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
 
               {/* Mobile Drag/Pull Bar Handle */}
-              <div className="w-12 h-1.5 bg-white/40 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0 cursor-grab active:cursor-grabbing shadow" />
+              <div 
+                onClick={handleClose} 
+                className="w-12 h-1.5 bg-white/30 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0 cursor-pointer shadow transition-all"
+                title="Tap to close"
+              />
 
               {/* Header Hero Backdrop Area */}
               <div className="relative w-full h-56 sm:h-80 flex-shrink-0 bg-neutral-900 overflow-hidden">

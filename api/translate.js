@@ -466,7 +466,7 @@ export default async function handler(req, res) {
                 .replace(/&apos;/g, "'")
                 .replace(/&#10;/g, '\n')
                 .replace(/&#x2F;/g, '/')
-                .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
+                .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)));
         }
 
         // 🌟 Ultra-Reliable Google Mobile Translation Engine (Zero rate limits, delivers 100% authentic Kurdish Sorani/Badini)
@@ -649,6 +649,21 @@ export default async function handler(req, res) {
             return fallbackResults;
         };
 
+
+        // ✅ Apply Badini Hawar → Kurdish Arabic script transliteration for 'ku'/'badini' target.
+        // For Sorani (ckb) Google Translate already outputs Arabic script — no transliteration needed.
+        const applyBadiniTransliteration = (input) => {
+            if (actualTarget !== 'ku') {
+                // Sorani (ckb) and all other targets: return as-is
+                if (Array.isArray(input)) return input;
+                return input;
+            }
+            // Badini/Kurmanji: transliterate Hawar Latin output to Kurdish Arabic script
+            if (Array.isArray(input)) {
+                return input.map(t => (t && typeof t === 'string') ? transliterateHawarToArabic(t) : (t || ''));
+            }
+            return (input && typeof input === 'string') ? transliterateHawarToArabic(input) : (input || '');
+        };
 
         // 1. Array batch translation with sub-chunking (25 items per chunk for guaranteed 100% full translation)
         if (isArray) {

@@ -91,7 +91,6 @@ const MobileNav: React.FC = () => {
       '/tv': () => import('../pages/TVShowsPage'),
       '/dubbed': () => import('../pages/DubbedMoviesPage'),
       '/discover': () => import('../pages/DiscoverPage'),
-      '/shorts': () => import('../pages/ShortsPage'),
       '/search': () => import('../pages/SearchPage'),
       '/my-list': () => import('../pages/MyListPage'),
       '/kurdish-cc': () => import('../pages/KurdishCCPage'),
@@ -167,15 +166,6 @@ const MobileNav: React.FC = () => {
         prefetchPage('/tv');
         setIsMoreMenuOpen(false);
         navigate('/tv');
-      }
-    },
-    {
-      label: isRtl ? 'ترێندینگ' : 'Trending',
-      icon: <PlayCircle size={20} />,
-      onClick: () => {
-        prefetchPage('/shorts');
-        setIsMoreMenuOpen(false);
-        navigate('/shorts');
       }
     },
     {
@@ -258,23 +248,31 @@ const MobileNav: React.FC = () => {
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                className="fixed bottom-0 inset-x-0 bg-[#0c0c0e] border-t border-white/15 rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-[0_-20px_50px_rgba(0,0,0,0.9)] transform-gpu"
+                className={`fixed bottom-0 inset-x-0 border-t rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-2xl backdrop-blur-2xl transform-gpu ${
+                  theme === 'light'
+                    ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-400/50'
+                    : 'bg-[#0c0c0e]/95 border-white/15 text-white shadow-black/90'
+                }`}
                 style={{ paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))' }}
                 dir={isRtl ? 'rtl' : 'ltr'}
               >
                 {/* Header Slider Handle */}
-                <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-1" />
+                <div className={`w-10 h-1 rounded-full mx-auto mb-1 ${theme === 'light' ? 'bg-zinc-300' : 'bg-white/20'}`} />
 
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-white">
+                <div className={`flex items-center justify-between border-b pb-3 ${theme === 'light' ? 'border-zinc-200' : 'border-white/10'}`}>
+                  <h3 className={`text-sm font-black uppercase tracking-wider ${theme === 'light' ? 'text-zinc-900' : 'text-white'}`}>
                     {getKurdishLabel('more')}
                   </h3>
                   <button 
                     onClick={() => setIsMoreMenuOpen(false)}
-                    className="p-2 bg-white/5 border border-white/10 hover:bg-red-600 rounded-xl transition-all active:scale-90"
+                    className={`p-2 border rounded-xl transition-all active:scale-90 ${
+                      theme === 'light' 
+                        ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-red-600 hover:text-white' 
+                        : 'bg-white/5 border-white/10 text-white hover:bg-red-600'
+                    }`}
                     aria-label="Close menu"
                   >
-                    <X size={14} className="text-white" />
+                    <X size={14} />
                   </button>
                 </div>
 
@@ -283,14 +281,20 @@ const MobileNav: React.FC = () => {
                     <button
                       key={item.label}
                       onClick={() => item.onClick()}
-                      className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-red-500/30 transition-transform duration-100 active:scale-95 relative touch-manipulation cursor-pointer"
+                      className={`flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl border transition-transform duration-100 active:scale-95 relative touch-manipulation cursor-pointer ${
+                        theme === 'light'
+                          ? 'bg-zinc-50 border-zinc-200/80 hover:bg-zinc-100 hover:border-red-500/40 text-zinc-800 shadow-sm'
+                          : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.08] hover:border-red-500/30 text-zinc-300'
+                      }`}
                       style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     >
                       <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
                         {item.icon}
                       </div>
                       
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-300 text-center">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider text-center ${
+                        theme === 'light' ? 'text-zinc-800' : 'text-zinc-300'
+                      }`}>
                         {item.label}
                       </span>
 

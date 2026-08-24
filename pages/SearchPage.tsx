@@ -1,210 +1,111 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Content } from '../types';
-import { IMAGE_BASE_URL_POSTER, GENRES_T, requests, API_KEY } from '../constants';
+import { requests, API_KEY, GENRES_T, IMAGE_BASE_URL_POSTER } from '../constants';
 import { SkeletonGrid } from '../components/Skeleton';
-import Portal from '../components/Portal';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useSearchEngine } from '../hooks/useSearchEngine';
 import { useUI } from '../contexts/UIContext';
-import { useNotification } from '../contexts/NotificationContext';
-import { clearTMDBCache, fetchData, getMediaType } from '../services/tmdbService';
+import { fetchData, getMediaType } from '../services/tmdbService';
 import { bannedService } from '../services/bannedService';
-import KurdishCCBadge from '../components/KurdishCCBadge';
-import { LiquidButton } from '../components/ui/liquid-glass-button';
-import MovieCard from '../components/MovieCard';
-import MovieLayoutManager from '../components/MovieLayoutManager';
-import { CylinderCarousel } from '../components/ui/cylinder-carousel';
-import { Search as SearchIcon, X, Star, TrendingUp, AlertCircle, Cpu, ShieldAlert, ShieldCheck, Ghost, Sparkles, Film, Tv, Mic2, Calendar, Play, Trash2 } from 'lucide-react';
+import { MovieLayoutManager } from '../components/MovieLayoutManager';
+import { 
+  Search as SearchIcon, X, Star, TrendingUp, Sparkles, 
+  Film, Tv, Mic2, Clapperboard, Flame, AlertCircle, Compass
+} from 'lucide-react';
 
-const SearchVisualEffect = () => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-72 h-72 md:w-[400px] md:h-[400px] mx-auto relative z-0 flex flex-col items-center justify-center pointer-events-none"
-    >
-      <div className="relative w-full h-full flex items-center justify-center">
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, 90, 180, 270, 360]
-          }}
-          transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
-          className="absolute inset-0 border border-brand/10 rounded-full"
-        />
-        <motion.div
-          animate={{
-            scale: [1.1, 1, 1.1],
-            rotate: [360, 270, 180, 90, 0]
-          }}
-          transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
-          className="absolute inset-10 border border-brand/20 rounded-full border-dashed"
-        />
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="w-20 h-20 mb-2 relative">
-            <div className="absolute inset-0 bg-brand/30 blur-xl animate-pulse rounded-full" />
-            <div className="relative z-10 w-full h-full border border-border-color hover:border-brand/40 bg-box-bg/50 backdrop-blur-sm rounded-3xl flex items-center justify-center transition-colors">
-              <span className="text-3xl font-black italic text-brand/80 drop-shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.5)] flex items-center gap-1">
-                <span className="text-5xl">F</span>
-              </span>
-            </div>
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.5em] text-sec-text italic">System Scan Active</span>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-const NoResultsSuggestions = () => {
-  const navigate = useNavigate();
-  const { t } = useTranslation();
-  const { glassConfig } = useUI();
-
-  const quickLinks = [
-    { label: t('movies'), icon: <Film size={14} />, path: '/discover' },
-    { label: t('tvShows'), icon: <Tv size={14} />, path: '/tv' },
-    { label: t('dubbedMovies'), icon: <Mic2 size={14} />, path: '/dubbed' },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto mt-12 p-8 border"
-      style={{
-        borderRadius: '32px',
-        borderStyle: 'solid',
-        borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-        background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-        backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-        WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-        boxShadow: `
-          inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
-          inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-          0 20px 40px rgba(0,0,0,0.4)
-        `
-      }}
-    >
-      <div className="flex items-center gap-3 mb-6 justify-center">
-        <Sparkles size={18} className="text-yellow-500 animate-pulse" />
-        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-sec-text">{t('securitySystemSuggestions')}</h3>
-      </div>
-
-      <div className="flex flex-wrap justify-center gap-3 mb-10">
-        {quickLinks.map((link, idx) => (
-          <LiquidButton
-            key={idx}
-            variant="secondary"
-            onClick={() => navigate(link.path)}
-            className="!px-5 !py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
-          >
-            {link.icon}
-            {link.label}
-          </LiquidButton>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {GENRES_T.slice(0, 6).map((genre) => (
-          <LiquidButton
-            key={genre.id}
-            variant="secondary"
-            onClick={() => navigate(`/discover`)}
-            className="!p-4 rounded-2xl text-[10px] font-black uppercase tracking-tighter italic"
-          >
-            {t(genre.nameKey)}
-          </LiquidButton>
-        ))}
-      </div>
-    </motion.div>
-  );
-};
+const QUICK_FILTERS = [
+  { id: 'all', labelKu: 'هەموو', labelEn: 'All' },
+  { id: 'movie', labelKu: 'فیلمەکان', labelEn: 'Movies', icon: Film },
+  { id: 'tv', labelKu: 'زنجیرەکان', labelEn: 'TV Shows', icon: Tv },
+  { id: 'dubbed', labelKu: 'دۆبلاژکراو', labelEn: 'Dubbed', icon: Mic2 },
+  { id: 'action', labelKu: 'ئاکشن', labelEn: 'Action', query: 'action' },
+  { id: 'comedy', labelKu: 'کۆمیدی', labelEn: 'Comedy', query: 'comedy' },
+  { id: 'animation', labelKu: 'ئەنیمەیشن', labelEn: 'Animation', query: 'animation' },
+];
 
 const SearchPage: React.FC = () => {
-  const [searchParams, searchParamsSetter] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryParam = searchParams.get('query') || '';
   const [inputValue, setInputValue] = useState(queryParam);
   const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('all');
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
-  const { theme, isAdmin, glassConfig = {
-    redOpacity: 0.15,
-    darkOpacity: 0.85,
-    blurAmount: 20,
-    saturation: 120,
-    borderOpacity: 0.1,
-    aberrationIntensity: 0.5
-  } } = useUI();
-  const { addNotification } = useNotification();
-  const { results, loading, isBlockedQuery, isProcessing, executeSearch, setResults, setIsProcessing } = useSearchEngine(language);
-  const [topRatedMovies, setTopRatedMovies] = useState<Content[]>([]);
+  const { theme } = useUI();
+  const isRtl = language === 'ku' || language === 'badini';
+  const langCode = isRtl ? 'ku-TR' : 'en-US';
 
+  const [topRatedMovies, setTopRatedMovies] = useState<Content[]>([]);
+  const [loadingPopular, setLoadingPopular] = useState(false);
+
+  const {
+    results,
+    loading,
+    isProcessing,
+    isBlockedQuery,
+    executeSearch,
+    setResults,
+    setIsProcessing,
+  } = useSearchEngine(language);
+
+  // Load initial popular & trending showcase for idle state
   useEffect(() => {
-    const fetchTopRated = async () => {
+    const fetchPopularShowcase = async () => {
+      setLoadingPopular(true);
       try {
-        const langCode = (language === 'ku' || language === 'badini') ? 'ku' : 'en-US';
-        const [topData, marvelData] = await Promise.all([
+        const [trendingRes, topRes] = await Promise.all([
+          fetchData(requests.fetchTrendingMovies(langCode), language),
           fetchData(requests.fetchTopRatedMovies(langCode), language),
-          fetchData(`https://api.themoviedb.org/3/search/movie?api_key=${API_KEY}&query=Marvel&language=en-US`, language)
         ]);
 
-        const combined = [...(marvelData || []), ...(topData || [])];
+        const combined = [...(trendingRes || []), ...(topRes || [])];
         const bannedSet = await bannedService.fetchBannedList();
 
         const uniqueMap = new Map<number, Content>();
-        combined.forEach(item => {
+        combined.forEach((item) => {
           if (item && item.id && item.poster_path && !bannedSet.has(String(item.id))) {
             uniqueMap.set(item.id, {
               ...item,
-              media_type: getMediaType(item)
+              media_type: getMediaType(item),
             });
           }
         });
 
-        const mappedList = Array.from(uniqueMap.values());
-        setTopRatedMovies(mappedList.slice(0, 16));
+        setTopRatedMovies(Array.from(uniqueMap.values()).slice(0, 18));
       } catch (err) {
-        console.error("Error fetching top rated movies:", err);
+        console.error('Error fetching popular search showcase:', err);
+      } finally {
+        setLoadingPopular(false);
       }
     };
-    fetchTopRated();
-  }, [language]);
 
-  const handleCarouselItemClick = (img: any) => {
-    navigate(`/details/${img.media_type}/${img.id}`);
-  };
-
-  useEffect(() => {
-    const handleBannedUpdate = () => {
-      executeSearch(inputValue);
-    };
-    window.addEventListener('banned-list-updated', handleBannedUpdate);
-    return () => window.removeEventListener('banned-list-updated', handleBannedUpdate);
-  }, [inputValue, executeSearch]);
+    fetchPopularShowcase();
+  }, [language, langCode]);
 
   useEffect(() => {
     setInputValue(queryParam);
   }, [queryParam]);
 
+  // Debounced search trigger
   useEffect(() => {
-    if (inputValue === queryParam && results.length > 0) {
-      return;
-    }
     if (inputValue.trim().length > 0) {
       setIsProcessing(true);
     }
     const timeout = setTimeout(() => {
       if (inputValue.trim() !== queryParam) {
-        searchParamsSetter({ query: inputValue }, { replace: true });
+        if (inputValue.trim()) {
+          setSearchParams({ query: inputValue }, { replace: true });
+        } else {
+          setSearchParams({}, { replace: true });
+        }
       }
       executeSearch(inputValue);
-    }, 600);
+    }, 500);
     return () => clearTimeout(timeout);
-  }, [inputValue, executeSearch, searchParamsSetter, queryParam]);
+  }, [inputValue, executeSearch, setSearchParams, queryParam, setIsProcessing]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -213,80 +114,50 @@ const SearchPage: React.FC = () => {
 
   const handleClearInput = () => {
     setInputValue('');
-    searchParamsSetter({});
+    setSearchParams({}, { replace: true });
     setResults([]);
     setIsProcessing(false);
   };
 
-  const firstResult = results[0];
-  const firstResultTitle = firstResult ? (firstResult.title || firstResult.name || '') : '';
-  
-  const shouldShowDidYouMean = 
-    inputValue.trim().length >= 2 && 
-    firstResultTitle && 
-    firstResultTitle.toLowerCase() !== inputValue.trim().toLowerCase();
-
-  const handleDidYouMeanClick = () => {
-    setInputValue(firstResultTitle);
-    setIsSuggestionsVisible(false);
+  const handleFilterClick = (filter: typeof QUICK_FILTERS[0]) => {
+    setActiveFilter(filter.id);
+    if (filter.id === 'all') {
+      if (!inputValue) setResults([]);
+    } else if (filter.id === 'dubbed') {
+      navigate('/dubbed');
+    } else if (filter.id === 'tv') {
+      navigate('/tv');
+    } else if (filter.id === 'movie') {
+      navigate('/discover');
+    } else if (filter.query) {
+      setInputValue(filter.query);
+      executeSearch(filter.query);
+    }
   };
 
   const suggestions = results.slice(0, 6);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
-  };
-
-  const itemVariants: Variants = {
-    hidden: { opacity: 0, y: 20, scale: 0.95 },
-    show: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    }
-  };
-
   return (
-    <div className="min-h-screen pt-24 container mx-auto px-4 sm:px-6 lg:px-8 relative overflow-x-hidden pb-20 bg-main-bg">
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand/5 filter blur-[150px] -z-10 animate-pulse"></div>
+    <div className="min-h-screen pt-20 md:pt-28 container mx-auto px-3.5 sm:px-6 lg:px-8 relative overflow-x-hidden pb-24 select-none">
+      
+      {/* Background ambient lighting */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-96 h-96 bg-red-600/10 filter blur-[140px] -z-10 pointer-events-none" />
 
-      <div className="relative mb-12 max-w-3xl mx-auto z-[60]">
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-brand to-red-900 rounded-3xl blur opacity-10 group-hover:opacity-25 transition duration-1000"></div>
+      {/* 🔍 Search Input Capsule */}
+      <div className="relative mb-6 max-w-3xl mx-auto z-40">
+        <div className="relative group">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-red-600/30 via-brand/20 to-red-900/30 rounded-2xl md:rounded-3xl blur-md opacity-40 group-hover:opacity-70 transition duration-500 pointer-events-none" />
+          
           <form 
-            onSubmit={(e) => { e.preventDefault(); }}
-            toolname="search"
-            tooldescription="Search movies, TV shows, dubbed movies, and animated classics by title, actor, or genre"
-            className="relative flex items-center overflow-hidden border transition-all duration-300 w-full"
-            style={{
-              borderRadius: '24px',
-              borderStyle: 'solid',
-              borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-              background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-              backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-              WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-              boxShadow: `
-                inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-                inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                0 20px 40px rgba(0,0,0,0.5)
-              `
-            }}
+            onSubmit={(e) => e.preventDefault()}
+            className="relative flex items-center bg-zinc-950/90 border border-white/15 rounded-2xl md:rounded-3xl shadow-2xl backdrop-blur-2xl transition-all duration-300 w-full overflow-hidden"
           >
-            {/* Dynamic GPU-accelerated water sheen overlay */}
-            <div 
-              className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                opacity: (glassConfig.displacementScale / 120) * 0.9,
-                animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
-              }}
-            />
+            {/* Search Icon */}
+            <div className="pl-4 sm:pl-6 pr-2 text-zinc-400 flex items-center justify-center pointer-events-none">
+              <SearchIcon size={20} className={isProcessing ? 'text-red-500 animate-pulse' : 'text-zinc-400'} />
+            </div>
 
-            <SearchIcon className={`absolute left-6 z-10 transition-all duration-500 ${isProcessing ? 'text-brand scale-110' : 'text-sec-text'}`} size={24} />
+            {/* Input field */}
             <input
               type="text"
               name="query"
@@ -294,259 +165,200 @@ const SearchPage: React.FC = () => {
               onChange={handleInputChange}
               onFocus={() => inputValue.trim().length > 1 && setIsSuggestionsVisible(true)}
               onBlur={() => setTimeout(() => setIsSuggestionsVisible(false), 250)}
-              placeholder={t('searchPlaceholder')}
+              placeholder={isRtl ? 'گەڕان بۆ ناوی فیلم، زنجیرە، ئەکتەر...' : 'Search movies, TV shows, actors...'}
               autoCapitalize="off"
               autoCorrect="off"
+              autoComplete="off"
               enterKeyHint="search"
-              className="w-full bg-transparent focus:ring-0 text-main-text rounded-2xl py-5 pr-14 pl-16 text-xl transition-all outline-none font-medium z-10"
+              className="w-full bg-transparent focus:ring-0 text-white placeholder-zinc-500 py-3.5 sm:py-4 pr-12 text-sm sm:text-base md:text-lg transition-all outline-none font-medium z-10"
+              dir={isRtl ? 'rtl' : 'ltr'}
             />
 
-            <AnimatePresence>
+            {/* Spinner or Clear Button */}
+            <div className="absolute right-3.5 sm:right-5 flex items-center gap-2 z-20">
               {isProcessing && (
-                <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="absolute right-20 hidden md:flex items-center gap-2 bg-brand/20 px-3 py-1.5 rounded-full border border-brand/30">
-                  <Cpu size={14} className="text-brand animate-spin" />
-                  <span className="text-[10px] font-black uppercase text-brand tracking-[0.2em] italic">Scanning</span>
-                </motion.div>
+                <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
               )}
-            </AnimatePresence>
-
-            <AnimatePresence>
               {inputValue && (
-                <motion.div initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }} className="absolute right-6">
-                  <LiquidButton variant="secondary" onClick={handleClearInput} className="!p-2 !h-auto !w-auto !min-h-0 !min-w-0 rounded-xl">
-                    <X size={20} />
-                  </LiquidButton>
-                </motion.div>
+                <button
+                  type="button"
+                  onClick={handleClearInput}
+                  className="p-1 rounded-full bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                  aria-label="Clear search"
+                >
+                  <X size={16} />
+                </button>
               )}
-            </AnimatePresence>
+            </div>
           </form>
-        </motion.div>
+        </div>
 
-        {/* Smart "Did you mean" Suggestion */}
+        {/* ⚡ Instant Dropdown Suggestions */}
         <AnimatePresence>
-          {shouldShowDidYouMean && (
-            <motion.div 
+          {isSuggestionsVisible && !isProcessing && suggestions.length > 0 && (
+            <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mt-4 px-6 flex items-center gap-2 text-xs md:text-sm font-medium"
-              dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
+              className="absolute top-full mt-2 inset-x-0 bg-zinc-950/95 border border-white/15 rounded-2xl shadow-2xl z-50 backdrop-blur-3xl overflow-hidden"
+              dir={isRtl ? 'rtl' : 'ltr'}
             >
-              <span className="text-sec-text">{t('didYouMean')}</span>
-              <button 
-                onClick={handleDidYouMeanClick}
-                className="font-black text-brand hover:underline flex items-center gap-1.5 focus:outline-none"
-              >
-                <Sparkles size={12} className="text-yellow-500 animate-pulse" />
-                {firstResultTitle}
-              </button>
+              <div className="px-4 py-2.5 bg-zinc-900/60 border-b border-white/10 flex items-center justify-between text-[11px] font-bold text-zinc-400">
+                <span className="flex items-center gap-1.5">
+                  <TrendingUp size={12} className="text-red-500" />
+                  <span>{isRtl ? 'ئەنجامە پێشنیارکراوەکان' : 'Instant Matches'}</span>
+                </span>
+                <span className="text-[10px] text-zinc-500">{suggestions.length} {isRtl ? 'بابەت' : 'items'}</span>
+              </div>
+              <ul className="divide-y divide-white/5 max-h-80 overflow-y-auto scrollbar-hide">
+                {suggestions.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      onMouseDown={() => {
+                        setInputValue(item.title || item.name || '');
+                        setIsSuggestionsVisible(false);
+                        if (item.media_type === 'dubbed') {
+                          navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
+                        } else {
+                          navigate(`/details/${getMediaType(item)}/${item.id}`);
+                        }
+                      }}
+                      className="w-full text-left flex items-center gap-3.5 p-3 hover:bg-white/5 transition-colors cursor-pointer"
+                    >
+                      <div className="relative w-10 h-14 rounded-lg overflow-hidden bg-zinc-900 shrink-0 border border-white/10">
+                        <img
+                          src={
+                            item.poster_path
+                              ? `${IMAGE_BASE_URL_POSTER}${item.poster_path}`
+                              : '/default-poster.svg'
+                          }
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/default-poster.svg';
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm text-white truncate group-hover:text-red-400 transition-colors">
+                          {item.title || item.name}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-400 font-medium">
+                          <span>{item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0] || 'N/A'}</span>
+                          {item.vote_average > 0 && (
+                            <span className="flex items-center gap-0.5 text-amber-400 font-bold">
+                              <Star size={9} fill="currentColor" />
+                              {item.vote_average.toFixed(1)}
+                            </span>
+                          )}
+                          <span className="uppercase text-[9px] text-zinc-500 font-bold">
+                            {item.media_type === 'tv' ? (isRtl ? 'زنجیرە' : 'TV') : (isRtl ? 'فیلم' : 'Movie')}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Enhanced Auto-Suggestions */}
-        <AnimatePresence>
-          {isSuggestionsVisible && !isProcessing && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.98 }}
-              className="absolute top-full mt-4 w-full border z-[100] overflow-hidden"
-              style={{
-                borderRadius: '32px',
-                borderStyle: 'solid',
-                borderColor: theme === 'light'
-                  ? `rgba(0, 0, 0, 0.06)`
-                  : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                background: theme === 'light'
-                  ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 85%), rgba(255, 255, 255, 0.85)`
-                  : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.15})`,
-                backdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
-                WebkitBackdropFilter: `blur(${glassConfig.blurAmount * 1.2}px) saturate(${glassConfig.saturation}%)`,
-                boxShadow: theme === 'light'
-                  ? `0 30px 60px rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
-                  : `
-                    inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                    inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                    inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-                    inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                    0 50px 100px rgba(0, 0, 0, 0.8)
-                  `
-              }}
-            >
-              {/* Dynamic GPU-accelerated water sheen overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-                style={{
-                  background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                  opacity: (glassConfig.displacementScale / 120) * 0.9,
-                  animationDuration: `${30 * (0.35 / Math.max(0.01, glassConfig.elasticity || 0.35))}s`
-                }}
-              />
-              {suggestions.length > 0 ? (
-                <>
-                  <div className="px-6 py-4 bg-box-bg border-b border-border-color flex items-center justify-between">
-                    <span className="text-[10px] font-black text-sec-text uppercase tracking-[0.3em] flex items-center gap-2">
-                      <TrendingUp size={12} className="text-brand" /> Matches Found
-                    </span>
-                    <span className="text-[8px] font-bold text-sec-text uppercase tracking-widest">Select to Launch</span>
-                  </div>
-                  <ul className="max-h-[450px] overflow-y-auto scrollbar-hide divide-y divide-border-color">
-                    {suggestions.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          onMouseDown={() => {
-                            setInputValue(item.title || item.name || '');
-                            setIsSuggestionsVisible(false);
-                            if (item.media_type === 'dubbed') {
-                              navigate(`/dubbed-details/${item.id}`, { state: { customData: item } });
-                            } else {
-                              navigate(`/details/${getMediaType(item)}/${item.id}`);
-                            }
-                          }}
-                          className="w-full text-left flex items-center gap-5 p-5 hover:bg-brand/10 transition-all group"
-                        >
-                          <div className="relative overflow-hidden rounded-xl shadow-xl border border-border-color w-14 h-20 flex-shrink-0 bg-box-bg">
-                            <img 
-                              src={
-                                (item.poster_path || (item as any).imageBase64)
-                                  ? ((item.poster_path || (item as any).imageBase64).startsWith('http') || (item.poster_path || (item as any).imageBase64).startsWith('data:')
-                                      ? (item.poster_path || (item as any).imageBase64)
-                                      : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
-                                  : '/default-poster.svg'
-                              }
-                              alt="" 
-                              className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-500" 
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/default-poster.svg';
-                              }}
-                            />
-                            {item.media_type === 'dubbed' && (
-                              <div className="absolute top-1 right-1 bg-brand p-1 rounded-md shadow-lg">
-                                <Mic2 size={8} className="text-white" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-black text-lg text-main-text group-hover:text-brand transition-colors truncate italic tracking-tighter">
-                              {item.title || item.name}
-                            </p>
-                            <div className="flex items-center gap-3 mt-1.5">
-                              <div className="flex items-center gap-1 bg-box-bg px-2 py-0.5 rounded-lg border border-border-color">
-                                <Calendar size={10} className="text-sec-text" />
-                                <span className="text-[10px] font-bold text-sec-text uppercase tracking-tighter">
-                                  {item.release_date?.split('-')[0] || item.first_air_date?.split('-')[0] || 'N/A'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 bg-yellow-500/10 px-2 py-0.5 rounded-lg border border-yellow-500/20">
-                                <Star size={10} className="text-yellow-500 fill-current" />
-                                <span className="text-[10px] font-black text-yellow-500">
-                                  {item.vote_average?.toFixed(1) || '0.0'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-brand p-2 rounded-xl">
-                            <Play size={16} fill="white" className="text-white" />
-                          </div>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              ) : (
-                <div className="p-10 text-center">
-                  <div className="mb-6 relative inline-block">
-                    <AlertCircle size={40} className="text-brand/40" />
-                  </div>
-                  <h4 className="text-main-text text-lg font-black uppercase italic tracking-tighter mb-2">{t('noResultsFor')}</h4>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* 🏷️ Quick Category Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-2 mt-2 touch-pan-x">
+          {QUICK_FILTERS.map((f) => {
+            const Icon = f.icon;
+            const isActive = activeFilter === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => handleFilterClick(f)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border cursor-pointer shrink-0 active:scale-95 ${
+                  isActive
+                    ? 'bg-red-600 text-white border-red-500 shadow-[0_0_12px_rgba(229,9,20,0.4)]'
+                    : 'bg-zinc-900/80 text-zinc-400 hover:text-white hover:bg-zinc-800 border-white/5'
+                }`}
+              >
+                {Icon && <Icon size={12} />}
+                <span>{isRtl ? f.labelKu : f.labelEn}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
+      {/* 🎬 Main Content Area */}
       <AnimatePresence mode="wait">
         {loading ? (
-          <SkeletonGrid count={6} />
+          <SkeletonGrid count={12} />
         ) : isBlockedQuery ? (
-          <motion.div key="blocked" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12 px-6">
-            <div className="max-w-3xl mx-auto bg-card-bg/40 backdrop-blur-3xl border-2 border-brand/30 rounded-[3rem] p-12 md:p-20 shadow-2xl overflow-hidden relative">
-              <ShieldAlert size={100} className="text-brand mx-auto mb-10" />
-              <h2 className="text-3xl md:text-5xl font-[1000] text-brand mb-6 uppercase italic">{t('securitySystemTitle')}</h2>
-              <p className="text-xl md:text-2xl font-black text-main-text mb-12">{t('securitySystemMessage')}</p>
-            </div>
+          <motion.div
+            key="blocked"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-16 px-4 max-w-lg mx-auto bg-zinc-900/40 border border-white/10 rounded-3xl p-8 shadow-2xl"
+          >
+            <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-black text-white mb-2">{isRtl ? 'ناوەڕۆکی نەشیاو' : 'Content Filtered'}</h2>
+            <p className="text-xs text-zinc-400">{isRtl ? 'ئەم ووشەیە بەپێی یاساکانی پاراستنی خێزان قەدەغە کراوە.' : 'This term has been blocked to maintain family-safe viewing.'}</p>
           </motion.div>
         ) : inputValue && results.length > 0 ? (
-          <motion.div key="results" variants={containerVariants} initial="hidden" animate="show" className="w-full">
-            <div 
-              className="flex items-center justify-between mb-12 p-8 border"
-              style={{
-                borderRadius: '32px',
-                borderStyle: 'solid',
-                borderColor: `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity}), transparent 85%), rgba(10, 10, 10, ${glassConfig.darkOpacity})`,
-                backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                boxShadow: `
-                  inset 0 1px 0 0 rgba(255, 255, 255, ${0.1 + glassConfig.borderOpacity * 0.35}),
-                  inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                  0 20px 40px rgba(0,0,0,0.4)
-                `
-              }}
-            >
-              <div className="flex items-center gap-6">
-                <div className="bg-green-500/20 p-4 rounded-[1.5rem] border border-green-500/30">
-                  <ShieldCheck className="text-green-500" size={32} />
-                </div>
-                <div>
-                  <h2 className="text-3xl md:text-4xl font-[1000] tracking-tighter uppercase italic text-main-text">
-                    {t('resultsFor')} <span className="text-brand">"{inputValue}"</span>
-                  </h2>
-                  <p className="text-[10px] font-black text-sec-text uppercase tracking-[0.3em] mt-1">{results.length} Nodes Identified</p>
-                </div>
-              </div>
+          <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
+            {/* Results Title Bar */}
+            <div className="flex items-center justify-between mb-5 px-1">
+              <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                <span className="w-1.5 h-5 bg-red-600 rounded-full" />
+                <span>
+                  {isRtl ? 'ئەنجامەکان بۆ' : 'Results for'} <span className="text-red-500">"{inputValue}"</span>
+                </span>
+              </h2>
+              <span className="text-xs font-bold text-zinc-500">
+                {results.length} {isRtl ? 'فیلم و زنجیرە' : 'titles'}
+              </span>
             </div>
 
+            {/* Unified 3-column mobile & responsive grid */}
             <MovieLayoutManager items={results} />
           </motion.div>
         ) : inputValue && !loading ? (
-          <motion.div key="no-results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="col-span-full py-20 text-center">
-            <div className="relative z-10">
-              <AlertCircle size={64} className="mx-auto text-brand/50 mb-6 animate-bounce" />
-              <h2 className="text-2xl md:text-5xl font-[1000] text-main-text uppercase italic tracking-tighter mb-4">
-                {t('noResultsFor')} <span className="text-brand">"{inputValue}"</span>
-              </h2>
-              <NoResultsSuggestions />
-            </div>
+          <motion.div
+            key="no-results"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-16 px-4 max-w-lg mx-auto bg-zinc-900/40 border border-white/10 rounded-3xl p-8 shadow-2xl"
+          >
+            <Clapperboard size={48} className="mx-auto text-zinc-600 mb-4" />
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">
+              {isRtl ? 'هیچ ئەنجامێک نەدۆزرایەوە بۆ' : 'No results found for'} <span className="text-red-500">"{inputValue}"</span>
+            </h2>
+            <p className="text-xs text-zinc-400 mb-6">
+              {isRtl ? 'تکایە دڵنیابەرەوە لە نووسینی ناوی فیلمەکە یان بە وشەیەکی تر بگەڕێ.' : 'Check the spelling or try searching for another title.'}
+            </p>
+            <button
+              onClick={handleClearInput}
+              className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+            >
+              {isRtl ? 'سڕینەوەی گەڕان' : 'Clear Search'}
+            </button>
           </motion.div>
         ) : (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center pt-4 relative flex flex-col items-center">
-            {topRatedMovies.length > 0 && (
-              <div className="w-full max-w-6xl h-[480px] relative z-10 flex items-center justify-center overflow-visible">
-                <CylinderCarousel
-                  images={topRatedMovies.map(item => ({
-                    src: `${IMAGE_BASE_URL_POSTER}${item.poster_path}`,
-                    id: item.id,
-                    media_type: getMediaType(item),
-                    alt: item.title || item.name
-                  }))}
-                  onItemClick={handleCarouselItemClick}
-                  cardWidth={160}
-                  animationDuration={24}
-                  className="min-h-[400px]"
-                />
-              </div>
-            )}
-            
-            <div className="relative z-20 mt-6">
-              <h2 className="text-3xl md:text-6xl font-[1000] uppercase tracking-tighter text-main-text italic drop-shadow-[0_0_20px_rgba(229,9,20,0.3)]">{t('search')}</h2>
-              <div className="mt-4 flex flex-col items-center gap-3">
-                <div className="h-1 w-24 bg-brand rounded-full shadow-[0_0_15px_brand] animate-pulse"></div>
-                <p className="text-sec-text font-black uppercase tracking-[0.4em] text-[9px] md:text-xs">Deep Neural Sequence Engine Active</p>
-              </div>
+          /* Idle State: Trending & Top-Rated Showcase */
+          <motion.div key="idle-showcase" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full">
+            <div className="flex items-center justify-between mb-5 px-1">
+              <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
+                <Flame size={18} className="text-red-500" />
+                <span>{isRtl ? 'پڕبینەرترین و باشترینەکانی ئەم هەفتەیە' : 'Trending & Popular This Week'}</span>
+              </h2>
+              <span className="text-xs font-bold text-zinc-500">
+                {topRatedMovies.length > 0 ? `${topRatedMovies.length} ${isRtl ? 'ناونیشان' : 'titles'}` : ''}
+              </span>
             </div>
+
+            {loadingPopular ? (
+              <SkeletonGrid count={12} />
+            ) : (
+              <MovieLayoutManager items={topRatedMovies} />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

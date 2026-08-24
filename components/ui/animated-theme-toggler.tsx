@@ -90,7 +90,8 @@ export function AnimatedThemeToggler({
   return (
     <>
       <style>{`
-        .att-btn { --at-ink: rgba(0,0,0,0.82) }
+        .att-btn { --at-ink: rgba(15, 23, 42, 0.88); }
+        .light-mode .att-btn { --at-ink: rgba(15, 23, 42, 0.88) !important; }
         .theme-dark .att-btn,
         .theme-premium-gradient-1 .att-btn,
         .theme-premium-gradient-2 .att-btn,
@@ -98,7 +99,7 @@ export function AnimatedThemeToggler({
         .theme-premium-particles-moon .att-btn,
         .theme-premium-particles-stardust .att-btn,
         .dark .att-btn {
-          --at-ink: rgba(255,255,255,0.82)
+          --at-ink: rgba(255,255,255,0.92) !important;
         }
       `}</style>
       <motion.button

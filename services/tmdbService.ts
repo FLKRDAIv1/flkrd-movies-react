@@ -13,8 +13,8 @@ export const clearTMDBCache = () => {
   console.log("[TMDB SERVICE] Quantum Cache Purged.");
 };
 
-export const isForbidden = (item: Content, language: 'en' | 'ku' | 'badini', isAdmin: boolean = false): boolean => {
-  if (isAdmin) return false;
+export const isForbidden = (item: Content, language: 'en' | 'ku' | 'badini', _isAdmin: boolean = false): boolean => {
+  if (!item) return false;
   if (item.adult) return true;
   
   const itemId = String(item.id).replace('custom_', '');
@@ -214,7 +214,6 @@ export const fetchData = async (endpoint: string, language: 'en' | 'ku' | 'badin
       ]);
 
       if (!response || !response.ok) {
-        console.warn(`[TMDB] All fetch strategies failed for ${endpoint}`);
         return null;
       }
       
@@ -243,6 +242,7 @@ export interface PaginatedResponse {
   results: Content[];
   page: number;
   total_pages: number;
+  total_results?: number;
 }
 
 export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku' | 'badini'): Promise<PaginatedResponse | null> => {
@@ -281,7 +281,8 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
     return {
       results: filterContent(data.results, language),
       page: data.page,
-      total_pages: data.total_pages
+      total_pages: data.total_pages,
+      total_results: data.total_results
     };
   }
 
@@ -312,6 +313,7 @@ export const fetchPaginatedData = async (endpoint: string, language: 'en' | 'ku'
         results: filterContent(data.results, language),
         page: data.page,
         total_pages: data.total_pages,
+        total_results: data.total_results,
       };
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
