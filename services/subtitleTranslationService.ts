@@ -787,70 +787,66 @@ export async function translateAndSavePipeline(
           onConflict: 'tmdb_id,media_type,language,season,episode'
         });
 
-      if (dbErr) {
-        console.warn("[SUBTITLE-PIPELINE] Supabase db registry warning (quota/network):", dbErr.message);
+      } catch (dbException) {
+        // Silent fallback
       }
-    } catch (dbException) {
-      console.warn("[SUBTITLE-PIPELINE] Supabase db registry exception:", dbException);
-    }
 
-    // Realtime Global Broadcast Event: Notify all active clients watching this content
-    if (onProgress) onProgress(97, "Broadcasting to all connected viewers...");
-    // Yield so the 97% frame paints before Supabase Realtime subscription overhead.
-    await new Promise(r => setTimeout(r, 0));
-    try {
-      const channelKey = (mediaType === 'tv' || mediaType === 'series')
-        ? `subtitle_sync_${tmdbId}_tv_${season || 0}_${episode || 0}`
-        : `subtitle_sync_${tmdbId}_movie`;
+      // Realtime Global Broadcast Event: Notify all active clients watching this content
+      if (onProgress) onProgress(97, "Broadcasting to all connected viewers...");
+      // Yield so the 97% frame paints before Supabase Realtime subscription overhead.
+      await new Promise(r => setTimeout(r, 0));
+      try {
+        const channelKey = (mediaType === 'tv' || mediaType === 'series')
+          ? `subtitle_sync_${tmdbId}_tv_${season || 0}_${episode || 0}`
+          : `subtitle_sync_${tmdbId}_movie`;
 
-      const syncChannel = supabase.channel(channelKey);
-      syncChannel.subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await syncChannel.send({
-            type: 'broadcast',
-            event: 'new_subtitle_available',
-            payload: {
+        const syncChannel = supabase.channel(channelKey);
+        syncChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await syncChannel.send({
+              type: 'broadcast',
+              event: 'new_subtitle_available',
+              payload: {
+                tmdbId: String(tmdbId),
+                mediaType: mediaType || 'movie',
+                season: season || 0,
+                episode: episode || 0,
+                language: targetLang,
+                subtitleUrl: resolvedPublicUrl,
+                srtContent: srtContent,
+                fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
+              }
+            });
+          }
+        });
+      } catch (bErr) {
+        // Silent fallback
+      }
+
+      // Local Window Event Dispatch for immediate 0ms local player rendering
+      try {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
+            detail: {
+              subtitleUrl: resolvedPublicUrl,
+              srtContent: srtContent,
               tmdbId: String(tmdbId),
               mediaType: mediaType || 'movie',
               season: season || 0,
               episode: episode || 0,
               language: targetLang,
-              subtitleUrl: resolvedPublicUrl,
-              srtContent: srtContent,
-              fileName: `${sub.attributes?.display_name || 'Translated'}_${targetLang}.srt`
+              progress: 100,
+              isFinal: true
             }
-          });
+          }));
         }
-      });
-    } catch (bErr) {
-      console.warn("[SUBTITLE-PIPELINE] Broadcast sync warning:", bErr);
+      } catch (e) {}
+
+      if (onProgress) onProgress(100, "Subtitle fully registered and active!");
+
+      return { success: true, subtitleUrl: resolvedPublicUrl };
+
+    } catch (err: any) {
+      return { success: false, error: err.message || "Unknown error occurred" };
     }
-
-    // Local Window Event Dispatch for immediate 0ms local player rendering
-    try {
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
-          detail: {
-            subtitleUrl: resolvedPublicUrl,
-            srtContent: srtContent,
-            tmdbId: String(tmdbId),
-            mediaType: mediaType || 'movie',
-            season: season || 0,
-            episode: episode || 0,
-            language: targetLang,
-            progress: 100,
-            isFinal: true
-          }
-        }));
-      }
-    } catch (e) {}
-
-    if (onProgress) onProgress(100, "Subtitle fully registered and active!");
-
-    return { success: true, subtitleUrl: resolvedPublicUrl };
-
-  } catch (err: any) {
-    console.error("[SubtitleTranslationService] Pipeline failed:", err);
-    return { success: false, error: err.message || "Unknown error occurred" };
-  }
 }

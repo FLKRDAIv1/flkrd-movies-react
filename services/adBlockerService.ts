@@ -109,12 +109,8 @@ class AdBlockerService {
         .from('blocked_ads')
         .insert([{ domain: clean, created_by: adminId || 'admin' }]);
 
-      if (error) {
-        console.warn('[AD-BLOCKER-SERVICE] Supabase insert warning (persisted locally):', error.message);
-      }
       return true;
     } catch (err) {
-      console.warn('[AD-BLOCKER-SERVICE] Saved locally with Supabase notice:', err);
       return true;
     }
   }

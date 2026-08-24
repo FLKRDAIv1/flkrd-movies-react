@@ -1,3 +1,7 @@
+import { initSecurityShield } from './utils/securityGuard';
+// Initialize FLKRD Security Shield immediately at kernel entry
+initSecurityShield();
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
@@ -41,10 +45,9 @@ if (!rootElement) {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
     for (const registration of registrations) {
-      registration.unregister();
-      console.log('[SW DE-REGISTRATION] Purged active service worker node.');
+      registration.unregister().catch(() => {});
     }
-  });
+  }).catch(() => {});
 }
 
 const root = ReactDOM.createRoot(rootElement);

@@ -96,7 +96,7 @@ export const updateService = {
         };
       }
     } catch (e) {
-      console.warn('[UPDATE SERVICE] Failed to reach Supabase registry. Running offline fallback check:', e);
+      // Silent offline check
     }
 
     // Offline / Failed fallback simulation or no update

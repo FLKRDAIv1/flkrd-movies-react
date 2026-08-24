@@ -156,7 +156,7 @@ class VisitorAnalyticsService {
         deviceBreakdown = { mobile: mobileCount, desktop: desktopCount };
       }
     } catch (e) {
-      console.warn('[ANALYTICS] Supabase analytics fetch offline:', e);
+      // Silent offline fallback
     }
 
     // Combine with local fallback counters if database is empty or initial setup

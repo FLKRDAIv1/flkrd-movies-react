@@ -111,14 +111,12 @@ export const useWatchProgress = ({
         );
 
       if (error) throw error;
-      
-      console.log(`[WatchProgress SupabaseSync] Synchronized ${stringId} at ${Math.floor(finalProgress)}s`);
     } catch (err) {
-      console.error("[WatchProgress SupabaseSync] Registry failed:", err);
+      // Silent database sync fallback to local storage
     }
   }, [stringId, movieType]);
 
-  // Load progress from Supabase (or fallback to localStorage)
+  // Load progress from database (or fallback to localStorage)
   const loadProgress = useCallback(async () => {
     if (isLoadedRef.current || !videoRef.current) return;
     isLoadedRef.current = true;
@@ -136,7 +134,7 @@ export const useWatchProgress = ({
       }
       
       if (userId) {
-        // 2. Query Supabase progress
+        // 2. Query progress
         const { data, error } = await supabase
           .from('user_watch_progress')
           .select('progress_seconds, total_duration')
@@ -151,7 +149,7 @@ export const useWatchProgress = ({
         }
       }
 
-      // 3. LocalStorage Fallback (if Supabase is null or offline/unauthenticated)
+      // 3. LocalStorage Fallback (if remote is null or offline/unauthenticated)
       if (savedSeconds === 0) {
         const progressData = localStorage.getItem('watchProgress');
         if (progressData) {
@@ -169,12 +167,11 @@ export const useWatchProgress = ({
       // 4. Instantly set video progress if valid and above threshold
       if (savedSeconds > 10 && videoRef.current) {
         videoRef.current.currentTime = savedSeconds;
-        console.log(`[WatchProgress Loader] Resumed playback for ${stringId} at ${savedSeconds}s`);
       }
       
       progressRef.current = { currentTime: savedSeconds, duration };
     } catch (err) {
-      console.error("[WatchProgress Loader] Setup failed:", err);
+      // Silent fallback
     }
   }, [stringId, movieType, videoRef]);
 

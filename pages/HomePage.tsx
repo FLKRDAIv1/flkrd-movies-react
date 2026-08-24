@@ -209,15 +209,11 @@ const HomePage: React.FC = () => {
       
       if (!error && data) {
         rawItems = data;
-        console.log("[HP] Supabase Signal Aligned:", rawItems.length);
-      } else if (error) {
-        console.warn("[HP] Supabase Signal degraded, attempting local recovery:", error);
       }
 
       // 3. Final Fallback to Local Quantum Core (IndexedDB)
       if (rawItems.length === 0) {
         rawItems = await db.getMovies();
-        console.log("[HP] Recovering from Local Archive:", rawItems?.length);
       }
 
       if (rawItems && rawItems.length > 0) {
@@ -255,7 +251,6 @@ const HomePage: React.FC = () => {
         }
       }
     } catch (e) {
-      console.error("[HP CRITICAL ERROR] Recovery triggered:", e);
       const localItems = await db.getMovies();
       if (localItems && localItems.length > 0) {
          setDubbedItems(localItems.slice(0, 20));
@@ -282,7 +277,7 @@ const HomePage: React.FC = () => {
       );
       setKurdishCCItems(results.filter(Boolean) as Content[]);
     } catch (err) {
-      console.error("[HP] Kurdish CC Load Error:", err);
+      // Graceful fallback
     } finally {
       setLoadingKurdishCC(false);
     }
@@ -308,7 +303,6 @@ const HomePage: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'dubbed_movies' },
         () => {
-          console.log("[HP] Realtime Dubbed Update detected");
           loadDubbed();
         }
       )

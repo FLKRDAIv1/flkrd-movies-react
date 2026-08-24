@@ -210,7 +210,7 @@ const DiscoverPage: React.FC = () => {
             rawItems = data;
           }
         } catch (dbErr) {
-          console.warn('[DISCOVER] Supabase fetch warning:', dbErr);
+          // Silent fallback
         }
 
         if (rawItems.length === 0) {

@@ -94,7 +94,7 @@ class CCDetectionService {
                         hasCustomCC = true;
                     }
                 } catch (dbErr) {
-                    console.warn("[CC DETECT] Supabase error:", dbErr);
+                    // Silent fallback
                 }
 
                 let hasCC = hasCustomCC;
@@ -121,7 +121,6 @@ class CCDetectionService {
                 this.saveToStorage(key, hasCC);
                 item.resolve(hasCC);
             } catch (err) {
-                console.warn("[CC DETECT] Error:", err);
                 item.resolve(false);
             }
 

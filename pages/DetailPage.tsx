@@ -615,25 +615,23 @@ const DetailPage: React.FC = () => {
                 }
               }
             } catch (dbErr) {
-              console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);
+              // Silent fallback
             }
 
 
             if (supabaseSubUrl) {
-              console.log("[SUBTITLE SYNC] Kurdish Custom Track Established from Supabase:", supabaseSubUrl);
               setSubtitleUrl(supabaseSubUrl);
               const ranked = getRankedSources(true);
               setSources(ranked);
             }
           } catch (e) {
-              console.warn("[SUBTITLE SYNC] Error fetching automated tracks:", e);
+              // Silent fallback
           }
         } else {
             addNotification({ type: 'error', title: 'SIGNAL LOST', message: 'The requested node is unavailable in the global archive.' });
             navigate(-1);
         }
       } catch (error) { 
-          console.error("[CRITICAL SIGNAL ERROR]:", error); 
           addNotification({ type: 'error', title: 'CORE FAILURE', message: 'System communication error.' });
       } finally { 
           setLoading(false); 
@@ -693,7 +691,7 @@ const DetailPage: React.FC = () => {
         }
       }
     } catch (dbErr) {
-      console.warn("[DETAIL] Supabase custom sub fetch error:", dbErr);
+      // Silent fallback
     }
 
     setSubtitleUrl(activeSubUrl);

@@ -29,7 +29,6 @@
       }
       window.open = function(url, target, features) {
         if (!isPermitted(url)) {
-          console.warn('[FLKRD-KERNEL] Blocked rogue popup/popunder:', url);
           return null;
         }
         return origOpen.apply(window, arguments);

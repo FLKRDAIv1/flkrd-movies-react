@@ -10,6 +10,10 @@ dns.setDefaultResultOrder('ipv4first');
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      esbuild: {
+        drop: mode === 'production' ? ['console', 'debugger'] : [],
+        legalComments: 'none',
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',

@@ -663,7 +663,7 @@ const TVDetailPage: React.FC = () => {
         }
       }
     } catch (dbErr) {
-      console.warn("[TV-DETAIL] Supabase custom sub fetch error:", dbErr);
+      // Silent fallback
     }
 
 

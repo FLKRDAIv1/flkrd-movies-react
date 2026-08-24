@@ -37,3 +37,4 @@ xcuserdata/
 public/*.dmg
 public/*.apk
 src-tauri/target/
+.env*

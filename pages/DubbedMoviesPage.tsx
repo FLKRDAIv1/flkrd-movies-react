@@ -57,7 +57,7 @@ const DubbedMoviesPage: React.FC = () => {
           rawItems = data;
         }
       } catch (dbErr) {
-        console.warn('[DUBBED] Supabase fetch error, fallback to IndexedDB:', dbErr);
+        // Silent fallback
       }
 
       // 2. Fallback to Local Database
