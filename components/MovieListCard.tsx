@@ -64,13 +64,33 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
 
   const handleRemoveProgress = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-    const filtered = progress.filter((i: any) => !(i.id === item.id && String(i.type) === mediaType));
-    localStorage.setItem('watchProgress', JSON.stringify(filtered));
-    if (onRemove) onRemove(item);
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('watchProgressUpdated'));
-    addNotification({ type: 'info', title: t('notificationsInfoTitle') || 'Removed', message: t('removeFromProgress') || 'Removed from continue watching' });
+    try {
+      const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+      const cleanItemId = String(item.id).replace('custom_', '');
+      const itemType = mediaType || item.media_type || item.type;
+      const filtered = progress.filter((i: any) => {
+        const iCleanId = String(i.id).replace('custom_', '');
+        const iType = i.type || i.media_type;
+        if (iCleanId === cleanItemId) {
+          if (iType && itemType) {
+            return String(iType) !== String(itemType);
+          }
+          return false;
+        }
+        return true;
+      });
+      localStorage.setItem('watchProgress', JSON.stringify(filtered));
+      if (onRemove) onRemove(item);
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('watchProgressUpdated'));
+      addNotification({ 
+        type: 'info', 
+        title: language === 'ku' || language === 'badini' ? 'سڕایەوە' : (t('notificationsInfoTitle') || 'Removed'), 
+        message: language === 'ku' || language === 'badini' ? 'لە بەردەوامی سەیرکردن سڕایەوە' : (t('removeFromProgress') || 'Removed from continue watching') 
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const detailPath =

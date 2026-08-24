@@ -92,13 +92,28 @@ const ContinueWatchingPortal: React.FC = () => {
 
   const handleRemove = (e: React.MouseEvent, targetItem: WatchProgress) => {
     e.stopPropagation();
-    const progress: WatchProgress[] = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-    const updated = progress.filter(i => !(i.id === targetItem.id && String(i.type) === String(targetItem.type)));
-    localStorage.setItem('watchProgress', JSON.stringify(updated));
-    
-    loadProgressHistory();
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('watchProgressUpdated'));
+    try {
+      const progress: WatchProgress[] = JSON.parse(localStorage.getItem('watchProgress') || '[]');
+      const targetCleanId = String(targetItem.id).replace('custom_', '');
+      const targetType = String(targetItem.type || '');
+      const updated = progress.filter(i => {
+        const iCleanId = String(i.id).replace('custom_', '');
+        const iType = String(i.type || '');
+        if (iCleanId === targetCleanId) {
+          if (iType && targetType) {
+            return iType !== targetType;
+          }
+          return false;
+        }
+        return true;
+      });
+      localStorage.setItem('watchProgress', JSON.stringify(updated));
+      loadProgressHistory();
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new Event('watchProgressUpdated'));
+    } catch (err) {
+      console.error("Portal remove error:", err);
+    }
   };
 
   const handleResume = (item: WatchProgress) => {
@@ -224,7 +239,10 @@ const ContinueWatchingPortal: React.FC = () => {
                                 e.stopPropagation();
                                 handleRemove(e, item);
                               }}
-                              className="absolute top-2 left-2 p-1.5 rounded-full bg-black/60 border border-white/10 text-red-500 hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-20"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              className="absolute top-2 left-2 p-1.5 rounded-full bg-black/80 hover:bg-red-600 active:bg-red-700 text-red-400 hover:text-white border border-white/10 transition-all opacity-90 md:opacity-0 md:group-hover:opacity-100 z-30 cursor-pointer shadow-lg active:scale-90"
+                              aria-label="Remove from continue watching"
+                              title="Remove"
                             >
                               <Trash2 size={12} />
                             </button>

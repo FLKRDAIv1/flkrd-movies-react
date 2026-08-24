@@ -282,7 +282,20 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 type={mediaType as 'movie' | 'tv' | 'dubbed'}
                 isProgressRow={isProgressRow}
                 onRemove={(removed) => {
-                  setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
+                  if (!removed) return;
+                  const removedCleanId = String(removed.id).replace('custom_', '');
+                  const removedType = (removed as any).type || (removed as any).media_type || type;
+                  setContent(prev => prev.filter(i => {
+                    const iCleanId = String(i.id).replace('custom_', '');
+                    const iType = (i as any).type || (i as any).media_type || type;
+                    if (iCleanId === removedCleanId) {
+                      if (iType && removedType) {
+                        return String(iType) !== String(removedType);
+                      }
+                      return false;
+                    }
+                    return true;
+                  }));
                 }}
               />
             );
@@ -310,7 +323,20 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                       isProgressRow={isProgressRow}
                       className="w-full"
                       onRemove={(removed) => {
-                        setContent(prev => prev.filter(i => !(i.id === removed.id && (i as any).type === (removed as any).type)));
+                        if (!removed) return;
+                        const removedCleanId = String(removed.id).replace('custom_', '');
+                        const removedType = (removed as any).type || (removed as any).media_type || type;
+                        setContent(prev => prev.filter(i => {
+                          const iCleanId = String(i.id).replace('custom_', '');
+                          const iType = (i as any).type || (i as any).media_type || type;
+                          if (iCleanId === removedCleanId) {
+                            if (iType && removedType) {
+                              return String(iType) !== String(removedType);
+                            }
+                            return false;
+                          }
+                          return true;
+                        }));
                       }}
                     />
                   </div>

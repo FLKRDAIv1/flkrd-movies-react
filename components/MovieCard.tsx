@@ -17,7 +17,7 @@ interface MovieCardProps {
   item: Content | any;
   isMyListPage?: boolean;
   isProgressRow?: boolean;
-  onRemove?: () => void;
+  onRemove?: (item?: any) => void;
   className?: string;
   mediaType?: 'movie' | 'tv' | 'dubbed';
   type?: 'movie' | 'tv' | 'dubbed';
@@ -55,11 +55,12 @@ const MovieCard = memo(
         e.stopPropagation();
         try {
           const list = JSON.parse(localStorage.getItem('myList') || '[]');
-          const idx = list.findIndex((i: any) => String(i.id) === String(item.id));
+          const cleanId = String(item.id).replace('custom_', '');
+          const idx = list.findIndex((i: any) => String(i.id).replace('custom_', '') === cleanId);
           if (idx > -1) {
             list.splice(idx, 1);
             setIsAdded(false);
-            if (onRemove) onRemove();
+            if (onRemove) onRemove(item);
             addNotification({
               type: 'info',
               title: t('myListRemoveSuccess') || 'Removed from List',
@@ -85,14 +86,27 @@ const MovieCard = memo(
         e.stopPropagation();
         try {
           const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-          const filtered = progress.filter((p: any) => String(p.id) !== String(item.id));
+          const cleanItemId = String(item.id).replace('custom_', '');
+          const itemType = mediaType || item.media_type || item.type;
+          const filtered = progress.filter((p: any) => {
+            const pCleanId = String(p.id).replace('custom_', '');
+            const pType = p.type || p.media_type;
+            if (pCleanId === cleanItemId) {
+              if (pType && itemType) {
+                return String(pType) !== String(itemType);
+              }
+              return false;
+            }
+            return true;
+          });
           localStorage.setItem('watchProgress', JSON.stringify(filtered));
           window.dispatchEvent(new Event('storage'));
-          if (onRemove) onRemove();
+          window.dispatchEvent(new Event('watchProgressUpdated'));
+          if (onRemove) onRemove(item);
           addNotification({
             type: 'info',
-            title: 'Progress Removed',
-            message: item.title || item.name || '',
+            title: language === 'ku' || language === 'badini' ? 'سڕایەوە' : 'Removed',
+            message: language === 'ku' || language === 'badini' ? 'لە بەردەوامی سەیرکردن سڕایەوە' : (item.title || item.name || 'Removed from continue watching'),
           });
         } catch (err) {
           console.error(err);
@@ -290,18 +304,19 @@ const MovieCard = memo(
                 )}
               </div>
 
-              {/* Action Buttons (List Add / Remove / Share / Ban) - Cleanly hidden on touch to avoid blocking poster artwork */}
+              {/* Action Buttons (List Add / Remove / Share / Ban) - Cleanly visible on progress row & list page */}
               <div
                 className={`absolute top-2 right-2 md:top-3 md:right-3 flex flex-col gap-1 z-30 transition-all duration-200 ${
                   isMyListPage || isProgressRow
-                    ? 'opacity-100'
-                    : 'opacity-0 md:group-hover/card:opacity-100'
+                    ? 'opacity-100 pointer-events-auto'
+                    : 'opacity-0 md:group-hover/card:opacity-100 pointer-events-none md:group-hover/card:pointer-events-auto'
                 }`}
               >
                 {isMyListPage && (
                   <button
                     onClick={handleToggleMyList}
-                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 active:bg-red-700 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all cursor-pointer"
                     aria-label={t('myListRemoveSuccess') || 'Remove from my list'}
                     title="Remove from List"
                   >
@@ -312,7 +327,8 @@ const MovieCard = memo(
                 {!isProgressRow && !isMyListPage && (
                   <button
                     onClick={handleToggleMyList}
-                    className={`p-1.5 md:p-2 rounded-lg transition-all shadow-lg active:scale-90 ${
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className={`p-1.5 md:p-2 rounded-lg transition-all shadow-lg active:scale-90 cursor-pointer ${
                       isAdded
                         ? 'bg-brand text-white border border-brand/60'
                         : 'bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95'
@@ -330,9 +346,10 @@ const MovieCard = memo(
                 {isProgressRow && (
                   <button
                     onClick={handleRemoveProgress}
-                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="p-1.5 md:p-2 bg-red-600/90 hover:bg-red-600 active:bg-red-700 text-white rounded-lg shadow-lg border border-red-500/40 active:scale-90 transition-all cursor-pointer"
                     aria-label="Remove watch progress"
-                    title="Remove from progress"
+                    title={language === 'ku' || language === 'badini' ? 'سڕینەوە لە بەردەوامی سەیرکردن' : 'Remove from Continue Watching'}
                   >
                     <X className="w-3.5 h-3.5" strokeWidth={3.5} />
                   </button>
@@ -340,7 +357,8 @@ const MovieCard = memo(
 
                 <button
                   onClick={handleShare}
-                  className="p-1.5 md:p-2 rounded-lg bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95 shadow-lg active:scale-90 transition-all"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="p-1.5 md:p-2 rounded-lg bg-black/75 backdrop-blur-md text-white border border-white/20 hover:bg-black/95 shadow-lg active:scale-90 transition-all cursor-pointer"
                   aria-label="Share movie"
                 >
                   <Share2 className="w-3.5 h-3.5" />
@@ -349,7 +367,8 @@ const MovieCard = memo(
                 {isAdmin && (
                   <button
                     onClick={handleBan}
-                    className="p-1.5 md:p-2 bg-red-950/80 hover:bg-red-700 text-red-300 hover:text-white rounded-lg shadow-lg border border-red-700/50 active:scale-90 transition-all"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="p-1.5 md:p-2 bg-red-950/80 hover:bg-red-700 active:bg-red-800 text-red-300 hover:text-white rounded-lg shadow-lg border border-red-700/50 active:scale-90 transition-all cursor-pointer"
                     aria-label="Ban content from global registry"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

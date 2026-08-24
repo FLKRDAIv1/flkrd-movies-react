@@ -33,12 +33,15 @@ const ContinueWatchingPage: React.FC = () => {
             const data = localStorage.getItem('watchProgress');
             if (data) {
                 const progress: WatchProgress[] = JSON.parse(data);
-                // Filter unfinished items
-                const unfinished = progress.filter(i => i.progress > 5 && i.progress < i.duration * 0.98);
-                setItems(unfinished.sort((a, b) => b.lastWatched - a.lastWatched));
+                // Filter unfinished items (more than 5 seconds and not finished >= 98%)
+                const unfinished = progress.filter(i => i.progress > 5 && i.progress < (i.duration || 3600) * 0.98);
+                setItems(unfinished.sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0)));
+            } else {
+                setItems([]);
             }
         } catch (e) {
             console.error(e);
+            setItems([]);
         } finally {
             setLoading(false);
         }
@@ -47,7 +50,11 @@ const ContinueWatchingPage: React.FC = () => {
     useEffect(() => {
         loadItems();
         window.addEventListener('storage', loadItems);
-        return () => window.removeEventListener('storage', loadItems);
+        window.addEventListener('watchProgressUpdated', loadItems);
+        return () => {
+            window.removeEventListener('storage', loadItems);
+            window.removeEventListener('watchProgressUpdated', loadItems);
+        };
     }, [loadItems]);
 
     const handleRemove = (e: React.MouseEvent, id: number, type: string) => {
@@ -123,7 +130,20 @@ const ContinueWatchingPage: React.FC = () => {
                     items={items}
                     isProgressRow={true}
                     onRemove={(removed) => {
-                        setItems(prev => prev.filter(i => !(i.id === removed.id && String(i.type) === String(removed.type))));
+                        if (!removed) return;
+                        const removedCleanId = String(removed.id).replace('custom_', '');
+                        const removedType = String(removed.type || removed.media_type || '');
+                        setItems(prev => prev.filter(i => {
+                            const iCleanId = String(i.id).replace('custom_', '');
+                            const iType = String(i.type || (i as any).media_type || '');
+                            if (iCleanId === removedCleanId) {
+                                if (iType && removedType) {
+                                    return iType !== removedType;
+                                }
+                                return false;
+                            }
+                            return true;
+                        }));
                     }}
                 />
             ) : (
