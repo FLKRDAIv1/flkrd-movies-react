@@ -284,6 +284,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [activeEpNum, setActiveEpNum] = useState<number>(episode || 1);
     const [playerReloadKey, setPlayerReloadKey] = useState<number>(0);
 
+    const seasonsScrollRef = useRef<HTMLDivElement>(null);
+    const episodesScrollRef = useRef<HTMLDivElement>(null);
+
     const scrollHorizontally = useCallback((ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
         if (ref.current) {
             const isRtl = language === 'ku' || language === 'badini';
@@ -293,26 +296,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             ref.current.scrollBy({ left: delta, behavior: 'smooth' });
         }
     }, [language]);
-
-    // Auto-scroll active episode & season cards into center view when portal opens or selection changes
-    useEffect(() => {
-        if (!showEpisodesPortal) return;
-        const timer = setTimeout(() => {
-            if (episodesScrollRef.current) {
-                const activeEpEl = episodesScrollRef.current.querySelector('[data-active-episode="true"]');
-                if (activeEpEl) {
-                    activeEpEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                }
-            }
-            if (seasonsScrollRef.current) {
-                const activeSeasonEl = seasonsScrollRef.current.querySelector('[data-active-season="true"]');
-                if (activeSeasonEl) {
-                    activeSeasonEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                }
-            }
-        }, 80);
-        return () => clearTimeout(timer);
-    }, [showEpisodesPortal, effectiveSeasonDetails, activeEpNum, activeSeasonNum, season, episode]);
 
     const isDubbedMovie = contentType === 'dubbed' || (sources && sources.some(s => s.name?.includes('DUBBED')));
 
@@ -505,6 +488,27 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [showSubSettings, setShowSubSettings] = useState(false);
     const [showSubtitles, setShowSubtitles] = useState(true);
     const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
+
+    // Auto-scroll active episode & season cards into center view when portal opens or selection changes
+    useEffect(() => {
+        if (!showEpisodesPortal) return;
+        const timer = setTimeout(() => {
+            if (episodesScrollRef.current) {
+                const activeEpEl = episodesScrollRef.current.querySelector('[data-active-episode="true"]');
+                if (activeEpEl) {
+                    activeEpEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+            if (seasonsScrollRef.current) {
+                const activeSeasonEl = seasonsScrollRef.current.querySelector('[data-active-season="true"]');
+                if (activeSeasonEl) {
+                    activeSeasonEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+            }
+        }, 80);
+        return () => clearTimeout(timer);
+    }, [showEpisodesPortal, effectiveSeasonDetails, activeEpNum, activeSeasonNum, season, episode]);
+
     const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
     const [availableSubs, setAvailableSubs] = useState<SubtitleResult[]>([]);
     const [isSearchingSubs, setIsSearchingSubs] = useState(false);
