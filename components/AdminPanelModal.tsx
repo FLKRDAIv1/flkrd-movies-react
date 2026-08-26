@@ -251,16 +251,28 @@ export const AdminPanelModal: React.FC = () => {
     const { addNotification } = useNotification();
     const isKurdish = language === 'ku' || language === 'badini';
 
-    // Build the permitted tabs list dynamically based on sub-admin rules
-    const visibleTabs = TABS.filter(tab => !tab.perm || hasPermission(tab.perm));
+    // All tabs are always visible to admin
+    const visibleTabs = TABS;
     const [activeAdminTab, setActiveAdminTab] = useState('analytics');
+
+    // Close on Escape key
+    useEffect(() => {
+        if (!isAdminModalOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setIsAdminModalOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isAdminModalOpen, setIsAdminModalOpen]);
 
     // Sync active tab to first available visible tab when modal opens
     useEffect(() => {
-        if (isAdminModalOpen && visibleTabs.length > 0) {
-            setActiveAdminTab(visibleTabs[0].id);
+        if (isAdminModalOpen && !activeAdminTab) {
+            setActiveAdminTab('analytics');
         }
-    }, [isAdminModalOpen, visibleTabs.length]);
+    }, [isAdminModalOpen, activeAdminTab]);
 
     // Data States
     const [previewMovies, setPreviewMovies] = useState<any[]>([]);
@@ -802,14 +814,14 @@ export const AdminPanelModal: React.FC = () => {
     return (
         <Portal id="admin-panel-portal">
             <AnimatePresence>
-                <div key="admin-modal-overlay" className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60 backdrop-blur-3xl overflow-hidden">
+                <div key="admin-modal-overlay" className="fixed inset-0 z-[999999] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-3xl overflow-hidden pointer-events-auto">
                     {/* Backdrop Click */}
                     <motion.div
                         key="admin-modal-backdrop"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-0 bg-black/45 cursor-pointer"
+                        className="absolute inset-0 z-0 bg-black/60 cursor-pointer pointer-events-auto"
                         onClick={() => setIsAdminModalOpen(false)}
                     />
 
@@ -820,14 +832,16 @@ export const AdminPanelModal: React.FC = () => {
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 40, opacity: 0, scale: 0.96 }}
                             transition={{ type: "spring", duration: 0.5, bounce: 0.15 }}
-                            className="relative z-10 w-full max-w-5xl h-[85vh] bg-gradient-to-br from-[#0c0c11]/95 to-[#060609]/98 border border-transparent rounded-[2.5rem] shadow-[0_0_80px_rgba(229,9,20,0.15)] flex flex-col md:flex-row overflow-hidden backdrop-blur-xl"
+                            className="relative z-10 w-full max-w-5xl h-[92vh] sm:h-[85vh] bg-gradient-to-br from-[#0c0c11]/98 to-[#060609]/98 border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] shadow-[0_0_80px_rgba(229,9,20,0.25)] flex flex-col md:flex-row overflow-hidden backdrop-blur-2xl pointer-events-auto"
                         >
                             {/* Apple / Gemini AI Glowing Border Beam */}
                             <BorderBeam size={380} duration={9} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
-                            {/* Close Button */}
+                            {/* Close Button — 44px touch target */}
                             <button
                                 onClick={() => setIsAdminModalOpen(false)}
-                                className="absolute top-6 right-6 z-30 text-gray-500 hover:text-white p-2 hover:bg-white/5 rounded-full transition-all duration-300 active:scale-90"
+                                style={{ touchAction: 'manipulation' }}
+                                className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white bg-white/5 hover:bg-red-600/80 rounded-full transition-all duration-300 active:scale-90 border border-white/10 cursor-pointer shadow-lg"
+                                aria-label="Close Admin Console"
                             >
                                 <X size={20} />
                             </button>

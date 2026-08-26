@@ -400,15 +400,19 @@ const MovieCard = memo(
                   {title}
                 </h4>
 
-                {year && (
-                  <div className="flex items-center gap-1.5 mt-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold text-zinc-400">
-                    <span>{year}</span>
-                    <span className="w-0.5 h-0.5 rounded-full bg-zinc-600" />
+                <div className="flex items-center gap-1.5 mt-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold text-zinc-400">
+                  {year && <span>{year}</span>}
+                  {year && <span className="w-0.5 h-0.5 rounded-full bg-zinc-600" />}
+                  {effectiveMediaType === 'tv' && (item.season || item.episode) ? (
+                    <span className="bg-red-600/90 text-white px-1.5 py-0.5 rounded font-black text-[7.5px] sm:text-[8px] md:text-[9px] tracking-tight">
+                      {isRtl ? `وەرزی ${item.season || 1} • ئەڵقەی ${item.episode || 1}` : `S${item.season || 1}:E${item.episode || 1}`}
+                    </span>
+                  ) : (
                     <span className="uppercase text-[7.5px] sm:text-[8px] md:text-[9px] font-bold text-zinc-500 tracking-wider">
                       {effectiveMediaType === 'tv' ? (isRtl ? 'زنجیرە' : 'TV') : (isRtl ? 'فیلم' : 'Movie')}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>

@@ -790,6 +790,8 @@ const GlobalVideoPlayerModal: React.FC = () => {
           contentType={activeVideo.type === 'tv' ? 'tv' : 'movie'}
           title={activeVideo.title}
           tmdbId={activeVideo.tmdbId}
+          backdropPath={activeVideo.backdropPath}
+          posterPath={activeVideo.poster_path || activeVideo.backdropPath}
           season={activeVideo.season || 1}
           episode={activeVideo.episode || 1}
           startFullscreen={true}
@@ -962,24 +964,7 @@ const AppContent: React.FC<{
             const nav: any = window.navigator;
             const isStandalone = nav && (nav.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches));
 
-            if (isAppleDevice && !isStandalone) {
-                const dismissedTime = localStorage.getItem('flkrd_ios_prompt_dismissed');
-                const now = Date.now();
-
-                let shouldPrompt = true;
-                if (dismissedTime) {
-                    const dTime = parseInt(dismissedTime);
-                    if (!isNaN(dTime)) {
-                        const sevenDays = 7 * 24 * 60 * 60 * 1000;
-                        shouldPrompt = (now - dTime) > sevenDays;
-                    }
-                }
-
-                if (shouldPrompt) {
-                    const timer = setTimeout(() => setShowIOSPrompt(true), 25000);
-                    return () => clearTimeout(timer);
-                }
-            }
+            // Prompt only when explicitly triggered by user interaction, not automatically
         } catch (e) {
             console.warn("Apple detection logic failure", e);
         }

@@ -6,7 +6,7 @@ import Row from '../components/Row';
 import MovieCard from '../components/MovieCard';
 import { requests, IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, API_KEY } from '../constants';
 import { fetchData, getMediaType } from '../services/tmdbService';
-import { Content } from '../types';
+import { Content, WatchProgress } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
@@ -37,6 +37,7 @@ const TVShowsPage: React.FC = () => {
   const [genreItems, setGenreItems] = useState<Content[]>([]);
   const [loadingGenre, setLoadingGenre] = useState(false);
   const [isSavedInList, setIsSavedInList] = useState(false);
+  const [continueWatchingTV, setContinueWatchingTV] = useState<WatchProgress[]>([]);
   
   const { t, language } = useTranslation();
   const { addNotification } = useNotification();
@@ -45,6 +46,38 @@ const TVShowsPage: React.FC = () => {
 
   const isRtl = language === 'ku' || language === 'badini';
   const langCode = isRtl ? 'ku-TR' : 'en-US';
+
+  // Load TV Continue Watching
+  const loadTVWatchProgress = useCallback(() => {
+    try {
+      const data = localStorage.getItem('watchProgress');
+      if (!data) {
+        setContinueWatchingTV([]);
+        return;
+      }
+      const progress: WatchProgress[] = JSON.parse(data);
+      const unfinishedTV = progress
+        .filter((item: WatchProgress) => {
+          const isTv = item.type === 'tv' || (item as any).media_type === 'tv';
+          const dur = item.duration || 2700;
+          return isTv && item.progress > 3 && item.progress < dur * 0.98;
+        })
+        .sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0));
+      setContinueWatchingTV(unfinishedTV);
+    } catch (e) {
+      setContinueWatchingTV([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTVWatchProgress();
+    window.addEventListener('watchProgressUpdated', loadTVWatchProgress);
+    window.addEventListener('storage', loadTVWatchProgress);
+    return () => {
+      window.removeEventListener('watchProgressUpdated', loadTVWatchProgress);
+      window.removeEventListener('storage', loadTVWatchProgress);
+    };
+  }, [loadTVWatchProgress]);
 
   // Load Hero TV Spotlight
   useEffect(() => {
@@ -292,6 +325,22 @@ const TVShowsPage: React.FC = () => {
         {selectedGenre === 'all' ? (
           // Main Curated TV Rows View
           <>
+            {continueWatchingTV.length > 0 && (
+              <AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <Row
+                    title={isRtl ? 'بەردەوامبوون لە سەیرکردنی زنجیرەکان' : 'Continue Watching Series'}
+                    items={continueWatchingTV}
+                    type="tv"
+                    isProgressRow={true}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            )}
             <Row title={isRtl ? 'پڕبینەرترین زنجیرەکانی ئەم هەفتەیە' : 'Trending Series This Week'} fetchUrl={requests.fetchTrendingTV(langCode)} type="tv" />
             <Row title={isRtl ? 'زنجیرە بەناوبانگەکان' : 'Popular TV Series'} fetchUrl={requests.fetchPopularTV(langCode)} type="tv" />
             <Row title={isRtl ? 'باشترین زنجیرەکانی مێژوو' : 'Top Rated TV Shows'} fetchUrl={requests.fetchTopRatedTV(langCode)} type="tv" />

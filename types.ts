@@ -59,7 +59,7 @@ export interface SeasonDetails extends Season {
 }
 
 export interface WatchProgress {
-  id: number;
+  id: number | string;
   type: 'movie' | 'tv' | 'dubbed';
   title: string;
   poster_path: string;
@@ -84,8 +84,8 @@ export interface Credits {
 }
 
 export interface MyListItem {
-  id: number;
-  media_type: 'movie' | 'tv';
+  id: number | string;
+  media_type: 'movie' | 'tv' | 'dubbed';
   title: string;
   name?: string;
   poster_path: string;

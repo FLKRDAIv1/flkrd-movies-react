@@ -209,6 +209,10 @@ export const subtitleService = {
         const rawTmdb = tmdbId || (!isRawImdb && imdbId ? String(imdbId) : undefined);
         const effectiveTmdbId = (rawTmdb && /^\d+$/.test(String(rawTmdb))) ? String(rawTmdb) : undefined;
 
+        const isTv = type === 'tv' || Boolean(season && episode);
+        const sNum = (season !== undefined && season !== null) ? Number(season) : (isTv ? 1 : undefined);
+        const epNum = (episode !== undefined && episode !== null) ? Number(episode) : (isTv ? 1 : undefined);
+
         // Auto-resolve IMDb ID from TMDB ID if missing to guarantee 100% engine discovery for all movies & TV shows
         if (!targetImdbId && effectiveTmdbId) {
             try {
@@ -226,14 +230,13 @@ export const subtitleService = {
         if (targetImdbId) {
             const fetchStremio = async (): Promise<SubtitleResult[]> => {
                 try {
-                    const stremioPath = (type === 'tv' && season && episode) 
-                        ? `${targetImdbId}:${season}:${episode}` 
+                    const stremioPath = (isTv && sNum && epNum) 
+                        ? `${targetImdbId}:${sNum}:${epNum}` 
                         : targetImdbId;
-                    const stremioType = type === 'tv' ? 'series' : 'movie';
+                    const stremioType = isTv ? 'series' : 'movie';
                     const stremioUrl = `https://opensubtitles-v3.strem.io/subtitles/${stremioType}/${stremioPath}.json`;
                     console.log("[SUBTITLE SERVICE] Discovery Phase - Trying Stremio Proxy:", stremioUrl);
 
-                    
                     const response = await this.fetchWithFallback(stremioUrl);
                     if (response.ok) {
                         const rawText = await response.text();
@@ -241,12 +244,8 @@ export const subtitleService = {
                             const data = JSON.parse(rawText);
                             if (data.subtitles && data.subtitles.length > 0) {
                                 return data.subtitles
-                                    .filter((s: any) => {
-                                        const lang = (s.lang || '').toLowerCase();
-                                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
-                                    })
                                     .map((s: any) => ({
-                                        id: s.id || `stremio-${Math.random()}`,
+                                        id: s.id || `stremio-${s.lang || 'sub'}-${s.file_id || Math.random()}`,
                                         attributes: {
                                             language: s.lang,
                                             display_name: s.name || `${(s.lang || 'UN').toUpperCase()} Subtitle (Stremio Proxy)`,
@@ -262,7 +261,7 @@ export const subtitleService = {
                 }
                 return [];
             };
-             promises.push(fetchStremio());
+            promises.push(fetchStremio());
         }
 
         // 2. SubDL Discovery Strategy
@@ -270,7 +269,7 @@ export const subtitleService = {
             const fetchSubDL = async (): Promise<SubtitleResult[]> => {
                 try {
                     const queryLangs = 'all';
-                    const results = await this.searchSubDL(targetImdbId, type, season, episode, queryLangs);
+                    const results = await this.searchSubDL(targetImdbId, type, sNum, epNum, queryLangs);
                     return results;
                 } catch (e) {
                     console.warn("[SUBTITLE SERVICE] SubDL discovery failed:", e);
@@ -288,8 +287,8 @@ export const subtitleService = {
                 if (effectiveTmdbId) query += `&tmdb_id=${encodeURIComponent(effectiveTmdbId)}`;
 
                 if (type) query += `&type=${type}`;
-                if (type === 'tv' && season && episode) {
-                    query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
+                if (isTv && sNum && epNum) {
+                    query += `&season_number=${encodeURIComponent(sNum.toString())}&episode_number=${encodeURIComponent(epNum.toString())}`;
                 }
 
                 const baseUrl = getSubApiBase();
@@ -321,10 +320,7 @@ export const subtitleService = {
                         } as SubtitleResult;
                     });
 
-                    return mappedList.filter((item: SubtitleResult) => {
-                        const lang = (item.attributes?.language || '').toLowerCase();
-                        return lang !== 'ku' && lang !== 'ckb' && lang !== 'kur' && !lang.includes('kurd');
-                    });
+                    return mappedList;
                 }
             } catch (error: any) {
                 console.warn("[SUBTITLE SERVICE] REST API Search failed gracefully:", error?.message);
@@ -365,15 +361,15 @@ export const subtitleService = {
             uniqueResults.push(sub);
         }
 
-        // Sort: Kurdish first, then Persian/Arabic, then others
+        // Sort: Kurdish first, then Persian/Arabic, then English, then others
         const sortedResults = uniqueResults.sort((a, b) => {
             const aLang = (a.attributes.language || '').toLowerCase();
             const bLang = (b.attributes.language || '').toLowerCase();
             const aName = (a.attributes.display_name || '').toLowerCase();
             const bName = (b.attributes.display_name || '').toLowerCase();
 
-            const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur' || aName.includes('kurd') || aName.includes('sorani');
-            const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur' || bName.includes('kurd') || bName.includes('sorani');
+            const aIsKu = aLang === 'ku' || aLang === 'ckb' || aLang === 'kur' || aName.includes('kurd') || aName.includes('sorani') || aName.includes('badini');
+            const bIsKu = bLang === 'ku' || bLang === 'ckb' || bLang === 'kur' || bName.includes('kurd') || bName.includes('sorani') || bName.includes('badini');
 
             if (aIsKu && !bIsKu) return -1;
             if (!aIsKu && bIsKu) return 1;
@@ -382,6 +378,11 @@ export const subtitleService = {
             const bIsFaAr = bLang === 'fa' || bLang === 'per' || bLang === 'ar' || bLang === 'ara';
             if (aIsFaAr && !bIsFaAr) return -1;
             if (!aIsFaAr && bIsFaAr) return 1;
+
+            const aIsEn = aLang === 'en' || aLang === 'eng';
+            const bIsEn = bLang === 'en' || bLang === 'eng';
+            if (aIsEn && !bIsEn) return -1;
+            if (!aIsEn && bIsEn) return 1;
 
             return 0;
         });
@@ -398,9 +399,13 @@ export const subtitleService = {
                 .map(code => langMap[code.trim().toLowerCase()] || 'Kurdish')
                 .join(',');
             
+            const isTv = type === 'tv' || Boolean(season && episode);
+            const sNum = (season !== undefined && season !== null) ? Number(season) : (isTv ? 1 : undefined);
+            const epNum = (episode !== undefined && episode !== null) ? Number(episode) : (isTv ? 1 : undefined);
+
             let query = `?engine=subdl&imdb_id=${encodeURIComponent(cleanImdbId)}&languages=${encodeURIComponent(subdlLang)}`;
-            if (type === 'tv' && season && episode) {
-                query += `&season_number=${encodeURIComponent(season.toString())}&episode_number=${encodeURIComponent(episode.toString())}`;
+            if (isTv && sNum && epNum) {
+                query += `&season_number=${encodeURIComponent(sNum.toString())}&episode_number=${encodeURIComponent(epNum.toString())}`;
             }
 
             const baseUrl = getSubApiBase();

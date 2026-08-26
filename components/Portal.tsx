@@ -16,14 +16,17 @@ const Portal: React.FC<PortalProps> = ({ children, id = 'flkrd-portal-root' }) =
     if (!portalRoot) {
       portalRoot = document.createElement('div');
       portalRoot.id = id;
+      portalRoot.style.pointerEvents = 'none';
+      portalRoot.style.position = 'relative';
+      portalRoot.style.zIndex = '99999';
       // Ensure the portal root is always at the top of the body flow for stacking
       document.body.appendChild(portalRoot);
+    } else {
+      portalRoot.style.pointerEvents = 'none';
     }
 
     return () => {
-      // We don't necessarily want to remove the portal root on every unmount 
-      // of a child, but we want to clean up if it's empty.
-      // For now, let's keep it simple and just leave it there or clean it if we're the last.
+      // Keep root or clean if needed
     };
   }, [id]);
 

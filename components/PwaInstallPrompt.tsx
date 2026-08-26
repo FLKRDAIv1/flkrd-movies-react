@@ -148,7 +148,7 @@ export const PwaInstallPrompt: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6"
+        className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6"
       >
         <motion.div
           initial={{ scale: 0.92, y: 30 }}
@@ -160,13 +160,14 @@ export const PwaInstallPrompt: React.FC = () => {
           {/* Top Brand Accent Bar */}
           <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-brand to-amber-500" />
 
-          {/* Close Button */}
+          {/* Close Button — 44px minimum touch target */}
           <button
             onClick={handleClose}
-            className="absolute top-6 right-6 p-2.5 rounded-full bg-white/5 hover:bg-white/15 text-neutral-400 hover:text-white transition-all active:scale-95 z-20"
+            style={{ touchAction: 'manipulation' }}
+            className="absolute top-5 right-5 w-10 h-10 flex items-center justify-center p-0 rounded-full bg-white/5 hover:bg-white/15 active:bg-white/25 text-neutral-400 hover:text-white transition-all active:scale-95 z-20"
             aria-label="Close"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
 
           {/* Header Brand Section */}
@@ -232,7 +233,8 @@ export const PwaInstallPrompt: React.FC = () => {
                 <button
                   onClick={handleNativeInstall}
                   disabled={isInstalling}
-                  className="w-full py-4 px-6 bg-gradient-to-r from-red-600 via-brand to-red-600 hover:from-red-500 hover:to-brand text-white font-black text-sm uppercase italic tracking-widest rounded-2xl shadow-[0_4px_25px_rgba(229,9,20,0.5)] active:scale-98 transition-all flex items-center justify-center gap-3 cursor-pointer"
+                  style={{ touchAction: 'manipulation' }}
+                  className="w-full py-4 px-6 bg-gradient-to-r from-red-600 via-brand to-red-600 hover:from-red-500 hover:to-brand text-white font-black text-sm uppercase italic tracking-widest rounded-2xl shadow-[0_4px_25px_rgba(229,9,20,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 min-h-[54px]"
                 >
                   <Download size={18} />
                   <span>

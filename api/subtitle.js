@@ -160,14 +160,18 @@ export default async function handler(req, res) {
                     console.warn("[BACKEND SUBTITLE PROXY] Scraper failed:", err.message);
                 }
 
-                // OpenSubtitles GET with 3-tier Key & Query Rotation (IMDb -> TMDb -> Title Search)
+                // OpenSubtitles GET with Multi-tier Key & TV Episode Query Rotation
                 let openSubsResults = [];
                 let lastError = null;
 
+                const isTv = type === 'tv' || type === 'series' || Boolean(season_number && episode_number);
                 const isImdbFormat = imdb_id && String(imdb_id).startsWith('tt');
-                const cleanImdbNum = isImdbFormat ? String(imdb_id).replace(/^tt/i, '') : '';
+                const cleanImdbNum = isImdbFormat ? String(imdb_id).replace(/^tt/i, '') : (imdb_id ? String(imdb_id) : '');
+                const cleanImdbWithTt = imdb_id ? (String(imdb_id).startsWith('tt') ? imdb_id : `tt${imdb_id}`) : '';
                 const effectiveTmdbId = tmdb_id || (!isImdbFormat && imdb_id ? imdb_id : null);
                 const movieTitle = await getMovieTitle(cleanImdbNum, effectiveTmdbId, type);
+                const sNum = season_number ? Number(season_number) : (isTv ? 1 : undefined);
+                const epNum = episode_number ? Number(episode_number) : (isTv ? 1 : undefined);
 
                 for (const key of OPENSUBTITLES_KEYS) {
                     try {
@@ -176,9 +180,11 @@ export default async function handler(req, res) {
                             if (languages && languages !== 'all') url += `languages=${languages}&`;
                             if (order_by) url += `order_by=${order_by}&`;
                             if (order_direction) url += `order_direction=${order_direction}&`;
-                            if (type) url += `type=${type === 'tv' ? 'episode' : type}&`;
-                            if (season_number) url += `season_number=${season_number}&`;
-                            if (episode_number) url += `episode_number=${episode_number}&`;
+                            if (isTv) {
+                                url += `type=episode&season_number=${sNum}&episode_number=${epNum}&`;
+                            } else {
+                                url += `type=movie&`;
+                            }
 
                             const response = await fetch(url, {
                                 method: 'GET',
@@ -196,19 +202,43 @@ export default async function handler(req, res) {
                             return [];
                         };
 
-                        // Tier 1: Query by IMDb ID
-                        if (cleanImdbNum) {
-                            openSubsResults = await fetchOpenSubUrl(`imdb_id=${encodeURIComponent(cleanImdbNum)}`);
-                        }
-
-                        // Tier 2: Query by TMDb ID if Tier 1 returned 0 results
-                        if (openSubsResults.length === 0 && effectiveTmdbId) {
-                            openSubsResults = await fetchOpenSubUrl(`tmdb_id=${encodeURIComponent(effectiveTmdbId)}`);
-                        }
-
-                        // Tier 3: Query by Movie Title if Tier 1 & 2 returned 0 results
-                        if (openSubsResults.length === 0 && movieTitle) {
-                            openSubsResults = await fetchOpenSubUrl(`query=${encodeURIComponent(movieTitle)}`);
+                        if (isTv) {
+                            // TV Tier 1: Query by parent_imdb_id (OpenSubtitles v1 standard for series)
+                            if (cleanImdbNum) {
+                                openSubsResults = await fetchOpenSubUrl(`parent_imdb_id=${encodeURIComponent(cleanImdbNum)}`);
+                            }
+                            // TV Tier 1b: Query with full tt-format parent_imdb_id
+                            if (openSubsResults.length === 0 && cleanImdbWithTt) {
+                                openSubsResults = await fetchOpenSubUrl(`parent_imdb_id=${encodeURIComponent(cleanImdbWithTt)}`);
+                            }
+                            // TV Tier 2: Query by parent_tmdb_id (series TMDb ID)
+                            if (openSubsResults.length === 0 && effectiveTmdbId) {
+                                openSubsResults = await fetchOpenSubUrl(`parent_tmdb_id=${encodeURIComponent(effectiveTmdbId)}`);
+                            }
+                            // TV Tier 2b: Fallback to direct imdb_id / tmdb_id with episode params
+                            if (openSubsResults.length === 0 && cleanImdbNum) {
+                                openSubsResults = await fetchOpenSubUrl(`imdb_id=${encodeURIComponent(cleanImdbNum)}`);
+                            }
+                            if (openSubsResults.length === 0 && effectiveTmdbId) {
+                                openSubsResults = await fetchOpenSubUrl(`tmdb_id=${encodeURIComponent(effectiveTmdbId)}`);
+                            }
+                            // TV Tier 3: Query by series title with season/episode constraints
+                            if (openSubsResults.length === 0 && movieTitle) {
+                                openSubsResults = await fetchOpenSubUrl(`query=${encodeURIComponent(movieTitle)}`);
+                            }
+                        } else {
+                            // Movie Tier 1: Query by IMDb ID
+                            if (cleanImdbNum) {
+                                openSubsResults = await fetchOpenSubUrl(`imdb_id=${encodeURIComponent(cleanImdbNum)}`);
+                            }
+                            // Movie Tier 2: Query by TMDb ID
+                            if (openSubsResults.length === 0 && effectiveTmdbId) {
+                                openSubsResults = await fetchOpenSubUrl(`tmdb_id=${encodeURIComponent(effectiveTmdbId)}`);
+                            }
+                            // Movie Tier 3: Query by Movie Title
+                            if (openSubsResults.length === 0 && movieTitle) {
+                                openSubsResults = await fetchOpenSubUrl(`query=${encodeURIComponent(movieTitle)}`);
+                            }
                         }
 
                         if (openSubsResults.length > 0) {

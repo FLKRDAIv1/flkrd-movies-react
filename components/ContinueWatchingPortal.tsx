@@ -51,11 +51,11 @@ const ContinueWatchingPortal: React.FC = () => {
       }
       
       const progress: WatchProgress[] = JSON.parse(progressData);
-      // Filter items with meaningful progress (more than 10s, not at the very end)
+      // Filter items with meaningful progress (more than 3s, not at the very end)
       const unfinished = progress
         .filter(item => {
             const duration = item.duration || 3600;
-            return item.progress > 10 && item.progress < duration * 0.98;
+            return item.progress > 3 && item.progress < duration * 0.98;
         })
         .sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0));
       
@@ -100,9 +100,7 @@ const ContinueWatchingPortal: React.FC = () => {
         const iCleanId = String(i.id).replace('custom_', '');
         const iType = String(i.type || '');
         if (iCleanId === targetCleanId) {
-          if (iType && targetType) {
-            return iType !== targetType;
-          }
+          if (iType && targetType) return iType !== targetType;
           return false;
         }
         return true;
@@ -117,10 +115,14 @@ const ContinueWatchingPortal: React.FC = () => {
   };
 
   const handleResume = (item: WatchProgress) => {
-    if (String(item.type) === 'dubbed') {
-        navigate(`/dubbed-details/${item.id}`);
+    const isCustom = String(item.id).startsWith('custom_');
+    const cleanId = String(item.id).replace('custom_', '');
+    if (String(item.type) === 'dubbed' || isCustom) {
+        navigate(`/dubbed-details/${cleanId}`);
+    } else if (item.type === 'tv') {
+        navigate(`/details/tv/${cleanId}?season=${item.season || 1}&episode=${item.episode || 1}&time=${item.progress || 0}`);
     } else {
-        navigate(`/details/${item.type}/${item.id}`);
+        navigate(`/details/movie/${cleanId}`);
     }
     setIsExpanded(false);
   };

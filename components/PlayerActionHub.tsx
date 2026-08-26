@@ -3,8 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, X, MessageSquare, RefreshCcw, 
   Sparkles, ChevronRight, Tv, Check,
-  Globe, Maximize, Minimize, Clock,
-  PlusCircle, MinusCircle
+  Globe, Maximize, Minimize
 } from 'lucide-react';
 import { EnhancedPlayerSource, getSourceDisplayName } from '../utils/playerSourceUtils';
 
@@ -22,8 +21,6 @@ interface PlayerActionHubProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onClose?: () => void;
-  subtitleOffset?: number;
-  onAdjustSubtitleOffset?: (delta: number) => void;
 }
 
 export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
@@ -39,8 +36,6 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
   isFullscreen = false,
   onToggleFullscreen,
   onClose,
-  subtitleOffset = 0,
-  onAdjustSubtitleOffset,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'main' | 'servers'>('main');
@@ -281,38 +276,7 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
                   </button>
                 )}
 
-                {/* 4. Subtitle Time Sync (Fast Offset Adjust) */}
-                {onAdjustSubtitleOffset && (
-                  <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-right">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Clock size={12} className="text-red-400" />
-                        <span className="text-[11px] font-bold text-white">
-                          ڕێکخستنی کاتی ژێرنووس
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono font-black text-red-400">
-                        {subtitleOffset > 0 ? `+${subtitleOffset}s` : `${subtitleOffset}s`}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        onClick={() => onAdjustSubtitleOffset(-0.5)}
-                        className="flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg bg-white/[0.05] hover:bg-red-600/20 border border-white/10 text-[10px] font-bold text-neutral-200 active:scale-95 transition-all"
-                      >
-                        <MinusCircle size={12} className="text-red-400" />
-                        <span>پێشخستن 0.5s-</span>
-                      </button>
-                      <button
-                        onClick={() => onAdjustSubtitleOffset(0.5)}
-                        className="flex items-center justify-center gap-1 py-1 px-1.5 rounded-lg bg-white/[0.05] hover:bg-red-600/20 border border-white/10 text-[10px] font-bold text-neutral-200 active:scale-95 transition-all"
-                      >
-                        <PlusCircle size={12} className="text-red-400" />
-                        <span>دواخستن 0.5s+</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+
               </div>
             ) : (
               /* Server Selection Drawer */

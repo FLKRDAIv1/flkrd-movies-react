@@ -163,9 +163,9 @@ const HomePage: React.FC = () => {
 
         // Items currently being watched
         const unfinished = progress
-          .filter(i => i.progress > 10 && i.progress < (i.duration || 3600) * 0.98)
+          .filter(i => i.progress > 3 && i.progress < (i.duration || 3600) * 0.98)
           .sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0))
-          .slice(0, 10);
+          .slice(0, 20);
         setContinueWatchingItems(unfinished);
 
         // General history (excluding items in continue watching to avoid duplication)

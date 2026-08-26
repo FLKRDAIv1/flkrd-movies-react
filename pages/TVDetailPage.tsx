@@ -604,16 +604,23 @@ const TVDetailPage: React.FC = () => {
           const tvProg = JSON.parse(localStorage.getItem('tv_progress') || '{}');
           setWatchedEpisodes(new Set(tvProg[id] || []));
 
+          // Check query params first, then watchProgress fallback
+          const urlParams = new URLSearchParams(window.location.search);
+          const qSeason = urlParams.get('season') ? parseInt(urlParams.get('season')!) : null;
+          const qEpisode = urlParams.get('episode') ? parseInt(urlParams.get('episode')!) : null;
+          const qTime = urlParams.get('time') ? parseFloat(urlParams.get('time')!) : null;
+
           const progressData = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-          const saved = progressData.find((p: any) => p.id === data.id && p.type === 'tv');
-          if (saved) {
-            setSelectedSeason(saved.season || 1);
-            setSelectedEpisode(saved.episode || 1);
-            setInitialProgress(saved.progress || 0);
-            fetchSeasonDetails(saved.season || 1);
-          } else {
-            fetchSeasonDetails(1);
-          }
+          const saved = progressData.find((p: any) => (p.id === data.id || String(p.id) === String(data.id)) && (p.type === 'tv' || p.media_type === 'tv'));
+
+          const finalSeason = qSeason || (saved ? saved.season : 1) || 1;
+          const finalEpisode = qEpisode || (saved ? saved.episode : 1) || 1;
+          const finalProgress = qTime !== null ? qTime : (saved ? saved.progress : 0) || 0;
+
+          setSelectedSeason(finalSeason);
+          setSelectedEpisode(finalEpisode);
+          setInitialProgress(finalProgress);
+          fetchSeasonDetails(finalSeason);
         }
       } catch (error) { console.error(error); } finally { setLoading(false); }
     };

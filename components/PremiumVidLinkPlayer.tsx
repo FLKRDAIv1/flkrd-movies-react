@@ -262,6 +262,17 @@ export default function PremiumVidLinkPlayer({
   const [loadingSubs, setLoadingSubs] = useState(false);
   const [subSearchQuery, setSubSearchQuery] = useState('');
   const [currentSubId, setCurrentSubId] = useState<number | null>(null);
+
+  // Auto-restore per-track offset when subtitle changes
+  useEffect(() => {
+    currentSubIdOffsetRef.current = currentSubId;
+    if (currentSubId === null || typeof window === 'undefined') return;
+    const raw = localStorage.getItem(`flkrd_sub_offset_track_${tmdbId || ''}_${currentSubId}`);
+    if (raw !== null) {
+      const saved = parseInt(raw, 10);
+      if (!isNaN(saved)) setSubtitleOffsetRaw(saved);
+    }
+  }, [currentSubId, tmdbId]);
   const [hasSearchedCloud, setHasSearchedCloud] = useState(false);
 
   useEffect(() => {
@@ -295,9 +306,26 @@ export default function PremiumVidLinkPlayer({
   const [subColor, setSubColor] = useState('#ffffff');
   const [subBgOpacity, setSubBgOpacity] = useState(0.8);
   const [subBlur, setSubBlur] = useState(true);
-  const [subtitleOffset, setSubtitleOffset] = useState(0);
+  const [subtitleOffset, setSubtitleOffsetRaw] = useState(0);
   const subtitleOffsetRef = React.useRef(subtitleOffset);
+  const currentSubIdOffsetRef = React.useRef<number | null>(null);
   useEffect(() => { subtitleOffsetRef.current = subtitleOffset; }, [subtitleOffset]);
+
+  const setSubtitleOffset = React.useCallback((val: number | ((prev: number) => number)) => {
+    setSubtitleOffsetRaw((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      if (typeof window === 'undefined') return next;
+      // Per-movie fallback
+      const movieKey = `flkrd_sub_offset_${tmdbId || ''}${type === 'tv' ? `_s${season || 0}_e${episode || 0}` : ''}`;
+      if (tmdbId) localStorage.setItem(movieKey, String(next));
+      // Per-track precise memory
+      const trackId = currentSubIdOffsetRef.current;
+      if (trackId !== null) {
+        localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${trackId}`, String(next));
+      }
+      return next;
+    });
+  }, [tmdbId, type, season, episode]);
   const [showSubBackground, setShowSubBackground] = useState(() => {
     try {
       const saved = localStorage.getItem('sub_show_bg');
@@ -916,7 +944,11 @@ export default function PremiumVidLinkPlayer({
       }
     }
 
-    startGlobalTranslation(sub, targetId, type || 'movie', season || 0, episode || 0, targetLang);
+    const isTv = type === 'tv' || (type as string) === 'series';
+    const effSeason = isTv ? Number(season || 1) : 0;
+    const effEpisode = isTv ? Number(episode || 1) : 0;
+
+    startGlobalTranslation(sub, targetId, type || 'movie', effSeason, effEpisode, targetLang);
   };
 
   // Sync with global background subtitle translator
@@ -924,8 +956,12 @@ export default function PremiumVidLinkPlayer({
     const targetId = resolvedTmdbId || tmdbId || imdbId;
     if (!targetId) return;
 
+    const isTv = type === 'tv' || (type as string) === 'series';
+    const effSeason = isTv ? Number(season || 1) : 0;
+    const effEpisode = isTv ? Number(episode || 1) : 0;
+
     const isSameMedia = String(activeTranslation.tmdbId) === String(targetId) &&
-      (type !== 'tv' || (activeTranslation.season === (season || 0) && activeTranslation.episode === (episode || 0)));
+      (!isTv || (Number(activeTranslation.season || 0) === effSeason && Number(activeTranslation.episode || 0) === effEpisode));
 
     if (activeTranslation.subtitleUrl && isSameMedia) {
       const subUrl = activeTranslation.subtitleUrl;

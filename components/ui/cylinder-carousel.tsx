@@ -90,6 +90,7 @@ export const CylinderCarousel = React.forwardRef<HTMLDivElement, CylinderCarouse
                 width: "var(--w)",
                 aspectRatio: "7/10",
                 transform: `rotateY(calc(${i} * var(--ba))) translateZ(var(--radius))`,
+                touchAction: 'manipulation',
               }}
             >
               {/* Front Face (Visible when facing viewer) */}

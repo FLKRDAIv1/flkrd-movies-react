@@ -59,10 +59,11 @@ const OnboardingTour: React.FC = () => {
     // Check if user has already completed or skipped the onboarding tour
     const completed = localStorage.getItem('flkrd_onboarding_completed');
     if (!completed) {
-      // Delay showing the invitation modal slightly to allow initial load animations to finish
+      // Delay showing the invitation modal — wait longer to avoid clashing with
+      // the notification prompt which shows at 3s. Tour shows at 7s.
       const timer = setTimeout(() => {
         setShowInvite(true);
-      }, 3000);
+      }, 7000);
       return () => clearTimeout(timer);
     }
   }, []);
@@ -396,23 +397,52 @@ const OnboardingTour: React.FC = () => {
     };
   };
 
+  // Close tour on Escape key
+  useEffect(() => {
+    if (!showInvite && !isActive) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkipTour();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showInvite, isActive, handleSkipTour]);
+
+  if (!showInvite && !isActive) return null;
+
   return (
     <div className="fixed inset-0 z-[999999] pointer-events-none overflow-hidden">
       
       {/* ── SCREEN BANNER / INVITATION MODAL ── */}
       <AnimatePresence>
         {showInvite && (
-          <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 pointer-events-auto select-none" dir="rtl">
+          <div 
+            onClick={handleSkipTour}
+            className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 pointer-events-auto select-none cursor-pointer" 
+            dir="rtl"
+          >
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="w-full max-w-sm bg-[#0e0e11]/95 border rounded-[2rem] p-6 text-right relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm bg-[#0e0e11]/95 border rounded-[2rem] p-6 text-right relative overflow-hidden cursor-default shadow-2xl"
               style={{
                 borderColor: `rgba(${r}, ${g}, ${b}, 0.25)`,
                 boxShadow: `0 15px 40px rgba(${r}, ${g}, ${b}, 0.15)`
               }}
             >
+              {/* Close Button */}
+              <button
+                onClick={handleSkipTour}
+                style={{ touchAction: 'manipulation' }}
+                className="absolute top-4 left-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/15 active:bg-white/25 text-gray-400 hover:text-white transition-all"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+
               {/* Radial red shine overlay */}
               <div 
                 className="absolute inset-x-0 -top-24 h-48 pointer-events-none opacity-40 blur-3xl z-0" 
@@ -440,13 +470,17 @@ const OnboardingTour: React.FC = () => {
                 <div className="w-full flex flex-col gap-2 mt-2">
                   <button
                     onClick={handleStartTour}
+                    style={{ 
+                      background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)`,
+                      touchAction: 'manipulation'
+                    }}
                     className="w-full py-3.5 rounded-2xl text-white text-xs font-[1000] uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-md"
-                    style={{ background: `linear-gradient(135deg, rgb(${r}, ${g}, ${b}) 0%, rgba(${r}, ${g}, ${b}, 0.7) 100%)` }}
                   >
                     دەستپێکردنی گەشت <ChevronRight size={14} />
                   </button>
                   <button
                     onClick={handleSkipTour}
+                    style={{ touchAction: 'manipulation' }}
                     className="w-full py-3.5 rounded-2xl bg-white/5 border border-white/10 text-gray-400 hover:text-white text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
                   >
                     بازدان ( Skip )

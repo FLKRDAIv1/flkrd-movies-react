@@ -250,6 +250,12 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
               <span>{year}</span>
             </span>
 
+            {mediaType === 'tv' && (item.season || item.episode) && (
+              <span className="bg-red-600/90 text-white px-2 py-0.5 rounded font-black text-[10px] tracking-tight">
+                {isRtl ? `وەرزی ${item.season || 1} • ئەڵقەی ${item.episode || 1}` : `S${item.season || 1}:E${item.episode || 1}`}
+              </span>
+            )}
+
             {!isCustom && (
               <div className="scale-90 origin-left">
                 <KurdishCCBadge tmdbId={Number(item.id)} type={mediaType === 'tv' ? 'tv' : 'movie'} />

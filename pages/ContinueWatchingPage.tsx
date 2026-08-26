@@ -33,8 +33,8 @@ const ContinueWatchingPage: React.FC = () => {
             const data = localStorage.getItem('watchProgress');
             if (data) {
                 const progress: WatchProgress[] = JSON.parse(data);
-                // Filter unfinished items (more than 5 seconds and not finished >= 98%)
-                const unfinished = progress.filter(i => i.progress > 5 && i.progress < (i.duration || 3600) * 0.98);
+                // Filter unfinished items (more than 3 seconds and not finished >= 98%)
+                const unfinished = progress.filter(i => i.progress > 3 && i.progress < (i.duration || 3600) * 0.98);
                 setItems(unfinished.sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0)));
             } else {
                 setItems([]);
@@ -57,22 +57,39 @@ const ContinueWatchingPage: React.FC = () => {
         };
     }, [loadItems]);
 
-    const handleRemove = (e: React.MouseEvent, id: number, type: string) => {
+    const handleRemove = (e: React.MouseEvent, id: any, type: string) => {
         e.stopPropagation();
         const progress = JSON.parse(localStorage.getItem('watchProgress') || '[]');
-        const updated = progress.filter((i: WatchProgress) => !(i.id === id && String(i.type) === type));
+        const cleanTargetId = String(id).replace('custom_', '');
+        const updated = progress.filter((i: WatchProgress) => {
+            const iClean = String(i.id).replace('custom_', '');
+            const iType = String(i.type || '');
+            if (iClean === cleanTargetId) {
+                if (iType && type) return iType !== type;
+                return false;
+            }
+            return true;
+        });
         localStorage.setItem('watchProgress', JSON.stringify(updated));
-        setItems(prev => prev.filter(i => !(i.id === id && String(i.type) === type)));
+        setItems(updated);
         window.dispatchEvent(new Event('storage'));
         window.dispatchEvent(new Event('watchProgressUpdated'));
-        addNotification({ type: 'info', title: 'Transmission Cleared', message: t('removeFromProgress') });
+        addNotification({ 
+            type: 'info', 
+            title: language === 'ku' || language === 'badini' ? 'سڕایەوە' : 'Removed', 
+            message: language === 'ku' || language === 'badini' ? 'لە بەردەوامی سەیرکردن سڕایەوە' : (t('removeFromProgress') || 'Removed from continue watching') 
+        });
     };
 
     const handleResume = (item: WatchProgress) => {
-        if (String(item.type) === 'dubbed') {
-            navigate(`/dubbed-details/${item.id}`);
+        const isCustom = String(item.id).startsWith('custom_');
+        const cleanId = String(item.id).replace('custom_', '');
+        if (String(item.type) === 'dubbed' || isCustom) {
+            navigate(`/dubbed-details/${cleanId}`);
+        } else if (item.type === 'tv') {
+            navigate(`/details/tv/${cleanId}?season=${item.season || 1}&episode=${item.episode || 1}&time=${item.progress || 0}`);
         } else {
-            navigate(`/details/${item.type}/${item.id}`);
+            navigate(`/details/movie/${cleanId}`);
         }
     };
 

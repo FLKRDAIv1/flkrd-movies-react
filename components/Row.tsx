@@ -185,7 +185,8 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
       scrollTicking.current = false;
       if (rowRef.current && fetchUrl && hasMore && !loadingMore) {
           const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-          const isNearEnd = scrollWidth - scrollLeft - clientWidth < 1200;
+          const absScroll = Math.abs(scrollLeft);
+          const isNearEnd = scrollWidth - absScroll - clientWidth < 1200;
 
           if (isNearEnd) {
               setLoadingMore(true);
@@ -306,7 +307,8 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
           <div 
             ref={rowRef} 
             onScroll={handleScroll} 
-            className="flex overflow-x-scroll scrollbar-hide gap-3.5 sm:gap-4 md:gap-5 lg:gap-6 py-3 px-1 scroll-smooth overflow-visible"
+            className="flex overflow-x-auto scrollbar-hide gap-3.5 sm:gap-4 md:gap-5 lg:gap-6 py-3 px-1 scroll-smooth"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}
           >
             {content.map((item, index) => {
                 const mediaType = (item as Content).media_type || (item as WatchProgress).type || type;

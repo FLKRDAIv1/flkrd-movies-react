@@ -968,7 +968,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           if (partialSubtitleUrl && typeof window !== 'undefined') {
             console.log(`[UI CONTEXT] Live progressive subtitle update (${progress}%):`, partialSubtitleUrl.substring(0, 50));
             window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
-              detail: { subtitleUrl: partialSubtitleUrl, tmdbId, progress, isFinal: false }
+              detail: { subtitleUrl: partialSubtitleUrl, tmdbId, season, episode, mediaType, progress, isFinal: false }
             }));
           }
         },

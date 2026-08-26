@@ -16,7 +16,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUI } from '../contexts/UIContext';
 import { usePlayer } from '../contexts/PlayerContext';
 import { useNotification } from '../contexts/NotificationContext';
-import { Season, SeasonDetails } from '../types';
+import { Season, SeasonDetails, WatchProgress } from '../types';
 import {
     fetchSubtitleEdits,
     saveSubtitleLineEdit,
@@ -54,6 +54,8 @@ interface UniversalVideoPlayerProps {
     setActiveSource?: (source: string) => void;
     sources?: any[];
     isPip?: boolean;
+    backdropPath?: string;
+    posterPath?: string;
 }
 
 declare global {
@@ -267,7 +269,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     activeSource,
     setActiveSource,
     sources = [],
-    isPip = false
+    isPip = false,
+    backdropPath,
+    posterPath
 }) => {
     const { isAdmin, glassConfig, refreshTranslatedMovieIds, activeTranslation, startGlobalTranslation, pauseGlobalTranslation, resumeGlobalTranslation, cancelGlobalTranslation, dismissCelebration, playerConfig = { controlsAlign: 0, controlsOffset: 16 } } = useUI();
     const { isPaused, setIsPaused, setActiveVideo: setGlobalActiveVideo } = usePlayer();
@@ -284,18 +288,62 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [activeEpNum, setActiveEpNum] = useState<number>(episode || 1);
     const [playerReloadKey, setPlayerReloadKey] = useState<number>(0);
 
+    // Sync active season and episode when parent props update
+    useEffect(() => {
+        if (season !== undefined && season !== null) {
+            setActiveSeasonNum(Number(season));
+        }
+    }, [season]);
+
+    useEffect(() => {
+        if (episode !== undefined && episode !== null) {
+            setActiveEpNum(Number(episode));
+        }
+    }, [episode]);
+
+    const isTvContent = contentType === 'tv' || contentType === 'series';
+    const effectiveSeason = isTvContent ? (activeSeasonNum || season || 1) : (season ?? 0);
+    const effectiveEpisode = isTvContent ? (activeEpNum || episode || 1) : (episode ?? 0);
+
     const seasonsScrollRef = useRef<HTMLDivElement>(null);
     const episodesScrollRef = useRef<HTMLDivElement>(null);
 
+    const isDraggingEpisodesRef = useRef(false);
+    const startXEpisodesRef = useRef(0);
+    const scrollLeftEpisodesRef = useRef(0);
+    const hasDraggedEpisodesRef = useRef(false);
+
+    const handleEpisodeDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+        isDraggingEpisodesRef.current = true;
+        hasDraggedEpisodesRef.current = false;
+        startXEpisodesRef.current = e.pageX - (e.currentTarget.offsetLeft || 0);
+        scrollLeftEpisodesRef.current = e.currentTarget.scrollLeft;
+    };
+
+    const handleEpisodeDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!isDraggingEpisodesRef.current) return;
+        const x = e.pageX - (e.currentTarget.offsetLeft || 0);
+        const walk = (x - startXEpisodesRef.current) * 1.5;
+        if (Math.abs(walk) > 6) {
+            hasDraggedEpisodesRef.current = true;
+        }
+        e.currentTarget.scrollLeft = scrollLeftEpisodesRef.current - walk;
+    };
+
+    const handleEpisodeDragEnd = () => {
+        isDraggingEpisodesRef.current = false;
+        setTimeout(() => {
+            hasDraggedEpisodesRef.current = false;
+        }, 80);
+    };
+
     const scrollHorizontally = useCallback((ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
         if (ref.current) {
-            const isRtl = language === 'ku' || language === 'badini';
-            const amount = 340;
-            // In RTL browsers, scroll direction is flipped
-            const delta = direction === 'left' ? (isRtl ? amount : -amount) : (isRtl ? -amount : amount);
+            const amount = 380;
+            const delta = direction === 'left' ? -amount : amount;
             ref.current.scrollBy({ left: delta, behavior: 'smooth' });
         }
-    }, [language]);
+    }, []);
 
     const isDubbedMovie = contentType === 'dubbed' || (sources && sources.some(s => s.name?.includes('DUBBED')));
 
@@ -475,13 +523,29 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return 0;
     });
 
+    // Ref so that setSubtitleOffset (a useCallback) can always read the latest currentSubId
+    // without needing to add it as a dependency (which would recreate the callback on every subtitle change).
+    const currentSubIdRef = useRef<string | null>(null);
+
     const setSubtitleOffset = useCallback((val: number | ((prev: number) => number)) => {
         setSubtitleOffsetState((prev) => {
             const next = typeof val === 'function' ? val(prev) : val;
-            const key = tmdbId || title ? `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}` : null;
-            if (typeof window !== 'undefined' && key) {
-                localStorage.setItem(key, String(next));
+
+            if (typeof window === 'undefined') return next;
+
+            // 1. Always persist a per-movie fallback offset.
+            const movieKey = `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}`;
+            if (tmdbId || title) localStorage.setItem(movieKey, String(next));
+
+            // 2. Also persist a per-subtitle-track offset (more precise).
+            //    Key format: flkrd_sub_offset_track_<tmdbId>_<sanitised-trackId>
+            //    This means if OpenSubtitles track X always needs +2 s, it is remembered.
+            const trackId = currentSubIdRef.current;
+            if (trackId) {
+                const safeId = trackId.replace(/[^a-z0-9_-]/gi, '_').slice(0, 100);
+                localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`, String(next));
             }
+
             return next;
         });
     }, [tmdbId, title]);
@@ -985,6 +1049,38 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
     const [subStudioTab, setSubStudioTab] = useState<'sub' | 'dub' | 'lighting' | 'shortcuts'>('sub');
     const [currentSubId, setCurrentSubId] = useState<string | null>(null);
+
+    // Keep the ref in sync so setSubtitleOffset can always read the latest value.
+    useEffect(() => {
+        currentSubIdRef.current = currentSubId;
+
+        // When a subtitle track is activated, auto-restore the offset that was
+        // last saved for that exact track.  Falls back silently if none exists.
+        if (!currentSubId || typeof window === 'undefined') return;
+
+        const safeId = currentSubId.replace(/[^a-z0-9_-]/gi, '_').slice(0, 100);
+        const trackKey = `flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`;
+        const raw = localStorage.getItem(trackKey);
+        if (raw !== null) {
+            const saved = parseInt(raw, 10);
+            if (!isNaN(saved) && saved !== 0) {
+                // Apply directly to state — no side-effects, no network calls.
+                setSubtitleOffsetState(saved);
+                const sign = saved > 0 ? '+' : '';
+                const sec = (saved / 1000).toFixed(1);
+                addNotification({
+                    type: 'info',
+                    title: (language === 'ku' || language === 'badini')
+                        ? `⏱ ژێرنووس هاوکات کرا (${sign}${sec}s)`
+                        : `⏱ Subtitle sync restored (${sign}${sec}s)`,
+                    message: (language === 'ku' || language === 'badini')
+                        ? 'ئۆفسێتی پاشەکەوتکراوی ئەم ترانکە ئۆتۆماتیک جێبەجێکرا.'
+                        : 'Previously saved timing offset applied automatically.',
+                    duration: 3000,
+                });
+            }
+        }
+    }, [currentSubId, tmdbId]);
     const [activeAudioTrack, setActiveAudioTrack] = useState<string>('en');
     const [showDubInfoModal, setShowDubInfoModal] = useState<string | null>(null);
     const [translatedTitles, setTranslatedTitles] = useState<Record<string, string>>({});
@@ -1353,8 +1449,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         if (!searchId) return;
         setIsSearchingSubs(true);
         try {
-            console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for ID:", searchId);
-            const results = await subtitleService.searchSubtitles(searchId, contentType, season, episode, 'all', true, tmdbId ? String(tmdbId) : undefined);
+            console.log("[UNIVERSAL-PLAYER] Manual searching all subtitles for ID:", searchId, "S:", isTvContent ? effectiveSeason : 'N/A', "E:", isTvContent ? effectiveEpisode : 'N/A');
+            const s = isTvContent ? effectiveSeason : undefined;
+            const ep = isTvContent ? effectiveEpisode : undefined;
+            const results = await subtitleService.searchSubtitles(searchId, contentType, s, ep, 'all', true, tmdbId ? String(tmdbId) : undefined);
             const list = Array.isArray(results) ? results : [];
             const safeList = list.filter(s => s && s.attributes);
             setAvailableSubsWithVirtual(safeList);
@@ -1393,12 +1491,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, [subtitleUrl]);
 
-    // Background discovery of Kurdish Subtitles on load or when parameters change
+    // Background discovery of Kurdish Subtitles on load or when episode/season parameters change
     useEffect(() => {
+        let isCancelled = false;
+
         const discoverKurdishCC = async () => {
             if (!contentType) return;
             let idToQuery = tmdbId || imdbId;
             if (!idToQuery) return;
+
+            // Clear previous subtitle cues and active track on episode change to prevent mismatched display
+            if (isTvContent) {
+                setLocalSubtitleUrl(null);
+                setSubtitleCues([]);
+                setKurdishSub(null);
+                setCurrentSubId(null);
+            }
 
             // Resolve IMDb ID to TMDb ID if needed
             if (idToQuery.toString().startsWith('tt')) {
@@ -1409,17 +1517,21 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
 
             try {
-                // 1. Fetch available subs from OpenSubtitles/SubDL/Kurdsubtitle across all active engines
+                // 1. Fetch available subs from OpenSubtitles/Stremio/SubDL for the exact season & episode
                 let safeResults: SubtitleResult[] = [];
                 const searchId = imdbId || (tmdbId ? String(tmdbId) : '');
                 if (searchId) {
                     try {
-                        const results = await subtitleService.searchSubtitles(searchId, contentType, season, episode, 'all', true, tmdbId ? String(tmdbId) : undefined);
+                        const s = isTvContent ? effectiveSeason : undefined;
+                        const ep = isTvContent ? effectiveEpisode : undefined;
+                        const results = await subtitleService.searchSubtitles(searchId, contentType, s, ep, 'all', true, tmdbId ? String(tmdbId) : undefined);
                         safeResults = Array.isArray(results) ? results.filter(s => s && s.attributes) : [];
                     } catch (openSubErr) {
                         console.warn("[UNIVERSAL-PLAYER] Subtitle search failed:", openSubErr);
                     }
                 }
+
+                if (isCancelled) return;
 
                 let customSub: SubtitleResult | null = null;
                 const customSubsList: SubtitleResult[] = [];
@@ -1437,14 +1549,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
                 let dbSubs: any[] = [];
                 try {
-                    const targetIds = [String(tmdbId || ''), String(imdbId || '')].filter(id => id && id !== 'undefined');
+                    const validIds = [String(tmdbId || ''), String(imdbId || '')].filter(id => id && id !== 'undefined');
                     let query = supabase
                         .from('custom_subtitles')
                         .select('*')
-                        .in('tmdb_id', targetIds);
+                        .in('tmdb_id', validIds);
 
-                    if (contentType === 'tv' || contentType === 'series' || season || episode) {
-                        query = query.eq('season', season ?? 0).eq('episode', episode ?? 0);
+                    if (isTvContent) {
+                        query = query.eq('season', effectiveSeason).eq('episode', effectiveEpisode);
                     }
 
                     const supabasePromise = query;
@@ -1454,6 +1566,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 } catch (spErr) {
                     console.warn("[UNIVERSAL-PLAYER] Supabase query bypassed gracefully:", spErr);
                 }
+
+                if (isCancelled) return;
 
                 if (dbSubs && dbSubs.length > 0) {
                     dbSubs.forEach(dbSub => {
@@ -1553,7 +1667,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             const parts = customSub.id.replace('custom-local-', '').split('-');
                             const localLang = parts[parts.length - 1] || 'ku';
                             const localId = parts.slice(0, parts.length - 1).join('-');
-                            const lk = `flkrd_translated_sub_${localId}_${contentType || 'movie'}_${season || 0}_${episode || 0}_${localLang}`;
+                            const lk = `flkrd_translated_sub_${localId}_${contentType || 'movie'}_${effectiveSeason}_${effectiveEpisode}_${localLang}`;
                             const raw = localStorage.getItem(lk);
                             if (raw) {
                                 try {
@@ -1587,7 +1701,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }
                         }
 
-                        if (loadedText) {
+                        if (loadedText && !isCancelled) {
                             const processedText = cleanAndFormatVtt(loadedText);
                             const blob = new Blob([processedText], { type: 'text/vtt;charset=utf-8' });
                             setLocalSubtitleUrl(URL.createObjectURL(blob));
@@ -1608,7 +1722,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 // ⚡ Zero-Click AI Kurdish Auto-Translation Pipeline:
                 // If no native Kurdish sub was found or downloaded, automatically fetch the best English/Original sub
                 // from OpenSubtitles/Stremio, pre-load it, and auto-translate it to Kurdish seamlessly!
-                if ((!customSub || !loadedText) && safeResults.length > 0) {
+                if ((!customSub || !loadedText) && safeResults.length > 0 && !isCancelled) {
                     const foundBaseSub = safeResults.find(sub => {
                         const lang = (sub?.attributes?.language || '').toLowerCase();
                         return lang === 'en' || lang === 'eng';
@@ -1618,20 +1732,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     }) || safeResults[0];
 
                     if (foundBaseSub) {
-                        console.log("[UNIVERSAL-PLAYER] 🤖 Zero-click Kurdish Auto-Pipeline: Translating base subtitle to Kurdish...", foundBaseSub.attributes?.language);
+                        console.log(`[UNIVERSAL-PLAYER] 🤖 Zero-click Kurdish Auto-Pipeline: Translating base subtitle to Kurdish (S${effectiveSeason} E${effectiveEpisode})...`, foundBaseSub.attributes?.language);
                         const targetLang = (language === 'badini') ? 'badini' : 'ckb';
                         handleStartTranslation(foundBaseSub, targetLang);
                     }
                 }
-                setAvailableSubsWithVirtual(finalSubs);
+                if (!isCancelled) {
+                    setAvailableSubsWithVirtual(finalSubs);
+                }
             } catch (e: any) {
                 console.warn("[UNIVERSAL-PLAYER] Background Kurdish CC search failed gracefully:", e?.message || e);
-                setAvailableSubsWithVirtual([]);
+                if (!isCancelled) {
+                    setAvailableSubsWithVirtual([]);
+                }
             }
         };
 
         discoverKurdishCC();
-    }, [imdbId, contentType, season, episode, tmdbId]);
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [imdbId, contentType, season, episode, tmdbId, activeSeasonNum, activeEpNum, language]);
 
     // --- Load subtitle edits from Supabase and subscribe to Realtime changes ---
     useEffect(() => {
@@ -1641,8 +1763,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const key: SubtitleEditKey = {
             tmdbId: String(targetId),
             mediaType: contentType || 'movie',
-            season: season ?? 0,
-            episode: episode ?? 0,
+            season: isTvContent ? effectiveSeason : 0,
+            episode: isTvContent ? effectiveEpisode : 0,
             language: 'ku',
         };
 
@@ -1657,7 +1779,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [tmdbId, imdbId, contentType, season, episode, localSubtitleUrl]);
+    }, [tmdbId, imdbId, contentType, isTvContent, effectiveSeason, effectiveEpisode, localSubtitleUrl]);
 
     // Background discovery of Kurdish Dubbed movies from Supabase Cloud
     useEffect(() => {
@@ -1916,8 +2038,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             if (
                 cache &&
                 String(cache.targetId) === String(targetId) &&
-                Number(cache.season) === Number(season || 0) &&
-                Number(cache.episode) === Number(episode || 0)
+                Number(cache.season || 0) === Number(effectiveSeason) &&
+                Number(cache.episode || 0) === Number(effectiveEpisode)
             ) {
                 // Clear immediately to prevent infinite loop on failure
                 localStorage.removeItem('flkrd_translating_sub_cache');
@@ -1933,7 +2055,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         } catch (e) {
             console.error("[UNIVERSAL-PLAYER] Resuming translation error:", e);
         }
-    }, [tmdbId, imdbId, season, episode]);
+    }, [tmdbId, imdbId, effectiveSeason, effectiveEpisode]);
 
     const handleStartTranslation = async (sub: SubtitleResult, targetLang: string) => {
         const targetId = tmdbId || imdbId;
@@ -1962,8 +2084,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         }
 
-        // Now start the full translation pipeline in background
-        startGlobalTranslation(sub, targetId, contentType || 'movie', season || 0, episode || 0, targetLang);
+        // Now start the full translation pipeline in background for the exact active season and episode
+        const s = isTvContent ? effectiveSeason : 0;
+        const ep = isTvContent ? effectiveEpisode : 0;
+        startGlobalTranslation(sub, targetId, contentType || 'movie', s, ep, targetLang);
     };
 
 
@@ -1973,7 +2097,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         if (!targetId) return;
 
         const isSameMedia = String(activeTranslation.tmdbId) === String(targetId) &&
-            (contentType !== 'tv' || (activeTranslation.season === (season || 0) && activeTranslation.episode === (episode || 0)));
+            (!isTvContent || (Number(activeTranslation.season || 0) === effectiveSeason && Number(activeTranslation.episode || 0) === effectiveEpisode));
 
         if (activeTranslation.subtitleUrl && isSameMedia) {
             const subUrl = activeTranslation.subtitleUrl;
@@ -2001,21 +2125,56 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 });
             }
         }
-    }, [activeTranslation, tmdbId, imdbId, contentType, season, episode, localSubtitleUrl]);
+    }, [activeTranslation, tmdbId, imdbId, contentType, isTvContent, effectiveSeason, effectiveEpisode, localSubtitleUrl]);
+
+    // Live custom event listener for instant subtitle updates
+    useEffect(() => {
+        const handleCustomSubEvent = (e: any) => {
+            const detail = e.detail;
+            if (!detail) return;
+            const targetId = tmdbId || imdbId;
+            if (String(detail.tmdbId) !== String(targetId)) return;
+
+            if (isTvContent) {
+                if (Number(detail.season || 0) !== effectiveSeason || Number(detail.episode || 0) !== effectiveEpisode) {
+                    return;
+                }
+            }
+
+            if (detail.subtitleUrl) {
+                setLocalSubtitleUrl(detail.subtitleUrl);
+                setShowSubtitles(true);
+                setKuCCNotificationVisible(false);
+                if (detail.srtContent) {
+                    const processed = cleanAndFormatVtt(detail.srtContent);
+                    const cues = subtitleService.parseVtt(processed);
+                    if (cues && cues.length > 0) {
+                        setSubtitleCues(cues);
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('flkrd-subtitle-translated', handleCustomSubEvent);
+        return () => window.removeEventListener('flkrd-subtitle-translated', handleCustomSubEvent);
+    }, [tmdbId, imdbId, isTvContent, effectiveSeason, effectiveEpisode]);
 
     // --- Realtime Subtitle Sync Listener: Auto-injects & applies newly translated SRT live for all viewers ---
     useEffect(() => {
         const targetId = tmdbId || imdbId;
         if (!targetId) return;
 
-        const channelKey = contentType === 'tv'
-            ? `subtitle_sync_${targetId}_tv_${season || 0}_${episode || 0}`
+        const channelKey = isTvContent
+            ? `subtitle_sync_${targetId}_tv_${effectiveSeason}_${effectiveEpisode}`
             : `subtitle_sync_${targetId}_${contentType || 'movie'}`;
 
         const syncChannel = supabase.channel(channelKey);
         syncChannel
             .on('broadcast', { event: 'new_subtitle_available' }, ({ payload }) => {
                 if (payload && payload.subtitleUrl) {
+                    if (isTvContent && (Number(payload.season || 0) !== effectiveSeason || Number(payload.episode || 0) !== effectiveEpisode)) {
+                        return;
+                    }
                     const subUrl = payload.subtitleUrl;
                     const trackId = `custom-db-${payload.tmdbId}`;
 
@@ -2053,7 +2212,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             supabase.removeChannel(syncChannel);
         };
-    }, [tmdbId, imdbId, contentType, language, addNotification]);
+    }, [tmdbId, imdbId, contentType, isTvContent, effectiveSeason, effectiveEpisode, language, addNotification]);
 
     // --- Admin: Save subtitle line edit to Supabase (visible to all users via Realtime) ---
     const handleSaveSubtitleEdit = async () => {
@@ -2154,6 +2313,67 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         onProgressRef.current = onProgress;
     }, [onProgress]);
 
+    const lastSavedProgressRef = useRef<number>(0);
+    const saveWatchProgressDirectly = useCallback((time: number, totalDuration?: number) => {
+        if (!tmdbId || time < 3) return;
+        const now = Date.now();
+        if (now - lastSavedProgressRef.current < 3500) return;
+        lastSavedProgressRef.current = now;
+
+        try {
+            const cleanId = String(tmdbId).replace('custom_', '');
+            const progressData = localStorage.getItem('watchProgress');
+            let progress: WatchProgress[] = progressData ? JSON.parse(progressData) : [];
+            const isTv = contentType === 'tv';
+            const isDubbed = contentType === 'dubbed';
+            const typeStr: 'tv' | 'movie' | 'dubbed' = isDubbed ? 'dubbed' : (isTv ? 'tv' : 'movie');
+
+            const dur = totalDuration && totalDuration > 0 ? totalDuration : (isTv ? 2700 : 7200);
+            const index = progress.findIndex(i => String(i.id).replace('custom_', '') === String(cleanId) && String(i.type || (i as any).media_type) === typeStr);
+
+            const currentEp = activeEpNum || episode || 1;
+            const currentSeasonNum = activeSeasonNum || season || 1;
+
+            const item: WatchProgress = {
+                id: isNaN(Number(cleanId)) ? cleanId : Number(cleanId),
+                type: typeStr,
+                title: title || (isTv ? 'TV Show' : 'Movie'),
+                poster_path: (backdropPath || posterPath || (index > -1 ? progress[index].poster_path : '')) as any,
+                backdrop_path: backdropPath || (index > -1 ? progress[index].backdrop_path : ''),
+                vote_average: index > -1 ? progress[index].vote_average : 0,
+                progress: Math.floor(time),
+                duration: Math.floor(dur),
+                lastWatched: now,
+                season: isTv ? currentSeasonNum : undefined,
+                episode: isTv ? currentEp : undefined
+            };
+
+            if (index > -1) {
+                if (!item.poster_path && progress[index].poster_path) item.poster_path = progress[index].poster_path;
+                if (!item.backdrop_path && progress[index].backdrop_path) item.backdrop_path = progress[index].backdrop_path;
+                progress[index] = { ...progress[index], ...item };
+            } else {
+                progress.unshift(item);
+            }
+
+            if (progress.length > 60) progress = progress.slice(0, 60);
+
+            localStorage.setItem('watchProgress', JSON.stringify(progress));
+            window.dispatchEvent(new Event('watchProgressUpdated'));
+            window.dispatchEvent(new Event('storage'));
+
+            if (isTv && time > dur * 0.88) {
+                const tvProg = JSON.parse(localStorage.getItem('tv_progress') || '{}');
+                const showSet = new Set(tvProg[cleanId] || []);
+                showSet.add(`${currentSeasonNum}-${currentEp}`);
+                tvProg[cleanId] = Array.from(showSet);
+                localStorage.setItem('tv_progress', JSON.stringify(tvProg));
+            }
+        } catch (e) {
+            console.warn('Auto-save progress error:', e);
+        }
+    }, [tmdbId, contentType, title, backdropPath, posterPath, activeSeasonNum, season, activeEpNum, episode]);
+
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
         // Offload payload processing so the event listener finishes in 0ms synchronously
@@ -2252,8 +2472,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             playStartCurrentTimeRef.current = timeAsNum;
                         }
 
+                        const extDuration = payload.duration !== undefined ? Number(payload.duration) : (payload.data && payload.data.duration !== undefined ? Number(payload.data.duration) : undefined);
+                        saveWatchProgressDirectly(timeAsNum, extDuration);
+
                         if (onProgressRef.current) {
-                            const extDuration = payload.duration !== undefined ? Number(payload.duration) : (payload.data && payload.data.duration !== undefined ? Number(payload.data.duration) : undefined);
                             onProgressRef.current({
                                 currentTime: timeAsNum,
                                 paused: paused ?? (isPlayingRef.current ? false : true),
@@ -2268,6 +2490,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         playStartTimeRef.current = performance.now();
                         playStartCurrentTimeRef.current = currentTimeRef.current;
                     }
+                    if (currentTimeRef.current > 3) {
+                        saveWatchProgressDirectly(currentTimeRef.current);
+                    }
                     if (onProgressRef.current) {
                         onProgressRef.current({
                             currentTime: currentTimeRef.current,
@@ -2278,7 +2503,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 }
             } catch (e) { }
         }, 0);
-    }, [pauseGlobalTranslation, resumeGlobalTranslation, setIsPaused]); // Listener is now absolutely stable
+    }, [pauseGlobalTranslation, resumeGlobalTranslation, setIsPaused, saveWatchProgressDirectly]); // Listener is now absolutely stable
 
     useEffect(() => {
         window.addEventListener('message', handlePlayerMessages);
@@ -2315,6 +2540,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     if (Math.abs(nextTime - currentTime) >= 0.1) {
                         setCurrentTime(nextTime);
                     }
+                    if (nextTime > 3) {
+                        saveWatchProgressDirectly(nextTime);
+                    }
                 }
             } else if (isPlayingRef.current && playStartTimeRef.current > 0) {
                 // If iframe does not send postMessages, smoothly step currentTime forward based on playStartTime
@@ -2324,11 +2552,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (Math.abs(nextTime - currentTime) >= 0.1) {
                     setCurrentTime(nextTime);
                 }
+                if (nextTime > 3) {
+                    saveWatchProgressDirectly(nextTime);
+                }
             }
         }, 150);
 
         return () => clearInterval(interval);
-    }, [isIframe, currentTime, pauseGlobalTranslation, setIsPaused]);
+    }, [isIframe, currentTime, pauseGlobalTranslation, setIsPaused, saveWatchProgressDirectly]);
+
+    // Save progress on player unmount or close
+    useEffect(() => {
+        return () => {
+            if (currentTimeRef.current > 3) {
+                saveWatchProgressDirectly(currentTimeRef.current);
+            }
+        };
+    }, [saveWatchProgressDirectly]);
 
 
 
@@ -3759,10 +3999,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         isFullscreen={isFullscreen}
                         onToggleFullscreen={toggleFullscreen}
                         onClose={onClose}
-                        subtitleOffset={subtitleOffset}
-                        onAdjustSubtitleOffset={(delta) => {
-                            setSubtitleOffset((prev: number) => Math.round((prev + delta) * 10) / 10);
-                        }}
                     />
                 </div>
             </div>
@@ -3838,45 +4074,47 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 )}
             </AnimatePresence>
 
-            {/* Media Portal Drawer (Top-Down Sliding Cinema Overlay) */}
+            {/* Media Portal Drawer (Cinema Grade Top-Down Episodes & Seasons Overlay) */}
             <AnimatePresence>
                 {showEpisodesPortal && (
                     <motion.div
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
-                        transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
                         dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute top-0 left-0 right-0 max-h-[82vh] min-h-[350px] border-b border-white/10 z-[200] flex flex-col gap-3.5 select-none shadow-[0_24px_70px_rgba(0,0,0,0.95)] overflow-hidden"
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        className="absolute top-0 left-0 right-0 max-h-[85vh] sm:max-h-[80vh] min-h-[340px] border-b border-white/15 z-[250] flex flex-col gap-3 select-none shadow-[0_30px_90px_rgba(0,0,0,0.98)] overflow-hidden"
                         style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
-                            background: 'radial-gradient(ellipse at 50% 0%, rgba(220, 38, 38, 0.16), transparent 70%), linear-gradient(180deg, rgba(9, 9, 14, 0.97) 0%, rgba(5, 5, 8, 0.99) 100%)',
-                            backdropFilter: 'blur(40px) saturate(200%)',
-                            WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                            boxShadow: '0 24px 80px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
-                            paddingTop: 'calc(0.85rem + env(safe-area-inset-top, 0px))',
-                            paddingLeft: 'calc(1.25rem + env(safe-area-inset-left, 0px))',
-                            paddingRight: 'calc(1.25rem + env(safe-area-inset-right, 0px))',
+                            background: 'radial-gradient(ellipse at 50% 0%, rgba(220, 38, 38, 0.22), transparent 75%), linear-gradient(180deg, rgba(10, 10, 15, 0.98) 0%, rgba(5, 5, 8, 0.99) 100%)',
+                            backdropFilter: 'blur(45px) saturate(210%)',
+                            WebkitBackdropFilter: 'blur(45px) saturate(210%)',
+                            boxShadow: '0 30px 100px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                            paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
+                            paddingLeft: 'calc(1rem + env(safe-area-inset-left, 0px))',
+                            paddingRight: 'calc(1rem + env(safe-area-inset-right, 0px))',
                             paddingBottom: '1rem'
                         }}
                     >
                         {/* Header Row */}
-                        <div className="flex items-center justify-between border-b border-white/[0.08] pb-3 shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-red-600/15 border border-red-500/30 px-3.5 py-1.5 rounded-full flex items-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.25)]">
-                                    <Tv size={14} className="text-red-500 animate-pulse" />
-                                    <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0 px-1">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="bg-red-600/20 border border-red-500/40 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-[0_0_15px_rgba(220,38,38,0.3)] shrink-0">
+                                    <Tv size={13} className="text-red-500 animate-pulse" />
+                                    <span className={`font-black text-red-500 uppercase tracking-widest leading-none ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[10px]'}`}>
                                         {contentType === 'tv'
-                                            ? ((language === 'ku' || language === 'badini') ? 'پۆرتاڵی ئەڵقەکان' : 'EPISODES PORTAL')
-                                            : ((language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'SIMILAR FILMS')}
+                                            ? ((language === 'ku' || language === 'badini') ? 'ئەڵقەکان' : 'EPISODES')
+                                            : ((language === 'ku' || language === 'badini') ? 'پێشنیارکراوەکان' : 'SIMILAR')}
                                     </span>
                                 </div>
-                                <span className={`font-black text-white/95 tracking-wide truncate max-w-[200px] sm:max-w-md ${(language === 'ku' || language === 'badini') ? 'text-[16px]' : 'text-sm'}`}>
+                                <span className={`font-black text-white tracking-tight truncate ${(language === 'ku' || language === 'badini') ? 'text-base font-kurdish' : 'text-sm'}`}>
                                     {title}
                                 </span>
                                 {contentType === 'tv' && effectiveSeasonDetails?.episodes && (
-                                    <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/10 text-white/60 font-black text-[11px]">
+                                    <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-white/70 font-bold text-[10px]">
                                         {(language === 'ku' || language === 'badini')
                                             ? `${effectiveSeasonDetails.episodes.length} ئەڵقە`
                                             : `${effectiveSeasonDetails.episodes.length} Episodes`}
@@ -3885,42 +4123,48 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             </div>
                             <button
                                 onClick={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }}
-                                className="p-2 hover:bg-white/10 rounded-full transition-all text-gray-400 hover:text-white active:scale-90"
+                                onTouchEnd={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }}
+                                className="p-2 hover:bg-white/15 active:bg-white/20 rounded-full transition-all text-gray-300 hover:text-white active:scale-90 cursor-pointer"
                                 aria-label="Close Portal"
                             >
-                                <X size={20} />
+                                <X size={18} />
                             </button>
                         </div>
 
                         {contentType === 'tv' ? (
                             <>
-                                {/* Season Buttons Horizontal Row */}
-                                <div className="flex flex-col gap-1.5 shrink-0 relative">
-                                    <div className="flex items-center justify-between">
-                                        <span className={`font-black text-white/50 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
+                                {/* Season Buttons Horizontal Row with Guaranteed Native Touch Pan */}
+                                <div className="flex flex-col gap-1 shrink-0 relative px-1">
+                                    <div className="flex items-center justify-between mb-0.5">
+                                        <span className={`font-black text-white/50 uppercase tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
                                             {(language === 'ku' || language === 'badini') ? 'وەرزەکان' : 'SEASONS'}
                                         </span>
-                                        <div className="flex items-center gap-1.5 dir-ltr">
+                                        <div className="flex items-center gap-1 dir-ltr">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'left'); }}
-                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                                className="p-1 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                                 title="Scroll left"
                                             >
-                                                <ChevronLeft size={15} />
+                                                <ChevronLeft size={14} />
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(seasonsScrollRef, 'right'); }}
-                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                                className="p-1 rounded-lg bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                                 title="Scroll right"
                                             >
-                                                <ChevronRight size={15} />
+                                                <ChevronRight size={14} />
                                             </button>
                                         </div>
                                     </div>
                                     <div 
-                                        ref={seasonsScrollRef} 
-                                        className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide touch-pan-x overscroll-x-contain select-none"
-                                        style={{ WebkitOverflowScrolling: 'touch' }}
+                                        ref={seasonsScrollRef}
+                                        dir="ltr"
+                                        className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide select-none pointer-events-auto"
+                                        style={{
+                                            WebkitOverflowScrolling: 'touch',
+                                            touchAction: 'pan-x pan-y',
+                                            overscrollBehaviorX: 'contain'
+                                        }}
                                     >
                                         {effectiveSeasons.map((s) => {
                                             const activeSNum = season || activeSeasonNum || 1;
@@ -3929,6 +4173,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 <button
                                                     key={s.id || `season-${s.season_number}`}
                                                     data-active-season={isCurrentSeason ? 'true' : 'false'}
+                                                    dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setActiveSeasonNum(s.season_number);
@@ -3943,10 +4188,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 .catch(err => console.warn('Failed to fetch season details:', err));
                                                         }
                                                     }}
-                                                    className={`relative px-4 py-1.5 rounded-xl font-black uppercase tracking-wider transition-all duration-200 shrink-0 cursor-pointer overflow-hidden border active:scale-95 transform-gpu ${isCurrentSeason
-                                                            ? 'border-red-500/60 bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_24px_rgba(220,38,38,0.55)] text-white'
+                                                    className={`relative px-4 py-1.5 rounded-xl font-black uppercase tracking-wider transition-all duration-200 shrink-0 cursor-pointer overflow-hidden border active:scale-95 transform-gpu pointer-events-auto ${isCurrentSeason
+                                                            ? 'border-red-500/80 bg-gradient-to-r from-red-600 to-rose-600 shadow-[0_0_20px_rgba(220,38,38,0.6)] text-white'
                                                             : 'border-white/10 bg-white/[0.04] text-white/80 hover:border-white/25 hover:bg-white/[0.09]'
-                                                        } ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[11px]'}`}
+                                                        } ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[11px]'}`}
                                                 >
                                                     <span className="relative z-10 font-black">
                                                         {(language === 'ku' || language === 'badini')
@@ -3959,56 +4204,55 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </div>
                                 </div>
 
-                                {/* Episodes Horizontal Swiper Container */}
-                                <div className="flex-1 flex flex-col gap-1.5 overflow-hidden relative">
+                                {/* Episodes Horizontal Swiper Container with Native Mobile Swipe & Mouse Drag Momentum */}
+                                <div className="flex-1 flex flex-col gap-1 overflow-hidden relative px-1">
                                     <div className="flex items-center justify-between shrink-0">
                                         <div className="flex items-center gap-2">
-                                            <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
+                                            <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
                                                 {(language === 'ku' || language === 'badini')
                                                     ? `ئەڵقەکانی وەرزی ${season || activeSeasonNum || 1}`
                                                     : `SEASON ${season || activeSeasonNum || 1} EPISODES`}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-1.5 dir-ltr">
+                                        <div className="flex items-center gap-1 dir-ltr">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'left'); }}
-                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                                className="p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                                 title="Scroll left"
                                             >
-                                                <ChevronLeft size={16} />
+                                                <ChevronLeft size={15} />
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'right'); }}
-                                                className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                                className="p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                                 title="Scroll right"
                                             >
-                                                <ChevronRight size={16} />
+                                                <ChevronRight size={15} />
                                             </button>
                                         </div>
                                     </div>
 
                                     <div className="relative flex-1 overflow-hidden mt-0.5">
-                                        <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
-                                        <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
-
                                         <div
                                             ref={episodesScrollRef}
-                                            onWheel={(e) => {
-                                                if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && episodesScrollRef.current) {
-                                                    episodesScrollRef.current.scrollLeft += e.deltaY;
-                                                }
-                                            }}
-                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-2 px-1 scrollbar-hide touch-pan-x overscroll-x-contain select-none scroll-smooth"
+                                            dir="ltr"
+                                            onMouseDown={handleEpisodeDragStart}
+                                            onMouseMove={handleEpisodeDragMove}
+                                            onMouseUp={handleEpisodeDragEnd}
+                                            onMouseLeave={handleEpisodeDragEnd}
+                                            className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3 sm:gap-3.5 py-1.5 px-0.5 scrollbar-hide select-none cursor-grab active:cursor-grabbing pointer-events-auto"
                                             style={{
                                                 WebkitOverflowScrolling: 'touch',
+                                                touchAction: 'pan-x pan-y',
+                                                overscrollBehaviorX: 'contain',
                                                 scrollbarWidth: 'none',
                                                 msOverflowStyle: 'none'
                                             }}
                                         >
                                             {!effectiveSeasonDetails ? (
-                                                <div className="flex items-center gap-3 px-8 py-12 opacity-60 justify-center w-full">
-                                                    <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                                    <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[10px]'}`}>
+                                                <div className="flex items-center gap-3 px-8 py-10 opacity-70 justify-center w-full">
+                                                    <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                                    <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
                                                         {(language === 'ku' || language === 'badini') ? 'داگرتنی زانیاری ئەڵقەکان...' : 'SYNCHRONIZING EPISODES...'}
                                                     </span>
                                                 </div>
@@ -4028,10 +4272,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                         <div
                                                             key={ep.id || `ep-${ep.episode_number}`}
                                                             data-active-episode={isActive ? 'true' : 'false'}
+                                                            dir={isKurdish ? 'rtl' : 'ltr'}
                                                             onClick={(e) => {
+                                                                if (hasDraggedEpisodesRef.current) return;
                                                                 e.stopPropagation();
-                                                                setActiveEpNum(ep.episode_number);
                                                                 const targetSNum = effectiveSeasonDetails.season_number;
+                                                                setActiveSeasonNum(targetSNum);
+                                                                setActiveEpNum(ep.episode_number);
+                                                                setLocalSubtitleUrl(null);
+                                                                setSubtitleCues([]);
+                                                                setKurdishSub(null);
+                                                                setCurrentSubId(null);
                                                                 if (onEpisodeChange) {
                                                                     onEpisodeChange(targetSNum, ep.episode_number);
                                                                 }
@@ -4051,13 +4302,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 }
                                                                 setShowEpisodesPortal(false);
                                                             }}
-                                                            className={`w-52 sm:w-60 md:w-68 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu will-change-transform active:scale-[0.98] ${isActive
-                                                                    ? 'bg-gradient-to-br from-red-600/[0.22] to-rose-500/[0.08] border-red-500/80 shadow-[0_8px_32px_rgba(220,38,38,0.45)] ring-1 ring-red-500/40'
-                                                                    : 'bg-white/[0.03] border-white/[0.07] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_36px_rgba(0,0,0,0.6)]'
+                                                            className={`w-52 sm:w-60 md:w-64 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu active:scale-[0.98] pointer-events-auto ${isActive
+                                                                    ? 'bg-gradient-to-br from-red-600/25 to-rose-600/10 border-red-500 shadow-[0_0_25px_rgba(220,38,38,0.5)] ring-1 ring-red-500/60'
+                                                                    : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.07] hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
                                                                 }`}
                                                         >
-                                                            {/* Card Thumbnail Box */}
-                                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/5 shadow-md flex-shrink-0">
+                                                            {/* Card Thumbnail Box with 16:9 Cinema Aspect */}
+                                                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/10 shadow-md flex-shrink-0">
                                                                 {ep.still_path ? (
                                                                     <img
                                                                         src={`https://image.tmdb.org/t/p/w300${ep.still_path}`}
@@ -4066,38 +4317,45 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                         loading="lazy"
                                                                     />
                                                                 ) : (
-                                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-500">No Image</div>
+                                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-500">
+                                                                        FLKRD EPISODE
+                                                                    </div>
                                                                 )}
 
                                                                 {/* Dark Bottom Gradient */}
-                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
 
-                                                                {/* Play Overlay Button */}
-                                                                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                    <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-200">
-                                                                        <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
+                                                                {/* Play Overlay Button on Hover */}
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                    <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                                                                        <Play size={15} fill="currentColor" className="translate-x-[1px]" />
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Rating Badge */}
-                                                                {ep.vote_average > 0 && (
-                                                                    <div className={`absolute top-2 left-2 bg-black/75 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
-                                                                        <span className="text-[8px] leading-none">★</span>
+                                                                {/* Episode Number Floating Capsule */}
+                                                                <div className={`absolute top-2 left-2 bg-black/75 backdrop-blur-md text-white rounded-md border border-white/15 px-1.5 py-0.5 text-[9px] font-black z-20 shadow-md ${isKurdish ? 'font-kurdish' : 'tracking-wider'}`}>
+                                                                    {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `EP ${ep.episode_number}`}
+                                                                </div>
+
+                                                                {/* Rating Badge or Runtime */}
+                                                                {ep.vote_average > 0 && !isWatched && !isActive && (
+                                                                    <div className="absolute top-2 right-2 bg-black/75 backdrop-blur-md text-yellow-400 rounded-md border border-white/10 px-1.5 py-0.5 text-[8px] font-black flex items-center gap-0.5 z-20">
+                                                                        <span>★</span>
                                                                         <span>{ep.vote_average.toFixed(1)}</span>
                                                                     </div>
                                                                 )}
 
                                                                 {/* Active / Now Playing Pill */}
                                                                 {isActive && (
-                                                                    <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_12px_rgba(220,38,38,0.7)] ${isKurdish ? 'text-[11px] py-[2px] px-2 font-black' : 'text-[8px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                    <div className={`absolute bottom-2 left-2 bg-red-600 text-white rounded-md flex items-center gap-1 z-20 shadow-[0_0_12px_rgba(220,38,38,0.8)] px-2 py-0.5 ${isKurdish ? 'text-[10px] font-black' : 'text-[8px] font-black uppercase tracking-wider'}`}>
                                                                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                                                        <span>{isKurdish ? 'ئێستا پەخش دەکرێت' : 'NOW PLAYING'}</span>
+                                                                        <span>{isKurdish ? 'ئێستا پەخشە' : 'NOW PLAYING'}</span>
                                                                     </div>
                                                                 )}
 
                                                                 {/* Watched Badge */}
                                                                 {isWatched && !isActive && (
-                                                                    <div className={`absolute top-2 right-2 bg-emerald-500/30 backdrop-blur-md text-emerald-400 rounded-lg border border-emerald-500/40 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[7px] py-0.5 px-1.5 font-black tracking-wider'}`}>
+                                                                    <div className={`absolute top-2 right-2 bg-emerald-500/30 backdrop-blur-md text-emerald-400 rounded-md border border-emerald-500/40 flex items-center gap-1 z-20 px-1.5 py-0.5 ${isKurdish ? 'text-[10px] font-black' : 'text-[8px] font-black tracking-wider'}`}>
                                                                         <span>✓</span>
                                                                         <span>{isKurdish ? 'بینراوە' : 'WATCHED'}</span>
                                                                     </div>
@@ -4107,21 +4365,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             {/* Text Metadata */}
                                                             <div className="flex flex-col px-0.5 text-right" dir={isKurdish ? 'rtl' : 'ltr'}>
                                                                 {!isGenericName ? (
-                                                                    <>
-                                                                        <span className={`uppercase tracking-widest ${isActive ? 'text-red-400 font-bold' : 'text-gray-400'} ${isKurdish ? 'text-[13px] font-black' : 'text-[10px] font-black'}`}>
-                                                                            {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
-                                                                        </span>
-                                                                        <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[15px]' : 'text-xs'}`} title={ep.name}>
-                                                                            {ep.name}
-                                                                        </h4>
-                                                                    </>
+                                                                    <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors ${isKurdish ? 'text-[14px] font-kurdish' : 'text-xs'}`} title={ep.name}>
+                                                                        {ep.name}
+                                                                    </h4>
                                                                 ) : (
-                                                                    <h4 className={`font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isActive ? 'text-red-400' : 'text-white'} ${isKurdish ? 'text-[16px]' : 'text-xs'}`}>
+                                                                    <h4 className={`font-black truncate group-hover:text-red-400 transition-colors ${isActive ? 'text-red-400' : 'text-white'} ${isKurdish ? 'text-[15px] font-kurdish' : 'text-xs'}`}>
                                                                         {isKurdish ? `ئەڵقەی ${ep.episode_number}` : `Episode ${ep.episode_number}`}
                                                                     </h4>
                                                                 )}
-                                                                <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-200 ${isKurdish ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
-                                                                    {ep.overview || (isKurdish ? 'هیچ ڕوونکردنەوەیەک بۆ ئەم ئەڵقەیە بەردەست نییە' : 'No description available for this episode.')}
+                                                                <p className={`line-clamp-2 leading-relaxed mt-0.5 text-white/50 group-hover:text-white/70 transition-colors ${isKurdish ? 'text-[12px] font-medium' : 'text-[10px] font-normal'}`} title={ep.overview}>
+                                                                    {ep.overview || (isKurdish ? 'هیچ کورتەیەک بەردەست نییە' : 'No description available.')}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -4134,51 +4387,50 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             </>
                         ) : (
                             /* Movie Recommendations Swiper Container */
-                            <div className="flex-1 flex flex-col gap-1.5 overflow-hidden relative">
+                            <div className="flex-1 flex flex-col gap-1 overflow-hidden relative px-1">
                                 <div className="flex items-center justify-between shrink-0">
-                                    <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
+                                    <span className={`font-black text-white/60 uppercase tracking-widest ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
                                         {(language === 'ku' || language === 'badini') ? 'فیلمە پێشنیارکراوەکان' : 'RECOMMENDED MOVIES'}
                                     </span>
-                                    <div className="flex items-center gap-1.5 dir-ltr">
+                                    <div className="flex items-center gap-1 dir-ltr">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'left'); }}
-                                            className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                            className="p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                             title="Scroll left"
                                         >
-                                            <ChevronLeft size={16} />
+                                            <ChevronLeft size={15} />
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); scrollHorizontally(episodesScrollRef, 'right'); }}
-                                            className="p-1.5 rounded-xl bg-white/[0.05] border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90 shadow-sm"
+                                            className="p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-red-600 hover:border-red-500 text-white transition-all active:scale-90"
                                             title="Scroll right"
                                         >
-                                            <ChevronRight size={16} />
+                                            <ChevronRight size={15} />
                                         </button>
                                     </div>
                                 </div>
 
                                 <div className="relative flex-1 overflow-hidden mt-0.5">
-                                    <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
-                                    <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#09090e] to-transparent pointer-events-none z-10 hidden md:block" />
-
                                     <div
                                         ref={episodesScrollRef}
-                                        onWheel={(e) => {
-                                            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && episodesScrollRef.current) {
-                                                episodesScrollRef.current.scrollLeft += e.deltaY;
-                                            }
-                                        }}
-                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-2 px-1 scrollbar-hide touch-pan-x overscroll-x-contain select-none scroll-smooth"
+                                        dir="ltr"
+                                        onMouseDown={handleEpisodeDragStart}
+                                        onMouseMove={handleEpisodeDragMove}
+                                        onMouseUp={handleEpisodeDragEnd}
+                                        onMouseLeave={handleEpisodeDragEnd}
+                                        className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-1.5 px-0.5 scrollbar-hide select-none cursor-grab active:cursor-grabbing pointer-events-auto"
                                         style={{
                                             WebkitOverflowScrolling: 'touch',
+                                            touchAction: 'pan-x pan-y',
+                                            overscrollBehaviorX: 'contain',
                                             scrollbarWidth: 'none',
                                             msOverflowStyle: 'none'
                                         }}
                                     >
                                         {movieRecommendations.length === 0 ? (
-                                            <div className="flex items-center gap-3 px-8 py-12 opacity-60 justify-center w-full">
-                                                <div className="w-6 h-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                                                <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[14px]' : 'text-[10px]'}`}>
+                                            <div className="flex items-center gap-3 px-8 py-10 opacity-70 justify-center w-full">
+                                                <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                                                <span className={`font-black uppercase tracking-widest text-gray-300 ${(language === 'ku' || language === 'badini') ? 'text-[13px]' : 'text-[10px]'}`}>
                                                     {(language === 'ku' || language === 'badini') ? 'داگرتنی داتا...' : 'SYNCHRONIZING MOVIES...'}
                                                 </span>
                                             </div>
@@ -4190,7 +4442,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 return (
                                                     <div
                                                         key={movie.id}
+                                                        dir={isKurdish ? 'rtl' : 'ltr'}
                                                         onClick={() => {
+                                                            if (hasDraggedEpisodesRef.current) return;
                                                             const recType: 'movie' | 'tv' = (movie.media_type === 'tv') ? 'tv' : 'movie';
                                                             const recId = String(movie.id);
                                                             const topSrc = activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER';
@@ -4211,12 +4465,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             }
                                                             setShowEpisodesPortal(false);
                                                         }}
-                                                        className={`w-56 sm:w-64 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu will-change-transform active:scale-[0.98] ${isActive
-                                                                ? 'bg-gradient-to-br from-red-600/[0.18] to-rose-500/[0.05] border-red-500/60 shadow-[0_8px_32px_rgba(220,38,38,0.35)]'
-                                                                : 'bg-white/[0.03] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.08] hover:shadow-[0_12px_36px_rgba(0,0,0,0.6)]'
+                                                        className={`w-52 sm:w-60 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu active:scale-[0.98] pointer-events-auto ${isActive
+                                                                ? 'bg-gradient-to-br from-red-600/20 to-rose-500/10 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.4)]'
+                                                                : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.07] hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
                                                             }`}
                                                     >
-                                                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/5 shadow-md flex-shrink-0">
+                                                        <div className="relative aspect-video rounded-xl overflow-hidden bg-black/90 border border-white/10 shadow-md flex-shrink-0">
                                                             {movie.backdrop_path ? (
                                                                 <img
                                                                     src={`https://image.tmdb.org/t/p/w300${movie.backdrop_path}`}
@@ -4228,33 +4482,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-[10px] font-bold text-gray-500">No Image</div>
                                                             )}
 
-                                                            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
-                                                                <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl transform scale-90 group-hover:scale-100 transition-transform duration-200">
-                                                                    <Play size={16} fill="currentColor" className="translate-x-[1.5px]" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 backdrop-blur-[2px]">
+                                                                <div className="w-9 h-9 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xl transform scale-90 group-hover:scale-100 transition-transform">
+                                                                    <Play size={15} fill="currentColor" className="translate-x-[1px]" />
                                                                 </div>
                                                             </div>
 
                                                             {movie.vote_average > 0 && (
-                                                                <div className={`absolute top-2 left-2 bg-black/75 backdrop-blur-md text-[#FFAD1F] rounded-lg border border-white/10 flex items-center gap-1 z-20 ${isKurdish ? 'text-[10px] py-[1px] px-1.5 font-black' : 'text-[8px] py-0.5 px-1.5 font-black uppercase tracking-wider'}`}>
-                                                                    <span className="text-[8px] leading-none">★</span>
+                                                                <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-md text-yellow-400 rounded-md border border-white/10 px-1.5 py-0.5 text-[8px] font-black flex items-center gap-0.5 z-20">
+                                                                    <span>★</span>
                                                                     <span>{movie.vote_average.toFixed(1)}</span>
                                                                 </div>
                                                             )}
 
                                                             {isActive && (
-                                                                <div className={`absolute bottom-2 left-2 bg-gradient-to-r from-red-600 to-rose-500 text-white rounded-lg flex items-center gap-1.5 z-20 shadow-[0_0_10px_rgba(220,38,38,0.6)] ${isKurdish ? 'text-[10px] py-[2px] px-1.5 font-black' : 'text-[7px] py-0.5 px-2 font-black uppercase tracking-widest'}`}>
+                                                                <div className={`absolute bottom-2 left-2 bg-red-600 text-white rounded-md flex items-center gap-1 z-20 shadow-[0_0_10px_rgba(220,38,38,0.7)] px-2 py-0.5 ${isKurdish ? 'text-[10px] font-black' : 'text-[8px] font-black uppercase tracking-wider'}`}>
                                                                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                                                                    <span>{isKurdish ? 'ئێستا پەخش دەکرێت' : 'NOW PLAYING'}</span>
+                                                                    <span>{isKurdish ? 'ئێستا پەخشە' : 'NOW PLAYING'}</span>
                                                                 </div>
                                                             )}
                                                         </div>
 
                                                         <div className="flex flex-col px-0.5 text-right" dir={isKurdish ? 'rtl' : 'ltr'}>
-                                                            <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors mt-0.5 ${isKurdish ? 'text-[15px]' : 'text-xs'}`} title={movie.title || movie.name}>
+                                                            <h4 className={`text-white font-black truncate group-hover:text-red-400 transition-colors ${isKurdish ? 'text-[14px] font-kurdish' : 'text-xs'}`} title={movie.title || movie.name}>
                                                                 {movie.title || movie.name}
                                                             </h4>
-                                                            <p className={`line-clamp-2 leading-relaxed mt-1 text-white/50 group-hover:text-white/70 transition-colors duration-200 ${isKurdish ? 'text-[13px] font-medium' : 'text-[10px] font-normal'}`} title={movie.overview}>
-                                                                {movie.overview || (isKurdish ? 'کورتەی ئەم فیلمە بەردەست نییە' : 'No description available for this movie.')}
+                                                            <p className={`line-clamp-2 leading-relaxed mt-0.5 text-white/50 group-hover:text-white/70 transition-colors ${isKurdish ? 'text-[12px] font-medium' : 'text-[10px] font-normal'}`} title={movie.overview}>
+                                                                {movie.overview || (isKurdish ? 'هیچ کورتەیەک بەردەست نییە' : 'No description available.')}
                                                             </p>
                                                         </div>
                                                     </div>

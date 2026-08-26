@@ -5,7 +5,7 @@ import {
   Mic2, Search, X, Flame, Sparkles, Star, Clapperboard, 
   Play, Info, Filter, RefreshCw, ShieldAlert, Plus
 } from 'lucide-react';
-import { Content } from '../types';
+import { Content, WatchProgress } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -14,6 +14,7 @@ import { SkeletonGrid } from '../components/Skeleton';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
 import { bannedService } from '../services/bannedService';
+import Row from '../components/Row';
 
 const DUBBED_FILTERS = [
   { id: 'all', labelKu: 'هەموو', labelEn: 'All' },
@@ -30,6 +31,7 @@ const DubbedMoviesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [continueWatchingDubbed, setContinueWatchingDubbed] = useState<WatchProgress[]>([]);
 
   const navigate = useNavigate();
   const { t, language } = useTranslation();
@@ -38,6 +40,38 @@ const DubbedMoviesPage: React.FC = () => {
   const isRtl = language === 'ku' || language === 'badini';
 
   const isDarkMode = theme === 'dark';
+
+  // Load Dubbed Continue Watching
+  const loadDubbedProgress = () => {
+    try {
+      const data = localStorage.getItem('watchProgress');
+      if (!data) {
+        setContinueWatchingDubbed([]);
+        return;
+      }
+      const progress: WatchProgress[] = JSON.parse(data);
+      const unfinished = progress
+        .filter((item: WatchProgress) => {
+          const isDub = item.type === 'dubbed' || (item as any).media_type === 'dubbed' || String(item.id).startsWith('custom_');
+          const dur = item.duration || 5400;
+          return isDub && item.progress > 3 && item.progress < dur * 0.98;
+        })
+        .sort((a, b) => (b.lastWatched || 0) - (a.lastWatched || 0));
+      setContinueWatchingDubbed(unfinished);
+    } catch (e) {
+      setContinueWatchingDubbed([]);
+    }
+  };
+
+  useEffect(() => {
+    loadDubbedProgress();
+    window.addEventListener('watchProgressUpdated', loadDubbedProgress);
+    window.addEventListener('storage', loadDubbedProgress);
+    return () => {
+      window.removeEventListener('watchProgressUpdated', loadDubbedProgress);
+      window.removeEventListener('storage', loadDubbedProgress);
+    };
+  }, []);
 
   // Load Dubbed Movies from Supabase with IndexedDB local cache fallback
   const fetchDubbedMovies = async () => {
@@ -238,6 +272,18 @@ const DubbedMoviesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* 📺 Continue Watching Dubbed Row */}
+      {continueWatchingDubbed.length > 0 && !searchQuery.trim() && activeFilter === 'all' && (
+        <div className="mb-8">
+          <Row
+            title={isRtl ? 'بەردەوامبوون لە سەیرکردنی دۆبلاژ' : 'Continue Watching Dubbed'}
+            items={continueWatchingDubbed}
+            type="dubbed"
+            isProgressRow={true}
+          />
+        </div>
+      )}
 
       {/* 🎬 Main Movie Grid */}
       <AnimatePresence mode="wait">

@@ -62,12 +62,22 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   const mediaType = targetItem ? (isCustom ? 'dubbed' : getMediaType(targetItem)) : 'movie';
   const cleanId = targetItem ? String(targetItem.id).replace('custom_', '') : '';
 
-  // Close handler with stopPropagation guarantee
+  // Close handler with stopPropagation guarantee and immediate body style unlock
   const handleClose = useCallback(
     (e?: React.SyntheticEvent) => {
       if (e) {
         e.preventDefault();
         e.stopPropagation();
+      }
+      try {
+        document.body.style.overflow = '';
+        document.body.style.pointerEvents = '';
+        document.body.style.touchAction = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.pointerEvents = '';
+        document.documentElement.style.touchAction = '';
+      } catch (err) {
+        // Ignore in non-browser
       }
       onClose();
     },
@@ -183,13 +193,23 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.pointerEvents = '';
+      document.documentElement.style.touchAction = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      document.body.style.touchAction = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.pointerEvents = '';
+      document.documentElement.style.touchAction = '';
     };
   }, [isOpen]);
 
-  if (!targetItem || isForbidden(targetItem, language)) return null;
+  if (!isOpen || !targetItem || isForbidden(targetItem, language)) return null;
 
   const title = isRtl && targetItem.kurdishTitle ? targetItem.kurdishTitle : targetItem.title || targetItem.name || '';
   const backdrop = targetItem.bannerBase64 || targetItem.backdrop_path || targetItem.poster_path || targetItem.imageBase64 || '';
@@ -199,7 +219,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
   const handlePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onClose();
+    handleClose();
 
     if (mediaType === 'dubbed' || isCustom || targetItem?.customStream || targetItem?.videoUrl || targetItem?.video_url || String(targetItem?.id || '').startsWith('custom_')) {
       const rawStream = targetItem?.customStream || targetItem?.videoUrl || targetItem?.video_url || targetItem?.url || '';
@@ -227,6 +247,9 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
     const topSource = getRankedSources(false)[0]?.name || 'FLKRD SERVER';
     const resolvedType: 'movie' | 'tv' = (mediaType === 'tv') ? 'tv' : 'movie';
+    const targetSeason = resolvedType === 'tv' ? (targetItem.season || 1) : undefined;
+    const targetEpisode = resolvedType === 'tv' ? (targetItem.episode || 1) : undefined;
+
     setActiveVideo({
       tmdbId: cleanId,
       type: resolvedType,
@@ -234,9 +257,9 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
       activeSource: topSource,
       sources: getRankedSources(false),
       backdropPath: backdrop,
-      season: resolvedType === 'tv' ? 1 : undefined,
-      episode: resolvedType === 'tv' ? 1 : undefined,
-      src: getSourceUrl(topSource, cleanId, resolvedType, 1, 1)
+      season: targetSeason,
+      episode: targetEpisode,
+      src: getSourceUrl(topSource, cleanId, resolvedType, targetSeason || 1, targetEpisode || 1)
     });
     setIsPaused(false);
     setIsPipActive(false);
@@ -244,7 +267,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
   const handleCoop = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onClose();
+    handleClose();
     navigate(`/watch-party?id=${cleanId}&type=${mediaType}`);
   };
 
@@ -273,7 +296,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c0e] border border-white/15 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
                 isRtl ? 'text-right' : 'text-left'
               }`}
-              style={{ WebkitOverflowScrolling: 'touch' }}
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
               dir={isRtl ? 'rtl' : 'ltr'}
             >
               {/* Glowing Border Beam */}
@@ -281,7 +304,8 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
               {/* Mobile Drag/Pull Bar Handle */}
               <div 
-                onClick={handleClose} 
+                onClick={handleClose}
+                style={{ touchAction: 'manipulation' }}
                 className="w-12 h-1.5 bg-white/30 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0 cursor-pointer shadow transition-all"
                 title="Tap to close"
               />
@@ -310,8 +334,8 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                 <button
                   type="button"
                   onClick={handleClose}
-                  onTouchEnd={handleClose}
-                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 p-2.5 rounded-full bg-black/70 hover:bg-red-600 text-white border border-white/20 backdrop-blur-xl transition-all active:scale-90 shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
+                  style={{ touchAction: 'manipulation' }}
+                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 w-10 h-10 rounded-full bg-black/70 hover:bg-red-600 text-white border border-white/20 backdrop-blur-xl transition-all active:scale-90 shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
                   aria-label="Close"
                 >
                   <X className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
