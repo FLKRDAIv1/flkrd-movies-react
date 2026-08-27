@@ -3895,31 +3895,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Iframe Embed */}
             {isIframe && iframeSrc && (
                 <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-black overflow-hidden pointer-events-auto">
-                    <div className="w-full aspect-video max-h-screen my-auto relative flex items-center justify-center bg-black shadow-2xl">
-                        <iframe
-                            ref={iframeRef}
-                            key={`${stableKey}-${playerReloadKey}`}
-                            src={iframeSrc}
-                            className="w-full h-full border-none"
-                            style={{
-                                display: 'block',
-                                zIndex: 10,
-                                filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
-                            }}
-                            allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
-                            allowFullScreen={true}
-                            referrerPolicy="strict-origin-when-cross-origin"
-                            // @ts-ignore
-                            scrolling="no"
-                            // iOS Safari: prevent native video player takeover
-                            // @ts-ignore
-                            webkit-playsinline="true"
-                            // @ts-ignore
-                            x-webkit-airplay="deny"
-                            onLoad={handleIframeLoad}
-                            title="FLKRD Universal Player"
-                        />
-                    </div>
+                    <iframe
+                        ref={iframeRef}
+                        key={`${stableKey}-${playerReloadKey}`}
+                        src={iframeSrc}
+                        className="w-full h-full absolute inset-0 border-none"
+                        style={{
+                            display: 'block',
+                            width: '100%',
+                            height: '100%',
+                            zIndex: 10,
+                            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+                        }}
+                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
+                        allowFullScreen={true}
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        // @ts-ignore
+                        scrolling="no"
+                        // iOS Safari: prevent native video player takeover
+                        // @ts-ignore
+                        webkit-playsinline="true"
+                        // @ts-ignore
+                        x-webkit-airplay="deny"
+                        onLoad={handleIframeLoad}
+                        title="FLKRD Universal Player"
+                    />
                 </div>
             )}
 
