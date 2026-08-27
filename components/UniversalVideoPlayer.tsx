@@ -3152,45 +3152,46 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
 
         if (isHls && !hlsError) {
-            if (activeSrc.toLowerCase().includes('.m3u8') && window.Hls) {
-                if (window.Hls.isSupported()) {
-                    const hls = new window.Hls({
-                        xhrSetup: (xhr: any) => { xhr.withCredentials = false; },
-                        enableWorker: true,
-                        autoStartLoad: true,
-                        startLevel: -1,
-                        capLevelToPlayerSize: true,
-                        debug: false,
-                        maxBufferLength: 60,
-                        maxMaxBufferLength: 120,
-                        maxBufferSize: 60 * 1024 * 1024,
-                        backBufferLength: 30,
-                        maxBufferHole: 0.8,
-                        highBufferWatchdogPeriod: 2,
-                        nudgeMaxRetry: 20,
-                        nudgeOffset: 0.2,
-                        manifestLoadingMaxRetry: 10,
-                        manifestLoadingRetryDelay: 500,
-                        levelLoadingMaxRetry: 10,
-                        levelLoadingRetryDelay: 500,
-                        fragLoadingMaxRetry: 10,
-                        fragLoadingRetryDelay: 500,
-                        lowLatencyMode: false,
-                        enableAdaptiveMaxBufferLength: true,
-                        abrEwmaDefaultEstimate: 1500000, // 1.5 Mbps default: ultra-fast initial chunk load on slow internet!
-                    });
-                    if (videoRef.current) {
+            const isM3u8 = activeSrc.toLowerCase().includes('.m3u8');
+            
+            if (isM3u8) {
+                const initHls = () => {
+                    const HlsClass = (window as any).Hls;
+                    if (HlsClass && HlsClass.isSupported() && videoRef.current) {
+                        const hls = new HlsClass({
+                            xhrSetup: (xhr: any) => { xhr.withCredentials = false; },
+                            enableWorker: true,
+                            autoStartLoad: true,
+                            startLevel: -1,
+                            capLevelToPlayerSize: true,
+                            debug: false,
+                            maxBufferLength: 60,
+                            maxMaxBufferLength: 120,
+                            maxBufferSize: 60 * 1024 * 1024,
+                            backBufferLength: 30,
+                            maxBufferHole: 0.8,
+                            highBufferWatchdogPeriod: 2,
+                            nudgeMaxRetry: 20,
+                            nudgeOffset: 0.2,
+                            manifestLoadingMaxRetry: 10,
+                            manifestLoadingRetryDelay: 500,
+                            levelLoadingMaxRetry: 10,
+                            levelLoadingRetryDelay: 500,
+                            fragLoadingMaxRetry: 10,
+                            fragLoadingRetryDelay: 500,
+                            lowLatencyMode: false,
+                            enableAdaptiveMaxBufferLength: true,
+                            abrEwmaDefaultEstimate: 1500000,
+                        });
                         hls.loadSource(activeSrc);
                         hls.attachMedia(videoRef.current);
-                        hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+                        hls.on(HlsClass.Events.MANIFEST_PARSED, () => {
                             if (videoRef.current) videoRef.current.volume = 0.5;
                             setLoading(false);
                             if (onLoad) onLoad();
                         });
-                        hls.on(window.Hls.Events.ERROR, (_: any, data: any) => {
-                            // Non-fatal buffer stall auto-recovery (resolves bufferStalledError & bufferNudgeOnStall)
+                        hls.on(HlsClass.Events.ERROR, (_: any, data: any) => {
                             if (data.details === 'bufferStalledError' || data.details === 'bufferNudgeOnStall' || data.details === 'bufferSeekOverHole') {
-                                console.warn("[UNIVERSAL-PLAYER] HLS buffer stall detected, nudging playhead past gap:", data.details);
                                 hls.startLoad();
                                 if (videoRef.current && !videoRef.current.paused) {
                                     videoRef.current.currentTime += 0.15;
@@ -3198,13 +3199,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 }
                                 return;
                             }
-
                             if (data.fatal) {
                                 switch (data.type) {
-                                    case window.Hls.ErrorTypes.NETWORK_ERROR:
+                                    case HlsClass.ErrorTypes.NETWORK_ERROR:
                                         hls.startLoad();
                                         break;
-                                    case window.Hls.ErrorTypes.MEDIA_ERROR:
+                                    case HlsClass.ErrorTypes.MEDIA_ERROR:
                                         hls.recoverMediaError();
                                         break;
                                     default:
@@ -3217,8 +3217,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 }
                             }
                         });
+                        return hls;
+                    } else if (videoRef.current && videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+                        // Native Safari / iOS HLS engine
+                        videoRef.current.src = activeSrc;
+                        videoRef.current.onloadedmetadata = () => {
+                            if (videoRef.current) videoRef.current.volume = 0.5;
+                            setLoading(false);
+                            if (onLoad) onLoad();
+                        };
+                        videoRef.current.onerror = () => {
+                            setHlsError(true);
+                            setIsIframe(true);
+                            setIsHls(false);
+                            setLoading(false);
+                        };
                     }
-                    return () => hls.destroy();
+                    return null;
+                };
+
+                const hlsInstance = initHls();
+                if (hlsInstance) {
+                    return () => hlsInstance.destroy();
                 }
             } else if (videoRef.current) {
                 videoRef.current.src = activeSrc;

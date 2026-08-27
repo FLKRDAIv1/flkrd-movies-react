@@ -272,35 +272,40 @@ export const extractEmbedSrc = (source: string): string => {
 
   let finalUrl = "";
 
+  // 1. If contains <iframe tag anywhere in string
   if (cleanSource.toLowerCase().includes('<iframe')) {
     const match = cleanSource.match(/src=["'](.*?)["']/i);
     if (match && match[1]) {
-      finalUrl = match[1];
+      finalUrl = match[1].trim();
     } else {
       const fallbackMatch = cleanSource.match(/src=(?:["']|\\")?([^\s"'>\\]+)/i);
       if (fallbackMatch && fallbackMatch[1]) {
-        finalUrl = fallbackMatch[1];
+        finalUrl = fallbackMatch[1].trim();
       }
     }
   } else {
+    // 2. Direct string or link extraction
     const trimmed = cleanSource.trim();
-    if (trimmed.toLowerCase().startsWith('http') || trimmed.startsWith('//')) {
-      finalUrl = trimmed;
+    if (trimmed.toLowerCase().startsWith('http://') || trimmed.toLowerCase().startsWith('https://') || trimmed.startsWith('//')) {
+      finalUrl = trimmed.split(/\s+/)[0]; // strip any trailing words/comments
     } else {
       const linkMatch = cleanSource.match(/(?:https?:)?\/\/[^\s"'><]+/i);
       if (linkMatch) {
-        finalUrl = linkMatch[0];
+        finalUrl = linkMatch[0].trim();
       }
     }
   }
 
   if (!finalUrl) return "";
 
+  // Clean HTML entities like &amp;
+  finalUrl = finalUrl.replace(/&amp;/g, '&');
+
   if (finalUrl.startsWith('//')) {
     finalUrl = 'https:' + finalUrl;
   }
 
-  // Google Drive
+  // Google Drive Embed
   if (finalUrl.includes('drive.google.com')) {
     if (finalUrl.includes('/view')) {
       finalUrl = finalUrl.replace('/view', '/preview');
@@ -311,51 +316,87 @@ export const extractEmbedSrc = (source: string): string => {
       } catch (e) {}
     }
   }
-  // OK.ru
+
+  // OK.ru Video Embed
   if (finalUrl.includes('ok.ru/video/') && !finalUrl.includes('videoembed')) {
     finalUrl = finalUrl.replace('ok.ru/video/', 'ok.ru/videoembed/');
   }
-  // YouTube
-  if (finalUrl.includes('youtube.com/watch?v=') || finalUrl.includes('youtu.be/')) {
+
+  // YouTube Links -> Embed
+  if (finalUrl.includes('youtube.com/watch?v=') || finalUrl.includes('youtu.be/') || finalUrl.includes('youtube.com/embed/')) {
     try {
-      const ytId = finalUrl.includes('youtu.be/')
-        ? finalUrl.split('youtu.be/')[1]?.split('?')[0]
-        : new URL(finalUrl).searchParams.get('v');
+      let ytId = '';
+      if (finalUrl.includes('youtu.be/')) {
+        ytId = finalUrl.split('youtu.be/')[1]?.split('?')[0]?.split('&')[0];
+      } else if (finalUrl.includes('youtube.com/embed/')) {
+        ytId = finalUrl.split('youtube.com/embed/')[1]?.split('?')[0]?.split('&')[0];
+      } else {
+        ytId = new URL(finalUrl).searchParams.get('v') || '';
+      }
       if (ytId) {
-        finalUrl = `https://www.youtube-nocookie.com/embed/${ytId}`;
-      }
-    } catch (e) {}
-  }
-  // Vimeo
-  if (finalUrl.includes('vimeo.com/') && !finalUrl.includes('player.vimeo.com')) {
-    try {
-      const vimeoId = finalUrl.split('vimeo.com/')[1]?.split('?')[0];
-      if (vimeoId) {
-        finalUrl = `https://player.vimeo.com/video/${vimeoId}`;
-      }
-    } catch (e) {}
-  }
-  // Dropbox
-  if (finalUrl.includes('dropbox.com') && finalUrl.includes('dl=0')) {
-    finalUrl = finalUrl.replace('dl=0', 'raw=1');
-  }
-  // Rashaba
-  if (finalUrl.includes('rashaba.com') && !finalUrl.includes('/e/') && !finalUrl.includes('/embed/')) {
-    try {
-      const matches = finalUrl.match(/\/([a-zA-Z0-9]{3,32})\/?$/) || finalUrl.match(/\/([a-zA-Z0-9]{3,32})\//);
-      const rid = matches ? matches[1] : finalUrl.split('/').filter(Boolean).pop();
-      if (rid) {
-        finalUrl = `https://rashaba.com/e/${rid}`;
+        finalUrl = `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0&modestbranding=1`;
+        return finalUrl;
       }
     } catch (e) {}
   }
 
-  // Direct Media Check
+  // Vimeo
+  if (finalUrl.includes('vimeo.com/') && !finalUrl.includes('player.vimeo.com')) {
+    try {
+      const vimeoId = finalUrl.split('vimeo.com/')[1]?.split('?')[0]?.split('/')[0];
+      if (vimeoId) {
+        finalUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=1`;
+        return finalUrl;
+      }
+    } catch (e) {}
+  }
+
+  // Dailymotion
+  if (finalUrl.includes('dailymotion.com/video/') && !finalUrl.includes('/embed/video/')) {
+    try {
+      const dmId = finalUrl.split('dailymotion.com/video/')[1]?.split('?')[0];
+      if (dmId) {
+        finalUrl = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1`;
+        return finalUrl;
+      }
+    } catch (e) {}
+  }
+
+  // Dropbox
+  if (finalUrl.includes('dropbox.com') && finalUrl.includes('dl=0')) {
+    finalUrl = finalUrl.replace('dl=0', 'raw=1');
+  }
+
+  // Rashaba Player Embed
+  if (finalUrl.includes('rashaba.com')) {
+    if (!finalUrl.includes('/e/') && !finalUrl.includes('/embed/')) {
+      try {
+        const matches = finalUrl.match(/\/([a-zA-Z0-9]{3,32})\/?$/) || finalUrl.match(/\/([a-zA-Z0-9]{3,32})\//);
+        const rid = matches ? matches[1] : finalUrl.split('/').filter(Boolean).pop();
+        if (rid) {
+          finalUrl = `https://rashaba.com/e/${rid}`;
+        }
+      } catch (e) {}
+    }
+  }
+
+  // Streamtape Embed
+  if (finalUrl.includes('streamtape.com/v/')) {
+    finalUrl = finalUrl.replace('streamtape.com/v/', 'streamtape.com/e/');
+  }
+
+  // DoodStream Embed
+  if (finalUrl.includes('doodstream.com/d/') || finalUrl.includes('dood.to/d/') || finalUrl.includes('dood.ws/d/')) {
+    finalUrl = finalUrl.replace('/d/', '/e/');
+  }
+
+  // Direct Media Check (.m3u8, .mp4, .webm, etc.)
   const isDirectMedia = (
     finalUrl.toLowerCase().includes('.m3u8') ||
     finalUrl.toLowerCase().includes('.mp4') ||
     finalUrl.toLowerCase().includes('.webm') ||
     finalUrl.toLowerCase().includes('.m4v') ||
+    finalUrl.toLowerCase().includes('.mkv') ||
     finalUrl.toLowerCase().includes('/storage/v1/object/public/') ||
     finalUrl.toLowerCase().includes('shortbox')
   );
@@ -364,7 +405,7 @@ export const extractEmbedSrc = (source: string): string => {
     return finalUrl;
   }
 
-  // Autoplay params for iframe embeds
+  // Autoplay parameters for generic iframe embeds
   try {
     const url = new URL(finalUrl);
     if (!url.searchParams.has('autoplay')) url.searchParams.append('autoplay', '1');
@@ -384,17 +425,29 @@ export const extractEmbedSrc = (source: string): string => {
  */
 export const getDubbedSources = (rawStream: string, language: string = 'ku'): EnhancedPlayerSource[] => {
   if (!rawStream || !rawStream.trim()) return [];
-  const parts = rawStream.split(/[\n,|]+/).map(s => s.trim()).filter(Boolean);
+  
+  // Extract individual iframe blocks or delimited strings
+  const iframeMatches = rawStream.match(/<iframe[\s\S]*?<\/iframe>/gi);
+  let parts: string[] = [];
+
+  if (iframeMatches && iframeMatches.length > 0) {
+    parts = iframeMatches;
+  } else {
+    parts = rawStream.split(/[\n,|]+/).map(s => s.trim()).filter(Boolean);
+  }
   
   return parts.map((part, idx) => {
     const cleanUrl = extractEmbedSrc(part);
     const serverName = `FLKRD DUBBED ${idx + 1}`;
     let providerName = (language === 'ku' || language === 'badini') ? `سێرڤەری کوردی ${idx + 1}` : `Kurdish Stream ${idx + 1}`;
 
-    if (part.includes('rashaba')) providerName = `Rashaba Server ${idx + 1}`;
-    else if (part.includes('drive.google')) providerName = `Google Drive ${idx + 1}`;
-    else if (part.includes('ok.ru')) providerName = `OK.ru Node ${idx + 1}`;
-    else if (part.includes('.m3u8')) providerName = `Direct HLS ${idx + 1}`;
+    const lowerPart = part.toLowerCase();
+    if (lowerPart.includes('rashaba')) providerName = `Rashaba HD ${idx + 1}`;
+    else if (lowerPart.includes('drive.google')) providerName = `Google Drive ${idx + 1}`;
+    else if (lowerPart.includes('ok.ru')) providerName = `OK.ru HD ${idx + 1}`;
+    else if (lowerPart.includes('youtube') || lowerPart.includes('youtu.be')) providerName = `YouTube Stream ${idx + 1}`;
+    else if (lowerPart.includes('.m3u8')) providerName = `Direct HLS 4K ${idx + 1}`;
+    else if (lowerPart.includes('.mp4')) providerName = `Direct MP4 ${idx + 1}`;
 
     return {
       name: serverName,
