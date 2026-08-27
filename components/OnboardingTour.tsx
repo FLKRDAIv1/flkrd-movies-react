@@ -272,6 +272,18 @@ const OnboardingTour: React.FC = () => {
     };
   }, [isActive, currentIdx, updateHighlight, isNavigating]);
 
+  // Close tour on Escape key
+  useEffect(() => {
+    if (!showInvite && !isActive) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkipTour();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showInvite, isActive, handleSkipTour]);
+
   const handleStartTour = () => {
     setShowInvite(false);
     setIsActive(true);
@@ -311,8 +323,6 @@ const OnboardingTour: React.FC = () => {
       setCurrentIdx(currentIdx - 1);
     }
   };
-
-  if (!showInvite && (!isActive || steps.length === 0)) return null;
 
   const currentStep = steps[currentIdx];
 
@@ -397,19 +407,7 @@ const OnboardingTour: React.FC = () => {
     };
   };
 
-  // Close tour on Escape key
-  useEffect(() => {
-    if (!showInvite && !isActive) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleSkipTour();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showInvite, isActive, handleSkipTour]);
-
-  if (!showInvite && !isActive) return null;
+  if (!showInvite && (!isActive || steps.length === 0)) return null;
 
   return (
     <div className="fixed inset-0 z-[999999] pointer-events-none overflow-hidden">
