@@ -272,25 +272,13 @@ const OnboardingTour: React.FC = () => {
     };
   }, [isActive, currentIdx, updateHighlight, isNavigating]);
 
-  // Close tour on Escape key
-  useEffect(() => {
-    if (!showInvite && !isActive) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleSkipTour();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showInvite, isActive, handleSkipTour]);
-
-  const handleStartTour = () => {
+  const handleStartTour = useCallback(() => {
     setShowInvite(false);
     setIsActive(true);
     setCurrentIdx(0);
-  };
+  }, []);
 
-  const handleSkipTour = () => {
+  const handleSkipTour = useCallback(() => {
     setShowInvite(false);
     setIsActive(false);
     setCurrentIdx(-1);
@@ -307,22 +295,34 @@ const OnboardingTour: React.FC = () => {
     if (closePlayerBtn) {
       closePlayerBtn.click();
     }
-  };
+  }, []);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIdx < steps.length - 1) {
       setCurrentIdx(currentIdx + 1);
     } else {
       // Completed Tour
       handleSkipTour();
     }
-  };
+  }, [currentIdx, steps.length, handleSkipTour]);
 
-  const handleBack = () => {
+  const handleBack = useCallback(() => {
     if (currentIdx > 0) {
       setCurrentIdx(currentIdx - 1);
     }
-  };
+  }, [currentIdx]);
+
+  // Close tour on Escape key
+  useEffect(() => {
+    if (!showInvite && !isActive) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkipTour();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showInvite, isActive, handleSkipTour]);
 
   const currentStep = steps[currentIdx];
 
