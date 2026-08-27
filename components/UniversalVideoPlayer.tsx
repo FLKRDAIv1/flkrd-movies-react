@@ -3379,10 +3379,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div
             ref={containerRef}
-            className={`bg-transparent flex items-center justify-center transition-all duration-300 ${isSimulatedFullscreen
+            className={`bg-black flex items-center justify-center transition-all duration-300 w-full h-full select-none ${isSimulatedFullscreen
                     ? 'fixed inset-0 w-screen h-dvh z-[9999] overflow-hidden'
-                    : 'w-full h-full relative z-20'
+                    : 'w-full h-full relative z-20 overflow-hidden'
                 }`}
+            style={{
+                backgroundColor: '#000000',
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden'
+            }}
         >
 
             {/* AdGuardOnboarding disabled on play as requested by the user */}
@@ -3904,6 +3910,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             display: 'block',
                             width: '100%',
                             height: '100%',
+                            backgroundColor: '#000000',
+                            border: 'none',
+                            outline: 'none',
                             zIndex: 10,
                             filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                         }}
