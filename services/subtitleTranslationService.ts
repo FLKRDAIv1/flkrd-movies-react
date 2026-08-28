@@ -225,8 +225,9 @@ const getApiBaseUrl = (): string => {
 async function translateWithGoogleAppsScript(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
   if (!chunkItems || chunkItems.length === 0) return null;
   const gasEndpoints = [
-    'https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec',
-    'https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec'
+    'https://script.google.com/macros/s/AKfycbzt-Bus8kvLiywcXX16pnPLbvcbAGSf7euGm3hw0pB4xbrb7CzlddQspR1pLg22MRbCSQ/exec',
+    'https://script.google.com/macros/s/AKfycbyt0rFOvzrUCYcczcR2fBVvG0aRYgajFr55FHv3-qHZkeN0O54_UtMfZPOz3SUpsqtzXg/exec',
+    'https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec'
   ];
   const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
   const effectiveTgt = (tgt === 'ku' || tgt === 'ckb' || tgt === 'sorani') ? 'ckb' : (tgt === 'badini' ? 'ku' : tgt);

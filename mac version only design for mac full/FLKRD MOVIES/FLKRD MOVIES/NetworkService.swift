@@ -607,8 +607,9 @@ class NetworkService: ObservableObject {
     
     // MARK: - 10. Kurdish High-Performance AI Translation System
     private let gasEndpoints = [
-        "https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec",
-        "https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec"
+        "https://script.google.com/macros/s/AKfycbzt-Bus8kvLiywcXX16pnPLbvcbAGSf7euGm3hw0pB4xbrb7CzlddQspR1pLg22MRbCSQ/exec",
+        "https://script.google.com/macros/s/AKfycbyt0rFOvzrUCYcczcR2fBVvG0aRYgajFr55FHv3-qHZkeN0O54_UtMfZPOz3SUpsqtzXg/exec",
+        "https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec"
     ]
     
     func translateWithGoogleAppsScript(text: String, source: String = "auto", target: String = "ckb") async -> String {

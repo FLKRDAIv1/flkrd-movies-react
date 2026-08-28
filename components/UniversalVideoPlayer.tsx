@@ -24,6 +24,7 @@ import {
     subscribeSubtitleEdits,
     type SubtitleEditKey,
 } from '../services/subtitleEditService';
+import { resolveOffset, saveUserOverride, fetchAdminOffset } from '../services/subtitleOffsetService';
 import { getRankedSources, getSourceUrl, SOURCE_META } from '../utils/playerSourceUtils';
 import { PlayerActionHub } from './PlayerActionHub';
 
@@ -546,9 +547,28 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`, String(next));
             }
 
+            // 3. Persist in subtitleOffsetService for seamless episode/movie tracking
+            if (tmdbId) {
+                saveUserOverride(String(tmdbId), isTvContent ? effectiveSeason : 0, isTvContent ? effectiveEpisode : 0, next);
+            }
+
             return next;
         });
-    }, [tmdbId, title]);
+    }, [tmdbId, title, isTvContent, effectiveSeason, effectiveEpisode]);
+
+    // Automatically resolve stored user/admin offset when media or episode changes
+    useEffect(() => {
+        if (!tmdbId) return;
+        const mediaType = isTvContent ? 'tv' : 'movie';
+        const s = isTvContent ? effectiveSeason : 0;
+        const e = isTvContent ? effectiveEpisode : 0;
+        resolveOffset(String(tmdbId), mediaType, s, e).then(resolved => {
+            if (resolved && resolved.offsetMs !== undefined && resolved.offsetMs !== 0) {
+                setSubtitleOffsetState(resolved.offsetMs);
+            }
+        }).catch(() => {});
+    }, [tmdbId, isTvContent, effectiveSeason, effectiveEpisode]);
+
     const [showSubSettings, setShowSubSettings] = useState(false);
     const [showSubtitles, setShowSubtitles] = useState(true);
     const [showEpisodesPortal, setShowEpisodesPortal] = useState(false);
@@ -610,11 +630,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             return;
         }
 
+        const offsetSec = subtitleOffset / 1000;
         const formatVttTime = (seconds: number) => {
-            const hrs = Math.floor(seconds / 3600);
-            const mins = Math.floor((seconds - (hrs * 3600)) / 60);
-            const secs = Math.floor(seconds - (hrs * 3600) - (mins * 60));
-            const ms = Math.floor((seconds % 1) * 1000);
+            const safeSeconds = Math.max(0, seconds);
+            const hrs = Math.floor(safeSeconds / 3600);
+            const mins = Math.floor((safeSeconds - (hrs * 3600)) / 60);
+            const secs = Math.floor(safeSeconds - (hrs * 3600) - (mins * 60));
+            const ms = Math.floor((safeSeconds % 1) * 1000);
 
             const hh = hrs.toString().padStart(2, '0');
             const mm = mins.toString().padStart(2, '0');
@@ -627,7 +649,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         let vttText = "WEBVTT\n\n";
         subtitleCues.forEach((cue, index) => {
             vttText += `${index + 1}\n`;
-            vttText += `${formatVttTime(cue.start)} --> ${formatVttTime(cue.end)}\n`;
+            vttText += `${formatVttTime(cue.start + offsetSec)} --> ${formatVttTime(cue.end + offsetSec)}\n`;
             vttText += `${cue.text}\n\n`;
         });
 
@@ -638,7 +660,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             URL.revokeObjectURL(url);
         };
-    }, [subtitleCues]);
+    }, [subtitleCues, subtitleOffset]);
 
     // Keep ref in sync and auto-tick manualSubTime forward only when actively playing (iframe subtitle sync)
     useEffect(() => {
@@ -4859,6 +4881,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onResetFilters={handleResetFilters}
                         subtitleOffset={subtitleOffset}
                         setSubtitleOffset={setSubtitleOffset}
+                        currentTime={currentTime}
                         subSearchQuery={subSearchQuery}
                         setSubSearchQuery={setSubSearchQuery}
                         availableSubs={availableSubs}

@@ -417,7 +417,7 @@ export default async function handler(req, res) {
 
         const gasUrl = process.env.GOOGLE_TRANSLATE_GAS_URL || 
                        process.env.VITE_GOOGLE_TRANSLATE_GAS_URL || 
-                       "https://script.google.com/macros/s/AKfycbzCTsm3ez5RPANs8NbrGRZxeWN1XNGUy8IBM1wie_zDEygekQoY6GXvuJu7oyFxW48v8w/exec";
+                       "https://script.google.com/macros/s/AKfycbzt-Bus8kvLiywcXX16pnPLbvcbAGSf7euGm3hw0pB4xbrb7CzlddQspR1pLg22MRbCSQ/exec";
 
         const callGAS = async (payload) => {
             const ctrl = new AbortController();
@@ -468,6 +468,59 @@ export default async function handler(req, res) {
                 .replace(/&#x2F;/g, '/')
                 .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)));
         }
+
+        // 🌟 Ultra-Reliable Google Gemini Flash AI Translation Engine
+        const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
+
+        const translateWithGeminiFlash = async (chunkItems, src, tgt) => {
+            if (!chunkItems || chunkItems.length === 0 || !GEMINI_API_KEY) return null;
+            const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
+            const effectiveTgt = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani') ? 'Kurdish Sorani (Central Kurdish - ckb)' : tgt;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+                const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
+                const joinedText = chunkItems.join(delimiter);
+
+                const prompt = `Translate the following movie subtitle dialogue lines from ${effectiveSrc} to natural, modern ${effectiveTgt}.
+Preserve the exact delimiter ":::FLKRD_CUE:::" between items so they map 1-to-1 with the original count (${chunkItems.length} lines).
+Do not add notes, explanations, or markdown code blocks.
+
+Input:
+${joinedText}`;
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.1, maxOutputTokens: 65536 }
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    if (rawOutput) {
+                        const cleanedOutput = rawOutput.replace(/```[a-z]*|```/gi, '').trim();
+                        const splitResults = cleanedOutput.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
+                        if (splitResults.length === chunkItems.length) {
+                            const isKurdishTarget = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani');
+                            return splitResults.map((item, idx) => {
+                                const cleaned = item.trim();
+                                return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
+                            });
+                        }
+                    }
+                }
+            } catch (geminiErr) {}
+            return null;
+        };
 
         // 🌟 Ultra-Reliable Google Mobile Translation Engine (Zero rate limits, delivers 100% authentic Kurdish Sorani/Badini)
         const translateWithGoogleMobile = async (chunkItems, src, tgt) => {
@@ -552,7 +605,16 @@ export default async function handler(req, res) {
         const translateChunk = async (chunkItems) => {
             if (!chunkItems || chunkItems.length === 0) return [];
 
-            // 0. Primary High-Reliability Path: Google Mobile Translation Engine
+            // 0. Highest-Precision Tier: Google Gemini Flash AI Engine
+            try {
+                const geminiRes = await translateWithGeminiFlash(chunkItems, source, actualTarget);
+                if (Array.isArray(geminiRes) && geminiRes.length === chunkItems.length) {
+                    const validCount = geminiRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
+                    if (validCount > 0) return geminiRes;
+                }
+            } catch (err) {}
+
+            // 1. High-Reliability Path: Google Mobile Translation Engine
             try {
                 const mobileRes = await translateWithGoogleMobile(chunkItems, source, actualTarget);
                 if (Array.isArray(mobileRes) && mobileRes.length === chunkItems.length) {

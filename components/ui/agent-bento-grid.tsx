@@ -1,22 +1,20 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  ChatCircle,
+  MessageCircle as ChatCircle,
   Brain,
   Database,
-  TerminalWindow,
+  Terminal as TerminalWindow,
   Code,
   FileText,
-  SlackLogo,
-  NotionLogo,
+  Share2 as SlackLogo,
+  BookOpen as NotionLogo,
   Check,
-  CircleNotch,
+  Loader2 as CircleNotch,
   Clock,
   Minus,
   Globe,
-} from "@phosphor-icons/react";
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ──────────────────────────────────────────────────────
@@ -26,6 +24,7 @@ import { cn } from "@/lib/utils";
 ────────────────────────────────────────────────────── */
 
 interface FeatCardProps {
+  key?: React.Key;
   title: string;
   description: string;
   children: React.ReactNode;

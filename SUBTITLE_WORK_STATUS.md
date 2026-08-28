@@ -7,7 +7,7 @@ This file serves as a memory sync to remember the context, setup details, and ac
 ## 🔗 Key Endpoints & Target Codes
 
 * **Google Apps Script URL**: 
-  `https://script.google.com/macros/s/AKfycbwBTWzXzyNxSe51K5MfzYYAdOxkLjYZobb3XULgZMHJE8r_hofMfo8DpmT7hbzFASyC/exec`
+  `https://script.google.com/macros/s/AKfycbzt-Bus8kvLiywcXX16pnPLbvcbAGSf7euGm3hw0pB4xbrb7CzlddQspR1pLg22MRbCSQ/exec`
   * *Purpose*: Direct translation of English/foreign `.vtt`/`.srt` subtitle lines to Kurdish.
 * **Kurdish Translation Language Target**: `ckb` (Kurdish Sorani)
   * *Standard Mapping*: The pipeline sends `targetLang: 'ckb'`. The Apps Script endpoint translates using standard translation engines.
