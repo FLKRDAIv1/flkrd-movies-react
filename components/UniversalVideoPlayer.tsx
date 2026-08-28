@@ -24,7 +24,7 @@ import {
     subscribeSubtitleEdits,
     type SubtitleEditKey,
 } from '../services/subtitleEditService';
-import { resolveOffset, saveUserOverride, fetchAdminOffset } from '../services/subtitleOffsetService';
+import { resolveOffset, saveUserOverride, fetchAdminOffset, autoSaveCalibratedOffset } from '../services/subtitleOffsetService';
 import { getRankedSources, getSourceUrl, SOURCE_META } from '../utils/playerSourceUtils';
 import { PlayerActionHub } from './PlayerActionHub';
 
@@ -547,9 +547,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`, String(next));
             }
 
-            // 3. Persist in subtitleOffsetService for seamless episode/movie tracking
+            // 3. Persist in subtitleOffsetService & Supabase for seamless episode/movie tracking
             if (tmdbId) {
-                saveUserOverride(String(tmdbId), isTvContent ? effectiveSeason : 0, isTvContent ? effectiveEpisode : 0, next);
+                autoSaveCalibratedOffset(String(tmdbId), isTvContent ? 'tv' : 'movie', isTvContent ? effectiveSeason : 0, isTvContent ? effectiveEpisode : 0, next);
             }
 
             return next;

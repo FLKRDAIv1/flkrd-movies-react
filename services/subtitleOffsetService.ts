@@ -128,6 +128,24 @@ export async function deleteAdminOffset(id: string): Promise<{ error: string | n
   return { error: error?.message ?? null };
 }
 
+export function autoSaveCalibratedOffset(
+  tmdbId: string, mediaType: 'movie' | 'tv',
+  season: number, episode: number,
+  offsetMs: number
+): void {
+  saveUserOverride(tmdbId, season, episode, offsetMs);
+  try {
+    Promise.resolve(
+      supabase
+        .from('subtitle_offsets')
+        .upsert(
+          { tmdb_id: tmdbId, media_type: mediaType, season, episode, offset_ms: offsetMs, note: 'AI calibrated sync', set_by: 'ai-sync' },
+          { onConflict: 'tmdb_id,media_type,season,episode' }
+        )
+    ).catch(() => {});
+  } catch (_) {}
+}
+
 export async function listAdminOffsets(): Promise<SubtitleOffsetRow[]> {
   const { data, error } = await supabase
     .from('subtitle_offsets')

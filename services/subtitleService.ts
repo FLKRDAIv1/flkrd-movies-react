@@ -361,7 +361,21 @@ export const subtitleService = {
             uniqueResults.push(sub);
         }
 
-        // Sort: Kurdish first, then Persian/Arabic, then English, then others
+        // Smart Release Quality Scorer: Boosts exact Web-DL / Official Stream matches for frame-accurate sync
+        const getQualityScore = (sub: SubtitleResult): number => {
+            const name = (sub.attributes.display_name || '').toLowerCase();
+            let score = 0;
+            if (name.includes('web-dl') || name.includes('webdl') || name.includes('web.dl')) score += 50;
+            if (name.includes('webrip') || name.includes('web-rip')) score += 40;
+            if (name.includes('bluray') || name.includes('blu-ray') || name.includes('bdrip') || name.includes('brrip')) score += 35;
+            if (name.includes('amzn') || name.includes('nf') || name.includes('max') || name.includes('hbo') || name.includes('disney') || name.includes('atvp')) score += 30;
+            if (name.includes('stremio') || name.includes('verified')) score += 20;
+            // Down-rank HDTV releases for web streaming to avoid commercial break sync errors
+            if (name.includes('hdtv') || name.includes('pdtv') || name.includes('dsr')) score -= 30;
+            return score;
+        };
+
+        // Sort: Kurdish first, then Persian/Arabic, then English, then others, with Quality Score within each tier
         const sortedResults = uniqueResults.sort((a, b) => {
             const aLang = (a.attributes.language || '').toLowerCase();
             const bLang = (b.attributes.language || '').toLowerCase();
@@ -373,21 +387,24 @@ export const subtitleService = {
 
             if (aIsKu && !bIsKu) return -1;
             if (!aIsKu && bIsKu) return 1;
+            if (aIsKu && bIsKu) return getQualityScore(b) - getQualityScore(a);
             
             const aIsFaAr = aLang === 'fa' || aLang === 'per' || aLang === 'ar' || aLang === 'ara';
             const bIsFaAr = bLang === 'fa' || bLang === 'per' || bLang === 'ar' || bLang === 'ara';
             if (aIsFaAr && !bIsFaAr) return -1;
             if (!aIsFaAr && bIsFaAr) return 1;
+            if (aIsFaAr && bIsFaAr) return getQualityScore(b) - getQualityScore(a);
 
             const aIsEn = aLang === 'en' || aLang === 'eng';
             const bIsEn = bLang === 'en' || bLang === 'eng';
             if (aIsEn && !bIsEn) return -1;
             if (!aIsEn && bIsEn) return 1;
+            if (aIsEn && bIsEn) return getQualityScore(b) - getQualityScore(a);
 
-            return 0;
+            return getQualityScore(b) - getQualityScore(a);
         });
 
-        console.log(`[SUBTITLE SERVICE] Aggregated ${sortedResults.length} unique subtitles across all active engines.`);
+        console.log(`[SUBTITLE SERVICE] Aggregated ${sortedResults.length} unique subtitles ranked by stream compatibility.`);
         return sortedResults;
     },
 
