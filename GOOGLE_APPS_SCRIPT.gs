@@ -128,13 +128,16 @@ function processTranslation(text, source, target, geminiKey) {
 }
 
 function translateViaGeminiFlash(text, source, target, isBadini, key) {
-  var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(key);
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
   var targetName = (target === 'ckb' || target === 'ku' || isBadini) ? 'natural, realistic Kurdish' : target;
   var prompt = "Translate the following movie dialogue directly to " + targetName + ". Output only the final translation with no markdown code blocks or extra conversational commentary.\n\nText: " + text;
 
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
     contentType: 'application/json',
+    headers: {
+      'X-goog-api-key': key
+    },
     payload: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }

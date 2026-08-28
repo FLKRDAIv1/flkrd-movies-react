@@ -478,7 +478,7 @@ export default async function handler(req, res) {
             const effectiveTgt = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani') ? 'Kurdish Sorani (Central Kurdish - ckb)' : tgt;
 
             try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
                 const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
                 const joinedText = chunkItems.join(delimiter);
 
@@ -494,7 +494,10 @@ ${joinedText}`;
 
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-goog-api-key': GEMINI_API_KEY
+                    },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: { temperature: 0.1, maxOutputTokens: 65536 }
