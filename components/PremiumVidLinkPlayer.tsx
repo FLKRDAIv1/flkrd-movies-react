@@ -873,14 +873,39 @@ export default function PremiumVidLinkPlayer({
         }
       }
 
-      setAvailableSubsWithVirtual([...customSubsList, ...safeResults]);
+      const allFoundSubs = [...customSubsList, ...safeResults];
+      setAvailableSubsWithVirtual(allFoundSubs);
       setHasSearchedCloud(true);
+
+      // Check if a Kurdish subtitle is already available (custom uploaded or external)
+      const existingKuSub = customSubsList[0] || safeResults.find(sub => {
+        const l = (sub?.attributes?.language || '').toLowerCase();
+        return l === 'ku' || l === 'ckb' || l === 'kur' || l === 'badini';
+      });
+
+      if (existingKuSub) {
+        console.log("[VIP-PLAYER] Auto-applying existing Kurdish subtitle:", existingKuSub.attributes?.display_name);
+        handleSelectSub(existingKuSub);
+      } else if (safeResults.length > 0 && !vttContent) {
+        // Zero-Click Kurdish Auto-Translation Pipeline:
+        // Automatically find best English/base sub, load it, and auto-translate to Kurdish!
+        const baseSub = safeResults.find(sub => {
+          const l = (sub?.attributes?.language || '').toLowerCase();
+          return l === 'en' || l === 'eng';
+        }) || safeResults[0];
+
+        if (baseSub) {
+          console.log("[VIP-PLAYER] 🤖 Zero-click Kurdish Auto-Pipeline: Auto-translating base sub to Kurdish...", baseSub.attributes?.language);
+          const targetLang = (language === 'badini') ? 'badini' : 'ckb';
+          handleStartTranslation(baseSub, targetLang);
+        }
+      }
     } catch (e) {
       console.warn("[VIP-PLAYER] Sub Search Error:", e);
     } finally {
       setLoadingSubs(false);
     }
-  }, [tmdbId, imdbId, type, season, episode, hasSearchedCloud, setAvailableSubsWithVirtual]);
+  }, [tmdbId, imdbId, type, season, episode, hasSearchedCloud, setAvailableSubsWithVirtual, vttContent, language]);
 
   const handleSelectSub = async (sub: any) => {
     if (sub.id === 'off' || sub.attributes?.language === 'off') {
@@ -1105,11 +1130,6 @@ export default function PremiumVidLinkPlayer({
 
       const isFinalEvent = e.detail.isFinal === true || e.detail.progress === 100;
 
-      // FIX (Race Condition #3): Always process final events regardless of what is loaded.
-      // Only skip non-final partial events when a stable non-data URL is already loaded.
-      if (!isFinalEvent && e.detail.progress < 100 && resolvedSubUrlRef.current && !resolvedSubUrlRef.current.startsWith('data:')) {
-        return;
-      }
 
       // 1. Prefer explicit SRT content when the pipeline includes it (final completion event)
       let textToApply = e.detail.srtContent || null;
@@ -1584,7 +1604,6 @@ export default function PremiumVidLinkPlayer({
             isPlayingRef.current = false;
             setIsPlaying(false);
             setIsPaused(true);
-            updateActiveCues([]);
             if (pauseGlobalTranslation) pauseGlobalTranslation();
           } else if (isPlayEvent) {
             isPlayingRef.current = true;
@@ -1594,7 +1613,7 @@ export default function PremiumVidLinkPlayer({
           }
 
           const offsetSec = subtitleOffsetRef.current / 1000;
-          if (parsedCuesRef.current.length > 0 && isPlayingRef.current) {
+          if (parsedCuesRef.current.length > 0) {
             const active = parsedCuesRef.current.filter(c => extractedTime! >= (c.start + offsetSec) && extractedTime! <= (c.end + offsetSec));
             updateActiveCues(active);
           }
@@ -1614,22 +1633,25 @@ export default function PremiumVidLinkPlayer({
     return () => window.removeEventListener('message', handleIframeMessage);
   }, [onProgress, updateActiveCues]);
 
-  // Universal Fallback Timer: Only ticks if active playing is explicitly confirmed via recent messages
+  // Universal Subtitle Evaluator & Timer: Evaluates cues continuously and promptly clears expired cues
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
       const now = performance.now();
-      // Crucial fix: Only advance playhead if video is active AND received recent stream postMessages (< 2000ms ago).
-      // If postMessages stop (video paused or stopped buffering), DO NOT increment time.
-      if (isPlaying && isPlayingRef.current && (now - lastMessageTimeRef.current < 2000) && parsedCuesRef.current.length > 0) {
-        const nextTime = lastReceivedTimeRef.current + 1;
-        lastReceivedTimeRef.current = nextTime;
+      if (isPlaying && isPlayingRef.current && parsedCuesRef.current.length > 0) {
+        let currentTime = lastReceivedTimeRef.current;
+        if (now - lastMessageTimeRef.current > 200) {
+          const delta = (now - Math.max(lastMessageTimeRef.current, 0)) / 1000;
+          if (delta > 0 && delta < 60) {
+            currentTime = lastReceivedTimeRef.current + delta;
+          }
+        }
         const offsetSec = subtitleOffsetRef.current / 1000;
-        const active = parsedCuesRef.current.filter(c => nextTime >= (c.start + offsetSec) && nextTime <= (c.end + offsetSec));
+        const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
         updateActiveCues(active);
       }
-    }, 1000);
+    }, 200);
 
     return () => clearInterval(interval);
   }, [isPlaying, updateActiveCues]);
@@ -2018,11 +2040,31 @@ export default function PremiumVidLinkPlayer({
         }
         lastReceivedTimeRef.current = 0;
       }
+
+      // Subtitle timing shortcuts:
+      // [ -> Nudge -100ms (delay subtitles)
+      // ] -> Nudge +100ms (advance subtitles)
+      // { (Shift+[) -> Shift -1000ms (-1s)
+      // } (Shift+]) -> Shift +1000ms (+1s)
+      else if (e.key === '[' || e.key === '{') {
+        e.preventDefault();
+        const delta = (e.shiftKey || e.key === '{') ? -1000 : -100;
+        setSubtitleOffset((prev: number) => Math.max(-60000, Math.min(60000, prev + delta)));
+      }
+      else if (e.key === ']' || e.key === '}') {
+        e.preventDefault();
+        const delta = (e.shiftKey || e.key === '}') ? 1000 : 100;
+        setSubtitleOffset((prev: number) => Math.max(-60000, Math.min(60000, prev + delta)));
+      }
+      else if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === '0' || e.key === 'r')) {
+        e.preventDefault();
+        setSubtitleOffset(0);
+      }
     };
 
     window.addEventListener('keydown', handlePlaybackKeyDown);
     return () => window.removeEventListener('keydown', handlePlaybackKeyDown);
-  }, [isPlaying, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
+  }, [isPlaying, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen, setSubtitleOffset]);
 
   // Auto-fullscreen on mount is disabled to prevent browser blocking and layout overlay glitches.
   useEffect(() => {

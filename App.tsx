@@ -1031,8 +1031,13 @@ const AppContent: React.FC<{
             <GamepadHints />
             <FloatingPipPlayer />
             <GlobalVideoPlayerModal />
-            {!isTauri() && import.meta.env.PROD && <SpeedInsights />}
-            {!isTauri() && import.meta.env.PROD && <Analytics />}
+            {/* Vercel Analytics & SpeedInsights: only loaded on verified Vercel preview domains to prevent 404 script loading errors */}
+            {!isTauri() && import.meta.env.PROD && typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app') && (
+              <>
+                <SpeedInsights />
+                <Analytics />
+              </>
+            )}
         </>
     );
 };

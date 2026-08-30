@@ -197,15 +197,16 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
         <AnimatePresence>
           {isSearching && (
             <motion.div
-              initial={{ opacity: 0, y: 15, scale: 0.95 }}
+              initial={{ opacity: 0, y: 10, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 15, scale: 0.95 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className={`absolute bottom-full mb-3 w-full max-w-md max-h-[60vh] overflow-y-auto rounded-3xl border p-3 z-50 backdrop-blur-2xl shadow-2xl ${
+              exit={{ opacity: 0, y: 10, scale: 0.97 }}
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+              className={`absolute bottom-full mb-3 w-full max-w-md max-h-[60vh] overflow-y-auto rounded-3xl border p-3 z-50 shadow-2xl transform-gpu ${
                 isLight
                   ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-400/50'
                   : 'bg-neutral-950/95 border-white/15 text-white shadow-[0_-12px_40px_rgba(0,0,0,0.8)]'
               }`}
+              style={{ willChange: 'transform, opacity', transform: 'translateZ(0)' }}
             >
               {/* Header Title inside Dropdown */}
               <div className={`flex items-center justify-between px-2 py-1.5 mb-2 border-b ${
@@ -240,7 +241,7 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                         <div
                           key={item.id}
                           onClick={() => handleItemSelect(item)}
-                          className={`flex items-center gap-3 p-2 rounded-2xl border cursor-pointer active:scale-98 transition-all group ${
+                          className={`flex items-center gap-3 p-2 rounded-2xl border cursor-pointer active:scale-98 transition-all group touch-manipulation ${
                             isLight
                               ? 'bg-zinc-50 hover:bg-red-500/10 border-zinc-200/80 hover:border-red-500/40'
                               : 'bg-white/5 hover:bg-red-600/20 border-white/10 hover:border-red-500/40'
@@ -298,7 +299,7 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                       <div
                         key={item.id}
                         onClick={() => handleItemSelect(item)}
-                        className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer active:scale-95 transition-all group"
+                        className="flex items-center gap-2 p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer active:scale-95 transition-all group touch-manipulation"
                       >
                         <img
                           src={
@@ -330,15 +331,15 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
 
         {/* BOTTOM FLOATING DYNAMIC ISLAND CAPSULE */}
         <div className="flex items-center justify-center h-14 sm:h-16 w-full max-w-md px-1">
-          <div className={`flex items-center gap-1.5 p-1.5 rounded-full border max-w-full overflow-hidden transform-gpu backdrop-blur-2xl ${
+          <div className={`flex items-center gap-1.5 p-1.5 rounded-full border max-w-full overflow-hidden transform-gpu backdrop-blur-xl ${
             isLight
               ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-xl shadow-zinc-400/30'
-              : 'bg-neutral-950/90 border-white/15 text-white shadow-[0_12px_36px_rgba(0,0,0,0.85)]'
+              : 'bg-neutral-950/95 border-white/15 text-white shadow-[0_12px_36px_rgba(0,0,0,0.85)]'
           }`}>
             
             {/* SEARCH EXPANDABLE PILL */}
             <div
-              className={`relative flex items-center transition-all duration-300 rounded-full ${
+              className={`relative flex items-center transition-all duration-200 rounded-full ${
                 isSearching
                   ? isLight
                     ? 'w-[calc(100vw-88px)] max-w-xs sm:max-w-sm h-11 bg-zinc-100 border border-red-500/60 shadow-[0_0_18px_rgba(239,68,68,0.25)]'
@@ -392,7 +393,7 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                 {!isSearching && (
                   <button
                     type="button"
-                    className="absolute inset-0 z-10 w-full h-full cursor-pointer focus:outline-none"
+                    className="absolute inset-0 z-10 w-full h-full cursor-pointer focus:outline-none touch-manipulation"
                     onClick={() => setIsSearching(true)}
                     aria-label="Open Search"
                   />
@@ -413,21 +414,19 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
                       onClick={(e) => handleCategoryClick(cat, e)}
                       title={cat.label}
                       aria-label={cat.label}
-                      className="relative py-2.5 px-3 rounded-full flex flex-col items-center justify-center transition-transform duration-150 active:scale-90 focus:outline-none touch-manipulation flex-1 min-w-0 cursor-pointer"
+                      className="relative py-2.5 px-3 rounded-full flex flex-col items-center justify-center transition-all duration-150 active:scale-90 focus:outline-none touch-manipulation flex-1 min-w-0 cursor-pointer"
                       style={{
                         color: isActive ? activeTextColor : undefined,
                         WebkitTapHighlightColor: 'transparent',
                       }}
                     >
                       {isActive && (
-                        <motion.div
-                          layoutId="active-island-pill"
-                          className="absolute inset-0 z-0 rounded-full bg-red-600/15 border border-red-500/40 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
-                          transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                        <div
+                          className="absolute inset-0 z-0 rounded-full bg-red-600/15 border border-red-500/40 shadow-[0_0_14px_rgba(239,68,68,0.25)] transition-all duration-150 pointer-events-none"
                         />
                       )}
                       <span
-                        className={`relative z-10 shrink-0 transition-transform duration-200 ${
+                        className={`relative z-10 shrink-0 transition-all duration-150 ${
                           isActive
                             ? 'text-red-500 scale-110 drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]'
                             : (isLight ? 'text-zinc-600 hover:text-black' : 'text-zinc-400 hover:text-white')

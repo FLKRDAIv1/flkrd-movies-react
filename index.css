@@ -606,9 +606,22 @@ body.movie-player-active .flkrd-hub-portal {
 }
 
 /* ── Premium Hardware Composition & CSS Containment Layer ── */
-.sidebar-container, .movie-grid-card, .global-sidebar {
+.sidebar-container, .movie-grid-card {
   contain: layout paint style; /* Isolates layout changes */
   will-change: transform, opacity; /* Hard-allocates GPU resources */
+}
+
+.global-sidebar {
+  contain: layout style;
+  will-change: width;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.global-mobilenav {
+  contain: layout style;
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* Eradicate delayed tap response & lock layout bounds */

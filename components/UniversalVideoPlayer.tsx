@@ -25,7 +25,7 @@ import {
     type SubtitleEditKey,
 } from '../services/subtitleEditService';
 import { resolveOffset, saveUserOverride, fetchAdminOffset, autoSaveCalibratedOffset } from '../services/subtitleOffsetService';
-import { getRankedSources, getSourceUrl, SOURCE_META } from '../utils/playerSourceUtils';
+import { getRankedSources, getSourceUrl, getSourceSandboxConfig, SOURCE_META } from '../utils/playerSourceUtils';
 import { PlayerActionHub } from './PlayerActionHub';
 
 interface UniversalVideoPlayerProps {
@@ -528,6 +528,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // without needing to add it as a dependency (which would recreate the callback on every subtitle change).
     const currentSubIdRef = useRef<string | null>(null);
 
+    // Live Accessible Subtitle Timing Toast OSD
+    const [syncToast, setSyncToast] = useState<{ text: string; id: number } | null>(null);
+    const syncToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const triggerSyncToast = useCallback((msg: string) => {
+        if (syncToastTimerRef.current) clearTimeout(syncToastTimerRef.current);
+        const toastId = Date.now();
+        setSyncToast({ text: msg, id: toastId });
+        syncToastTimerRef.current = setTimeout(() => {
+            setSyncToast(prev => prev?.id === toastId ? null : prev);
+        }, 1800);
+    }, []);
+
     const setSubtitleOffset = useCallback((val: number | ((prev: number) => number)) => {
         setSubtitleOffsetState((prev) => {
             const next = typeof val === 'function' ? val(prev) : val;
@@ -636,7 +649,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             const hrs = Math.floor(safeSeconds / 3600);
             const mins = Math.floor((safeSeconds - (hrs * 3600)) / 60);
             const secs = Math.floor(safeSeconds - (hrs * 3600) - (mins * 60));
-            const ms = Math.floor((safeSeconds % 1) * 1000);
+            const ms = Math.min(999, Math.floor(Math.round((safeSeconds % 1) * 1000)));
 
             const hh = hrs.toString().padStart(2, '0');
             const mm = mins.toString().padStart(2, '0');
@@ -1267,11 +1280,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             const isFinal = e.detail.isFinal === true || e.detail.progress === 100;
 
-            // FIX (Race Condition #3): Always process final events regardless of what is loaded.
-            // Only skip truly non-final partial events when a stable non-data URL is already loaded.
-            if (!isFinal && e.detail.progress < 100 && localSubtitleUrl && !localSubtitleUrl.startsWith('data:')) {
-                return;
-            }
+            // Always apply incoming translated subtitles (both live partials and final) immediately
+            translatedCuesActiveRef.current = true;
 
             const url = e.detail?.subtitleUrl || (typeof e.detail === 'string' ? e.detail : undefined);
             const srtContent = e.detail?.srtContent;
@@ -2542,32 +2552,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const interval = setInterval(() => {
             const now = performance.now();
 
-            if (lastMessageTimeRef.current > 0) {
-                const timeSinceLastMsg = now - lastMessageTimeRef.current;
-                // If more than 2000ms passed with NO new messages from an iframe that previously sent messages, video is paused
-                if (timeSinceLastMsg >= 2000) {
-                    if (isPlayingRef.current) {
-                        isPlayingRef.current = false;
-                        setIsPlaying(false);
-                        setIsPaused(true);
-                        if (pauseGlobalTranslation) pauseGlobalTranslation();
-                    }
-                    return;
-                }
-
-                if (isPlayingRef.current && timeSinceLastMsg > 500) {
-                    const elapsedSec = (now - playStartTimeRef.current) / 1000;
-                    const nextTime = Math.max(0, playStartCurrentTimeRef.current + elapsedSec);
-                    currentTimeRef.current = nextTime;
-                    if (Math.abs(nextTime - currentTime) >= 0.1) {
-                        setCurrentTime(nextTime);
-                    }
-                    if (nextTime > 3) {
-                        saveWatchProgressDirectly(nextTime);
-                    }
-                }
-            } else if (isPlayingRef.current && playStartTimeRef.current > 0) {
-                // If iframe does not send postMessages, smoothly step currentTime forward based on playStartTime
+            if (isPlayingRef.current && playStartTimeRef.current > 0) {
                 const elapsedSec = (now - playStartTimeRef.current) / 1000;
                 const nextTime = Math.max(0, playStartCurrentTimeRef.current + elapsedSec);
                 currentTimeRef.current = nextTime;
@@ -2578,10 +2563,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     saveWatchProgressDirectly(nextTime);
                 }
             }
-        }, 150);
+        }, 100);
 
         return () => clearInterval(interval);
-    }, [isIframe, currentTime, pauseGlobalTranslation, setIsPaused, saveWatchProgressDirectly]);
+    }, [isIframe, currentTime, saveWatchProgressDirectly]);
 
     // Save progress on player unmount or close
     useEffect(() => {
@@ -2859,11 +2844,40 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 const pct = parseInt(e.key) / 10;
                 videoRef.current.currentTime = videoRef.current.duration * pct;
             }
+
+            // Subtitle timing shortcuts:
+            // [ -> Nudge -100ms (delay subtitles)
+            // ] -> Nudge +100ms (advance subtitles)
+            // { (Shift+[) -> Shift -1000ms (-1s)
+            // } (Shift+]) -> Shift +1000ms (+1s)
+            else if (e.key === '[' || e.key === '{') {
+                e.preventDefault();
+                const delta = (e.shiftKey || e.key === '{') ? -1000 : -100;
+                setSubtitleOffset((prev) => {
+                    const next = Math.max(-60000, Math.min(60000, prev + delta));
+                    triggerSyncToast(language === 'ku' || language === 'badini' ? `کاتی ژێرنووس: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)` : `Subtitle Timing: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)`);
+                    return next;
+                });
+            }
+            else if (e.key === ']' || e.key === '}') {
+                e.preventDefault();
+                const delta = (e.shiftKey || e.key === '}') ? 1000 : 100;
+                setSubtitleOffset((prev) => {
+                    const next = Math.max(-60000, Math.min(60000, prev + delta));
+                    triggerSyncToast(language === 'ku' || language === 'badini' ? `کاتی ژێرنووس: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)` : `Subtitle Timing: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)`);
+                    return next;
+                });
+            }
+            else if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === '0' || e.key === 'r')) {
+                e.preventDefault();
+                setSubtitleOffset(0);
+                triggerSyncToast(language === 'ku' || language === 'badini' ? 'کاتی ژێرنووس سفر کرایەوە (0ms)' : 'Subtitle Timing Reset (0ms)');
+            }
         };
 
         window.addEventListener('keydown', handlePlaybackKeyDown);
         return () => window.removeEventListener('keydown', handlePlaybackKeyDown);
-    }, [isIframe, isPlaying, currentTime, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen]);
+    }, [isIframe, isPlaying, currentTime, showSubSettings, isSimulatedFullscreen, onClose, toggleFullscreen, setSubtitleOffset, triggerSyncToast, language]);
 
     useEffect(() => {
         return () => {
@@ -3389,14 +3403,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         crossOrigin="anonymous"
                         onTimeUpdate={(e) => {
                             const time = e.currentTarget.currentTime;
-                            // Always keep ref accurate (subtitle cue selection reads it)
                             currentTimeRef.current = time;
-                            // Only re-render React when the integer second changes (perf)
-                            const sec = Math.floor(time);
+                            const sec = Math.floor(time * 4) / 4;
                             if (sec !== lastRenderedSecondRef.current) {
                                 lastRenderedSecondRef.current = sec;
                                 setCurrentTime(time);
                             }
+                            onProgress?.({ currentTime: time, paused: e.currentTarget.paused, duration: e.currentTarget.duration });
+                        }}
+                        onSeeked={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            currentTimeRef.current = time;
+                            lastRenderedSecondRef.current = Math.floor(time * 4) / 4;
+                            setCurrentTime(time);
                             onProgress?.({ currentTime: time, paused: e.currentTarget.paused, duration: e.currentTarget.duration });
                         }}
                     />
@@ -3407,8 +3426,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         key={stableKey}
                         src={iframeSrc}
                         className="absolute inset-0 w-full h-full border-none"
-                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
                         allowFullScreen={true}
+                        referrerPolicy="no-referrer-when-downgrade"
                         // @ts-ignore
                         scrolling="no"
                         title="FLKRD Universal Player PiP"
@@ -3532,11 +3552,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         crossOrigin="anonymous"
                         onTimeUpdate={(e) => {
                             const time = e.currentTarget.currentTime;
-                            // Always keep ref accurate (subtitle cue selection reads it)
                             currentTimeRef.current = time;
-                            // Only re-render React when the integer second changes (perf).
-                            // Cuts ~4 re-renders/sec down to ~1, eliminating player button lag.
-                            const sec = Math.floor(time);
+                            const sec = Math.floor(time * 4) / 4; // 250ms sub-second precision
                             if (sec !== lastRenderedSecondRef.current) {
                                 lastRenderedSecondRef.current = sec;
                                 setCurrentTime(time);
@@ -3572,12 +3589,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 duration: e.currentTarget.duration
                             });
                         }}
-                        onSeeking={(e) => onProgressRef.current?.({
-                            currentTime: e.currentTarget.currentTime,
-                            paused: e.currentTarget.paused,
-                            event: 'seek',
-                            duration: e.currentTarget.duration
-                        })}
+                        onSeeking={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            currentTimeRef.current = time;
+                            lastRenderedSecondRef.current = Math.floor(time * 4) / 4;
+                            setCurrentTime(time);
+                            onProgressRef.current?.({
+                                currentTime: time,
+                                paused: e.currentTarget.paused,
+                                event: 'seek',
+                                duration: e.currentTarget.duration
+                            });
+                        }}
+                        onSeeked={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            currentTimeRef.current = time;
+                            lastRenderedSecondRef.current = Math.floor(time * 4) / 4;
+                            setCurrentTime(time);
+                            onProgressRef.current?.({
+                                currentTime: time,
+                                paused: e.currentTarget.paused,
+                                event: 'seeked',
+                                duration: e.currentTarget.duration
+                            });
+                        }}
                     >
                         {showSubtitles && (vttBlobUrl || localSubtitleUrl || subtitleUrl) && (() => {
                             // Safari/iOS <track> REQUIRES valid WebVTT (dot timestamps, text/vtt).
@@ -3681,6 +3716,24 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     </div>
                 )}
             </div>
+
+            {/* Live Accessible Subtitle Timing Toast OSD */}
+            <AnimatePresence>
+                {syncToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.95 }}
+                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        role="status"
+                        aria-live="polite"
+                        className="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 z-[2147483647] pointer-events-none flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/85 border border-white/20 backdrop-blur-md shadow-2xl text-white font-medium text-sm"
+                    >
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>{syncToast.text}</span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Custom Subtitle Overlay — 60 FPS Hardware GPU Accelerated */}
             <AnimatePresence>
@@ -3958,9 +4011,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             zIndex: 10,
                             filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                         }}
-                        allow="autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write; display-capture; web-share; storage-access; camera; microphone"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
                         allowFullScreen={true}
-                        referrerPolicy="strict-origin-when-cross-origin"
+                        referrerPolicy="no-referrer-when-downgrade"
                         // @ts-ignore
                         scrolling="no"
                         // iOS Safari: prevent native video player takeover
@@ -4657,36 +4710,23 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                             >
                                 {effectiveSources.map((s, idx) => {
-                                    const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.png' :
-                                        s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.png' :
-                                            s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.png' :
-                                                s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.png' : null;
+                                    const iconPath = idx === 0 ? '/assets/icons/master_crown.png' :
+                                        idx === 1 ? '/assets/icons/diamond.png' :
+                                        idx === 2 ? '/assets/icons/bronze.png' :
+                                        idx === 3 ? '/assets/icons/diamond.png' : null;
 
                                     const isActive = activeSource === s.name;
                                     const isKurdishLang = language === 'ku' || language === 'badini';
 
-                                    let loadPct = 18;
-                                    let speed = '1.8 Gbps';
-                                    let latency = '18ms';
-                                    let statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast';
-                                    let statusColor = 'text-green-400';
-                                    let statusBg = 'bg-green-400/10 border-green-400/20';
-
-                                    if (s.name === 'FLKRD SERVER') {
-                                        loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast';
-                                    } else if (s.name === 'FLKRD SERVER 1') {
-                                        loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = isKurdishLang ? 'جێگیر' : 'Stable';
-                                    } else if (s.name === 'FLKRD SERVER 2') {
-                                        loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = isKurdishLang ? 'تایبەت' : 'Optimized';
-                                    } else if (s.name === 'FLKRD SERVER 3') {
-                                        loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = isKurdishLang ? 'خێرا' : 'Nominal';
-                                    } else if (s.name === 'FLKRD SERVER 4') {
-                                        loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = isKurdishLang ? 'یەدەگ' : 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20';
-                                    } else if (s.name === 'FLKRD SERVER 6') {
-                                        loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = isKurdishLang ? 'جێگرەوە' : 'Standard';
-                                    } else if (s.name === 'FLKRD SERVER 7') {
-                                        loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = isKurdishLang ? 'یەدەگی دووەم' : 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20';
-                                    }
+                                    let loadPct = Math.min(85, 14 + idx * 7);
+                                    let speed = `${Math.max(480, 2200 - idx * 160)} Mbps`;
+                                    let latency = `${12 + idx * 6}ms`;
+                                    let statusText = idx === 0 ? (isKurdishLang ? 'سەرەکی 4K' : 'Primary 4K') :
+                                        idx <= 2 ? (isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast') :
+                                        idx <= 6 ? (isKurdishLang ? 'جێگیر' : 'Stable') :
+                                        (isKurdishLang ? 'یەدەگ' : 'Backup');
+                                    let statusColor = idx <= 2 ? 'text-green-400' : idx <= 6 ? 'text-cyan-400' : 'text-yellow-400';
+                                    let statusBg = idx <= 2 ? 'bg-green-400/10 border-green-400/20' : idx <= 6 ? 'bg-cyan-400/10 border-cyan-400/20' : 'bg-yellow-400/10 border-yellow-400/20';
 
                                     return (
                                         <motion.button

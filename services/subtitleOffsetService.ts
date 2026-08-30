@@ -154,3 +154,39 @@ export async function listAdminOffsets(): Promise<SubtitleOffsetRow[]> {
   if (error || !data) return [];
   return data as SubtitleOffsetRow[];
 }
+
+// ── Frame-Rate Drift & 2-Point Auto-Calibration ─────────────────────────────
+
+export type FrameRate = '23.976' | '24' | '25' | '29.97';
+
+export function calculateFpsRatio(fromFps: FrameRate, toFps: FrameRate): number {
+  const fpsValues: Record<FrameRate, number> = {
+    '23.976': 23.976,
+    '24': 24.0,
+    '25': 25.0,
+    '29.97': 29.97,
+  };
+  const from = fpsValues[fromFps] || 23.976;
+  const to = fpsValues[toFps] || 25.0;
+  return from / to;
+}
+
+/**
+ * 2-Point Linear Calibration:
+ * Given two reference sync points (e.g. first dialogue at subT1 -> targetT1,
+ * and late dialogue at subT2 -> targetT2),
+ * computes the scale factor (stretch/compress) and starting offset.
+ */
+export function calculateTwoPointSync(
+  subT1: number,
+  targetT1: number,
+  subT2: number,
+  targetT2: number
+): { scale: number; offsetSec: number } {
+  if (Math.abs(subT2 - subT1) < 0.001) {
+    return { scale: 1, offsetSec: targetT1 - subT1 };
+  }
+  const scale = (targetT2 - targetT1) / (subT2 - subT1);
+  const offsetSec = targetT1 - subT1 * scale;
+  return { scale, offsetSec };
+}

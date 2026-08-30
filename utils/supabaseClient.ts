@@ -36,3 +36,15 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     },
   },
 });
+
+// Configure Realtime client to use direct upstream Supabase WebSocket host
+// so channels/presences connect reliably without failing on HTTP-only edge proxies
+try {
+  const REALTIME_WS = 'wss://ofddaeofptotnxeoxfko.supabase.co/realtime/v1/websocket';
+  if ((supabase as any).realtime) {
+    (supabase as any).realtime.endPoint = REALTIME_WS;
+    (supabase as any).realtime.httpEndpoint = 'https://ofddaeofptotnxeoxfko.supabase.co/realtime/v1';
+  }
+} catch (e) {
+  // Silent fallback
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -9,7 +9,6 @@ import {
   MoreHorizontal, 
   Bookmark, 
   Film, 
-  PlayCircle, 
   Search, 
   Cog, 
   History, 
@@ -22,7 +21,7 @@ import { MorphingDiscoveryBar, Category } from './ui/morphing-discovery-bar';
 import { cn } from '../lib/utils';
 
 const MobileNav: React.FC = () => {
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setIsSettingsOpen, mobileNavConfig } = useUI();
@@ -32,22 +31,26 @@ const MobileNav: React.FC = () => {
 
   // Monitor localStorage to count continue watching items
   useEffect(() => {
+    let timeoutId: any = null;
     const updateCount = () => {
-      try {
-        const progressData = localStorage.getItem('watchProgress');
-        if (!progressData) {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        try {
+          const progressData = localStorage.getItem('watchProgress');
+          if (!progressData) {
+            setContinueWatchingCount(0);
+            return;
+          }
+          const progress = JSON.parse(progressData);
+          const unfinished = progress.filter((item: any) => {
+            const duration = item.duration || 3600;
+            return item.progress > 10 && item.progress < duration * 0.98;
+          });
+          setContinueWatchingCount(unfinished.length);
+        } catch (e) {
           setContinueWatchingCount(0);
-          return;
         }
-        const progress = JSON.parse(progressData);
-        const unfinished = progress.filter((item: any) => {
-          const duration = item.duration || 3600;
-          return item.progress > 10 && item.progress < duration * 0.98;
-        });
-        setContinueWatchingCount(unfinished.length);
-      } catch (e) {
-        setContinueWatchingCount(0);
-      }
+      }, 100);
     };
 
     updateCount();
@@ -60,17 +63,16 @@ const MobileNav: React.FC = () => {
     window.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('storage', updateCount);
       window.removeEventListener('watchProgressUpdated', updateCount);
       window.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
-  if (!mobileNavConfig) return null;
-
   const isRtl = language === 'ku' || language === 'badini';
 
-  const getKurdishLabel = (key: string) => {
+  const getKurdishLabel = useCallback((key: string) => {
     if (isRtl) {
       if (key === 'home') return 'سەرەکی';
       if (key === 'discover') return 'دۆزینەوە';
@@ -84,9 +86,9 @@ const MobileNav: React.FC = () => {
     if (key === 'dubbed') return 'Dubbed';
     if (key === 'more') return 'More';
     return key;
-  };
+  }, [isRtl]);
 
-  const prefetchPage = (to: string) => {
+  const prefetchPage = useCallback((to: string) => {
     const componentMap: Record<string, () => Promise<any>> = {
       '/': () => import('../pages/HomePage'),
       '/tv': () => import('../pages/TVShowsPage'),
@@ -97,9 +99,9 @@ const MobileNav: React.FC = () => {
       '/kurdish-cc': () => import('../pages/KurdishCCPage'),
     };
     if (componentMap[to]) componentMap[to]();
-  };
+  }, []);
 
-  const discoveryCategories: Category[] = [
+  const discoveryCategories: Category[] = useMemo(() => [
     {
       id: 'home',
       label: getKurdishLabel('home'),
@@ -144,7 +146,7 @@ const MobileNav: React.FC = () => {
       activeTextColor: '#ef4444',
       onClick: () => setIsMoreMenuOpen(true),
     },
-  ];
+  ], [getKurdishLabel, prefetchPage, navigate]);
 
   const getActiveTabId = () => {
     if (isMoreMenuOpen) return 'more';
@@ -159,7 +161,7 @@ const MobileNav: React.FC = () => {
     navigate(`/search?query=${encodeURIComponent(query)}`);
   };
 
-  const drawerItems = [
+  const drawerItems = useMemo(() => [
     {
       label: isRtl ? 'زنجیرەکان' : 'TV Shows',
       icon: <Tv size={20} />,
@@ -210,17 +212,19 @@ const MobileNav: React.FC = () => {
         setIsSettingsOpen(true);
       }
     }
-  ];
+  ], [isRtl, prefetchPage, navigate, continueWatchingCount, setIsSettingsOpen]);
+
+  if (!mobileNavConfig) return null;
 
   return (
     <>
       {/* Mobile Bottom Safe-Area Home Indicator Backdrop Filler */}
       <div 
         className={cn(
-          "mobile-homebar-backdrop fixed bottom-0 inset-x-0 z-[49] pointer-events-none transition-all duration-300",
+          "mobile-homebar-backdrop fixed bottom-0 inset-x-0 z-[49] pointer-events-none transition-opacity duration-200",
           theme === 'light' 
-            ? "bg-white/85 backdrop-blur-md border-t border-zinc-200/50" 
-            : "bg-black/85 backdrop-blur-md border-t border-white/[0.04]"
+            ? "bg-white/90 border-t border-zinc-200/50" 
+            : "bg-black/90 border-t border-white/[0.04]"
         )}
         style={{ height: 'env(safe-area-inset-bottom, 0px)' }}
       />
@@ -228,7 +232,11 @@ const MobileNav: React.FC = () => {
       {/* Floating Dynamic Island Mobile Navigation */}
       <div 
         className="global-mobilenav fixed inset-x-2 sm:inset-x-6 z-[999] md:hidden flex justify-center select-none pointer-events-auto transform-gpu"
-        style={{ bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{
+          bottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+          contain: 'layout style',
+          transform: 'translateZ(0)'
+        }}
       >
         <MorphingDiscoveryBar
           categories={discoveryCategories}
@@ -244,14 +252,15 @@ const MobileNav: React.FC = () => {
         <AnimatePresence>
           {isMoreMenuOpen && (
             <>
-              {/* Backdrop */}
+              {/* Fast Hardware Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 onClick={() => setIsMoreMenuOpen(false)}
-                className="fixed inset-0 bg-black/75 z-[99998]"
+                className="fixed inset-0 bg-black/75 z-[99998] transform-gpu"
+                style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
               />
 
               {/* Bottom Sheet Container */}
@@ -259,13 +268,18 @@ const MobileNav: React.FC = () => {
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                className={`fixed bottom-0 inset-x-0 border-t rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-2xl backdrop-blur-2xl transform-gpu ${
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className={`fixed bottom-0 inset-x-0 border-t rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-2xl transform-gpu select-none ${
                   theme === 'light'
-                    ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-400/50'
-                    : 'bg-[#0c0c0e]/95 border-white/15 text-white shadow-black/90'
+                    ? 'bg-white border-zinc-200 text-zinc-900 shadow-zinc-400/40'
+                    : 'bg-[#0c0c0e] border-white/15 text-white shadow-black/95'
                 }`}
-                style={{ paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))' }}
+                style={{
+                  paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
+                  contain: 'strict',
+                  willChange: 'transform',
+                  transform: 'translateZ(0)'
+                }}
                 dir={isRtl ? 'rtl' : 'ltr'}
               >
                 {/* Header Slider Handle */}
@@ -277,7 +291,7 @@ const MobileNav: React.FC = () => {
                   </h3>
                   <button 
                     onClick={() => setIsMoreMenuOpen(false)}
-                    className={`p-2 border rounded-xl transition-all active:scale-90 ${
+                    className={`p-2 border rounded-xl transition-all active:scale-90 touch-manipulation ${
                       theme === 'light' 
                         ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-red-600 hover:text-white' 
                         : 'bg-white/5 border-white/10 text-white hover:bg-red-600'
@@ -327,5 +341,6 @@ const MobileNav: React.FC = () => {
   );
 };
 
-export default MobileNav;
+export default React.memo(MobileNav);
+
 

@@ -734,16 +734,18 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
       <AnimatePresence>
         {isDrawerOpen && (
           <>
-            {/* Backdrop Blur Overlay */}
+            {/* Fast Hardware-Accelerated Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-md md:hidden"
+              className="fixed inset-0 z-[150] bg-black/70 md:hidden transform-gpu"
+              style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
             />
 
-            {/* Glassmorphic Side Panel */}
+            {/* GPU-Accelerated Side Panel */}
             <motion.div
               dir="ltr"
               initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
@@ -752,50 +754,35 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className={`fixed top-0 bottom-0 ${
                 (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
-              } z-[160] w-[82%] max-w-sm flex flex-col px-6 shadow-2xl md:hidden overflow-hidden`}
+              } z-[160] w-[84%] max-w-sm flex flex-col px-6 shadow-2xl md:hidden overflow-hidden transform-gpu select-none`}
               style={{
                 paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
                 paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
                 borderRadius: `${glassConfig.cornerRadius}px`,
+                contain: 'strict',
+                willChange: 'transform',
+                transform: 'translateZ(0)',
               }}
             >
               {/* Isolated Liquid-Glass background overlay */}
               <div 
-                className={`absolute inset-0 z-0 transition-all duration-300 overflow-hidden ${
+                className={`absolute inset-0 z-0 transition-all duration-200 overflow-hidden ${
                   (language === 'ku' || language === 'badini') ? 'border-r' : 'border-l'
                 }`}
                 style={{
                   background: theme === 'light'
-                    ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 75%), rgba(255, 255, 255, 0.85)`
-                    : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(10, 10, 10, ${glassConfig.darkOpacity * 1.2})`,
-                  backdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
-                  WebkitBackdropFilter: `blur(${glassConfig.blurAmount}px) saturate(${glassConfig.saturation}%)`,
+                    ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 75%), rgba(255, 255, 255, 0.94)`
+                    : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(12, 12, 14, 0.96)`,
                   borderStyle: 'solid',
                   borderColor: theme === 'light'
                     ? `rgba(0, 0, 0, 0.06)`
                     : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
                   borderRadius: `${glassConfig.cornerRadius}px`,
                   boxShadow: theme === 'light'
-                    ? `0 30px 60px rgba(0,0,0,0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
-                    : `
-                      inset 0 1px 0 0 rgba(255, 255, 255, ${0.12 + glassConfig.borderOpacity * 0.45}),
-                      inset ${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(255, 0, 80, 0.08),
-                      inset -${glassConfig.aberrationIntensity * 0.15}px 0 0.5px rgba(0, 200, 255, 0.08),
-                      inset 0 -1px 0 0 rgba(0, 0, 0, 0.4),
-                      0 30px 60px rgba(0,0,0,0.55)
-                    `
+                    ? `0 20px 40px rgba(0,0,0,0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
+                    : `inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 20px 45px rgba(0,0,0,0.75)`
                 }}
-              >
-                {/* Dynamic GPU-accelerated water sheen overlay */}
-                <div 
-                  className="absolute inset-0 pointer-events-none mix-blend-overlay animate-[ios-glass-shine_18s_ease-in-out_infinite]"
-                  style={{
-                    background: `radial-gradient(circle at 50% 50%, rgba(255, 255, 255, ${0.05 + (glassConfig.displacementScale / 120) * 0.15}) 0%, rgba(255, 255, 255, 0.01) 40%, transparent 70%)`,
-                    opacity: (glassConfig.displacementScale / 120) * 0.9,
-                    animationDuration: `${30 * (0.35 / elasticity)}s`
-                  }}
-                />
-              </div>
+              />
               <div className="relative z-10 flex flex-col h-full w-full" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
               
               {/* Drawer Header */}
@@ -806,7 +793,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                 </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 text-sec-text hover:text-main-text transition-all focus:outline-none"
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 text-sec-text hover:text-main-text transition-all focus:outline-none touch-manipulation active:scale-90"
                   aria-label="Close menu"
                 >
                   <X className="w-5 h-5" />

@@ -614,30 +614,56 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       </div>
 
                       {/* Range slider & - / + buttons (LTR protected to keep +/- on right sides) */}
-                      <div dir="ltr" className="flex items-center gap-2 pt-0.5">
+                      <div dir="ltr" className="flex items-center gap-1.5 pt-0.5" role="group" aria-label="Subtitle offset controls">
                         <motion.button
                           type="button"
-                          onClick={() => setSubtitleOffset(subtitleOffset - 500)}
+                          onClick={() => setSubtitleOffset(subtitleOffset - 1000)}
                           whileTap={{ scale: 0.88 }}
-                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all"
-                          title="Delay 0.5s (-500ms)"
+                          className="px-1.5 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
+                          title="Delay 1s (-1000ms) [Shift + []"
+                          aria-label="Delay 1 second"
                         >
-                          <Minus size={11} />
+                          -1s
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 100)}
+                          whileTap={{ scale: 0.88 }}
+                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
+                          title="Delay 100ms (-0.1s) [Key []"
+                          aria-label="Delay 100 milliseconds"
+                        >
+                          -0.1s
                         </motion.button>
                         <input
-                          type="range" min={-30000} max={30000} step={250}
+                          type="range" min={-30000} max={30000} step={100}
                           value={subtitleOffset}
                           onChange={e => setSubtitleOffset(Number(e.target.value))}
                           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-white/10 accent-red-500"
+                          aria-label="Subtitle offset slider in milliseconds"
+                          aria-valuemin={-30000}
+                          aria-valuemax={30000}
+                          aria-valuenow={subtitleOffset}
                         />
                         <motion.button
                           type="button"
-                          onClick={() => setSubtitleOffset(subtitleOffset + 500)}
+                          onClick={() => setSubtitleOffset(subtitleOffset + 100)}
                           whileTap={{ scale: 0.88 }}
-                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all"
-                          title="Advance 0.5s (+500ms)"
+                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
+                          title="Advance 100ms (+0.1s) [Key ]]"
+                          aria-label="Advance 100 milliseconds"
                         >
-                          <Plus size={11} />
+                          +0.1s
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 1000)}
+                          whileTap={{ scale: 0.88 }}
+                          className="px-1.5 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
+                          title="Advance 1s (+1000ms) [Shift + ]]"
+                          aria-label="Advance 1 second"
+                        >
+                          +1s
                         </motion.button>
                       </div>
 

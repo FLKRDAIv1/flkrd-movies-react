@@ -871,22 +871,22 @@ const DetailPage: React.FC = () => {
 
                     <div className="relative z-10 space-y-4 pb-12 overflow-y-auto flex-1 scrollbar-hide pr-1" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
                       {sources.map((s, idx) => {
-                        const iconPath = s.name === 'FLKRD SERVER' ? '/assets/icons/master_crown.webp' : 
-                                       s.name === 'FLKRD SERVER 1' ? '/assets/icons/diamond.webp' : 
-                                       s.name === 'FLKRD SERVER 2' ? '/assets/icons/bronze.webp' : 
-                                       s.name === 'FLKRD SERVER 3' ? '/assets/icons/diamond.webp' : null;
+                        const iconPath = idx === 0 ? '/assets/icons/master_crown.webp' : 
+                                       idx === 1 ? '/assets/icons/diamond.webp' : 
+                                       idx === 2 ? '/assets/icons/bronze.webp' : 
+                                       idx === 3 ? '/assets/icons/diamond.webp' : null;
 
                         const isActive = activeSource === s.name;
                         const isKurdishLang = language === 'ku' || language === 'badini';
-                        let loadPct = 18; let speed = '1.8 Gbps'; let latency = '18ms'; let statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast'; let statusColor = 'text-green-400'; let statusBg = 'bg-green-400/10 border-green-400/20';
-
-                        if (s.name === 'FLKRD SERVER') { loadPct = 18; speed = '1.8 Gbps'; latency = '16ms'; statusText = isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast'; } 
-                        else if (s.name === 'FLKRD SERVER 1') { loadPct = 26; speed = '1.5 Gbps'; latency = '24ms'; statusText = isKurdishLang ? 'جێگیر' : 'Stable'; } 
-                        else if (s.name === 'FLKRD SERVER 2') { loadPct = 34; speed = '1.2 Gbps'; latency = '32ms'; statusText = isKurdishLang ? 'تایبەت' : 'Optimized'; } 
-                        else if (s.name === 'FLKRD SERVER 3') { loadPct = 48; speed = '950 Mbps'; latency = '42ms'; statusText = isKurdishLang ? 'خێرا' : 'Nominal'; } 
-                        else if (s.name === 'FLKRD SERVER 4') { loadPct = 68; speed = '820 Mbps'; latency = '55ms'; statusText = isKurdishLang ? 'یەدەگ' : 'Busy'; statusColor = 'text-yellow-400'; statusBg = 'bg-yellow-400/10 border-yellow-400/20'; } 
-                        else if (s.name === 'FLKRD SERVER 6') { loadPct = 54; speed = '780 Mbps'; latency = '64ms'; statusText = isKurdishLang ? 'جێگرەوە' : 'Standard'; } 
-                        else if (s.name === 'FLKRD SERVER 7') { loadPct = 76; speed = '620 Mbps'; latency = '82ms'; statusText = isKurdishLang ? 'یەدەگی دووەم' : 'Heavy'; statusColor = 'text-orange-400'; statusBg = 'bg-orange-400/10 border-orange-400/20'; }
+                        let loadPct = Math.min(85, 14 + idx * 7);
+                        let speed = `${Math.max(480, 2200 - idx * 160)} Mbps`;
+                        let latency = `${12 + idx * 6}ms`;
+                        let statusText = idx === 0 ? (isKurdishLang ? 'سەرەکی 4K' : 'Primary 4K') :
+                            idx <= 2 ? (isKurdishLang ? 'زۆر خێرا' : 'Ultra Fast') :
+                            idx <= 6 ? (isKurdishLang ? 'جێگیر' : 'Stable') :
+                            (isKurdishLang ? 'یەدەگ' : 'Backup');
+                        let statusColor = idx <= 2 ? 'text-green-400' : idx <= 6 ? 'text-cyan-400' : 'text-yellow-400';
+                        let statusBg = idx <= 2 ? 'bg-green-400/10 border-green-400/20' : idx <= 6 ? 'bg-cyan-400/10 border-cyan-400/20' : 'bg-yellow-400/10 border-yellow-400/20';
 
                         return (
                           <motion.button 

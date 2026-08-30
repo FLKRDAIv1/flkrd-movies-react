@@ -293,7 +293,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
       if (data && data[0] && Array.isArray(data[0])) {
         const transStr = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('');
         if (transStr) {
-          const splitRes = transStr.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
+          const splitRes = transStr.split(/[\r\n]*\s*:{1,4}\s*flkrd_cue\s*:{1,4}\s*[\r\n]*/i);
           if (splitRes.length === chunkItems.length) {
             return splitRes.map((item, idx) => {
               const cleaned = item.trim();
@@ -560,6 +560,30 @@ function timestampToSeconds(ts: string): number {
   return 0;
 }
 
+function normalizeTimecode(tc: string, delimiter: '.' | ','): string {
+  if (!tc) return `00:00:00${delimiter}000`;
+  const clean = tc.replace(/\s+(align|line|position|size|vertical):[^\s]*/gi, '').trim();
+  const sep = clean.includes(',') ? ',' : '.';
+  let [time, frac = '000'] = clean.split(sep);
+  const parts = time.split(':');
+  let hh = '00', mm = '00', ss = '00';
+  if (parts.length >= 3) {
+    hh = parts[0];
+    mm = parts[1];
+    ss = parts[2];
+  } else if (parts.length === 2) {
+    mm = parts[0];
+    ss = parts[1];
+  } else if (parts.length === 1) {
+    ss = parts[0];
+  }
+  hh = hh.padStart(2, '0');
+  mm = mm.padStart(2, '0');
+  ss = ss.padStart(2, '0');
+  frac = frac.padEnd(3, '0').slice(0, 3);
+  return `${hh}:${mm}:${ss}${delimiter}${frac}`;
+}
+
 export function compileToVTT(cues: SubtitleCue[]): string {
   let vtt = 'WEBVTT\n\n';
 
@@ -567,7 +591,15 @@ export function compileToVTT(cues: SubtitleCue[]): string {
   vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
 
   cues.forEach((cue) => {
-    const timestamp = cue.timestamp.replace(/,/g, '.');
+    let timestamp = cue.timestamp;
+    const parts = timestamp.split('-->');
+    if (parts.length === 2) {
+      const start = normalizeTimecode(parts[0].trim(), '.');
+      const end = normalizeTimecode(parts[1].trim(), '.');
+      timestamp = `${start} --> ${end}`;
+    } else {
+      timestamp = timestamp.replace(/,/g, '.');
+    }
     vtt += `${timestamp}\n${cue.text}\n\n`;
   });
   return vtt;
@@ -584,17 +616,14 @@ export function compileToSRT(cues: SubtitleCue[]): string {
   srt += `${index++}\n00:00:06,000 --> 00:00:10,000\n⚡ POWERED BY FLKRD STUDIO ⚡\n\n`;
 
   cues.forEach((cue) => {
-    let timestamp = cue.timestamp.replace(/\./g, ',');
-    
+    let timestamp = cue.timestamp;
     const parts = timestamp.split('-->');
     if (parts.length === 2) {
-      let start = parts[0].trim();
-      let end = parts[1].trim();
-      
-      if (start.split(':').length === 2) start = '00:' + start;
-      if (end.split(':').length === 2) end = '00:' + end;
-      
+      const start = normalizeTimecode(parts[0].trim(), ',');
+      const end = normalizeTimecode(parts[1].trim(), ',');
       timestamp = `${start} --> ${end}`;
+    } else {
+      timestamp = timestamp.replace(/\./g, ',');
     }
 
     srt += `${index++}\n${timestamp}\n${cue.text}\n\n`;

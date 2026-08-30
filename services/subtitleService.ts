@@ -813,7 +813,17 @@ export const subtitleService = {
                 if (currentCue && currentCue.textLines.length > 0) {
                     const text = currentCue.textLines.join('\n').trim();
                     if (text) {
-                        cues.push({ start: currentCue.start, end: currentCue.end, text });
+                        let start = Math.max(0, currentCue.start);
+                        let end = currentCue.end;
+                        // Prevent stuck cues: if end is missing, <= start, or NaN, give standard reading duration
+                        if (isNaN(end) || end <= start) {
+                            end = start + Math.max(2.0, Math.min(6.0, text.length * 0.065));
+                        }
+                        // Clamp runaway durations (e.g. malformed cues that stay on screen for minutes)
+                        if (end - start > 10.0) {
+                            end = start + Math.max(3.0, Math.min(8.0, text.length * 0.075));
+                        }
+                        cues.push({ start, end, text });
                     }
                 }
 
@@ -847,7 +857,15 @@ export const subtitleService = {
         if (currentCue && currentCue.textLines.length > 0) {
             const text = currentCue.textLines.join('\n').trim();
             if (text) {
-                cues.push({ start: currentCue.start, end: currentCue.end, text });
+                let start = Math.max(0, currentCue.start);
+                let end = currentCue.end;
+                if (isNaN(end) || end <= start) {
+                    end = start + Math.max(2.0, Math.min(6.0, text.length * 0.065));
+                }
+                if (end - start > 10.0) {
+                    end = start + Math.max(3.0, Math.min(8.0, text.length * 0.075));
+                }
+                cues.push({ start, end, text });
             }
         }
 
@@ -861,7 +879,7 @@ export const subtitleService = {
             return merged;
         }
 
-        return cues;
+        return cues.sort((a, b) => a.start - b.start);
     },
 
     timeToSeconds(timeStr: string) {
