@@ -812,27 +812,81 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         manualSubTimeRef.current = currentTime;
     }, [currentTime]);
 
-    // Ensure native video element text track is ALWAYS active and showing in Normal & Fullscreen modes
-
+    // Ensure native video element text track is ALWAYS active, populated with VTTCues, and showing in Native iOS Player & Fullscreen
     useEffect(() => {
-        if (!videoRef.current) return;
+        const videoEl = videoRef.current;
+        if (!videoEl) return;
+
         const syncTracks = () => {
-            const tracks = videoRef.current?.textTracks;
-            if (tracks && tracks.length > 0) {
-                for (let i = 0; i < tracks.length; i++) {
-                    tracks[i].mode = showSubtitles ? 'showing' : 'disabled';
+            try {
+                const tracks = videoEl.textTracks;
+                let kurdishTrack: TextTrack | null = null;
+
+                if (tracks && tracks.length > 0) {
+                    for (let i = 0; i < tracks.length; i++) {
+                        const t = tracks[i];
+                        if (t.label?.toLowerCase().includes('kurdish') || t.language === 'ku' || t.language === 'ckb') {
+                            kurdishTrack = t;
+                        }
+                        t.mode = showSubtitles ? 'showing' : 'disabled';
+                    }
                 }
+
+                // If native TextTrack needs direct VTTCue objects for iOS AVPlayer:
+                if (showSubtitles && subtitleCues && subtitleCues.length > 0) {
+                    if (!kurdishTrack) {
+                        try {
+                            kurdishTrack = videoEl.addTextTrack('subtitles', 'Kurdish Sorani (Verified)', 'ku');
+                            (kurdishTrack as any)._flkrdAdded = true;
+                        } catch (e) {}
+                    }
+
+                    if (kurdishTrack) {
+                        const VTTClass = (window as any).VTTCue || (window as any).TextTrackCue;
+                        const isFlkrdTrack = (kurdishTrack as any)._flkrdAdded;
+
+                        // If it's our manually added track or has no cues, populate it
+                        if (VTTClass && (isFlkrdTrack || !kurdishTrack.cues || kurdishTrack.cues.length === 0)) {
+                            // If it's our track and already has cues, clear them first to apply current offset/scaling
+                            if (isFlkrdTrack && kurdishTrack.cues && kurdishTrack.cues.length > 0) {
+                                while (kurdishTrack.cues.length > 0) {
+                                    try {
+                                        kurdishTrack.removeCue(kurdishTrack.cues[0]);
+                                    } catch (err) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (!kurdishTrack.cues || kurdishTrack.cues.length === 0) {
+                                const offsetSec = subtitleOffset / 1000;
+                                subtitleCues.forEach((cue) => {
+                                    const startSec = Math.max(0, (cue.start * subtitleSpeedScale) + offsetSec);
+                                    const endSec = Math.max(startSec + 0.05, (cue.end * subtitleSpeedScale) + offsetSec);
+                                    if (endSec > 0.01) {
+                                        try {
+                                            kurdishTrack!.addCue(new VTTClass(startSec, endSec, cue.text));
+                                        } catch (err) {}
+                                    }
+                                });
+                            }
+                        }
+
+                        kurdishTrack.mode = 'showing';
+                    }
+                }
+            } catch (e) {
+                console.warn('[NATIVE-IOS-SUB] syncTracks error:', e);
             }
         };
+
         syncTracks();
         const timeout1 = setTimeout(syncTracks, 300);
         const timeout2 = setTimeout(syncTracks, 1000);
 
-        const videoEl = videoRef.current;
-        if (videoEl) {
-            videoEl.addEventListener('webkitbeginfullscreen', syncTracks);
-            videoEl.addEventListener('webkitendfullscreen', syncTracks);
-        }
+        videoEl.addEventListener('webkitbeginfullscreen', syncTracks);
+        videoEl.addEventListener('webkitendfullscreen', syncTracks);
+        videoEl.addEventListener('loadedmetadata', syncTracks);
         document.addEventListener('fullscreenchange', syncTracks);
         document.addEventListener('webkitfullscreenchange', syncTracks);
         document.addEventListener('mozfullscreenchange', syncTracks);
@@ -841,16 +895,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             clearTimeout(timeout1);
             clearTimeout(timeout2);
-            if (videoEl) {
-                videoEl.removeEventListener('webkitbeginfullscreen', syncTracks);
-                videoEl.removeEventListener('webkitendfullscreen', syncTracks);
-            }
+            videoEl.removeEventListener('webkitbeginfullscreen', syncTracks);
+            videoEl.removeEventListener('webkitendfullscreen', syncTracks);
+            videoEl.removeEventListener('loadedmetadata', syncTracks);
             document.removeEventListener('fullscreenchange', syncTracks);
             document.removeEventListener('webkitfullscreenchange', syncTracks);
             document.removeEventListener('mozfullscreenchange', syncTracks);
             document.removeEventListener('MSFullscreenChange', syncTracks);
         };
-    }, [vttBlobUrl, localSubtitleUrl, subtitleUrl, showSubtitles]);
+    }, [vttBlobUrl, localSubtitleUrl, subtitleUrl, subtitleCues, subtitleOffset, subtitleSpeedScale, showSubtitles]);
 
     const [subSearchQuery, setSubSearchQuery] = useState('');
     const [subBgOpacity, setSubBgOpacity] = useState(0.4);

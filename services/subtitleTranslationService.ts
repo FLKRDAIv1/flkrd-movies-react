@@ -399,7 +399,7 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
  * individually via the GTX client endpoint so that every cue is translated.
  */
 async function translateText(text: string[], sourceLang: string, targetLang: string): Promise<string[]> {
-  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
+  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : 'ckb';
   const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang);
 
   // Helper: retry individual items that are still equal to their source via GTX
@@ -490,7 +490,7 @@ async function translateText(text: string[], sourceLang: string, targetLang: str
  */
 async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: string, targetLang: string): Promise<string[]> {
   const chunkTexts = chunk.map(c => c.text);
-  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : (targetLang === 'ckb' || targetLang === 'sorani' || targetLang === 'ku') ? 'ckb' : targetLang;
+  const effectiveTgt = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : 'ckb';
 
   try {
     const translatedTexts = await translateText(chunkTexts, sourceLang, effectiveTgt);
@@ -683,7 +683,7 @@ export async function translateAndSavePipeline(
   mediaType: string,
   season: number = 0,
   episode: number = 0,
-  targetLang: string = 'ku',
+  targetLang: string = 'ckb',
   onProgress?: (progress: number, statusText: string, partialSubtitleUrl?: string) => void,
   signal?: AbortSignal,
   pauseState?: { isPaused: boolean }
@@ -734,10 +734,7 @@ export async function translateAndSavePipeline(
     }
 
     // Google Translate target code: Sorani is 'ckb', Badini (Kurmanji) is 'ku', pass-through any other language
-    const apiTargetLang =
-      targetLang === 'badini' ? 'ku' :
-      (targetLang === 'ku' || targetLang === 'ckb' || targetLang === 'sorani') ? 'ckb' :
-      targetLang;
+    const apiTargetLang = (targetLang === 'badini' || targetLang === 'kmr') ? 'ku' : 'ckb';
 
     if (onProgress) onProgress(2, `Downloading ${sourceLang.toUpperCase()} subtitle track...`);
     
