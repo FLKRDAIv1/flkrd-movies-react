@@ -571,10 +571,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // Tracks if the current iframe source was blocked by X-Frame-Options / CSP
     const [iframeBlocked, setIframeBlocked] = useState(false);
     const iframeBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [localIsFullscreen, setLocalIsFullscreen] = useState(false);
+    const [localIsFullscreen, setLocalIsFullscreen] = useState(() => !!startFullscreen);
     const isFullscreen = isFullscreenProp !== undefined ? isFullscreenProp : localIsFullscreen;
     const setIsFullscreen = isFullscreenProp !== undefined ? () => { } : setLocalIsFullscreen;
-    const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(false);
+    const [isSimulatedFullscreen, setIsSimulatedFullscreen] = useState(() => !!startFullscreen);
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffsetState] = useState(() => {
@@ -3175,6 +3175,32 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
     }, []);
 
+    // Instant Mobile Screen Orientation Flush (Eliminates layout freezes on rotate)
+    useEffect(() => {
+        const handleOrientationOrResize = () => {
+            if (containerRef.current) {
+                containerRef.current.style.height = `${window.innerHeight}px`;
+                requestAnimationFrame(() => {
+                    if (containerRef.current) {
+                        containerRef.current.style.height = '100%';
+                    }
+                });
+            }
+        };
+        window.addEventListener('orientationchange', handleOrientationOrResize, { passive: true });
+        window.addEventListener('resize', handleOrientationOrResize, { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleOrientationOrResize, { passive: true });
+        }
+        return () => {
+            window.removeEventListener('orientationchange', handleOrientationOrResize);
+            window.removeEventListener('resize', handleOrientationOrResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', handleOrientationOrResize);
+            }
+        };
+    }, []);
+
     useEffect(() => {
         const preventTouch = (e: TouchEvent) => {
             if (isSimulatedFullscreen) {
@@ -3727,8 +3753,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div
             ref={containerRef}
-            className={`bg-black flex items-center justify-center transition-all duration-300 w-full h-full min-w-0 min-h-0 select-none pointer-events-auto isolate ${isSimulatedFullscreen
-                    ? 'fixed inset-0 w-screen h-dvh z-[9999] overflow-hidden'
+            className={`bg-black flex items-center justify-center w-full h-full min-w-0 min-h-0 select-none pointer-events-auto isolate ${isSimulatedFullscreen
+                    ? 'fixed inset-0 w-full h-full z-[9999] overflow-hidden'
                     : 'w-full h-full relative z-20 overflow-hidden'
                 }`}
             style={{
@@ -3829,7 +3855,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     <video
                         id="vidking-player"
                         ref={videoRef}
-                        className="w-full h-full object-contain pointer-events-auto"
+                        className="w-full h-full object-contain pointer-events-auto bg-black"
                         style={{
                             WebkitPlaysInline: 'inline',
                             pointerEvents: showEpisodesPortal ? 'none' : 'auto',
@@ -4320,49 +4346,54 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             {/* Iframe Embed */}
             {isIframe && iframeSrc && (
                 <div
-                    className="w-full h-full absolute inset-0 flex items-center justify-center bg-black overflow-hidden"
+                    className="w-full h-full absolute inset-0 flex items-center justify-center bg-black overflow-hidden select-none"
                     aria-hidden={showEpisodesPortal}
-                    style={{ pointerEvents: showEpisodesPortal ? 'none' : 'auto' }}
+                    style={{ pointerEvents: showEpisodesPortal ? 'none' : 'auto', backgroundColor: '#000000' }}
                 >
-                    <iframe
-                        ref={iframeRef}
-                        key={`${stableKey}-${playerReloadKey}`}
-                        src={iframeSrc}
-                        className="w-full h-full absolute inset-0 border-none"
-                        style={{
-                            display: 'block',
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: '#000000',
-                            border: 'none',
-                            outline: 'none',
-                            zIndex: 10,
-                            pointerEvents: showEpisodesPortal ? 'none' : 'auto',
-                            filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
-                        }}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
-                        allowFullScreen={true}
-                        referrerPolicy="no-referrer-when-downgrade"
-                        // @ts-ignore
-                        scrolling="no"
-                        // iOS Safari: prevent native video player takeover
-                        // @ts-ignore
-                        webkit-playsinline="true"
-                        // @ts-ignore
-                        x-webkit-airplay="deny"
-                        onLoad={handleIframeLoad}
-                        title="FLKRD Universal Player"
-                    />
+                    <div className="w-full max-w-full flex items-center justify-center bg-black relative portrait:aspect-video portrait:h-auto landscape:w-full landscape:h-full">
+                        <iframe
+                            ref={iframeRef}
+                            key={`${stableKey}-${playerReloadKey}`}
+                            src={iframeSrc}
+                            className="w-full h-full border-none"
+                            style={{
+                                display: 'block',
+                                width: '100%',
+                                height: '100%',
+                                backgroundColor: '#000000',
+                                border: 'none',
+                                outline: 'none',
+                                zIndex: 10,
+                                pointerEvents: showEpisodesPortal ? 'none' : 'auto',
+                                filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
+                            }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
+                            allowFullScreen={true}
+                            referrerPolicy="no-referrer-when-downgrade"
+                            // @ts-ignore
+                            scrolling="no"
+                            // iOS Safari: prevent native video player takeover
+                            // @ts-ignore
+                            webkit-playsinline="true"
+                            // @ts-ignore
+                            x-webkit-airplay="deny"
+                            onLoad={handleIframeLoad}
+                            title="FLKRD Universal Player"
+                        />
+                    </div>
                 </div>
             )}
 
             {/* ═══ UNIFIED RESPONSIVE TOP BAR — Mobile & PC Adaptive ═══ */}
             <div 
-                className="absolute top-0 left-0 right-0 z-[100] pt-3 sm:pt-5 pb-8 px-4 sm:px-8 bg-gradient-to-b from-black/95 via-black/50 to-transparent flex items-center justify-between gap-3 pointer-events-none transition-all duration-300"
+                className="absolute top-0 left-0 right-0 z-[100] pb-8 px-4 sm:px-8 bg-gradient-to-b from-black/95 via-black/50 to-transparent flex items-center justify-between gap-3 pointer-events-none"
                 dir="ltr"
                 style={{
                     transform: 'translate3d(0, 0, 0)',
-                    WebkitTransform: 'translate3d(0, 0, 0)'
+                    WebkitTransform: 'translate3d(0, 0, 0)',
+                    paddingTop: 'max(12px, env(safe-area-inset-top, 12px))',
+                    paddingLeft: 'max(16px, env(safe-area-inset-left, 16px))',
+                    paddingRight: 'max(16px, env(safe-area-inset-right, 16px))',
                 }}
             >
                 {/* Top-Left: Close Button & Title */}

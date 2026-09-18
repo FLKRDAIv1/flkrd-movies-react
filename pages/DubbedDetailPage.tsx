@@ -74,14 +74,70 @@ const DubbedDetailPage: React.FC = () => {
 
     useEffect(() => {
         if (selectedActorId || isPlayerModalOpen) {
+            const originalBodyOverflow = document.body.style.overflow;
+            const originalHtmlOverflow = document.documentElement.style.overflow;
+            const originalBodyBg = document.body.style.backgroundColor;
+            const originalHtmlBg = document.documentElement.style.backgroundColor;
+            const originalBodyOverscroll = document.body.style.overscrollBehavior;
+            const originalHtmlOverscroll = document.documentElement.style.overscrollBehavior;
+
             document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
+            document.documentElement.style.overflow = 'hidden';
+            document.body.classList.add('movie-player-active');
+            document.documentElement.classList.add('movie-player-active');
+
+            if (isPlayerModalOpen) {
+                document.body.style.backgroundColor = '#000000';
+                document.documentElement.style.backgroundColor = '#000000';
+                document.body.style.overscrollBehavior = 'none';
+                document.documentElement.style.overscrollBehavior = 'none';
+            }
+
+            return () => {
+                document.body.style.overflow = originalBodyOverflow;
+                document.documentElement.style.overflow = originalHtmlOverflow;
+                document.body.classList.remove('movie-player-active');
+                document.documentElement.classList.remove('movie-player-active');
+                document.body.style.backgroundColor = originalBodyBg;
+                document.documentElement.style.backgroundColor = originalHtmlBg;
+                document.body.style.overscrollBehavior = originalBodyOverscroll;
+                document.documentElement.style.overscrollBehavior = originalHtmlOverscroll;
+            };
+        }
+    }, [selectedActorId, isPlayerModalOpen]);
+
+    // Native mobile popstate & back gesture listener to cleanly close player modal
+    useEffect(() => {
+        if (!isPlayerModalOpen) return;
+        window.history.pushState({ dubbedPlayerModal: true }, '');
+        const handlePopState = () => {
+            setIsPlayerModalOpen(false);
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [isPlayerModalOpen]);
+
+    // Handle mobile screen orientation & visual viewport change
+    useEffect(() => {
+        if (!isPlayerModalOpen) return;
+        const handleOrientationOrResize = () => {
+            window.scrollTo(0, 0);
+        };
+        window.addEventListener('orientationchange', handleOrientationOrResize, { passive: true });
+        window.addEventListener('resize', handleOrientationOrResize, { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleOrientationOrResize, { passive: true });
         }
         return () => {
-            document.body.style.overflow = '';
+            window.removeEventListener('orientationchange', handleOrientationOrResize);
+            window.removeEventListener('resize', handleOrientationOrResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', handleOrientationOrResize);
+            }
         };
-    }, [selectedActorId, isPlayerModalOpen]);
+    }, [isPlayerModalOpen]);
 
     const dubbedData = useMemo(() => {
         if (!id) return null;
@@ -745,15 +801,21 @@ const DubbedDetailPage: React.FC = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 w-screen h-screen min-h-screen bg-black z-[999999] overflow-hidden flex items-center justify-center isolate pointer-events-auto"
+                            className="fixed inset-0 w-full h-full bg-black z-[999999] overflow-hidden flex items-center justify-center isolate pointer-events-auto select-none touch-none overscroll-none"
                             dir="ltr"
                             style={{
-                                width: '100vw',
-                                height: '100dvh',
-                                minHeight: '100vh',
+                                position: 'fixed',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: '100%',
+                                height: '100%',
                                 backgroundColor: '#000000',
                                 isolation: 'isolate',
                                 pointerEvents: 'auto',
+                                overscrollBehavior: 'none',
+                                touchAction: 'none'
                             }}
                         >
                             <UniversalVideoPlayer
