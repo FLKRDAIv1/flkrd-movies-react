@@ -238,8 +238,13 @@ export default function PremiumVidLinkPlayer({
   const [parsedCues, setParsedCues] = useState<any[]>([]);
   const parsedCuesRef = React.useRef<any[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
   const lastMessageTimeRef = React.useRef<number>(performance.now());
   const lastReceivedTimeRef = React.useRef<number>(0);
+  const lastTimeValueRef = React.useRef<number>(-1);
+  const lastTimeChangeTimestampRef = React.useRef<number>(performance.now());
   const [resolvedSubUrl, setResolvedSubUrl] = useState<string | null>(null);
   const resolvedSubUrlRef = React.useRef<string | null>(null);
   const [resolvedSubDisplayName, setResolvedSubDisplayName] = useState<string>('Kurdish (Verified)');
@@ -701,6 +706,10 @@ export default function PremiumVidLinkPlayer({
   };
 
   const pauseVideo = () => {
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+    setIsPaused(true);
+    if (pauseGlobalTranslation) pauseGlobalTranslation();
     if (!iframeRef.current?.contentWindow) return;
     const win = iframeRef.current.contentWindow;
     try {
@@ -709,13 +718,19 @@ export default function PremiumVidLinkPlayer({
       win.postMessage(JSON.stringify({ method: 'pause' }), '*');
       win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'pause', value: null }), '*');
       win.postMessage(JSON.stringify({ event: 'command', command: 'pause', value: null }), '*');
-      setIsPlaying(false);
+      win.postMessage(JSON.stringify({ type: 'pause', action: 'pause' }), '*');
     } catch (err) {
       console.warn("Error pausing iframe player:", err);
     }
   };
 
   const playVideo = () => {
+    setIsPlaying(true);
+    isPlayingRef.current = true;
+    setIsPaused(false);
+    lastMessageTimeRef.current = performance.now();
+    lastTimeChangeTimestampRef.current = performance.now();
+    if (resumeGlobalTranslation) resumeGlobalTranslation();
     if (!iframeRef.current?.contentWindow) return;
     const win = iframeRef.current.contentWindow;
     try {
@@ -724,7 +739,7 @@ export default function PremiumVidLinkPlayer({
       win.postMessage(JSON.stringify({ method: 'play' }), '*');
       win.postMessage(JSON.stringify({ context: 'player.js', event: 'command', command: 'play', value: null }), '*');
       win.postMessage(JSON.stringify({ event: 'command', command: 'play', value: null }), '*');
-      setIsPlaying(true);
+      win.postMessage(JSON.stringify({ type: 'play', action: 'play' }), '*');
     } catch (err) {
       console.warn("Error playing iframe player:", err);
     }
@@ -1593,19 +1608,29 @@ export default function PremiumVidLinkPlayer({
         }
 
         if (extractedTime !== undefined && !isNaN(extractedTime) && extractedTime < 50000) {
-          lastMessageTimeRef.current = performance.now();
+          const now = performance.now();
+          const timeDiff = Math.abs(extractedTime - lastTimeValueRef.current);
+          if (timeDiff > 0.005) {
+            lastTimeValueRef.current = extractedTime;
+            lastTimeChangeTimestampRef.current = now;
+          }
+
+          lastMessageTimeRef.current = now;
           lastReceivedTimeRef.current = extractedTime;
 
           const normalizedType = String(eventType || '').toLowerCase();
           const isPauseEvent = normalizedType === 'pause' || normalizedType === 'paused' || normalizedType === 'pausevideo' || normalizedType === 'ended' || normalizedType === 'stalled' || normalizedType === 'waiting' || normalizedType === 'suspend';
-          const isPlayEvent = normalizedType === 'play' || normalizedType === 'playing' || normalizedType === 'timeupdate';
+          const isPlayEvent = normalizedType === 'play' || normalizedType === 'playing';
 
-          if (isPauseEvent) {
+          // Detect freeze/stall: if time has not progressed for > 500ms, mark as paused
+          const isTimeFrozen = (now - lastTimeChangeTimestampRef.current > 500);
+
+          if (isPauseEvent || (isTimeFrozen && isPlayingRef.current && !isPlayEvent)) {
             isPlayingRef.current = false;
             setIsPlaying(false);
             setIsPaused(true);
             if (pauseGlobalTranslation) pauseGlobalTranslation();
-          } else if (isPlayEvent) {
+          } else if (isPlayEvent || (timeDiff > 0.005 && !isPlayingRef.current)) {
             isPlayingRef.current = true;
             setIsPlaying(true);
             setIsPaused(false);
@@ -1639,11 +1664,23 @@ export default function PremiumVidLinkPlayer({
 
     const interval = setInterval(() => {
       const now = performance.now();
+      // If time updates have ceased for > 1200ms, the player is paused or buffering — freeze playhead!
+      if (now - lastTimeChangeTimestampRef.current > 1200) {
+        if (isPlayingRef.current) {
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          setIsPaused(true);
+          if (pauseGlobalTranslation) pauseGlobalTranslation();
+        }
+        return;
+      }
+
       if (isPlaying && isPlayingRef.current && parsedCuesRef.current.length > 0) {
         let currentTime = lastReceivedTimeRef.current;
         if (now - lastMessageTimeRef.current > 200) {
           const delta = (now - Math.max(lastMessageTimeRef.current, 0)) / 1000;
-          if (delta > 0 && delta < 60) {
+          // Only extrapolate up to 1.2 seconds max between frames to avoid runaway cues
+          if (delta > 0 && delta < 1.2) {
             currentTime = lastReceivedTimeRef.current + delta;
           }
         }
@@ -1651,10 +1688,10 @@ export default function PremiumVidLinkPlayer({
         const active = parsedCuesRef.current.filter(c => currentTime >= (c.start + offsetSec) && currentTime <= (c.end + offsetSec));
         updateActiveCues(active);
       }
-    }, 200);
+    }, 150);
 
     return () => clearInterval(interval);
-  }, [isPlaying, updateActiveCues]);
+  }, [isPlaying, updateActiveCues, pauseGlobalTranslation]);
 
   // Fullscreen change listener to sync state and redirect iframe fullscreen to container
   useEffect(() => {

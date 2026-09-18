@@ -22,7 +22,7 @@ export interface CardSplitAccordionProps {
 export const CardSplitAccordion: React.FC<CardSplitAccordionProps> = ({
   items,
   defaultActiveId,
-  autoHoverOpen = true,
+  autoHoverOpen = false,
   className = '',
 }) => {
   const [activeId, setActiveId] = useState<string | number>(
@@ -53,20 +53,24 @@ export const CardSplitAccordion: React.FC<CardSplitAccordionProps> = ({
             layout
             onMouseEnter={(e) => handleMouseEnter(e, item.id)}
             onClick={(e) => handleClick(e, item.id)}
+            whileTap={{ scale: 0.985 }}
             initial={false}
             animate={{
-              borderColor: isOpen ? 'rgba(229, 9, 20, 0.4)' : 'rgba(255, 255, 255, 0.07)',
-              backgroundColor: isOpen ? 'rgba(18, 18, 24, 0.95)' : 'rgba(255, 255, 255, 0.02)',
+              borderColor: isOpen ? 'rgba(255, 255, 255, 0.22)' : 'rgba(255, 255, 255, 0.08)',
+              backgroundColor: isOpen ? 'rgba(18, 18, 26, 0.82)' : 'rgba(255, 255, 255, 0.025)',
+              boxShadow: isOpen
+                ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 25px 50px -12px rgba(0, 0, 0, 0.6)'
+                : 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06), 0 4px 15px -3px rgba(0, 0, 0, 0.25)',
             }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="group relative overflow-hidden rounded-3xl border backdrop-blur-2xl transition-shadow duration-300 hover:shadow-2xl hover:shadow-brand/10 cursor-pointer"
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="group relative overflow-hidden rounded-[1.75rem] border backdrop-blur-2xl cursor-pointer select-none transition-colors"
           >
-            {/* Left Accent Glow Stripe */}
+            {/* Apple visionOS Right Accent Glow Indicator */}
             {isOpen && (
               <motion.div
                 layoutId="accordionAccentGlow"
-                className="absolute top-0 right-0 bottom-0 w-1.5 bg-gradient-to-b from-brand via-red-500 to-brand shadow-[0_0_15px_#e50914]"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                className="absolute top-0 right-0 bottom-0 w-1.5 bg-gradient-to-b from-brand via-red-500 to-brand shadow-[0_0_15px_rgba(229,9,20,0.6)]"
+                transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
               />
             )}
 
@@ -74,51 +78,61 @@ export const CardSplitAccordion: React.FC<CardSplitAccordionProps> = ({
             <div className="flex items-center justify-between p-4 md:p-5 gap-4">
               <div className="flex items-center gap-3.5 min-w-0">
                 {/* Stage Number Badge */}
-                <span className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-black transition-colors ${
-                  isOpen ? 'bg-brand text-white shadow-[0_0_12px_rgba(229,9,20,0.5)]' : 'bg-white/5 text-gray-400 group-hover:text-white'
-                }`}>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black transition-all ${
+                    isOpen
+                      ? 'bg-brand text-white shadow-[0_0_15px_rgba(229,9,20,0.5)] scale-105'
+                      : 'bg-white/5 text-white/50 group-hover:text-white group-hover:bg-white/10'
+                  }`}
+                >
                   0{index + 1}
                 </span>
 
-                {/* Stage Icon */}
+                {/* Stage Icon in Squircle Glass Container */}
                 {item.icon && (
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-2xl border transition-all duration-300 ${
-                    isOpen 
-                      ? 'border-brand/40 bg-brand/10 text-brand scale-105' 
-                      : 'border-white/10 bg-white/5 text-gray-400 group-hover:text-white group-hover:bg-white/10'
-                  }`}>
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl border transition-all duration-300 ${
+                      isOpen
+                        ? 'border-brand/40 bg-brand/15 text-brand scale-105 shadow-[0_0_20px_rgba(229,9,20,0.2)]'
+                        : 'border-white/10 bg-white/[0.04] text-white/60 group-hover:text-white group-hover:bg-white/[0.08]'
+                    }`}
+                  >
                     {item.icon}
                   </div>
                 )}
 
-                {/* Title & Subtitle */}
+                {/* Title & Subtitle with Optical Sizing */}
                 <div className="min-w-0 text-right">
-                  <h4 className={`text-sm md:text-base font-black tracking-wide transition-colors ${
-                    isOpen ? 'text-white' : 'text-gray-300 group-hover:text-white'
-                  }`}>
+                  <h4
+                    className={`text-sm md:text-base font-black tracking-tight transition-colors ${
+                      isOpen ? 'text-white' : 'text-gray-200 group-hover:text-white'
+                    }`}
+                  >
                     {item.title}
                   </h4>
                   {item.subtitle && (
-                    <p className="text-[11px] font-bold text-gray-400 truncate mt-0.5">
+                    <p className="text-[11px] font-medium text-white/50 truncate mt-0.5 tracking-normal">
                       {item.subtitle}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Right Side: Badge & Expand Icon */}
+              {/* Left Side: Badge & Expand Chevron */}
               <div className="flex items-center gap-3 flex-shrink-0">
                 {item.badge && (
-                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/5 border border-white/10 text-gray-300">
-                    <Sparkles size={12} className="text-brand" />
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/[0.06] border border-white/15 text-white/90 shadow-sm backdrop-blur-xl">
+                    <Sparkles size={12} className="text-brand animate-pulse" />
                     {item.badge}
                   </span>
                 )}
                 <motion.div
                   animate={{ rotate: isOpen ? 180 : 0 }}
-                  transition={{ duration: 0.25 }}
-                  className={`flex h-8 w-8 items-center justify-center rounded-xl border ${
-                    isOpen ? 'border-brand/40 bg-brand/20 text-brand' : 'border-white/10 bg-white/5 text-gray-400'
+                  transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-colors ${
+                    isOpen
+                      ? 'border-brand/40 bg-brand/20 text-brand'
+                      : 'border-white/10 bg-white/5 text-white/50 group-hover:text-white group-hover:bg-white/10'
                   }`}
                 >
                   <ChevronDown size={18} />
@@ -126,7 +140,7 @@ export const CardSplitAccordion: React.FC<CardSplitAccordionProps> = ({
               </div>
             </div>
 
-            {/* Accordion Splitting Content Panel */}
+            {/* Accordion Content with Fluid Spring Expansion */}
             <AnimatePresence initial={false}>
               {isOpen && (
                 <motion.div
@@ -134,10 +148,10 @@ export const CardSplitAccordion: React.FC<CardSplitAccordionProps> = ({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.38 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-4 pb-5 pt-1 md:px-6 md:pb-6 border-t border-white/5 text-right">
+                  <div className="px-4 pb-6 pt-2 md:px-6 md:pb-7 border-t border-white/[0.08] text-right">
                     {item.content}
                   </div>
                 </motion.div>

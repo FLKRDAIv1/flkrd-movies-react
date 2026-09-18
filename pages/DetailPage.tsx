@@ -1040,7 +1040,12 @@ const DetailPage: React.FC = () => {
 
       {/* ── 3D Shaped Header Hero Card (Matching Home Banner Carousel Aesthetics) ── */}
       <div className="w-full relative px-4 md:px-12 pt-24 md:pt-28 pb-6 bg-transparent overflow-hidden isolate" dir="ltr">
-        <div className="relative w-full h-[65vh] md:h-[80vh] rounded-[32px] md:rounded-[40px] overflow-hidden border border-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.5)] bg-zinc-950/60 backdrop-blur-md group">
+        <div 
+          className="relative w-full h-[68vh] md:h-[82vh] rounded-[32px] md:rounded-[48px] overflow-hidden border border-white/15 shadow-[0_30px_90px_rgba(0,0,0,0.65)] bg-zinc-950/80 backdrop-blur-md group"
+          style={{
+            boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 30px 90px rgba(0, 0, 0, 0.65)'
+          }}
+        >
           <img 
             src={
               content.backdrop_path || content.poster_path
@@ -1050,31 +1055,50 @@ const DetailPage: React.FC = () => {
                 : '/default-poster.svg'
             } 
             alt="" 
-            className="absolute inset-0 w-full h-full object-cover opacity-100" 
+            className="absolute inset-0 w-full h-full object-cover opacity-100 transform-gpu group-hover:scale-[1.015] transition-transform duration-1000" 
             onError={(e) => {
               (e.target as HTMLImageElement).src = '/default-poster.svg';
             }}
           />
-          {/* Crystal Clear Gradient Overlay — Keeps image vibrant while maintaining text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-[2]" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent z-[2]" />
+          {/* Apple visionOS Multi-layer Directional & Vignette Gradients */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-[2]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/25 to-transparent z-[2]" />
+          <div className="absolute inset-0 z-[2] opacity-35 pointer-events-none" style={{ background: `radial-gradient(circle at 20% 80%, ${accentColor}30, transparent 65%)` }} />
         </div>
 
         {!isPlayerModalOpen && (
           <Portal id="detail-nav-portal">
-            <div className={`fixed top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-[110]`}>
-              <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/20 hover:bg-[var(--brand-red)] text-white px-5 py-3 rounded-2xl transition-all shadow-2xl group active:scale-95">
-                <ArrowLeft size={20} className={`${(language === 'ku' || language === 'badini') ? 'rotate-180' : ''}`} />
-                <span className="text-[10px] font-black uppercase tracking-widest">{t('back')}</span>
-              </button>
+            <div className={`fixed top-6 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                onClick={() => navigate(-1)} 
+                className="flex items-center gap-2.5 bg-black/45 hover:bg-black/70 backdrop-blur-2xl border border-white/20 text-white px-4 py-2.5 rounded-full transition-all shadow-[0_10px_30px_rgba(0,0,0,0.5)] group select-none cursor-pointer"
+                style={{
+                  boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 12px 30px rgba(0, 0, 0, 0.6)'
+                }}
+              >
+                <ArrowLeft size={18} className={`${(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} group-hover:-translate-x-0.5 transition-transform`} />
+                <span className="text-[11px] font-black uppercase tracking-wider">{t('back')}</span>
+              </motion.button>
             </div>
           </Portal>
         )}
 
         <div className={`absolute bottom-8 md:bottom-24 ${(language === 'ku' || language === 'badini') ? 'right-0 text-right px-6 md:px-8 lg:px-20' : 'left-0 text-left px-6 md:px-8 lg:px-20'} z-10 flex flex-col max-w-6xl items-start`}>
           <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="bg-blue-600/20 text-blue-500 px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-blue-600/30 flex items-center gap-1.5"><Shield size={12} /> SECURE MODULE</div>
-            {content.status === 'Released' && <div className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-green-500/30">Available</div>}
+            <div className="bg-blue-600/20 text-blue-400 px-3.5 py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-blue-500/30 flex items-center gap-1.5 shadow-sm backdrop-blur-xl">
+              <Shield size={12} /> SECURE MODULE
+            </div>
+            {content.status === 'Released' && (
+              <div className="bg-emerald-500/20 text-emerald-400 px-3.5 py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-emerald-500/30 shadow-sm backdrop-blur-xl">
+                Available
+              </div>
+            )}
+            <div className="bg-white/[0.08] text-white/90 px-3.5 py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] border border-white/15 shadow-sm backdrop-blur-xl">
+              4K DOLBY VISION
+            </div>
           </div>
 
           <div className="mb-8 w-full max-w-md md:max-w-xl">
@@ -1084,33 +1108,43 @@ const DetailPage: React.FC = () => {
                 <motion.img
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
                   src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
                   alt={content.title}
                   width={500}
                   height={200}
-                  className="max-w-full h-auto max-h-32 md:max-h-56 object-contain"
+                  className="max-w-full h-auto max-h-32 md:max-h-56 object-contain drop-shadow-[0_15px_35px_rgba(0,0,0,0.8)]"
                 />
               </>
             ) : (
-              <motion.h1 initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-9xl font-[1000] uppercase tracking-tighter italic leading-[0.9] text-[var(--text-primary)] drop-shadow-2xl">
+              <motion.h1 
+                initial={{ opacity: 0, y: 30 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+                className="text-4xl md:text-8xl lg:text-9xl font-[1000] uppercase tracking-[-0.03em] italic leading-[0.92] text-white drop-shadow-[0_20px_40px_rgba(0,0,0,0.9)]"
+              >
                 {content.title}
               </motion.h1>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 md:gap-5 mb-8">
-            <div className="flex items-center gap-1.5 bg-yellow-500/10 px-3 py-1.5 rounded-xl border border-yellow-500/20 shadow-lg backdrop-blur-xl">
-              <Star size={14} className="text-yellow-500 fill-current" />
-              <span className="text-xs font-black text-yellow-500">{content.vote_average?.toFixed(1) || '0.0'}</span>
+          <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-8">
+            <div className="flex items-center gap-1.5 bg-yellow-500/15 px-3.5 py-1.5 rounded-full border border-yellow-500/30 shadow-lg backdrop-blur-2xl">
+              <Star size={14} className="text-yellow-400 fill-current" />
+              <span className="text-xs font-black text-yellow-300 tracking-wide">{content.vote_average?.toFixed(1) || '0.0'}</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-box-bg px-3 py-1.5 rounded-xl border border-border-color shadow-lg backdrop-blur-xl">
-              <Timer size={14} className="text-[var(--text-secondary)]" />
-              <span className="text-xs font-black text-[var(--text-secondary)]">{content.runtime}m</span>
-            </div>
-            <div className="flex items-center gap-1.5 bg-box-bg px-3 py-1.5 rounded-xl border border-border-color shadow-lg backdrop-blur-xl">
-              <Calendar size={14} className="text-[var(--text-secondary)]" />
-              <span className="text-xs font-black text-[var(--text-secondary)]">{content.release_date?.split('-')[0]}</span>
-            </div>
+            {content.runtime && (
+              <div className="flex items-center gap-1.5 bg-white/[0.08] px-3.5 py-1.5 rounded-full border border-white/15 shadow-lg backdrop-blur-2xl text-white">
+                <Timer size={14} className="text-white/70" />
+                <span className="text-xs font-black tracking-wide">{content.runtime}m</span>
+              </div>
+            )}
+            {content.release_date && (
+              <div className="flex items-center gap-1.5 bg-white/[0.08] px-3.5 py-1.5 rounded-full border border-white/15 shadow-lg backdrop-blur-2xl text-white">
+                <Calendar size={14} className="text-white/70" />
+                <span className="text-xs font-black tracking-wide">{content.release_date.split('-')[0]}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:gap-5">

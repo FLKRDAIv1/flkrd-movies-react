@@ -39,6 +39,10 @@ export interface ResolvedOffset {
 // ── localStorage helpers ─────────────────────────────────────────────────────
 
 function userKey(tmdbId: string, season: number, episode: number): string {
+  return `flkrd_sub_offset_user_${tmdbId}_${season}_${episode}`;
+}
+
+function legacyUserKey(tmdbId: string, season: number, episode: number): string {
   return `flkrd_sub_offset_user_${tmdbId}_s${season}_e${episode}`;
 }
 
@@ -46,22 +50,32 @@ export function saveUserOverride(
   tmdbId: string, season: number, episode: number, offsetMs: number
 ): void {
   try {
-    if (offsetMs === 0) localStorage.removeItem(userKey(tmdbId, season, episode));
-    else localStorage.setItem(userKey(tmdbId, season, episode), String(offsetMs));
+    const k1 = userKey(tmdbId, season, episode);
+    const k2 = legacyUserKey(tmdbId, season, episode);
+    if (offsetMs === 0) {
+      localStorage.removeItem(k1);
+      localStorage.removeItem(k2);
+    } else {
+      localStorage.setItem(k1, String(offsetMs));
+      localStorage.setItem(k2, String(offsetMs));
+    }
   } catch (_) { /* storage full */ }
 }
 
 export function clearUserOverride(
   tmdbId: string, season: number, episode: number
 ): void {
-  try { localStorage.removeItem(userKey(tmdbId, season, episode)); } catch (_) {}
+  try {
+    localStorage.removeItem(userKey(tmdbId, season, episode));
+    localStorage.removeItem(legacyUserKey(tmdbId, season, episode));
+  } catch (_) {}
 }
 
 function loadUserOverride(
   tmdbId: string, season: number, episode: number
 ): number | null {
   try {
-    const raw = localStorage.getItem(userKey(tmdbId, season, episode));
+    const raw = localStorage.getItem(userKey(tmdbId, season, episode)) || localStorage.getItem(legacyUserKey(tmdbId, season, episode));
     if (raw === null) return null;
     const n = parseInt(raw, 10);
     return isNaN(n) ? null : n;
@@ -139,7 +153,7 @@ export function autoSaveCalibratedOffset(
       supabase
         .from('subtitle_offsets')
         .upsert(
-          { tmdb_id: tmdbId, media_type: mediaType, season, episode, offset_ms: offsetMs, note: 'AI calibrated sync', set_by: 'ai-sync' },
+          { tmdb_id: tmdbId, media_type: mediaType, season, episode, offset_ms: offsetMs, note: 'User manual sync', set_by: 'user-sync' },
           { onConflict: 'tmdb_id,media_type,season,episode' }
         )
     ).catch(() => {});

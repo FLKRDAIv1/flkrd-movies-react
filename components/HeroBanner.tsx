@@ -265,11 +265,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                 {/* CTA Action Buttons (Organic Physics-Based Transitions) */}
                 <div className="flex flex-wrap items-center gap-4 pt-2">
                   <motion.button
-                    whileHover={{ scale: 1.04, y: -2 }}
-                    whileTap={{ scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: 'spring', duration: 0.3, bounce: 0.1 }}
                     onClick={() => handleNavigateDetail(currentItem)}
-                    className="relative group/btn flex items-center gap-3 px-8 py-4 bg-brand hover:bg-brand/90 text-white font-black rounded-2xl shadow-[0_12px_35px_rgba(229,9,20,0.5)] cursor-pointer transform-gpu overflow-hidden"
+                    className="relative group/btn flex items-center gap-3 px-8 py-4 bg-brand hover:bg-brand/90 text-white font-black rounded-2xl shadow-[0_12px_35px_rgba(229,9,20,0.5)] cursor-pointer transform-gpu overflow-hidden apple-press"
                   >
                     <Play className="w-5 h-5 fill-white" />
                     <span className={isRtl ? 'font-kurdish text-base font-bold' : 'uppercase tracking-widest text-xs font-black'}>
@@ -278,11 +278,11 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   </motion.button>
 
                   <motion.button
-                    whileHover={{ scale: 1.04, y: -2 }}
-                    whileTap={{ scale: 0.96 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: 'spring', duration: 0.3, bounce: 0.1 }}
                     onClick={() => handleNavigateDetail(currentItem)}
-                    className="flex items-center gap-2.5 px-7 py-4 bg-white/10 hover:bg-white/18 text-white font-bold rounded-2xl border border-white/20 backdrop-blur-md cursor-pointer transform-gpu shadow-lg"
+                    className="flex items-center gap-2.5 px-7 py-4 bg-white/10 hover:bg-white/18 text-white font-bold rounded-2xl border border-white/20 backdrop-blur-md cursor-pointer transform-gpu shadow-lg apple-press"
                   >
                     <Info className="w-5 h-5 opacity-90" />
                     <span className={isRtl ? 'font-kurdish text-base font-bold' : 'uppercase tracking-widest text-xs font-black'}>

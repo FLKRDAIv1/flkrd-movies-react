@@ -47,6 +47,32 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
     return null;
   });
 
+  const triggerHaptic = () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(10); } catch (_) {}
+    }
+  };
+
+  // Lock background scroll & handle ESC key when Mobile Drawer is open (Apple sheet standard)
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isDrawerOpen]);
+
   useEffect(() => {
     const handleAvatarUpdate = () => {
       const updated = localStorage.getItem('flkrd_avatar_url') || sessionStorage.getItem('flkrd_avatar_url') || null;
@@ -405,7 +431,10 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
             {/* Hamburger Menu Drawer */}
             <button
-              onClick={() => setIsDrawerOpen(true)}
+              onClick={() => {
+                triggerHaptic();
+                setIsDrawerOpen(true);
+              }}
               className={cn(
                 "w-7 h-7 rounded-full flex items-center justify-center border transition-all active:scale-90 focus:outline-none cursor-pointer",
                 isDarkNavbar 
@@ -579,6 +608,20 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
                   </button>
 
+                  {/* Ultra 60 FPS Desktop Active Indicator & Toggle */}
+                  {isPerformanceMode && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPerformanceMode(false)}
+                      className="h-7 px-2.5 rounded-full flex items-center justify-center gap-1.5 border border-amber-500/40 bg-amber-500/15 text-amber-400 hover:bg-red-600/20 hover:border-red-500/40 hover:text-red-300 transition-all select-none shadow-[0_0_10px_rgba(245,158,11,0.2)] shrink-0 font-black text-[9px] uppercase tracking-wider group"
+                      title={language === 'ku' || language === 'badini' ? 'ۆلترا فپس چالاکە - کلیک بکە بۆ ناچالاککردن' : 'Ultra FPS Active - Click to turn OFF'}
+                    >
+                      <Zap size={11} className="animate-pulse fill-amber-400/30" />
+                      <span>{language === 'ku' || language === 'badini' ? 'ۆلترا 60 FPS' : '60 FPS Turbo'}</span>
+                      <span className="text-[8px] bg-red-600/60 text-white px-1 py-0.2 rounded group-hover:bg-red-600">OFF</span>
+                    </button>
+                  )}
+
                   {/* Dedicated Admin Panel Button if isAdmin is true */}
                   {isAdmin && (
                     <button
@@ -730,59 +773,71 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
 
 
 
-      {/* Mobile Slide-Over Menu Drawer */}
+      {/* Mobile Slide-Over Menu Drawer (Apple Design Spatial Consistency & Direct Manipulation) */}
       <AnimatePresence>
         {isDrawerOpen && (
           <>
-            {/* Fast Hardware-Accelerated Backdrop */}
+            {/* Apple Fluid Dimming Scrim */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              onClick={() => setIsDrawerOpen(false)}
-              className="fixed inset-0 z-[150] bg-black/70 md:hidden transform-gpu"
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+              onClick={() => {
+                triggerHaptic();
+                setIsDrawerOpen(false);
+              }}
+              className="fixed inset-0 z-[150] bg-black/65 backdrop-blur-sm md:hidden transform-gpu"
               style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
             />
 
-            {/* GPU-Accelerated Side Panel */}
+            {/* GPU-Accelerated Side Panel anchored to Right where Hamburger Button is */}
             <motion.div
-              dir="ltr"
-              initial={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
+              drag="x"
+              dragConstraints={{ left: 0 }}
+              dragElastic={{ left: 0.04, right: 0.65 }}
+              onDragEnd={(_e, info) => {
+                if (info.offset.x > 75 || info.velocity.x > 350) {
+                  triggerHaptic();
+                  setIsDrawerOpen(false);
+                }
+              }}
+              initial={{ x: '100%' }}
               animate={{ x: 0 }}
-              exit={{ x: (language === 'ku' || language === 'badini') ? '-100%' : '100%' }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className={`fixed top-0 bottom-0 ${
-                (language === 'ku' || language === 'badini') ? 'left-0' : 'right-0'
-              } z-[160] w-[84%] max-w-sm flex flex-col px-6 shadow-2xl md:hidden overflow-hidden transform-gpu select-none`}
+              exit={{ x: '100%' }}
+              transition={{
+                type: 'spring',
+                damping: 28,
+                stiffness: 340,
+                mass: 0.8
+              }}
+              className="fixed top-0 bottom-0 right-0 z-[160] w-[84%] max-w-sm rounded-l-[32px] flex flex-col px-6 shadow-[-25px_0_60px_rgba(0,0,0,0.85)] md:hidden overflow-hidden transform-gpu select-none"
               style={{
                 paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))',
                 paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
-                borderRadius: `${glassConfig.cornerRadius}px`,
-                contain: 'strict',
+                contain: 'layout style',
                 willChange: 'transform',
                 transform: 'translateZ(0)',
               }}
             >
-              {/* Isolated Liquid-Glass background overlay */}
+              {/* Apple visionOS Frosted Glass background overlay */}
               <div 
-                className={`absolute inset-0 z-0 transition-all duration-200 overflow-hidden ${
-                  (language === 'ku' || language === 'badini') ? 'border-r' : 'border-l'
-                }`}
+                className="absolute inset-0 z-0 border-l border-white/[0.14] overflow-hidden pointer-events-none rounded-l-[32px]"
                 style={{
                   background: theme === 'light'
-                    ? `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.08), transparent 75%), rgba(255, 255, 255, 0.94)`
-                    : `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), ${glassConfig.redOpacity * 1.25}), transparent 75%), rgba(12, 12, 14, 0.96)`,
-                  borderStyle: 'solid',
-                  borderColor: theme === 'light'
-                    ? `rgba(0, 0, 0, 0.06)`
-                    : `rgba(var(--brand-red-rgb), ${glassConfig.borderOpacity})`,
-                  borderRadius: `${glassConfig.cornerRadius}px`,
+                    ? 'rgba(255, 255, 255, 0.94)'
+                    : 'rgba(18, 18, 22, 0.94)',
+                  backdropFilter: 'blur(32px) saturate(190%)',
+                  WebkitBackdropFilter: 'blur(32px) saturate(190%)',
                   boxShadow: theme === 'light'
-                    ? `0 20px 40px rgba(0,0,0,0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.85)`
-                    : `inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 20px 45px rgba(0,0,0,0.75)`
+                    ? 'inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 20px 40px rgba(0,0,0,0.08)'
+                    : 'inset 0 1px 0 0 rgba(255, 255, 255, 0.18), -20px 0 45px rgba(0,0,0,0.75)'
                 }}
               />
+
+              {/* Edge Drag Pill Hint for gesture affordance */}
+              <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1 h-10 rounded-full bg-white/20 pointer-events-none" />
+
               <div className="relative z-10 flex flex-col h-full w-full" dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}>
               
               {/* Drawer Header */}
@@ -792,8 +847,11 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                   <span className="text-base font-black italic uppercase tracking-tighter text-main-text">PORTAL</span>
                 </div>
                 <button
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 text-sec-text hover:text-main-text transition-all focus:outline-none touch-manipulation active:scale-90"
+                  onClick={() => {
+                    triggerHaptic();
+                    setIsDrawerOpen(false);
+                  }}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-box-bg hover:bg-zinc-200/50 dark:hover:bg-white/10 text-sec-text hover:text-main-text transition-all focus:outline-none touch-manipulation active:scale-90 cursor-pointer border border-border-color"
                   aria-label="Close menu"
                 >
                   <X className="w-5 h-5" />
@@ -842,7 +900,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                     <Zap className={`w-4.5 h-4.5 ${isPerformanceMode ? 'text-amber-500 animate-pulse' : 'text-sec-text'}`} />
                     <div>
                       <span className="text-[11px] font-black uppercase tracking-wider text-main-text block">
-                        {(language === 'ku' || language === 'badini') ? 'تۆربۆ 60 FPS' : 'Turbo 60 FPS'}
+                        {(language === 'ku' || language === 'badini') ? 'ۆلترا فپس / تۆربۆ 60 FPS' : 'Ultra 60 FPS / Turbo'}
                       </span>
                       <span className="text-[8px] font-bold uppercase tracking-widest text-sec-text">
                         {isPerformanceMode 

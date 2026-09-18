@@ -97,15 +97,7 @@ function processTranslation(text, source, target, geminiKey) {
   var actualSource = source || 'auto';
   var keyToUse = geminiKey || (PropertiesService.getScriptProperties && PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY')) || '';
 
-  // 1. Try Gemini Flash AI first for highest quality Kurdish / world languages
-  if (keyToUse) {
-    try {
-      var geminiResult = translateViaGeminiFlash(text, actualSource, actualTarget, isBadini, keyToUse);
-      if (geminiResult && geminiResult.trim()) {
-        return geminiResult;
-      }
-    } catch (gErr) {}
-  }
+
 
   try {
     // Kurdish Sorani (ckb) is best handled by GTX engine
@@ -130,7 +122,7 @@ function processTranslation(text, source, target, geminiKey) {
 function translateViaGeminiFlash(text, source, target, isBadini, key) {
   var url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
   var targetName = (target === 'ckb' || target === 'ku' || isBadini) ? 'natural, realistic Kurdish' : target;
-  var prompt = "Translate the following movie dialogue directly to " + targetName + ". Output only the final translation with no markdown code blocks or extra conversational commentary.\n\nText: " + text;
+  var prompt = "Translate the following movie dialogue directly to " + targetName + ". Output only the final translation with no markdown code blocks, conversational commentary, or thoughts.\n\nText: " + text;
 
   var response = UrlFetchApp.fetch(url, {
     method: 'post',
@@ -140,7 +132,11 @@ function translateViaGeminiFlash(text, source, target, isBadini, key) {
     },
     payload: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1, maxOutputTokens: 8192 }
+      generationConfig: { 
+        temperature: 0.1, 
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     }),
     muteHttpExceptions: true
   });
@@ -148,9 +144,15 @@ function translateViaGeminiFlash(text, source, target, isBadini, key) {
   if (response.getResponseCode() === 200) {
     var data = JSON.parse(response.getContentText());
     if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
-      var outText = data.candidates[0].content.parts[0].text || '';
-      var clean = outText.replace(/```[a-z]*|```/gi, '').trim();
-      if (clean) {
+      var parts = data.candidates[0].content.parts || [];
+      var validParts = parts.filter(function(p) { return !p.thought && p.text; });
+      // Thought parts are never subtitle content. If Gemini returned only a
+      // thought, fail over instead of displaying that text to the viewer.
+      var outText = validParts.length > 0 ? validParts.map(function(p) { return p.text; }).join('') : '';
+      var clean = (outText || '').replace(/```[a-z]*|```/gi, '').trim();
+      // Remove any thought markers or conversational preambles
+      clean = clean.replace(/^([Tt]hinking:|[Nn]ote:|[Tt]ranslation:)\s*/i, '');
+      if (clean && !/^([Tt]hinking|[Hh]ere is|[Ss]ure|Note:)/i.test(clean)) {
         if (target === 'badini' || isBadini) return transliterateBadini(clean);
         return polishKurdishTranslation(clean, false);
       }

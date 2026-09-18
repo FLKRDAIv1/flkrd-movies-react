@@ -16,9 +16,10 @@ interface SubtitleProxyResponse {
 }
 
 /**
- * Converts raw SRT text to standard WebVTT format
+ * Converts raw SRT text to standard WebVTT format, preserving styling tags
+ * and only stripping sequence numbers that directly precede timestamps.
  */
-function convertSrtToVtt(srtText: string): string {
+function convertSrtToVtt(srtText: string, offsetMs: number = 0, speedRatio: number = 1.0): string {
   if (!srtText) return 'WEBVTT\n\n';
 
   // Strip BOM and RTL directional control markers
@@ -28,19 +29,65 @@ function convertSrtToVtt(srtText: string): string {
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n');
 
-  if (text.trim().startsWith('WEBVTT')) {
+  if (text.trim().startsWith('WEBVTT') && offsetMs === 0 && Math.abs(speedRatio - 1.0) < 0.001) {
     return text;
   }
 
-  // Convert SRT timestamps (00:00:00,000 -> 00:00:00.000)
-  const vtt = text
-    .replace(/(\d{1,2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2')
-    .replace(/^[ \t]*\d+[ \t]*$/gm, '')
-    .replace(/<font[^>]*>/gi, '')
-    .replace(/<\/font>/gi, '')
-    .replace(/\n{3,}/g, '\n\n');
+  const offsetSec = offsetMs / 1000;
+  const parseTimecode = (tc: string): number => {
+    const parts = tc.trim().replace(',', '.').split(':');
+    if (parts.length === 3) {
+      return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+    }
+    return 0;
+  };
 
-  return 'WEBVTT\n\n' + vtt.trimStart();
+  const formatVttTime = (seconds: number): string => {
+    const safeSec = Math.max(0, seconds);
+    const hrs = Math.floor(safeSec / 3600);
+    const mins = Math.floor((safeSec - hrs * 3600) / 60);
+    const secs = Math.floor(safeSec - hrs * 3600 - mins * 60);
+    const ms = Math.min(999, Math.floor(Math.round((safeSec % 1) * 1000)));
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  };
+
+  // Split into cue blocks
+  const blocks = text.trim().split(/\n\n+/);
+  let vtt = 'WEBVTT\n\n';
+  let cueIdx = 0;
+
+  for (const block of blocks) {
+    const lines = block.split('\n');
+    const timeLineIdx = lines.findIndex(l => l.includes('-->'));
+    if (timeLineIdx === -1) continue;
+
+    const timeParts = lines[timeLineIdx].split('-->');
+    if (timeParts.length !== 2) continue;
+
+    const startSec = (parseTimecode(timeParts[0]) * speedRatio) + offsetSec;
+    const endSec = (parseTimecode(timeParts[1]) * speedRatio) + offsetSec;
+
+    // Drop cues ending before start of video (prevents WebVTT parser crash)
+    if (endSec <= 0.01) continue;
+
+    const effectiveStart = Math.max(0, startSec);
+    const effectiveEnd = Math.max(effectiveStart + 0.05, endSec);
+
+    const textLines = lines.slice(timeLineIdx + 1).filter(l => l.trim() !== '');
+    const cleanCueText = textLines
+      .join('\n')
+      .replace(/<font[^>]*>/gi, '')
+      .replace(/<\/font>/gi, '');
+
+    if (!cleanCueText.trim()) continue;
+
+    cueIdx++;
+    vtt += `${cueIdx}\n`;
+    vtt += `${formatVttTime(effectiveStart)} --> ${formatVttTime(effectiveEnd)}\n`;
+    vtt += `${cleanCueText}\n\n`;
+  }
+
+  return vtt;
 }
 
 /**
@@ -133,8 +180,14 @@ export default async function handler(req: SubtitleProxyRequest, res: SubtitlePr
       return res.status(200).send(rawText);
     }
 
-    // Convert SRT to WebVTT
-    const webVttContent = convertSrtToVtt(rawText);
+    // Convert SRT to WebVTT with optional offset and framerate speed calibration
+    const reqOffset = req.query.offset ? parseInt(String(req.query.offset), 10) : 0;
+    const reqSpeed = req.query.speed ? parseFloat(String(req.query.speed)) : 1.0;
+    const webVttContent = convertSrtToVtt(
+      rawText,
+      isNaN(reqOffset) ? 0 : reqOffset,
+      isNaN(reqSpeed) || reqSpeed <= 0.5 || reqSpeed >= 2.0 ? 1.0 : reqSpeed
+    );
 
     // Cache responses for 1 day
     res.setHeader('Content-Type', 'text/vtt; charset=utf-8');

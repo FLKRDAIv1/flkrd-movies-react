@@ -51,7 +51,7 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: Na
         title={isCollapsed ? text : ''}
         onMouseEnter={handlePrefetch}
         onClick={onItemClick}
-        className={`group relative flex items-center h-12 px-3.5 mx-2 rounded-2xl transition-all duration-150 overflow-hidden border active:scale-95 touch-manipulation ${
+        className={`group relative flex items-center h-12 px-3.5 mx-2 rounded-2xl transition-[transform,background-color,color,box-shadow] duration-160 ease-out overflow-hidden border active:scale-[0.97] touch-manipulation ${
           isActive
             ? 'bg-brand border-brand text-white shadow-[0_4px_25px_rgba(var(--brand-red-rgb),0.35)] font-black'
             : isLight
@@ -60,7 +60,7 @@ const NavItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }: Na
         }`}
       >
         <div
-          className={`flex-shrink-0 transition-transform duration-150 ${
+          className={`flex-shrink-0 transition-transform duration-160 ${
             isActive ? 'scale-110 text-white' : isLight ? 'group-hover:scale-110 text-neutral-600' : 'group-hover:scale-110 text-neutral-400'
           }`}
         >
@@ -104,7 +104,7 @@ const StudioItem = memo(({ to, icon, text, location, isCollapsed, onItemClick }:
       <NavLink
         to={to}
         onClick={onItemClick}
-        className={`group flex items-center h-10 px-3.5 mx-2 rounded-xl transition-all duration-150 border active:scale-95 touch-manipulation ${
+        className={`group flex items-center h-10 px-3.5 mx-2 rounded-xl transition-[transform,background-color,color,box-shadow] duration-160 ease-out border active:scale-[0.97] touch-manipulation ${
           isActive
             ? 'bg-brand/20 border-brand/35 text-brand font-black shadow-[0_0_15px_rgba(var(--brand-red-rgb),0.15)]'
             : isLight
@@ -143,6 +143,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
   const location = useLocation();
   const { t, language } = useTranslation();
   const { theme, glassConfig } = useUI();
+  const isRtl = language === 'ku' || language === 'badini';
+
+  // Lock background scroll when mobile drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
 
   // Close mobile drawer on ESC
   const handleKeyDown = useCallback(
@@ -342,25 +353,49 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Apple Fluid Dimming Scrim */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
               onClick={onClose}
-              className="fixed inset-0 z-[90] bg-black/70 md:hidden transform-gpu"
+              className="fixed inset-0 z-[90] bg-black/65 backdrop-blur-sm md:hidden transform-gpu"
               style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
             />
 
+            {/* Apple visionOS Side Panel */}
             <motion.div
-              initial={{ x: '-100%' }}
+              drag="x"
+              dragConstraints={isRtl ? { left: 0 } : { right: 0 }}
+              dragElastic={isRtl ? { left: 0.04, right: 0.65 } : { right: 0.04, left: 0.65 }}
+              onDragEnd={(_e, info) => {
+                if (isRtl ? (info.offset.x > 75 || info.velocity.x > 350) : (info.offset.x < -75 || info.velocity.x < -350)) {
+                  onClose?.();
+                }
+              }}
+              initial={{ x: isRtl ? '100%' : '-100%' }}
               animate={{ x: '0%' }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed top-0 left-0 bottom-0 z-[100] w-72 h-full bg-neutral-950 border-r border-white/10 text-neutral-300 shadow-2xl flex flex-col justify-between overflow-hidden md:hidden transform-gpu select-none"
-              style={{ contain: 'strict', willChange: 'transform', transform: 'translateZ(0)' }}
+              exit={{ x: isRtl ? '100%' : '-100%' }}
+              transition={{
+                type: 'spring',
+                damping: 28,
+                stiffness: 340,
+                mass: 0.8
+              }}
+              className={`fixed top-0 bottom-0 ${
+                isRtl ? 'right-0 rounded-l-[32px] border-l shadow-[-25px_0_60px_rgba(0,0,0,0.85)]' : 'left-0 rounded-r-[32px] border-r shadow-[25px_0_60px_rgba(0,0,0,0.85)]'
+              } z-[100] w-72 h-full bg-[#121216]/95 border-white/15 text-neutral-300 backdrop-blur-3xl flex flex-col justify-between overflow-hidden md:hidden transform-gpu select-none`}
+              style={{ 
+                contain: 'layout style', 
+                willChange: 'transform', 
+                transform: 'translateZ(0)',
+                paddingTop: 'env(safe-area-inset-top, 0px)',
+                paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+              }}
+              dir={isRtl ? 'rtl' : 'ltr'}
             >
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-neutral-900/60">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/[0.03]">
                 <div className="flex items-center gap-3">
                   <img src="/flkrd-icon.png" alt="FLKRD" className="w-9 h-9 object-contain" />
                   <span className="text-sm font-black tracking-widest text-white uppercase">
@@ -370,7 +405,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 {onClose && (
                   <button
                     onClick={onClose}
-                    className="p-2 rounded-full bg-white/5 text-neutral-400 hover:text-white touch-manipulation active:scale-90"
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-neutral-300 hover:text-white hover:bg-white/20 touch-manipulation active:scale-90 transition-all cursor-pointer"
                     aria-label="Close"
                   >
                     <X size={18} />
@@ -387,7 +422,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
                 <NavItem to="/my-list" icon={<Bookmark size={20} />} text={t('myList') || 'My List'} location={location} isCollapsed={false} onItemClick={onClose} />
               </nav>
 
-              <div className="p-4 border-t border-white/10 bg-neutral-900/60 flex flex-col gap-3">
+              <div className="p-4 border-t border-white/10 bg-white/[0.02] flex flex-col gap-3">
                 <button
                   onClick={() => {
                     onClose?.();

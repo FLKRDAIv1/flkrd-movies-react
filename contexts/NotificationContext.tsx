@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { toast } from 'sonner';
 import type { Notification } from '../types';
-import NotificationItem from '../components/NotificationItem';
 import { notificationEmitter } from '../utils/notificationEmitter';
-import Portal from '../components/Portal';
+
+export { toast } from 'sonner';
 
 interface NotificationContextType {
   addNotification: (notification: Omit<Notification, 'id'>) => void;
@@ -11,15 +12,77 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   // Ref to track whether realtime channels are already set up
   const channelsRef = useRef<{ broadcast: any; db: any } | null>(null);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
-    const id = String(Date.now() + Math.random());
     const duration = notification.duration ?? 4000;
-    setNotifications(prev => [...prev, { ...notification, id, duration }]);
-    
+
+    // Trigger Sonner toast with fluid Apple-style animation and stacking
+    if (notification.image) {
+      toast.custom(
+        (t) => (
+          <div
+            onClick={() => {
+              if (notification.actionUrl) window.location.href = notification.actionUrl;
+              toast.dismiss(t);
+            }}
+            className="flex items-center gap-3.5 w-full bg-zinc-950/90 text-white p-3.5 rounded-2xl border border-white/15 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] cursor-pointer"
+          >
+            <img
+              src={notification.image}
+              alt=""
+              className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/20 flex-shrink-0 shadow-md"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">{notification.title}</p>
+              <p className="text-[11px] text-zinc-300 line-clamp-2 mt-0.5">{notification.message}</p>
+            </div>
+          </div>
+        ),
+        { duration }
+      );
+    } else if (notification.type === 'success') {
+      toast.success(notification.title, {
+        description: notification.message,
+        duration,
+        action: notification.actionUrl
+          ? {
+              label: 'View',
+              onClick: () => {
+                window.location.href = notification.actionUrl!;
+              },
+            }
+          : undefined,
+      });
+    } else if (notification.type === 'error') {
+      toast.error(notification.title, {
+        description: notification.message,
+        duration,
+        action: notification.actionUrl
+          ? {
+              label: 'View',
+              onClick: () => {
+                window.location.href = notification.actionUrl!;
+              },
+            }
+          : undefined,
+      });
+    } else {
+      toast.info(notification.title, {
+        description: notification.message,
+        duration,
+        action: notification.actionUrl
+          ? {
+              label: 'View',
+              onClick: () => {
+                window.location.href = notification.actionUrl!;
+              },
+            }
+          : undefined,
+      });
+    }
+
     // Native Sync: Trigger Tauri system notification (deferred to avoid blocking message handler)
     if (notification.type !== 'info') {
       setTimeout(() => {
@@ -28,10 +91,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         });
       }, 0);
     }
-  }, []);
-
-  const removeNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
   
   React.useEffect(() => {
@@ -155,17 +214,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   return (
     <NotificationContext.Provider value={{ addNotification }}>
       {children}
-      <Portal id="notification-portal">
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-6 sm:top-6 z-[99999] w-full max-w-sm space-y-2.5 pointer-events-none px-4 sm:px-0">
-          {notifications.map(notification => (
-            <NotificationItem
-              key={notification.id}
-              notification={notification}
-              onDismiss={removeNotification}
-            />
-          ))}
-        </div>
-      </Portal>
     </NotificationContext.Provider>
   );
 };

@@ -146,11 +146,13 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
 
   const handleCategoryClick = useCallback((cat: Category, e?: React.SyntheticEvent) => {
     if (e) {
-      e.preventDefault();
       e.stopPropagation();
     }
-    if (Date.now() - lastCloseTimeRef.current < 300) {
-      return;
+    // Apple Audio-Haptic subtle click vibration
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(10);
+      } catch (_) {}
     }
     setInternalActiveTab(cat.id);
     if (onCategorySelect) {
@@ -410,19 +412,22 @@ export const MorphingDiscoveryBar: React.FC<MorphingDiscoveryBarProps> = ({
 
                   return (
                     <button
+                      type="button"
                       key={cat.id}
                       onClick={(e) => handleCategoryClick(cat, e)}
                       title={cat.label}
                       aria-label={cat.label}
-                      className="relative py-2.5 px-3 rounded-full flex flex-col items-center justify-center transition-all duration-150 active:scale-90 focus:outline-none touch-manipulation flex-1 min-w-0 cursor-pointer"
+                      className="relative py-2.5 px-3 rounded-full flex flex-col items-center justify-center transition-all duration-150 active:scale-[0.95] focus:outline-none touch-manipulation flex-1 min-w-0 cursor-pointer apple-press"
                       style={{
                         color: isActive ? activeTextColor : undefined,
                         WebkitTapHighlightColor: 'transparent',
                       }}
                     >
                       {isActive && (
-                        <div
-                          className="absolute inset-0 z-0 rounded-full bg-red-600/15 border border-red-500/40 shadow-[0_0_14px_rgba(239,68,68,0.25)] transition-all duration-150 pointer-events-none"
+                        <motion.div
+                          layoutId="morphing-nav-active-pill"
+                          className="absolute inset-0 z-0 rounded-full bg-red-600/15 border border-red-500/40 shadow-[0_0_14px_rgba(239,68,68,0.25)] pointer-events-none"
+                          transition={{ type: "spring", stiffness: 450, damping: 35 }}
                         />
                       )}
                       <span

@@ -12,7 +12,9 @@ import {
   Search, 
   Cog, 
   History, 
-  X 
+  X,
+  User,
+  Download
 } from 'lucide-react';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
@@ -70,6 +72,26 @@ const MobileNav: React.FC = () => {
     };
   }, []);
 
+  // Lock background scroll & handle ESC key when More drawer is open (Apple sheet standard)
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMoreMenuOpen]);
+
   const isRtl = language === 'ku' || language === 'badini';
 
   const getKurdishLabel = useCallback((key: string) => {
@@ -96,9 +118,17 @@ const MobileNav: React.FC = () => {
       '/discover': () => import('../pages/DiscoverPage'),
       '/search': () => import('../pages/SearchPage'),
       '/my-list': () => import('../pages/MyListPage'),
-      '/kurdish-cc': () => import('../pages/KurdishCCPage'),
+      '/profile': () => import('../pages/ProfilePage'),
     };
     if (componentMap[to]) componentMap[to]();
+  }, []);
+
+  const triggerHaptic = useCallback(() => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(10);
+      } catch (_) {}
+    }
   }, []);
 
   const discoveryCategories: Category[] = useMemo(() => [
@@ -110,6 +140,7 @@ const MobileNav: React.FC = () => {
       activeTextColor: '#ef4444',
       to: '/',
       onClick: () => {
+        setIsMoreMenuOpen(false);
         prefetchPage('/');
         navigate('/');
       },
@@ -122,6 +153,7 @@ const MobileNav: React.FC = () => {
       activeTextColor: '#ef4444',
       to: '/discover',
       onClick: () => {
+        setIsMoreMenuOpen(false);
         prefetchPage('/discover');
         navigate('/discover');
       },
@@ -134,6 +166,7 @@ const MobileNav: React.FC = () => {
       activeTextColor: '#ef4444',
       to: '/dubbed',
       onClick: () => {
+        setIsMoreMenuOpen(false);
         prefetchPage('/dubbed');
         navigate('/dubbed');
       },
@@ -144,9 +177,12 @@ const MobileNav: React.FC = () => {
       icon: <MoreHorizontal size={20} />,
       activeColor: 'rgba(239, 68, 68, 0.2)',
       activeTextColor: '#ef4444',
-      onClick: () => setIsMoreMenuOpen(true),
+      onClick: () => {
+        triggerHaptic();
+        setIsMoreMenuOpen(prev => !prev);
+      },
     },
-  ], [getKurdishLabel, prefetchPage, navigate]);
+  ], [getKurdishLabel, prefetchPage, navigate, triggerHaptic]);
 
   const getActiveTabId = () => {
     if (isMoreMenuOpen) return 'more';
@@ -158,7 +194,14 @@ const MobileNav: React.FC = () => {
   };
 
   const handleSearchSubmit = (query: string) => {
+    setIsMoreMenuOpen(false);
     navigate(`/search?query=${encodeURIComponent(query)}`);
+  };
+
+  const handleDrawerItemClick = (action: () => void) => {
+    triggerHaptic();
+    setIsMoreMenuOpen(false);
+    action();
   };
 
   const drawerItems = useMemo(() => [
@@ -167,7 +210,6 @@ const MobileNav: React.FC = () => {
       icon: <Tv size={20} />,
       onClick: () => {
         prefetchPage('/tv');
-        setIsMoreMenuOpen(false);
         navigate('/tv');
       }
     },
@@ -175,7 +217,6 @@ const MobileNav: React.FC = () => {
       label: isRtl ? 'ستۆدیۆکان' : 'Studios',
       icon: <Film size={20} />,
       onClick: () => {
-        setIsMoreMenuOpen(false);
         navigate('/studios');
       }
     },
@@ -183,7 +224,6 @@ const MobileNav: React.FC = () => {
       label: isRtl ? 'لیستی من' : 'My List',
       icon: <Bookmark size={20} />,
       onClick: () => {
-        setIsMoreMenuOpen(false);
         navigate('/my-list');
       }
     },
@@ -191,7 +231,6 @@ const MobileNav: React.FC = () => {
       label: isRtl ? 'گەڕان' : 'Search',
       icon: <Search size={20} />,
       onClick: () => {
-        setIsMoreMenuOpen(false);
         navigate('/search');
       }
     },
@@ -200,16 +239,28 @@ const MobileNav: React.FC = () => {
       icon: <History size={20} />,
       count: continueWatchingCount,
       onClick: () => {
-        setIsMoreMenuOpen(false);
         navigate('/continue-watching');
+      }
+    },
+    {
+      label: isRtl ? 'پڕۆفایل' : 'Profile',
+      icon: <User size={20} />,
+      onClick: () => {
+        navigate('/profile');
       }
     },
     {
       label: isRtl ? 'ڕێکخستن' : 'Settings',
       icon: <Cog size={20} />,
       onClick: () => {
-        setIsMoreMenuOpen(false);
         setIsSettingsOpen(true);
+      }
+    },
+    {
+      label: isRtl ? 'داگرتنی ئەپ' : 'Install App',
+      icon: <Download size={20} />,
+      onClick: () => {
+        window.dispatchEvent(new CustomEvent('flkrd-open-pwa-install'));
       }
     }
   ], [isRtl, prefetchPage, navigate, continueWatchingCount, setIsSettingsOpen]);
@@ -247,85 +298,129 @@ const MobileNav: React.FC = () => {
         />
       </div>
 
-      {/* Floating Bottom Sheet Menu Drawer for More */}
+      {/* Floating Bottom Sheet Menu Drawer for More (Apple Design Fluid Sheet) */}
       <Portal id="mobile-more-menu-portal">
         <AnimatePresence>
           {isMoreMenuOpen && (
             <>
-              {/* Fast Hardware Backdrop */}
+              {/* Apple Fluid Dimming Scrim */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                onClick={() => setIsMoreMenuOpen(false)}
-                className="fixed inset-0 bg-black/75 z-[99998] transform-gpu"
+                transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
+                onClick={() => {
+                  triggerHaptic();
+                  setIsMoreMenuOpen(false);
+                }}
+                className="fixed inset-0 bg-black/65 backdrop-blur-sm z-[99998] pointer-events-auto transform-gpu"
                 style={{ willChange: 'opacity', transform: 'translateZ(0)' }}
               />
 
-              {/* Bottom Sheet Container */}
+              {/* Bottom Sheet Container with Apple Direct Manipulation Spring Physics */}
               <motion.div
+                drag="y"
+                dragConstraints={{ top: 0 }}
+                dragElastic={{ top: 0.04, bottom: 0.65 }}
+                onDragEnd={(_e, info) => {
+                  // Velocity-projected dismissal (Apple WWDC Fluid Interfaces §5-6)
+                  if (info.offset.y > 80 || info.velocity.y > 380) {
+                    triggerHaptic();
+                    setIsMoreMenuOpen(false);
+                  }
+                }}
                 initial={{ y: '100%' }}
                 animate={{ y: 0 }}
                 exit={{ y: '100%' }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className={`fixed bottom-0 inset-x-0 border-t rounded-t-[32px] p-6 pb-12 z-[99999] flex flex-col gap-4 shadow-2xl transform-gpu select-none ${
+                transition={{
+                  type: 'spring',
+                  damping: 28,
+                  stiffness: 340,
+                  mass: 0.8
+                }}
+                className={cn(
+                  "fixed bottom-0 inset-x-0 border-t rounded-t-[32px] p-5 pb-8 z-[99999] flex flex-col gap-3 shadow-2xl transform-gpu select-none pointer-events-auto",
                   theme === 'light'
-                    ? 'bg-white border-zinc-200 text-zinc-900 shadow-zinc-400/40'
-                    : 'bg-[#0c0c0e] border-white/15 text-white shadow-black/95'
-                }`}
+                    ? "bg-white/92 backdrop-blur-3xl border-black/[0.08] text-zinc-900 shadow-[0_-20px_50px_rgba(0,0,0,0.15)]"
+                    : "bg-[#121216]/92 backdrop-blur-3xl border-white/[0.14] text-white shadow-[0_-25px_60px_rgba(0,0,0,0.85)]"
+                )}
                 style={{
-                  paddingBottom: 'calc(2.5rem + env(safe-area-inset-bottom, 0px))',
-                  contain: 'strict',
+                  paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))',
+                  contain: 'layout style',
                   willChange: 'transform',
                   transform: 'translateZ(0)'
                 }}
                 dir={isRtl ? 'rtl' : 'ltr'}
               >
-                {/* Header Slider Handle */}
-                <div className={`w-10 h-1 rounded-full mx-auto mb-1 ${theme === 'light' ? 'bg-zinc-300' : 'bg-white/20'}`} />
+                {/* Apple Native Pill Grab Handle */}
+                <div 
+                  className={cn(
+                    "w-10 h-1 rounded-full mx-auto mb-1.5 cursor-grab active:cursor-grabbing transition-opacity",
+                    theme === 'light' ? "bg-black/20" : "bg-white/25"
+                  )} 
+                />
 
-                <div className={`flex items-center justify-between border-b pb-3 ${theme === 'light' ? 'border-zinc-200' : 'border-white/10'}`}>
-                  <h3 className={`text-sm font-black uppercase tracking-wider ${theme === 'light' ? 'text-zinc-900' : 'text-white'}`}>
-                    {getKurdishLabel('more')}
-                  </h3>
+                {/* Header Title with Optical Tracking */}
+                <div className={cn(
+                  "flex items-center justify-between border-b pb-2.5 px-1",
+                  theme === 'light' ? "border-zinc-200/80" : "border-white/10"
+                )}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-4 rounded-full bg-red-600" />
+                    <h3 className={cn(
+                      "text-sm font-black uppercase tracking-tight",
+                      theme === 'light' ? "text-zinc-900" : "text-white"
+                    )}>
+                      {getKurdishLabel('more')}
+                    </h3>
+                  </div>
+                  
                   <button 
-                    onClick={() => setIsMoreMenuOpen(false)}
-                    className={`p-2 border rounded-xl transition-all active:scale-90 touch-manipulation ${
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic();
+                      setIsMoreMenuOpen(false);
+                    }}
+                    className={cn(
+                      "p-2 border rounded-xl transition-transform duration-150 active:scale-95 touch-manipulation apple-press cursor-pointer",
                       theme === 'light' 
-                        ? 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-red-600 hover:text-white' 
-                        : 'bg-white/5 border-white/10 text-white hover:bg-red-600'
-                    }`}
+                        ? "bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-red-600 hover:text-white" 
+                        : "bg-white/5 border-white/10 text-white hover:bg-red-600"
+                    )}
                     aria-label="Close menu"
                   >
-                    <X size={14} />
+                    <X size={15} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 py-1">
+                {/* Tactile Grid Items */}
+                <div className="grid grid-cols-4 gap-2.5 py-1">
                   {drawerItems.map((item) => (
                     <button
+                      type="button"
                       key={item.label}
-                      onClick={() => item.onClick()}
-                      className={`flex flex-col items-center justify-center gap-2 p-3.5 rounded-2xl border transition-transform duration-100 active:scale-95 relative touch-manipulation cursor-pointer ${
+                      onClick={() => handleDrawerItemClick(item.onClick)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border transition-transform duration-150 active:scale-95 relative touch-manipulation cursor-pointer apple-press",
                         theme === 'light'
-                          ? 'bg-zinc-50 border-zinc-200/80 hover:bg-zinc-100 hover:border-red-500/40 text-zinc-800 shadow-sm'
-                          : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.08] hover:border-red-500/30 text-zinc-300'
-                      }`}
+                          ? "bg-zinc-50/90 border-zinc-200/80 hover:bg-zinc-100 hover:border-red-500/40 text-zinc-800 shadow-sm"
+                          : "bg-white/[0.04] border-white/10 hover:bg-white/[0.08] hover:border-red-500/30 text-zinc-300"
+                      )}
                       style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     >
-                      <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+                      <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 shrink-0">
                         {item.icon}
                       </div>
                       
-                      <span className={`text-[10px] font-bold uppercase tracking-wider text-center ${
-                        theme === 'light' ? 'text-zinc-800' : 'text-zinc-300'
-                      }`}>
+                      <span className={cn(
+                        "text-[10px] font-bold tracking-tight text-center leading-tight truncate max-w-full",
+                        theme === 'light' ? "text-zinc-800" : "text-zinc-300"
+                      )}>
                         {item.label}
                       </span>
 
                       {item.count !== undefined && item.count > 0 && (
-                        <span className="absolute top-2 right-2 bg-red-600 text-white text-[8px] font-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center border border-black shadow">
+                        <span className="absolute top-1.5 right-1.5 bg-red-600 text-white text-[8px] font-black rounded-full min-w-4 h-4 px-1 flex items-center justify-center border border-black shadow">
                           {item.count}
                         </span>
                       )}

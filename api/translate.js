@@ -469,249 +469,36 @@ export default async function handler(req, res) {
                 .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)));
         }
 
-        // 🌟 Ultra-Reliable Google Gemini Flash AI Translation Engine
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
-
-        const translateWithGeminiFlash = async (chunkItems, src, tgt) => {
-            if (!chunkItems || chunkItems.length === 0 || !GEMINI_API_KEY) return null;
-            const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
-            const effectiveTgt = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani') ? 'Kurdish Sorani (Central Kurdish - ckb)' : tgt;
-
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-                const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
-                const joinedText = chunkItems.join(delimiter);
-
-                const prompt = `Translate the following movie subtitle dialogue lines from ${effectiveSrc} to natural, modern ${effectiveTgt}.
-Preserve the exact delimiter ":::FLKRD_CUE:::" between items so they map 1-to-1 with the original count (${chunkItems.length} lines).
-Do not add notes, explanations, or markdown code blocks.
-
-Input:
-${joinedText}`;
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 9000);
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-goog-api-key': GEMINI_API_KEY
-                    },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.1, maxOutputTokens: 65536 }
-                    }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const rawOutput = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                    if (rawOutput) {
-                        const cleanedOutput = rawOutput.replace(/```[a-z]*|```/gi, '').trim();
-                        const splitResults = cleanedOutput.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
-                        if (splitResults.length === chunkItems.length) {
-                            const isKurdishTarget = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani');
-                            return splitResults.map((item, idx) => {
-                                const cleaned = item.trim();
-                                return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
-                            });
-                        }
-                    }
-                }
-            } catch (geminiErr) {}
-            return null;
-        };
-
-        // 🌟 Ultra-Reliable Google Mobile Translation Engine (Zero rate limits, delivers 100% authentic Kurdish Sorani/Badini)
-        const translateWithGoogleMobile = async (chunkItems, src, tgt) => {
-            if (!chunkItems || chunkItems.length === 0) return [];
-            const effectiveSrc = (src && src !== 'auto') ? src : 'auto';
-            const isKurdishTarget = (tgt === 'ckb' || tgt === 'ku' || tgt === 'badini' || tgt === 'sorani');
-
-            // 1. Delimiter-Based batching (Ultra-fast 150ms request for all cues in chunk)
-            try {
-                const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
-                const joinedText = chunkItems.map((t) => (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ')).join(delimiter);
-                const url = `https://translate.google.com/m?sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&q=${encodeURIComponent(joinedText)}`;
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-                const response = await fetch(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-                    },
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-
-                if (response.ok) {
-                    const html = await response.text();
-                    const match = html.match(/<div[^>]*class="result-container"[^>]*>([\s\S]*?)<\/div>/i);
-                    if (match) {
-                        const unescaped = decodeHtmlEntities(match[1]);
-                        const splitResults = unescaped.split(/[\r\n]*:::FLKRD_CUE:::[\r\n]*/);
-                        if (splitResults.length === chunkItems.length) {
-                            return splitResults.map((item, idx) => {
-                                const cleaned = item.trim();
-                                const finalStr = isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned;
-                                return finalStr || chunkItems[idx];
-                            });
-                        }
-                    }
-                }
-            } catch (e) {}
-
-            // 2. Individual item translation with Google Mobile
-            try {
-                const results = [];
-                for (const item of chunkItems) {
-                    if (!item || !item.trim()) {
-                        results.push(item || '');
-                        continue;
-                    }
-                    try {
-                        const url = `https://translate.google.com/m?sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(tgt)}&q=${encodeURIComponent(item)}`;
-                        const ctrl = new AbortController();
-                        const t = setTimeout(() => ctrl.abort(), 3500);
-                        const res = await fetch(url, {
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
-                            },
-                            signal: ctrl.signal
-                        });
-                        clearTimeout(t);
-                        if (res.ok) {
-                            const html = await res.text();
-                            const match = html.match(/<div[^>]*class="result-container"[^>]*>([\s\S]*?)<\/div>/i);
-                            if (match) {
-                                const unescaped = decodeHtmlEntities(match[1]).trim();
-                                results.push(isKurdishTarget ? cleanPersianToKurdish(unescaped) : unescaped);
-                                continue;
-                            }
-                        }
-                    } catch (err) {}
-                    results.push(item);
-                }
-                if (results.length === chunkItems.length) {
-                    return results;
-                }
-            } catch (err) {}
-
-            return null;
-        };
-
-        // Helper to translate a chunk of text items
+        // Deterministic 1-to-1 subtitle dialogue translation with guaranteed index preservation
         const translateChunk = async (chunkItems) => {
             if (!chunkItems || chunkItems.length === 0) return [];
 
-            // 0. Highest-Precision Tier: Google Gemini Flash AI Engine
-            try {
-                const geminiRes = await translateWithGeminiFlash(chunkItems, source, actualTarget);
-                if (Array.isArray(geminiRes) && geminiRes.length === chunkItems.length) {
-                    const validCount = geminiRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
-                    if (validCount > 0) return geminiRes;
-                }
-            } catch (err) {}
+            const isKurdishTarget = (actualTarget === 'ckb' || actualTarget === 'ku' || actualTarget === 'badini' || actualTarget === 'sorani');
+            const results = new Array(chunkItems.length);
+            const BATCH_SIZE = 6;
 
-            // 1. High-Reliability Path: Google Mobile Translation Engine
-            try {
-                const mobileRes = await translateWithGoogleMobile(chunkItems, source, actualTarget);
-                if (Array.isArray(mobileRes) && mobileRes.length === chunkItems.length) {
-                    const validCount = mobileRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
-                    if (validCount > 0) return mobileRes;
-                }
-            } catch (err) {}
-
-            // 1. Secondary Path: Google GTX
-            try {
-                const gtxArrayRes = await translateArrayWithGoogleGTX(chunkItems, source, actualTarget);
-                if (Array.isArray(gtxArrayRes) && gtxArrayRes.length === chunkItems.length) {
-                    const validCount = gtxArrayRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
-                    if (validCount > 0) return gtxArrayRes;
-                }
-            } catch (err) {}
-
-            // 2. Tertiary Path: Google Apps Script Array POST
-            try {
-                const gasArrayRes = await callGAS({ texts: chunkItems, source, target: actualTarget });
-                if (Array.isArray(gasArrayRes) && gasArrayRes.length === chunkItems.length) {
-                    const validCount = gasArrayRes.filter((t, i) => t && t.trim() && t !== chunkItems[i]).length;
-                    if (validCount > 0) return gasArrayRes;
-                }
-            } catch (err) {}
-
-            // 1. Secondary Fast Path: Clean Delimiter-Based Joined Google Translate API POST
-            try {
-                const delimiter = '\n\n:::\n\n';
-                const joinedText = chunkItems.map((t) => (t || '').replace(/\n/g, ' {n} ')).join(delimiter);
-                const translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
-
-                if (translatedJoined) {
-                    const splitResults = translatedJoined.split(/[\r\n]*:::[\r\n]*/);
-                    if (splitResults.length === chunkItems.length) {
-                        return splitResults.map((item, idx) => {
-                            const cleaned = item.replace(/\{n\}/gi, '\n').trim();
-                            return cleaned || chunkItems[idx];
-                        });
-                    }
-                }
-            } catch (err) {}
-
-            // 2. Tertiary Path: Index-Based Joined Text Google Translate API POST with digit normalization
-            try {
-                const joinedText = chunkItems.map((t, idx) => `[${idx}] ${t.replace(/\n/g, ' {n} ')}`).join('\n');
-                const translatedJoined = await translateWithGoogleAPI(joinedText, source, actualTarget);
-
-                if (translatedJoined) {
-                    const rawLines = translatedJoined.split('\n').map(l => l.trim()).filter(Boolean);
-                    const results = new Array(chunkItems.length);
-                    let matchedCount = 0;
-
-                    const normalizeDigits = (str) => {
-                        if (!str) return '';
-                        return str
-                            .replace(/٠/g, '0').replace(/١/g, '1').replace(/٢/g, '2').replace(/٣/g, '3').replace(/٤/g, '4')
-                            .replace(/٥/g, '5').replace(/٦/g, '6').replace(/٧/g, '7').replace(/٨/g, '8').replace(/٩/g, '9');
-                    };
-
-                    for (const line of rawLines) {
-                        const normLine = normalizeDigits(line);
-                        const match = normLine.match(/^[\[\(\s]*(\d+)[\]\)\s.:\-]*\s*(.*)$/);
-                        if (match) {
-                            const idx = parseInt(match[1], 10);
-                            if (idx >= 0 && idx < chunkItems.length && !results[idx]) {
-                                const cleanText = match[2].replace(/^[:.\-\s]+/, '').replace(/\{n\}/gi, '\n').trim();
-                                results[idx] = cleanText;
-                                matchedCount++;
-                            }
-                        }
-                    }
-
-                    if (matchedCount >= Math.floor(chunkItems.length * 0.5)) {
-                        for (let i = 0; i < chunkItems.length; i++) {
-                            if (!results[i]) results[i] = chunkItems[i];
-                        }
-                        return results;
-                    }
-                }
-            } catch (err) {}
-
-            // 3. Fallback: Item-by-item translation with small concurrency batches to respect rate limits
-            const fallbackResults = [];
-            const BATCH_SIZE = 5;
             for (let i = 0; i < chunkItems.length; i += BATCH_SIZE) {
-                const miniBatch = chunkItems.slice(i, i + BATCH_SIZE);
-                const miniResults = await Promise.all(miniBatch.map(item => translateSingle(item)));
-                fallbackResults.push(...miniResults.map((res, idx) => res || miniBatch[idx]));
-                if (i + BATCH_SIZE < chunkItems.length) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
+                const batch = chunkItems.slice(i, i + BATCH_SIZE);
+                const batchPromises = batch.map(async (item, relIdx) => {
+                    const absIdx = i + relIdx;
+                    if (!item || !item.trim()) return item || '';
+                    try {
+                        const translated = await translateSingle(item);
+                        if (translated && typeof translated === 'string' && translated.trim()) {
+                            const cleaned = isKurdishTarget ? cleanPersianToKurdish(translated) : translated;
+                            return cleaned || item;
+                        }
+                    } catch (err) {}
+                    return item;
+                });
+
+                const translatedBatch = await Promise.all(batchPromises);
+                for (let j = 0; j < translatedBatch.length; j++) {
+                    results[i + j] = translatedBatch[j];
                 }
             }
-            return fallbackResults;
+
+            return results;
         };
 
 

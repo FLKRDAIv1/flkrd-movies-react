@@ -940,13 +940,12 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         season,
         episode,
         targetLang,
-        (progress, status, partialSubtitleUrl) => {
+        (progress, status) => {
           setActiveTranslation(prev => {
             const next = {
               ...prev,
               progress,
-              statusText: status,
-              subtitleUrl: partialSubtitleUrl || prev.subtitleUrl
+              statusText: status
             };
             try {
               localStorage.setItem('flkrd_translating_sub_cache', JSON.stringify({
@@ -958,19 +957,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
                 targetLang,
                 progress,
                 statusText: status,
-                subtitleUrl: partialSubtitleUrl || prev.subtitleUrl
+                subtitleUrl: prev.subtitleUrl
               }));
             } catch (e) {}
             return next;
           });
-
-          // LIVE UPDATE: Dispatch custom event so active video player updates live
-          if (partialSubtitleUrl && typeof window !== 'undefined') {
-            console.log(`[UI CONTEXT] Live progressive subtitle update (${progress}%):`, partialSubtitleUrl.substring(0, 50));
-            window.dispatchEvent(new CustomEvent('flkrd-subtitle-translated', {
-              detail: { subtitleUrl: partialSubtitleUrl, tmdbId, season, episode, mediaType, progress, isFinal: false }
-            }));
-          }
         },
         translationControllerRef.current.signal,
         pauseStateRef.current

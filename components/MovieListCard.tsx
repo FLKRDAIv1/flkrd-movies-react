@@ -183,12 +183,12 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
       onMouseLeave={() => setIsHovered(false)}
       className={`group/listcard relative w-full rounded-2xl sm:rounded-3xl cursor-pointer overflow-visible transform-gpu will-change-transform touch-manipulation focus:outline-none ${className}`}
       whileHover={!IS_TOUCH_DEVICE ? { scale: 1.012, x: isRtl ? -3 : 3 } : undefined}
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
     >
       {/* Outer Shell Card Container (Always Horizontal Flex Row) */}
       <div
-        className={`relative w-full rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 bg-neutral-950/90 border transition-all duration-300 backdrop-blur-md flex flex-row items-center gap-3 sm:gap-6 overflow-hidden ${
+        className={`relative w-full rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 bg-neutral-950/90 border transition-[border-color,box-shadow] duration-200 ease-out backdrop-blur-md flex flex-row items-center gap-3 sm:gap-6 overflow-hidden ${
           isActiveState
             ? 'border-brand/40 shadow-[0_15px_40px_rgba(229,9,20,0.35)]'
             : 'border-white/10 hover:border-brand/30 shadow-[0_8px_25px_rgba(0,0,0,0.6)]'

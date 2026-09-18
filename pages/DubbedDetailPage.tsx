@@ -745,8 +745,16 @@ const DubbedDetailPage: React.FC = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 w-screen h-dvh bg-black z-[999999] overflow-hidden flex items-center justify-center"
+                            className="fixed inset-0 w-screen h-screen min-h-screen bg-black z-[999999] overflow-hidden flex items-center justify-center isolate pointer-events-auto"
                             dir="ltr"
+                            style={{
+                                width: '100vw',
+                                height: '100dvh',
+                                minHeight: '100vh',
+                                backgroundColor: '#000000',
+                                isolation: 'isolate',
+                                pointerEvents: 'auto',
+                            }}
                         >
                             <UniversalVideoPlayer
                                 key={`dubbed-player-modal-${id}-${activeSourceIndex}`}

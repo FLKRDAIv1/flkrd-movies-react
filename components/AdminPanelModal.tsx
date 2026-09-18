@@ -7,7 +7,7 @@ import {
     Users, Globe, Activity, Eye, TrendingUp, Smartphone, Laptop, Download
 } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
-import { useNotification } from '../contexts/NotificationContext';
+import { useNotification, toast } from '../contexts/NotificationContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import { compressImage } from '../utils/imageUtils';
@@ -666,7 +666,7 @@ export const AdminPanelModal: React.FC = () => {
     const handleSaveBanner = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!bannerForm.content_id) {
-            alert("TMDb ID is required!");
+            toast.error("TMDb ID is required!");
             return;
         }
         setIsSavingBanner(true);
@@ -685,8 +685,9 @@ export const AdminPanelModal: React.FC = () => {
                 });
                 setEditingBannerId(null);
                 fetchCarouselBanners();
+                toast.success("Banner saved successfully!");
             } else {
-                alert("Failed to save banner!");
+                toast.error("Failed to save banner!");
             }
         } catch (err) {
             console.error(err);

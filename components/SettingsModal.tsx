@@ -1109,11 +1109,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                         {Math.floor(sessionTime / 60)}m {sessionTime % 60}s
                       </span>
                    </Card>
-                   <Card className="p-5 flex flex-col gap-1" glow={isPerformanceMode ? '#34c759' : undefined}>
-                      <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">Engine Status</span>
-                      <span className={`text-base font-[1000] uppercase italic ${isPerformanceMode ? 'text-green-500' : 'text-blue-400'}`}>
-                        {isPerformanceMode ? 'Turbo Mode' : 'Standard'}
-                      </span>
+                   <Card 
+                      className="p-5 flex items-center justify-between transition-all" 
+                      glow={isPerformanceMode ? '#34c759' : undefined}
+                   >
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                          {language === 'ku' || language === 'badini' ? 'دۆخی ۆلترا فپس / تۆربۆ' : 'Ultra 60 FPS / Turbo'}
+                        </span>
+                        <span className={`text-base font-[1000] uppercase italic ${isPerformanceMode ? 'text-green-500' : 'text-blue-400'}`}>
+                          {isPerformanceMode 
+                            ? (language === 'ku' || language === 'badini' ? 'چالاکە (60 FPS)' : 'Turbo 60 FPS') 
+                            : (language === 'ku' || language === 'badini' ? 'ئاسایی (Standard)' : 'Standard')}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsPerformanceMode(!isPerformanceMode)}
+                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border ${
+                          isPerformanceMode 
+                            ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-lg shadow-amber-500/20 hover:bg-amber-500/30' 
+                            : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+                        }`}
+                      >
+                        {isPerformanceMode 
+                          ? (language === 'ku' || language === 'badini' ? 'ناچالاککردن' : 'OFF') 
+                          : (language === 'ku' || language === 'badini' ? 'چالاککردن' : 'ON')}
+                      </button>
                    </Card>
                 </div>
                 
@@ -1162,8 +1184,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
                                         }
                                     });
                                     sessionStorage.clear();
-                                    alert((language === 'ku' || language === 'badini') ? 'کاشی سیستەم بە سەرکەوتوویی پاککرایەوە!' : 'System cache purged successfully!');
-                                    window.location.reload();
+                                    addNotification({
+                                        type: 'success',
+                                        title: (language === 'ku' || language === 'badini') ? 'کاشی سیستەم' : 'System Cache',
+                                        message: (language === 'ku' || language === 'badini') ? 'کاشی سیستەم بە سەرکەوتوویی پاککرایەوە!' : 'System cache purged successfully!'
+                                    });
+                                    setTimeout(() => window.location.reload(), 1200);
                                 } catch (e) {
                                     console.error('Clear cache error:', e);
                                 }

@@ -228,13 +228,13 @@ const MovieCard = memo(
               handlePrefetch();
             }}
             onMouseLeave={() => setIsHovered(false)}
-            className={`group/card relative cursor-pointer py-0.5 touch-manipulation focus:outline-none transition-transform duration-200 md:hover:scale-[1.03] active:scale-[0.98] select-none ${
+            className={`group/card relative cursor-pointer py-0.5 touch-manipulation focus:outline-none transition-transform duration-160 ease-out md:hover:scale-[1.03] active:scale-[0.97] select-none ${
               className ? className : 'w-full min-w-0'
             } overflow-hidden`}
           >
             {/* Cinematic Poster Card */}
             <div
-              className={`relative aspect-[2/3] w-full rounded-xl md:rounded-2xl overflow-hidden border transition-all duration-300 bg-neutral-900 shadow-lg ${
+              className={`relative aspect-[2/3] w-full rounded-xl md:rounded-2xl overflow-hidden border transition-[border-color,box-shadow] duration-200 ease-out bg-neutral-900 shadow-lg ${
                 isActiveState
                   ? 'border-red-500/70 shadow-[0_12px_32px_rgba(229,9,20,0.3)] ring-1 ring-red-500/20'
                   : 'border-white/5 hover:border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'

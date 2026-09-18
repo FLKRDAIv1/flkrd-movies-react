@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, lazy } from 'react';
 import { HashRouter, BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { Download, X, ShieldCheck, Share, Plus, ArrowRight } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const DetailPage = lazy(() => import('./pages/DetailPage'));
@@ -48,6 +49,7 @@ import { downloadMobileConfig } from './utils/appleProfileUtils';
 import { useSpatialNavigation } from './hooks/useSpatialNavigation';
 import { usePlayer } from './contexts/PlayerContext';
 import FloatingPipPlayer from './components/FloatingPipPlayer';
+import UltraFpsFloatingWidget from './components/UltraFpsFloatingWidget';
 import UniversalVideoPlayer from './components/UniversalVideoPlayer';
 import { getSourceUrl, getRankedSources } from './utils/playerSourceUtils';
 import { bannedService } from './services/bannedService';
@@ -1030,6 +1032,7 @@ const AppContent: React.FC<{
             </React.Suspense>
             <GamepadHints />
             <FloatingPipPlayer />
+            <UltraFpsFloatingWidget />
             <GlobalVideoPlayerModal />
             {/* Vercel Analytics & SpeedInsights: only loaded on verified Vercel preview domains to prevent 404 script loading errors */}
             {!isTauri() && import.meta.env.PROD && typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app') && (
@@ -1232,6 +1235,22 @@ const App: React.FC = () => {
                 </AnimatePresence>
                 <DesktopTitleBar />
                 <PremiumBackground />
+                <Toaster
+                    position="top-center"
+                    richColors
+                    closeButton
+                    theme={theme === 'light' ? 'light' : 'dark'}
+                    toastOptions={{
+                        style: {
+                            borderRadius: '16px',
+                            border: theme === 'light' ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.15)',
+                            backdropFilter: 'blur(20px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                            fontFamily: 'inherit',
+                        },
+                    }}
+                />
                 <Router>
                     <AppContent scrolled={scrolled} mainRef={mainRef} />
                 </Router>

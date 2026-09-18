@@ -64,18 +64,18 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
       {/* ═══ Minimal Morphing Plus Trigger Button ═══ */}
       <motion.button
         layout
-        whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.92 }}
         onClick={() => {
           setIsOpen(prev => !prev);
           if (isOpen) setActiveTab('main');
         }}
         aria-label="کۆنتڕۆڵی پلەیەر"
-        className={`relative flex items-center justify-center transition-all duration-300 ${
+        className={`relative flex items-center justify-center transition-[background-color,border-color,box-shadow] duration-200 ${
           isOpen
             ? 'gap-2 px-3.5 py-1.5 rounded-full bg-red-600 border border-red-500 text-white shadow-[0_0_25px_rgba(220,38,38,0.8)] ring-2 ring-red-400/40'
             : 'w-8 h-8 md:w-9 md:h-9 rounded-full bg-transparent hover:bg-black/60 text-white/90 hover:text-white border border-transparent hover:border-white/20'
         }`}
+        style={{ WebkitTapHighlightColor: 'transparent' }}
       >
         {/* Animated Rotating Plus / Cross Icon */}
         <motion.div
@@ -112,7 +112,8 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
             initial={{ opacity: 0, scale: 0.92, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: -6 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 380 }}
+            transition={{ type: 'spring', damping: 22, stiffness: 340, mass: 0.8 }}
+            style={{ transformOrigin: 'top right', willChange: 'transform, opacity' }}
             className="fixed top-14 right-3 sm:absolute sm:top-12 sm:right-0 sm:left-auto w-[calc(100vw-24px)] max-w-[310px] sm:max-w-[320px] max-h-[82vh] overflow-y-auto scrollbar-hide rounded-2xl bg-[#0a0a0d]/95 backdrop-blur-2xl border border-red-600/40 p-3 sm:p-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.98),0_0_30px_rgba(220,38,38,0.2)] z-[1000]"
           >
             {/* Header with FLKRD Studio Intro & Close */}

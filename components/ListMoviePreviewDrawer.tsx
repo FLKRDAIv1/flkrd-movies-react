@@ -276,42 +276,44 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
       <AnimatePresence mode="wait">
         {isOpen && (
           <div className="fixed inset-0 z-[200000] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-hidden pointer-events-none">
-            {/* Backdrop Blur Overlay */}
+            {/* Apple Scrim Backdrop with Progressive Dimming */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
               onClick={handleClose}
-              className="absolute inset-0 bg-black/85 backdrop-blur-2xl cursor-pointer pointer-events-auto"
+              className="absolute inset-0 bg-black/80 backdrop-blur-2xl cursor-pointer pointer-events-auto"
             />
 
-            {/* Slide-Up Full Screen Modal Box (PC & Mobile) with 60FPS Smooth Momentum Scrolling */}
+            {/* Slide-Up visionOS Sheet Modal with Apple Spring */}
             <motion.div
               ref={drawerRef}
-              initial={{ opacity: 0, scale: 0.95, y: 40 }}
+              initial={{ opacity: 0, scale: 0.97, y: 35 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 40 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              exit={{ opacity: 0, scale: 0.97, y: 35 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.38 }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c0e] border border-white/15 rounded-t-[32px] sm:rounded-3xl shadow-[0_25px_90px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
+              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c12]/90 border border-white/15 rounded-t-[36px] sm:rounded-[36px] shadow-[0_30px_100px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
                 isRtl ? 'text-right' : 'text-left'
               }`}
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+              style={{
+                boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 35px 90px -15px rgba(0, 0, 0, 0.95)',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-y',
+              }}
               dir={isRtl ? 'rtl' : 'ltr'}
             >
-              {/* Glowing Border Beam */}
-              <BorderBeam size={360} duration={10} borderWidth={1.5} colorFrom="#e50914" colorTo="#9c40ff" glow={true} />
-
-              {/* Mobile Drag/Pull Bar Handle */}
+              {/* iOS Sheet Drag Indicator Handle */}
               <div 
                 onClick={handleClose}
                 style={{ touchAction: 'manipulation' }}
-                className="w-12 h-1.5 bg-white/30 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0 cursor-pointer shadow transition-all"
+                className="w-11 h-1 bg-white/35 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0 cursor-pointer transition-all"
                 title="Tap to close"
               />
 
               {/* Header Hero Backdrop Area */}
-              <div className="relative w-full h-56 sm:h-80 flex-shrink-0 bg-neutral-900 overflow-hidden">
+              <div className="relative w-full h-60 sm:h-84 flex-shrink-0 bg-neutral-950 overflow-hidden">
                 {backdrop ? (
                   <img
                     src={
@@ -327,32 +329,36 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     <Film className="w-16 h-16 text-white/20" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/40 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-transparent to-transparent" />
+                {/* Apple Directional Shadow Mask */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c12] via-[#0c0c12]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent" />
 
-                {/* Single Clean Close Button */}
-                <button
+                {/* Circular Frosted Glass Close Button */}
+                <motion.button
                   type="button"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                  transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                   onClick={handleClose}
                   style={{ touchAction: 'manipulation' }}
-                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 w-10 h-10 rounded-full bg-black/70 hover:bg-red-600 text-white border border-white/20 backdrop-blur-xl transition-all active:scale-90 shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
+                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 w-9 h-9 rounded-full bg-black/50 hover:bg-white/20 text-white border border-white/20 backdrop-blur-2xl shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
                   aria-label="Close"
                 >
                   <X className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
-                </button>
+                </motion.button>
 
                 {/* Title & Badges Overlay */}
-                <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col gap-2">
+                <div className="absolute bottom-4 left-4 right-4 z-20 flex flex-col gap-2.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1 bg-[#F5C518] text-black px-2.5 py-0.5 rounded-md font-black text-xs shadow-md">
-                      <Star className="w-3.5 h-3.5 fill-black" />
+                    <div className="flex items-center gap-1.5 bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 px-3 py-1 rounded-full font-black text-xs shadow-sm backdrop-blur-xl">
+                      <Star className="w-3.5 h-3.5 fill-current text-yellow-400" />
                       <span>{rating}</span>
                     </div>
-                    <span className="bg-white/20 border border-white/20 text-white text-xs font-bold px-2.5 py-0.5 rounded-md backdrop-blur-md">
+                    <span className="bg-white/[0.08] border border-white/15 text-white/90 text-xs font-bold px-3 py-1 rounded-full backdrop-blur-xl">
                       {year}
                     </span>
                     {isCustom && (
-                      <span className="bg-brand text-white text-xs font-black px-2.5 py-0.5 rounded-md uppercase">
+                      <span className="bg-brand/20 border border-brand/40 text-brand text-xs font-black px-3 py-1 rounded-full uppercase backdrop-blur-xl">
                         DUBBED
                       </span>
                     )}
@@ -365,7 +371,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     <img
                       src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
                       alt={title}
-                      className="h-10 sm:h-16 w-auto max-w-[240px] sm:max-w-[320px] object-contain drop-shadow-2xl my-1"
+                      className="h-10 sm:h-16 w-auto max-w-[240px] sm:max-w-[320px] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] my-1"
                     />
                   ) : (
                     <h2 className={`text-2xl sm:text-4xl font-black text-white ${isRtl ? 'font-kurdish leading-snug' : 'tracking-tight'}`}>
@@ -379,39 +385,51 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               <div className="p-4 sm:p-6 flex flex-col gap-5 flex-1">
                 {/* Action Buttons Row */}
                 <div className="flex flex-wrap items-center gap-3">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handlePlay}
-                    className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-white font-black text-sm rounded-xl shadow-[0_8px_25px_rgba(229,9,20,0.5)] cursor-pointer transform-gpu active:scale-95 transition-all"
+                    className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-white font-black text-sm rounded-2xl shadow-[0_8px_25px_rgba(229,9,20,0.45)] cursor-pointer select-none"
+                    style={{
+                      boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.3), 0 8px 25px rgba(229,9,20,0.45)'
+                    }}
                   >
                     <Play className="w-4.5 h-4.5 fill-white" />
                     <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
                       {t('play') || 'پەخش بکە'}
                     </span>
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handleToggleMyList}
-                    className={`flex items-center gap-2 px-4 py-3.5 rounded-xl text-xs font-bold border transition-colors cursor-pointer active:scale-95 ${
+                    className={`flex items-center gap-2 px-5 py-3.5 rounded-2xl text-xs font-bold border transition-colors cursor-pointer select-none ${
                       isAdded
                         ? 'bg-brand text-white border-brand'
-                        : 'bg-white/10 hover:bg-white/20 text-white border-white/15 backdrop-blur-md'
+                        : 'bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/15 backdrop-blur-2xl'
                     }`}
                   >
                     {isAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
                       {isAdded ? (t('myListRemoveSuccess') || 'Saved') : (t('myListAddSuccess') || 'My List')}
                     </span>
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handleCoop}
-                    className="flex items-center gap-2 px-4 py-3.5 bg-purple-600/25 hover:bg-purple-600/35 text-purple-300 border border-purple-500/40 font-bold text-xs rounded-xl backdrop-blur-md cursor-pointer transform-gpu active:scale-95 transition-all"
+                    className="flex items-center gap-2 px-5 py-3.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-bold text-xs rounded-2xl backdrop-blur-2xl cursor-pointer select-none"
                   >
                     <Users className="w-4 h-4" />
                     <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
-                      {isRtl ? 'Co-Op Watch' : 'Co-Op Watch'}
+                      Co-Op Watch
                     </span>
-                  </button>
+                  </motion.button>
                 </div>
 
                 {/* Interactive Stage-by-Stage Card Splitting Accordion */}

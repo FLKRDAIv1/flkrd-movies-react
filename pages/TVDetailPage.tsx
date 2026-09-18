@@ -1134,12 +1134,23 @@ const TVDetailPage: React.FC = () => {
           </div>
         </div>
         {!isPlayerModalOpen && (
-          <div className={`absolute top-24 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-20' : 'left-6 md:left-20'} z-20`}>
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 bg-box-bg/85 backdrop-blur-xl border border-border-color hover:bg-brand text-main-text px-4 py-2.5 rounded-xl transition-all shadow-2xl group active:scale-95">
-              <ArrowLeft size={18} className={(language === 'ku' || language === 'badini') ? 'rotate-180 group-hover:translate-x-1 transition-transform' : 'group-hover:-translate-x-1 transition-transform'} />
-              <span className="text-[9px] font-black uppercase tracking-widest">{t('back')}</span>
-            </button>
-          </div>
+          <Portal id="tv-nav-portal">
+            <div className={`fixed top-6 ${(language === 'ku' || language === 'badini') ? 'right-6 md:right-12' : 'left-6 md:left-12'} z-[110]`}>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+                onClick={() => navigate(-1)} 
+                className="flex items-center gap-2.5 bg-black/45 hover:bg-black/70 backdrop-blur-2xl border border-white/20 text-white px-4 py-2.5 rounded-full transition-all shadow-[0_10px_30px_rgba(0,0,0,0.5)] group select-none cursor-pointer"
+                style={{
+                  boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.25), 0 12px 30px rgba(0, 0, 0, 0.6)'
+                }}
+              >
+                <ArrowLeft size={18} className={`${(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} group-hover:-translate-x-0.5 transition-transform`} />
+                <span className="text-[11px] font-black uppercase tracking-wider">{t('back')}</span>
+              </motion.button>
+            </div>
+          </Portal>
         )}
       </div>
 

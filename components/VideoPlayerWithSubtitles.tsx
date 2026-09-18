@@ -46,20 +46,25 @@ export const VideoPlayerWithSubtitles: React.FC<VideoPlayerWithSubtitlesProps> =
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
         if (!data) return;
 
-        const eventName = (data.event || data.type || data.method || '').toLowerCase();
+        const eventName = (data.event || data.type || data.method || data.data?.event || data.data?.type || data.action || data.status || '').toLowerCase();
         if (eventName === 'play' || eventName === 'playing') {
           setIsPlaying(true);
           isPlayingRef.current = true;
-        } else if (eventName === 'pause' || eventName === 'paused' || eventName === 'ended') {
+        } else if (eventName === 'pause' || eventName === 'paused' || eventName === 'ended' || eventName === 'stalled' || eventName === 'waiting') {
           setIsPlaying(false);
           isPlayingRef.current = false;
         }
 
-        if (typeof data.seconds === 'number' || typeof data.currentTime === 'number' || typeof data.time === 'number') {
-          const time = data.seconds ?? data.currentTime ?? data.time;
-          if (typeof time === 'number' && !isNaN(time)) {
-            setCurrentTimeSeconds(time);
-          }
+        let time: number | undefined = undefined;
+        if (typeof data.seconds === 'number') time = data.seconds;
+        else if (typeof data.currentTime === 'number') time = data.currentTime;
+        else if (typeof data.time === 'number') time = data.time;
+        else if (typeof data.timestamp === 'number') time = data.timestamp;
+        else if (data.data && typeof data.data.currentTime === 'number') time = data.data.currentTime;
+        else if (data.data && typeof data.data.seconds === 'number') time = data.data.seconds;
+
+        if (typeof time === 'number' && !isNaN(time)) {
+          setCurrentTimeSeconds(time);
         }
       } catch {
         // Ignore non-JSON postMessage payloads

@@ -231,6 +231,7 @@ const IframeBlockedAutoSwitch: React.FC<{
             });
         }, 1000);
         return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     if (!sources || sources.length <= 1 || !setActiveSource) return null;
@@ -309,34 +310,98 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const seasonsScrollRef = useRef<HTMLDivElement>(null);
     const episodesScrollRef = useRef<HTMLDivElement>(null);
 
-    const isDraggingEpisodesRef = useRef(false);
-    const startXEpisodesRef = useRef(0);
-    const scrollLeftEpisodesRef = useRef(0);
-    const hasDraggedEpisodesRef = useRef(false);
-
-    const handleEpisodeDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
-        isDraggingEpisodesRef.current = true;
-        hasDraggedEpisodesRef.current = false;
-        startXEpisodesRef.current = e.pageX - (e.currentTarget.offsetLeft || 0);
-        scrollLeftEpisodesRef.current = e.currentTarget.scrollLeft;
+    type HorizontalScroller = 'seasons' | 'episodes';
+    type HorizontalDragState = {
+        pointerId: number | null;
+        startX: number;
+        startY: number;
+        startScrollLeft: number;
+        lastX: number;
+        lastTime: number;
+        velocity: number;
+        isDragging: boolean;
+        hasMoved: boolean;
     };
 
-    const handleEpisodeDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isDraggingEpisodesRef.current) return;
-        const x = e.pageX - (e.currentTarget.offsetLeft || 0);
-        const walk = (x - startXEpisodesRef.current) * 1.5;
-        if (Math.abs(walk) > 6) {
-            hasDraggedEpisodesRef.current = true;
+    const horizontalDragStateRef = useRef<Record<HorizontalScroller, HorizontalDragState>>({
+        seasons: { pointerId: null, startX: 0, startY: 0, startScrollLeft: 0, lastX: 0, lastTime: 0, velocity: 0, isDragging: false, hasMoved: false },
+        episodes: { pointerId: null, startX: 0, startY: 0, startScrollLeft: 0, lastX: 0, lastTime: 0, velocity: 0, isDragging: false, hasMoved: false },
+    });
+    const suppressScrollerClickUntilRef = useRef<Record<HorizontalScroller, number>>({ seasons: 0, episodes: 0 });
+
+    const shouldSuppressScrollerClick = useCallback((scroller: HorizontalScroller) => (
+        performance.now() < suppressScrollerClickUntilRef.current[scroller]
+    ), []);
+
+    const handleHorizontalDragStart = useCallback((scroller: HorizontalScroller, event: React.PointerEvent<HTMLDivElement>) => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+        const state = horizontalDragStateRef.current[scroller];
+        const now = performance.now();
+        state.pointerId = event.pointerId;
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        state.startScrollLeft = event.currentTarget.scrollLeft;
+        state.lastX = event.clientX;
+        state.lastTime = now;
+        state.velocity = 0;
+        state.isDragging = false;
+        state.hasMoved = false;
+        event.currentTarget.setPointerCapture(event.pointerId);
+    }, []);
+
+    const handleHorizontalDragMove = useCallback((scroller: HorizontalScroller, event: React.PointerEvent<HTMLDivElement>) => {
+        const state = horizontalDragStateRef.current[scroller];
+        if (state.pointerId !== event.pointerId) return;
+
+        const horizontalDistance = event.clientX - state.startX;
+        const verticalDistance = event.clientY - state.startY;
+
+        if (!state.isDragging) {
+            if (Math.abs(horizontalDistance) < 8 && Math.abs(verticalDistance) < 8) return;
+            if (Math.abs(verticalDistance) > Math.abs(horizontalDistance)) {
+                state.pointerId = null;
+                if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    event.currentTarget.releasePointerCapture(event.pointerId);
+                }
+                return;
+            }
+            state.isDragging = true;
+            state.hasMoved = true;
         }
-        e.currentTarget.scrollLeft = scrollLeftEpisodesRef.current - walk;
-    };
 
-    const handleEpisodeDragEnd = () => {
-        isDraggingEpisodesRef.current = false;
-        setTimeout(() => {
-            hasDraggedEpisodesRef.current = false;
-        }, 80);
-    };
+        event.preventDefault();
+        const now = performance.now();
+        const elapsed = Math.max(1, now - state.lastTime);
+        state.velocity = (event.clientX - state.lastX) / elapsed;
+        state.lastX = event.clientX;
+        state.lastTime = now;
+        event.currentTarget.scrollLeft = state.startScrollLeft - horizontalDistance;
+    }, []);
+
+    const handleHorizontalDragEnd = useCallback((scroller: HorizontalScroller, event: React.PointerEvent<HTMLDivElement>) => {
+        const state = horizontalDragStateRef.current[scroller];
+        if (state.pointerId !== event.pointerId) return;
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        if (state.hasMoved) {
+            // Preserve the direct, one-to-one drag, then let a short velocity handoff finish the motion.
+            const momentum = Math.max(-260, Math.min(260, -state.velocity * 180));
+            if (Math.abs(momentum) > 10) {
+                event.currentTarget.scrollBy({ left: momentum, behavior: 'smooth' });
+            }
+            // A swipe must never also activate the card or season beneath the finger.
+            suppressScrollerClickUntilRef.current[scroller] = performance.now() + 300;
+        }
+
+        state.pointerId = null;
+        state.isDragging = false;
+        state.hasMoved = false;
+        state.velocity = 0;
+    }, []);
 
     const scrollHorizontally = useCallback((ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
         if (ref.current) {
@@ -513,8 +578,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const [subtitleSize, setSubtitleSize] = useState(24);
     const [subtitleColor, setSubtitleColor] = useState('#ffffff');
     const [subtitleOffset, setSubtitleOffsetState] = useState(() => {
+        if (typeof window === 'undefined') return 0;
+        const s = isTvContent ? effectiveSeason : 0;
+        const e = isTvContent ? effectiveEpisode : 0;
+        const userK = tmdbId ? `flkrd_sub_offset_user_${tmdbId}_${s}_${e}` : null;
+        if (userK) {
+            const saved = localStorage.getItem(userK) || localStorage.getItem(`flkrd_sub_offset_user_${tmdbId}_s${s}_e${e}`);
+            if (saved !== null) {
+                const parsed = parseInt(saved, 10);
+                if (!isNaN(parsed)) return parsed;
+            }
+        }
         const key = tmdbId || title ? `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}` : null;
-        if (typeof window !== 'undefined' && key) {
+        if (key) {
             const saved = localStorage.getItem(key);
             if (saved !== null) {
                 const parsed = parseInt(saved, 10);
@@ -522,6 +598,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         }
         return 0;
+    });
+
+    const [subtitleSpeedScale, setSubtitleSpeedScale] = useState<number>(() => {
+        if (typeof window !== 'undefined' && tmdbId) {
+            const saved = localStorage.getItem(`flkrd_sub_speed_${tmdbId}`);
+            if (saved) {
+                const parsed = parseFloat(saved);
+                if (!isNaN(parsed) && parsed > 0.5 && parsed < 2.0) return parsed;
+            }
+        }
+        return 1.0;
     });
 
     // Ref so that setSubtitleOffset (a useCallback) can always read the latest currentSubId
@@ -541,33 +628,62 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }, 1800);
     }, []);
 
-    const setSubtitleOffset = useCallback((val: number | ((prev: number) => number)) => {
+    const setSubtitleOffset = useCallback((val: number | ((prev: number) => number), showToast = true) => {
         setSubtitleOffsetState((prev) => {
             const next = typeof val === 'function' ? val(prev) : val;
 
-            if (typeof window === 'undefined') return next;
+            if (typeof window !== 'undefined') {
+                const s = isTvContent ? effectiveSeason : 0;
+                const e = isTvContent ? effectiveEpisode : 0;
 
-            // 1. Always persist a per-movie fallback offset.
-            const movieKey = `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}`;
-            if (tmdbId || title) localStorage.setItem(movieKey, String(next));
+                // 1. Always persist a per-movie fallback offset.
+                const movieKey = `flkrd_sub_offset_${tmdbId || encodeURIComponent(title || '')}`;
+                if (tmdbId || title) localStorage.setItem(movieKey, String(next));
 
-            // 2. Also persist a per-subtitle-track offset (more precise).
-            //    Key format: flkrd_sub_offset_track_<tmdbId>_<sanitised-trackId>
-            //    This means if OpenSubtitles track X always needs +2 s, it is remembered.
-            const trackId = currentSubIdRef.current;
-            if (trackId) {
-                const safeId = trackId.replace(/[^a-z0-9_-]/gi, '_').slice(0, 100);
-                localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`, String(next));
+                // 2. Also persist user override keys
+                if (tmdbId) {
+                    saveUserOverride(String(tmdbId), s, e, next);
+                }
+
+                // 3. Also persist a per-subtitle-track offset (more precise).
+                //    Key format: flkrd_sub_offset_track_<tmdbId>_<sanitised-trackId>
+                const trackId = currentSubIdRef.current;
+                if (trackId) {
+                    const safeId = trackId.replace(/[^a-z0-9_-]/gi, '_').slice(0, 100);
+                    localStorage.setItem(`flkrd_sub_offset_track_${tmdbId || ''}_${safeId}`, String(next));
+                }
+
+                // 4. Persist in subtitleOffsetService & Supabase for seamless episode/movie tracking
+                if (tmdbId) {
+                    autoSaveCalibratedOffset(String(tmdbId), isTvContent ? 'tv' : 'movie', s, e, next);
+                }
             }
 
-            // 3. Persist in subtitleOffsetService & Supabase for seamless episode/movie tracking
-            if (tmdbId) {
-                autoSaveCalibratedOffset(String(tmdbId), isTvContent ? 'tv' : 'movie', isTvContent ? effectiveSeason : 0, isTvContent ? effectiveEpisode : 0, next);
+            if (showToast) {
+                setTimeout(() => {
+                    const offsetSec = (next / 1000).toFixed(2);
+                    const sign = next > 0 ? '+' : '';
+                    triggerSyncToast(
+                        language === 'ku' || language === 'badini'
+                            ? `کاتی ژێرنووس: ${sign}${offsetSec}s (دەستکاری بەکارهێنەر)`
+                            : `Subtitle Delay: ${sign}${offsetSec}s (User Custom)`
+                    );
+                }, 0);
             }
 
             return next;
         });
-    }, [tmdbId, title, isTvContent, effectiveSeason, effectiveEpisode]);
+    }, [tmdbId, title, isTvContent, effectiveSeason, effectiveEpisode, language, triggerSyncToast]);
+
+    const handleSetSubtitleSpeedScale = useCallback((scale: number) => {
+        setSubtitleSpeedScale(scale);
+        if (typeof window !== 'undefined' && tmdbId) {
+            if (Math.abs(scale - 1.0) < 0.001) localStorage.removeItem(`flkrd_sub_speed_${tmdbId}`);
+            else localStorage.setItem(`flkrd_sub_speed_${tmdbId}`, String(scale));
+        }
+        const label = Math.abs(scale - 1.0) < 0.001 ? 'Normal (1.0x)' : scale < 1.0 ? '25fps → 23.976fps (-4.1%)' : '23.976fps → 25fps (+4.3%)';
+        triggerSyncToast(language === 'ku' || language === 'badini' ? `خێرایی ژێرنووس: ${label}` : `Subtitle Speed: ${label}`);
+    }, [tmdbId, language, triggerSyncToast]);
 
     // Automatically resolve stored user/admin offset when media or episode changes
     useEffect(() => {
@@ -593,18 +709,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             if (episodesScrollRef.current) {
                 const activeEpEl = episodesScrollRef.current.querySelector('[data-active-episode="true"]');
                 if (activeEpEl) {
-                    activeEpEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    activeEpEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
             }
             if (seasonsScrollRef.current) {
                 const activeSeasonEl = seasonsScrollRef.current.querySelector('[data-active-season="true"]');
                 if (activeSeasonEl) {
-                    activeSeasonEl.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    activeSeasonEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
             }
-        }, 80);
+        }, 120);
         return () => clearTimeout(timer);
-    }, [showEpisodesPortal, effectiveSeasonDetails, activeEpNum, activeSeasonNum, season, episode]);
+    }, [showEpisodesPortal, effectiveSeason, effectiveEpisode]);
 
     const [showSourceSwitcher, setShowSourceSwitcher] = useState(false);
     const [availableSubs, setAvailableSubs] = useState<SubtitleResult[]>([]);
@@ -628,6 +744,9 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     }, [isPlaying]);
     const lastMessageTimeRef = useRef<number>(performance.now());
     const lastReceivedTimeRef = useRef<number>(0);
+    const hasReportedTimeRef = useRef<boolean>(false);
+    const lastTimeValueRef = useRef<number>(-1);
+    const lastTimeChangeTimestampRef = useRef<number>(performance.now());
     const [subtitleCues, setSubtitleCues] = useState<{ start: number, end: number, text: string }[]>([]);
     const [vttBlobUrl, setVttBlobUrl] = useState<string>('');
     const [subSyncOpen, setSubSyncOpen] = useState(false);
@@ -660,9 +779,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         };
 
         let vttText = "WEBVTT\n\n";
-        subtitleCues.forEach((cue, index) => {
-            vttText += `${index + 1}\n`;
-            vttText += `${formatVttTime(cue.start + offsetSec)} --> ${formatVttTime(cue.end + offsetSec)}\n`;
+        let validCueIndex = 0;
+        subtitleCues.forEach((cue) => {
+            const startSec = (cue.start * subtitleSpeedScale) + offsetSec;
+            const endSec = (cue.end * subtitleSpeedScale) + offsetSec;
+
+            // When end time is <= 0 or cue has passed before start of video,
+            // DROP the cue from the active VTT track rather than clamping to 0,
+            // which crashes WebVTT textTrack parsers in Safari and Chrome.
+            if (endSec <= 0.01) return;
+
+            const effectiveStart = Math.max(0, startSec);
+            const effectiveEnd = Math.max(effectiveStart + 0.05, endSec);
+
+            validCueIndex++;
+            vttText += `${validCueIndex}\n`;
+            vttText += `${formatVttTime(effectiveStart)} --> ${formatVttTime(effectiveEnd)}\n`;
             vttText += `${cue.text}\n\n`;
         });
 
@@ -673,32 +805,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         return () => {
             URL.revokeObjectURL(url);
         };
-    }, [subtitleCues, subtitleOffset]);
+    }, [subtitleCues, subtitleOffset, subtitleSpeedScale]);
 
-    // Keep ref in sync and auto-tick manualSubTime forward only when actively playing (iframe subtitle sync)
+    // Keep manualSubTimeRef locked to verified movie playback currentTime
     useEffect(() => {
-        manualSubTimeRef.current = manualSubTime;
-    }, [manualSubTime]);
-
-    useEffect(() => {
-        if (manualSubTime === null) return;
-        let lastCueIndex = -1;
-        const interval = setInterval(() => {
-            if (!isPlayingRef.current) return;
-            // Advance by exact 0.2s step strictly while active playing — no wall clock runaway drift when paused!
-            const nextTime = (manualSubTimeRef.current ?? manualSubTime) + 0.2;
-            manualSubTimeRef.current = nextTime;
-            const offsetSec = subtitleOffset / 1000;
-            const cueIndex = subtitleCues.findIndex(cue =>
-                nextTime >= (cue.start + offsetSec) && nextTime <= (cue.end + offsetSec)
-            );
-            if (cueIndex !== lastCueIndex) {
-                lastCueIndex = cueIndex;
-                setManualSubTime(nextTime);
-            }
-        }, 200);
-        return () => clearInterval(interval);
-    }, [manualSubTime === null, subtitleCues.length, subtitleOffset]);
+        manualSubTimeRef.current = currentTime;
+    }, [currentTime]);
 
     // Ensure native video element text track is ALWAYS active and showing in Normal & Fullscreen modes
 
@@ -1275,12 +1387,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             // tmdbId guard: only process events targeting the current content
             const myId = String(tmdbId || imdbId || '');
-            const eventId = String(e.detail.tmdbId || '');
+            const eventId = String(e.detail?.tmdbId || '');
             if (myId && eventId && myId !== eventId) return;
 
-            const isFinal = e.detail.isFinal === true || e.detail.progress === 100;
+            if (isTvContent) {
+                const s = Number(e.detail?.season || 0);
+                const ep = Number(e.detail?.episode || 0);
+                if (s !== 0 && ep !== 0 && (s !== effectiveSeason || ep !== effectiveEpisode)) {
+                    return;
+                }
+            }
 
-            // Always apply incoming translated subtitles (both live partials and final) immediately
+            const isFinal = e.detail?.isFinal === true || e.detail?.progress === 100;
             translatedCuesActiveRef.current = true;
 
             const url = e.detail?.subtitleUrl || (typeof e.detail === 'string' ? e.detail : undefined);
@@ -1437,9 +1555,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const handleIframeLoad = () => {
         setLoading(false);
         setIframeBlocked(false); // Reset blocked state on every new load
-        setIsPlaying(true);      // Enable active playhead state so timer advances currentTime for subtitle rendering
-        isPlayingRef.current = true;
-        playStartTimeRef.current = performance.now();
+        hasReportedTimeRef.current = false;
+        lastTimeValueRef.current = -1;
+        lastTimeChangeTimestampRef.current = performance.now();
+        // Do NOT assume playing on load — start in paused state until verified by player event
+        setIsPlaying(false);
+        isPlayingRef.current = false;
+        setIsPaused(true);
+        playStartTimeRef.current = 0;
         playStartCurrentTimeRef.current = currentTimeRef.current;
 
         if (onLoad) onLoad();
@@ -1458,18 +1581,32 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         }, 4000);
 
-        // Subscribe to PlayerJS and JW Player events
+        // Initial handshake to PlayerJS, JW Player, Video.js, and standard HTML5 embed APIs
         try {
             if (iframeRef.current && iframeRef.current.contentWindow) {
                 const win = iframeRef.current.contentWindow;
-                // Standard player.js event subscription
-                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'timeupdate' }), '*');
-                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'time' }), '*');
+                // Standard Player.js API subscription & status poll
                 win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'timeupdate' }), '*');
                 win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'time' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'seeked' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'getPaused' }), '*');
 
                 // JWPlayer standard postMessage api subscription
                 win.postMessage(JSON.stringify({ method: 'registerListener', value: 'time' }), '*');
+                win.postMessage(JSON.stringify({ method: 'registerListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ method: 'registerListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ method: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ method: 'getPaused' }), '*');
+
+                // Generic HTML5 postMessage
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'timeupdate' }), '*');
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ event: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ event: 'getPaused' }), '*');
             }
         } catch (e) {
             console.warn("[UNIVERSAL-PLAYER] Failed to post init message to iframe:", e);
@@ -2159,37 +2296,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [activeTranslation, tmdbId, imdbId, contentType, isTvContent, effectiveSeason, effectiveEpisode, localSubtitleUrl]);
 
-    // Live custom event listener for instant subtitle updates
-    useEffect(() => {
-        const handleCustomSubEvent = (e: any) => {
-            const detail = e.detail;
-            if (!detail) return;
-            const targetId = tmdbId || imdbId;
-            if (String(detail.tmdbId) !== String(targetId)) return;
-
-            if (isTvContent) {
-                if (Number(detail.season || 0) !== effectiveSeason || Number(detail.episode || 0) !== effectiveEpisode) {
-                    return;
-                }
-            }
-
-            if (detail.subtitleUrl) {
-                setLocalSubtitleUrl(detail.subtitleUrl);
-                setShowSubtitles(true);
-                setKuCCNotificationVisible(false);
-                if (detail.srtContent) {
-                    const processed = cleanAndFormatVtt(detail.srtContent);
-                    const cues = subtitleService.parseVtt(processed);
-                    if (cues && cues.length > 0) {
-                        setSubtitleCues(cues);
-                    }
-                }
-            }
-        };
-
-        window.addEventListener('flkrd-subtitle-translated', handleCustomSubEvent);
-        return () => window.removeEventListener('flkrd-subtitle-translated', handleCustomSubEvent);
-    }, [tmdbId, imdbId, isTvContent, effectiveSeason, effectiveEpisode]);
+    // Note: Live subtitle translation updates are handled by handleTranslationEvent above (race-free)
 
     // --- Realtime Subtitle Sync Listener: Auto-injects & applies newly translated SRT live for all viewers ---
     useEffect(() => {
@@ -2406,8 +2513,61 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }
     }, [tmdbId, contentType, title, backdropPath, posterPath, activeSeasonNum, season, activeEpNum, episode]);
 
+    // Continuous postMessage handshake to ensure async player scripts bind events
+    useEffect(() => {
+        if (!isIframe) return;
+
+        const pollIframe = () => {
+            try {
+                const win = iframeRef.current?.contentWindow;
+                if (!win) return;
+
+                // Player.js API
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'timeupdate' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'time' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'addEventListener', value: 'seeked' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ context: 'player.js', method: 'getPaused' }), '*');
+
+                // JWPlayer API
+                win.postMessage(JSON.stringify({ method: 'registerListener', value: 'time' }), '*');
+                win.postMessage(JSON.stringify({ method: 'registerListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ method: 'registerListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ method: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ method: 'getPaused' }), '*');
+
+                // Generic HTML5 postMessage
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'timeupdate' }), '*');
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'pause' }), '*');
+                win.postMessage(JSON.stringify({ event: 'addEventListener', value: 'play' }), '*');
+                win.postMessage(JSON.stringify({ event: 'getCurrentTime' }), '*');
+                win.postMessage(JSON.stringify({ event: 'getPaused' }), '*');
+            } catch (e) {}
+        };
+
+        const burstTimers = [
+            setTimeout(pollIframe, 400),
+            setTimeout(pollIframe, 1000),
+            setTimeout(pollIframe, 2000),
+            setTimeout(pollIframe, 4000)
+        ];
+
+        const interval = setInterval(pollIframe, 1000);
+
+        return () => {
+            burstTimers.forEach(t => clearTimeout(t));
+            clearInterval(interval);
+        };
+    }, [isIframe, src, overrideSrc]);
+
     // Listen for postMessage events from VidKing & other providers
     const handlePlayerMessages = useCallback((event: MessageEvent) => {
+        // A page can receive postMessage traffic from analytics, ads, or another embed.
+        // Only the active player iframe is allowed to move this movie's subtitle clock.
+        if (iframeRef.current?.contentWindow && event.source !== iframeRef.current.contentWindow) return;
+
         // Offload payload processing so the event listener finishes in 0ms synchronously
         setTimeout(() => {
             try {
@@ -2432,16 +2592,46 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 let paused: boolean | undefined = undefined;
                 let eventName: string | undefined = undefined;
 
-                const msgEvent = (payload.event || payload.type || payload.method || '').toLowerCase();
+                const msgEvent = (
+                    payload.event ||
+                    payload.type ||
+                    payload.method ||
+                    payload.data?.event ||
+                    payload.data?.type ||
+                    payload.data?.method ||
+                    payload.value?.event ||
+                    payload.action ||
+                    payload.status ||
+                    ''
+                ).toLowerCase();
 
                 if (typeof payload.paused === 'boolean') paused = payload.paused;
                 else if (typeof payload.isPaused === 'boolean') paused = payload.isPaused;
                 else if (typeof payload.playing === 'boolean') paused = !payload.playing;
-                else if (msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play' || msgEvent === 'playvideo' || payload.state === 'playing' || payload.data?.state === 'playing') {
+                else if (typeof payload.value?.paused === 'boolean') paused = payload.value.paused;
+                else if (typeof payload.value?.isPaused === 'boolean') paused = payload.value.isPaused;
+                else if (typeof payload.data?.paused === 'boolean') paused = payload.data.paused;
+                else if (typeof payload.data?.isPaused === 'boolean') paused = payload.data.isPaused;
+                else if (typeof payload.data?.playing === 'boolean') paused = !payload.data.playing;
+                else if (typeof payload.result?.paused === 'boolean') paused = payload.result.paused;
+                else if (typeof payload.result === 'boolean' && (msgEvent === 'getpaused' || payload.method === 'getPaused')) paused = payload.result;
+                else if (typeof payload.value === 'boolean' && (msgEvent === 'getpaused' || payload.method === 'getPaused')) paused = payload.value;
+                else if (
+                    msgEvent === 'play' || msgEvent === 'playing' || msgEvent === 'vjs-play' || 
+                    msgEvent === 'playvideo' || payload.state === 'playing' || 
+                    payload.data?.state === 'playing' || payload.status === 'playing' ||
+                    payload.value?.state === 'playing'
+                ) {
                     paused = false;
                     eventName = 'play';
                 }
-                else if (msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause' || msgEvent === 'pausevideo' || msgEvent === 'ended' || msgEvent === 'stalled' || msgEvent === 'waiting' || msgEvent === 'suspend' || payload.state === 'paused' || payload.data?.state === 'paused') {
+                else if (
+                    msgEvent === 'pause' || msgEvent === 'paused' || msgEvent === 'vjs-pause' || 
+                    msgEvent === 'pausevideo' || msgEvent === 'ended' || msgEvent === 'stalled' || 
+                    msgEvent === 'waiting' || msgEvent === 'suspend' || payload.state === 'paused' || 
+                    payload.data?.state === 'paused' || payload.status === 'paused' ||
+                    payload.value?.state === 'paused'
+                ) {
                     paused = true;
                     eventName = 'pause';
                 }
@@ -2449,88 +2639,140 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     eventName = 'seek';
                 }
 
-                if (paused === true) {
-                    setIsPlaying(false);
-                    isPlayingRef.current = false;
-                    setIsPaused(true);
-                    if (pauseGlobalTranslation) pauseGlobalTranslation();
-                } else if (paused === false) {
-                    setIsPlaying(true);
-                    isPlayingRef.current = true;
-                    setIsPaused(false);
-                    playStartTimeRef.current = performance.now();
-                    playStartCurrentTimeRef.current = currentTimeRef.current;
-                    if (resumeGlobalTranslation) resumeGlobalTranslation();
+                let extractedTime: number | undefined = undefined;
+
+                const parseNum = (val: any): number | undefined => {
+                    if (typeof val === 'number' && !isNaN(val) && val >= 0) return val;
+                    if (typeof val === 'string' && val.trim() !== '') {
+                        const n = parseFloat(val);
+                        if (!isNaN(n) && n >= 0) return n;
+                    }
+                    return undefined;
+                };
+
+                // 1. Direct fields
+                extractedTime = parseNum(payload.currentTime) ?? parseNum(payload.seconds) ?? parseNum(payload.time) ?? parseNum(payload.position) ?? parseNum(payload.timestamp);
+
+                // 2. Object in payload.value (Player.js standard: { seconds, duration })
+                if (extractedTime === undefined && payload.value !== undefined) {
+                    if (typeof payload.value === 'object' && payload.value !== null) {
+                        extractedTime = parseNum(payload.value.seconds) ?? parseNum(payload.value.currentTime) ?? parseNum(payload.value.time) ?? parseNum(payload.value.position);
+                    } else {
+                        extractedTime = parseNum(payload.value);
+                    }
                 }
 
-                let extractedTime: number | undefined = undefined;
-                
-                if (typeof payload.currentTime === 'number') extractedTime = payload.currentTime;
-                else if (typeof payload.seconds === 'number') extractedTime = payload.seconds;
-                else if (typeof payload.time === 'number') extractedTime = payload.time;
-                else if (typeof payload.timestamp === 'number') extractedTime = payload.timestamp;
-                else if (typeof payload.position === 'number') extractedTime = payload.position;
-                else if (typeof payload.value === 'number') extractedTime = payload.value;
-                else if (payload.data && typeof payload.data === 'object') {
-                    if (typeof payload.data.currentTime === 'number') extractedTime = payload.data.currentTime;
-                    else if (typeof payload.data.seconds === 'number') extractedTime = payload.data.seconds;
-                    else if (typeof payload.data.time === 'number') extractedTime = payload.data.time;
-                    else if (typeof payload.data.timestamp === 'number') extractedTime = payload.data.timestamp;
-                    else if (typeof payload.data.position === 'number') extractedTime = payload.data.position;
-                    else if (typeof payload.data.value === 'number') extractedTime = payload.data.value;
-                } else if (typeof payload.data === 'number') {
-                    extractedTime = payload.data;
-                } else {
-                    const strCandidate = payload.currentTime || payload.seconds || payload.time || payload.timestamp || payload.position || payload.value;
-                    if (strCandidate !== undefined) {
-                        const parsed = parseFloat(String(strCandidate));
-                        if (!isNaN(parsed)) extractedTime = parsed;
+                // 3. Object in payload.data (JWPlayer, Video.js)
+                if (extractedTime === undefined && payload.data !== undefined) {
+                    if (typeof payload.data === 'object' && payload.data !== null) {
+                        extractedTime = parseNum(payload.data.currentTime) ?? parseNum(payload.data.seconds) ?? parseNum(payload.data.time) ?? parseNum(payload.data.position) ?? parseNum(payload.data.value);
+                    } else {
+                        extractedTime = parseNum(payload.data);
+                    }
+                }
+
+                // 4. Object or number in payload.result (Player.js response to getCurrentTime)
+                if (extractedTime === undefined && payload.result !== undefined) {
+                    if (typeof payload.result === 'object' && payload.result !== null) {
+                        extractedTime = parseNum(payload.result.seconds) ?? parseNum(payload.result.currentTime) ?? parseNum(payload.result.time);
+                    } else {
+                        extractedTime = parseNum(payload.result);
                     }
                 }
 
                 const timeAsNum = extractedTime;
 
-                if (timeAsNum !== undefined && !isNaN(timeAsNum)) {
-                    if (timeAsNum < 50000) {
-                        // Trigger React state re-render with 0.1s granularity for precise lip-sync
-                        if (Math.abs(timeAsNum - currentTimeRef.current) >= 0.1) {
-                            setCurrentTime(timeAsNum);
+                if (timeAsNum !== undefined && !isNaN(timeAsNum) && timeAsNum < 50000) {
+                    const now = performance.now();
+                    const timeDiff = Math.abs(timeAsNum - lastTimeValueRef.current);
+                    const isSeeking = Math.abs(timeAsNum - currentTimeRef.current) > 1.2;
+
+                    if (timeDiff > 0.005) {
+                        lastTimeValueRef.current = timeAsNum;
+                        lastTimeChangeTimestampRef.current = now;
+                        hasReportedTimeRef.current = true;
+
+                        if (paused === undefined) {
+                            paused = false;
                         }
+                    } else {
+                        // Timestamp has not progressed. If consecutive reports are identical for > 500ms, mark as paused
+                        if (now - lastTimeChangeTimestampRef.current > 500 && isPlayingRef.current) {
+                            paused = true;
+                        }
+                    }
+
+                    if (paused === true) {
+                        if (isPlayingRef.current) {
+                            setIsPlaying(false);
+                            isPlayingRef.current = false;
+                            setIsPaused(true);
+                            playStartTimeRef.current = 0;
+                            if (pauseGlobalTranslation) pauseGlobalTranslation();
+                        }
+                    } else if (paused === false) {
+                        if (!isPlayingRef.current) {
+                            setIsPlaying(true);
+                            isPlayingRef.current = true;
+                            setIsPaused(false);
+                            if (resumeGlobalTranslation) resumeGlobalTranslation();
+                        }
+                        playStartTimeRef.current = now;
+                        playStartCurrentTimeRef.current = timeAsNum;
+                    }
+
+                    // Instant seek & precision sync: immediately sync currentTime to lock subtitles
+                    if (isSeeking || Math.abs(timeAsNum - currentTimeRef.current) >= 0.05) {
                         currentTimeRef.current = timeAsNum;
-                        lastReceivedTimeRef.current = timeAsNum;
-                        lastMessageTimeRef.current = performance.now();
-                        if (paused !== true && isPlayingRef.current) {
-                            playStartTimeRef.current = performance.now();
-                            playStartCurrentTimeRef.current = timeAsNum;
-                        }
+                        setCurrentTime(timeAsNum);
+                    }
 
-                        const extDuration = payload.duration !== undefined ? Number(payload.duration) : (payload.data && payload.data.duration !== undefined ? Number(payload.data.duration) : undefined);
-                        saveWatchProgressDirectly(timeAsNum, extDuration);
+                    lastReceivedTimeRef.current = timeAsNum;
+                    lastMessageTimeRef.current = now;
 
-                        if (onProgressRef.current) {
-                            onProgressRef.current({
-                                currentTime: timeAsNum,
-                                paused: paused ?? (isPlayingRef.current ? false : true),
-                                event: eventName || 'timeupdate',
-                                duration: extDuration
-                            });
-                        }
-                    }
-                } else if (eventName !== undefined) {
-                    if (eventName === 'seek') {
-                        lastMessageTimeRef.current = performance.now();
-                        playStartTimeRef.current = performance.now();
-                        playStartCurrentTimeRef.current = currentTimeRef.current;
-                    }
-                    if (currentTimeRef.current > 3) {
-                        saveWatchProgressDirectly(currentTimeRef.current);
-                    }
+                    const extDuration = payload.duration !== undefined ? Number(payload.duration) : (payload.data?.duration !== undefined ? Number(payload.data.duration) : (payload.value?.duration !== undefined ? Number(payload.value.duration) : undefined));
+                    saveWatchProgressDirectly(timeAsNum, extDuration);
+
                     if (onProgressRef.current) {
                         onProgressRef.current({
-                            currentTime: currentTimeRef.current,
+                            currentTime: timeAsNum,
                             paused: paused ?? (isPlayingRef.current ? false : true),
-                            event: eventName
+                            event: isSeeking ? 'seek' : (eventName || 'timeupdate'),
+                            duration: extDuration
                         });
+                    }
+                } else {
+                    if (paused === true) {
+                        setIsPlaying(false);
+                        isPlayingRef.current = false;
+                        setIsPaused(true);
+                        playStartTimeRef.current = 0;
+                        if (pauseGlobalTranslation) pauseGlobalTranslation();
+                    } else if (paused === false) {
+                        setIsPlaying(true);
+                        isPlayingRef.current = true;
+                        setIsPaused(false);
+                        playStartTimeRef.current = performance.now();
+                        playStartCurrentTimeRef.current = currentTimeRef.current;
+                        if (resumeGlobalTranslation) resumeGlobalTranslation();
+                    }
+
+                    if (eventName !== undefined) {
+                        if (eventName === 'seek') {
+                            lastMessageTimeRef.current = performance.now();
+                            playStartTimeRef.current = performance.now();
+                            playStartCurrentTimeRef.current = currentTimeRef.current;
+                        }
+                        if (currentTimeRef.current > 3) {
+                            saveWatchProgressDirectly(currentTimeRef.current);
+                        }
+                        if (onProgressRef.current) {
+                            onProgressRef.current({
+                                currentTime: currentTimeRef.current,
+                                paused: paused ?? (isPlayingRef.current ? false : true),
+                                event: eventName
+                            });
+                        }
                     }
                 }
             } catch (e) { }
@@ -2552,11 +2794,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         const interval = setInterval(() => {
             const now = performance.now();
 
+            // If the iframe reports time but hasn't reported a fresh time in > 1000ms, it is paused/buffering!
+            if (hasReportedTimeRef.current && (now - lastTimeChangeTimestampRef.current > 1000)) {
+                if (isPlayingRef.current) {
+                    setIsPlaying(false);
+                    isPlayingRef.current = false;
+                    setIsPaused(true);
+                    playStartTimeRef.current = 0;
+                    if (pauseGlobalTranslation) pauseGlobalTranslation();
+                }
+                return;
+            }
+
+            // Strictly ONLY advance if verified actively playing and within safety cap
             if (isPlayingRef.current && playStartTimeRef.current > 0) {
                 const elapsedSec = (now - playStartTimeRef.current) / 1000;
+                // Cap elapsed time to 1.0s — NEVER drift far ahead if iframe lags or pauses silently
+                if (elapsedSec > 1.0) {
+                    return;
+                }
                 const nextTime = Math.max(0, playStartCurrentTimeRef.current + elapsedSec);
+                const previousTime = currentTimeRef.current;
                 currentTimeRef.current = nextTime;
-                if (Math.abs(nextTime - currentTime) >= 0.1) {
+                // Compare against the value before updating the ref. Comparing after the
+                // assignment always yields zero and freezes the overlay between iframe events.
+                if (Math.abs(nextTime - previousTime) >= 0.05) {
                     setCurrentTime(nextTime);
                 }
                 if (nextTime > 3) {
@@ -2566,7 +2828,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         }, 100);
 
         return () => clearInterval(interval);
-    }, [isIframe, currentTime, saveWatchProgressDirectly]);
+    }, [isIframe, saveWatchProgressDirectly, pauseGlobalTranslation]);
 
     // Save progress on player unmount or close
     useEffect(() => {
@@ -2599,13 +2861,25 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 (document as any).mozFullScreenElement ||
                 (document as any).msFullscreenElement;
 
+            // A direct HTML5 video owns a separate native fullscreen layer on
+            // mobile. The React overlay cannot enter that layer, so keep the
+            // browser-native WebVTT track enabled instead of forcing an exit.
+            if (activeFullscreenElement === videoRef.current) {
+                const tracks = videoRef.current?.textTracks;
+                if (tracks) {
+                    for (let i = 0; i < tracks.length; i++) {
+                        tracks[i].mode = showSubtitles ? 'showing' : 'disabled';
+                    }
+                }
+                return;
+            }
+
             if (
                 activeFullscreenElement &&
                 activeFullscreenElement !== containerRef.current &&
                 containerRef.current &&
                 (containerRef.current.contains(activeFullscreenElement) ||
-                    activeFullscreenElement === iframeRef.current ||
-                    activeFullscreenElement === videoRef.current)
+                    activeFullscreenElement === iframeRef.current)
             ) {
                 console.log("[PLAYER] Intercepted inner element fullscreen. Redirecting to container to preserve subtitle overlay...");
 
@@ -2638,23 +2912,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
         };
 
-        const timer = setTimeout(() => {
-            if (!active) return;
-            document.addEventListener('fullscreenchange', handleFullscreenChange);
-            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-            document.addEventListener('mozfullscreenchange', handleFullscreenChange);
-            document.addEventListener('MSFullscreenChange', handleFullscreenChange);
-        }, 300);
+        // Listen immediately. A user can tap fullscreen before the old delayed
+        // listener was installed, leaving an iframe fullscreen without FLKRD's
+        // subtitle overlay.
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
 
         return () => {
             active = false;
-            clearTimeout(timer);
             document.removeEventListener('fullscreenchange', handleFullscreenChange);
             document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
             document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
             document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
         };
-    }, []);
+    }, [showSubtitles]);
 
     useEffect(() => {
         const handlePlaybackKeyDown = (e: KeyboardEvent) => {
@@ -2684,20 +2957,38 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             else if (e.key === ' ' || key === 'k') {
                 e.preventDefault();
                 if (isIframe) {
+                    const nextPlaying = !isPlayingRef.current;
+                    const action = nextPlaying ? 'play' : 'pause';
                     if (iframeRef.current?.contentWindow) {
                         const win = iframeRef.current.contentWindow;
-                        const action = isPlaying ? 'pause' : 'play';
                         win.postMessage(JSON.stringify({ event: action, method: action }), '*');
-                        win.postMessage(JSON.stringify({ method: isPlaying ? 'pause' : 'play' }), '*');
+                        win.postMessage(JSON.stringify({ method: action }), '*');
+                        win.postMessage(JSON.stringify({ type: action, action: action }), '*');
                     }
-                    setIsPlaying(prev => !prev);
+                    setIsPlaying(nextPlaying);
+                    isPlayingRef.current = nextPlaying;
+                    setIsPaused(!nextPlaying);
+                    if (nextPlaying) {
+                        playStartTimeRef.current = performance.now();
+                        playStartCurrentTimeRef.current = currentTimeRef.current;
+                        if (resumeGlobalTranslation) resumeGlobalTranslation();
+                    } else {
+                        playStartTimeRef.current = 0;
+                        if (pauseGlobalTranslation) pauseGlobalTranslation();
+                    }
                 } else if (videoRef.current) {
                     if (videoRef.current.paused) {
                         videoRef.current.play().catch(() => { });
                         setIsPlaying(true);
+                        isPlayingRef.current = true;
+                        setIsPaused(false);
+                        if (resumeGlobalTranslation) resumeGlobalTranslation();
                     } else {
                         videoRef.current.pause();
                         setIsPlaying(false);
+                        isPlayingRef.current = false;
+                        setIsPaused(true);
+                        if (pauseGlobalTranslation) pauseGlobalTranslation();
                     }
                 }
             }
@@ -2846,32 +3137,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             }
 
             // Subtitle timing shortcuts:
-            // [ -> Nudge -100ms (delay subtitles)
-            // ] -> Nudge +100ms (advance subtitles)
-            // { (Shift+[) -> Shift -1000ms (-1s)
-            // } (Shift+]) -> Shift +1000ms (+1s)
-            else if (e.key === '[' || e.key === '{') {
+            // Press Z or [ -> Delay subtitles by -250ms (or -1000ms with Shift)
+            // Press X or ] -> Advance subtitles by +250ms (or +1000ms with Shift)
+            // Ctrl/Cmd + 0 or r -> Reset to 0ms
+            else if (key === 'z' || e.key === '[' || e.key === '{') {
                 e.preventDefault();
-                const delta = (e.shiftKey || e.key === '{') ? -1000 : -100;
-                setSubtitleOffset((prev) => {
-                    const next = Math.max(-60000, Math.min(60000, prev + delta));
-                    triggerSyncToast(language === 'ku' || language === 'badini' ? `کاتی ژێرنووس: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)` : `Subtitle Timing: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)`);
-                    return next;
-                });
+                const delta = (e.shiftKey || e.key === '{') ? -1000 : -250;
+                setSubtitleOffset((prev) => Math.max(-60000, Math.min(60000, prev + delta)));
             }
-            else if (e.key === ']' || e.key === '}') {
+            else if (key === 'x' || e.key === ']' || e.key === '}') {
                 e.preventDefault();
-                const delta = (e.shiftKey || e.key === '}') ? 1000 : 100;
-                setSubtitleOffset((prev) => {
-                    const next = Math.max(-60000, Math.min(60000, prev + delta));
-                    triggerSyncToast(language === 'ku' || language === 'badini' ? `کاتی ژێرنووس: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)` : `Subtitle Timing: ${next > 0 ? '+' : ''}${next}ms (${(next / 1000).toFixed(1)}s)`);
-                    return next;
-                });
+                const delta = (e.shiftKey || e.key === '}') ? 1000 : 250;
+                setSubtitleOffset((prev) => Math.max(-60000, Math.min(60000, prev + delta)));
             }
-            else if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === '0' || e.key === 'r')) {
+            else if ((e.ctrlKey || e.metaKey || e.altKey) && (e.key === '0' || key === 'r')) {
                 e.preventDefault();
                 setSubtitleOffset(0);
-                triggerSyncToast(language === 'ku' || language === 'badini' ? 'کاتی ژێرنووس سفر کرایەوە (0ms)' : 'Subtitle Timing Reset (0ms)');
             }
         };
 
@@ -3359,7 +3640,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
         // Only attach publicly accessible HTTP/HTTPS subtitle URLs to external iframes.
         // NEVER pass local blob: or base64 data: URLs, as external iframes and Cloudflare reject them with 400 Bad Request / Connection Reset.
-        const cleanSubForIframe = (subtitleUrl && (subtitleUrl.startsWith('http://') || subtitleUrl.startsWith('https://')) && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : null;
+        const kurdishUrl = kurdishSub?.attributes?.url;
+        const candidateSub = (kurdishUrl && (kurdishUrl.startsWith('http://') || kurdishUrl.startsWith('https://')) && !kurdishUrl.startsWith('blob:') && !kurdishUrl.startsWith('data:'))
+            ? kurdishUrl
+            : ((subtitleUrl && (subtitleUrl.startsWith('http://') || subtitleUrl.startsWith('https://')) && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : null);
+
+        const cleanSubForIframe = candidateSub;
         if (cleanSubForIframe && finalSrc && !finalSrc.includes('&sub=') && !finalSrc.includes('&subtitles=')) {
             const sep = finalSrc.includes('?') ? '&' : '?';
             finalSrc += `${sep}sub=${encodeURIComponent(cleanSubForIframe)}&sub_file=${encodeURIComponent(cleanSubForIframe)}&subtitles=${encodeURIComponent(cleanSubForIframe)}&sub_label=Kurdish`;
@@ -3372,7 +3658,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
         frozenSrcRef.current = finalSrc;
         lastContentKeyRef.current = currentContentKey;
         return finalSrc;
-    }, [src, overrideSrc, currentContentKey, localSubtitleUrl, subtitleUrl]);
+    }, [src, overrideSrc, currentContentKey, localSubtitleUrl, subtitleUrl, kurdishSub]);
 
 
     const stableKey = React.useMemo(() => {
@@ -3441,7 +3727,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     return (
         <div
             ref={containerRef}
-            className={`bg-black flex items-center justify-center transition-all duration-300 w-full h-full select-none ${isSimulatedFullscreen
+            className={`bg-black flex items-center justify-center transition-all duration-300 w-full h-full min-w-0 min-h-0 select-none pointer-events-auto isolate ${isSimulatedFullscreen
                     ? 'fixed inset-0 w-screen h-dvh z-[9999] overflow-hidden'
                     : 'w-full h-full relative z-20 overflow-hidden'
                 }`}
@@ -3449,7 +3735,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 backgroundColor: '#000000',
                 width: '100%',
                 height: '100%',
-                overflow: 'hidden'
+                minWidth: 0,
+                minHeight: 0,
+                overflow: 'hidden',
+                isolation: 'isolate',
+                pointerEvents: 'auto'
             }}
         >
 
@@ -3529,7 +3819,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             `}</style>
 
             {/* Media Canvas Layer (Isolated Stack) */}
-            <div className="absolute inset-0 w-full h-full z-10 overflow-hidden pointer-events-auto">
+            <div
+                className="absolute inset-0 w-full h-full z-10 overflow-hidden"
+                aria-hidden={showEpisodesPortal}
+                style={{ pointerEvents: showEpisodesPortal ? 'none' : 'auto' }}
+            >
                 {/* HLS / Direct Video */}
                 {isHls && (
                     <video
@@ -3538,6 +3832,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         className="w-full h-full object-contain pointer-events-auto"
                         style={{
                             WebkitPlaysInline: 'inline',
+                            pointerEvents: showEpisodesPortal ? 'none' : 'auto',
                             filter: (!isIOSDevice && (brightness !== 1 || contrast !== 1 || saturation !== 1))
                                 ? `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                                 : undefined
@@ -3553,7 +3848,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onTimeUpdate={(e) => {
                             const time = e.currentTarget.currentTime;
                             currentTimeRef.current = time;
-                            const sec = Math.floor(time * 4) / 4; // 250ms sub-second precision
+                            const sec = Math.floor(time * 10) / 10; // 100ms precision for live subtitle lip-sync
                             if (sec !== lastRenderedSecondRef.current) {
                                 lastRenderedSecondRef.current = sec;
                                 setCurrentTime(time);
@@ -3566,24 +3861,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         }}
                         onPlaying={() => setLoading(false)}
                         onPlay={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            currentTimeRef.current = time;
+                            setCurrentTime(time);
                             setIsPlaying(true);
                             isPlayingRef.current = true;
                             setIsPaused(false);
                             if (resumeGlobalTranslation) resumeGlobalTranslation();
                             onProgressRef.current?.({
-                                currentTime: e.currentTarget.currentTime,
+                                currentTime: time,
                                 paused: false,
                                 event: 'play',
                                 duration: e.currentTarget.duration
                             });
                         }}
                         onPause={(e) => {
+                            const time = e.currentTarget.currentTime;
+                            currentTimeRef.current = time;
+                            setCurrentTime(time);
                             setIsPlaying(false);
                             isPlayingRef.current = false;
                             setIsPaused(true);
                             if (pauseGlobalTranslation) pauseGlobalTranslation();
                             onProgressRef.current?.({
-                                currentTime: e.currentTarget.currentTime,
+                                currentTime: time,
                                 paused: true,
                                 event: 'pause',
                                 duration: e.currentTarget.duration
@@ -3592,7 +3893,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onSeeking={(e) => {
                             const time = e.currentTarget.currentTime;
                             currentTimeRef.current = time;
-                            lastRenderedSecondRef.current = Math.floor(time * 4) / 4;
+                            lastRenderedSecondRef.current = Math.floor(time * 10) / 10;
                             setCurrentTime(time);
                             onProgressRef.current?.({
                                 currentTime: time,
@@ -3604,7 +3905,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onSeeked={(e) => {
                             const time = e.currentTarget.currentTime;
                             currentTimeRef.current = time;
-                            lastRenderedSecondRef.current = Math.floor(time * 4) / 4;
+                            lastRenderedSecondRef.current = Math.floor(time * 10) / 10;
                             setCurrentTime(time);
                             onProgressRef.current?.({
                                 currentTime: time,
@@ -3649,6 +3950,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     // crossOrigin REQUIRED for external URLs — without it browsers silently block track loading
                                     crossOrigin="anonymous"
                                     default
+                                    onLoad={(event) => {
+                                        // Browsers occasionally load a <track> after the
+                                        // initial player sync. Force it visible at the
+                                        // moment it becomes available, including native
+                                        // fullscreen on iOS/Safari.
+                                        event.currentTarget.track.mode = showSubtitles ? 'showing' : 'disabled';
+                                        const tracks = videoRef.current?.textTracks;
+                                        if (tracks) {
+                                            for (let i = 0; i < tracks.length; i++) {
+                                                tracks[i].mode = showSubtitles ? 'showing' : 'disabled';
+                                            }
+                                        }
+                                    }}
                                 />
                             );
                         })()}
@@ -3667,7 +3981,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     <div className="absolute inset-0 z-[500] flex flex-col items-center justify-center bg-black/95 gap-6 px-6 text-center">
                         {/* Animated warning icon */}
                         <div className="relative w-20 h-20 flex items-center justify-center">
-                            <div className="absolute inset-0 rounded-full bg-red-600/20 animate-ping" />
+                            <div className="absolute inset-0 rounded-full bg-red-600/20" style={{ animation: 'ping 0.6s cubic-bezier(0, 0, 0.2, 1) 1 forwards' }} />
                             <div className="relative w-16 h-16 rounded-full bg-red-600/10 border-2 border-red-500/40 flex items-center justify-center">
                                 <Shield className="w-8 h-8 text-red-400" />
                             </div>
@@ -3724,7 +4038,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ opacity: 0, y: -8, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -6, scale: 0.95 }}
-                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300, mass: 0.6 }}
                         role="status"
                         aria-live="polite"
                         className="absolute top-16 md:top-20 left-1/2 -translate-x-1/2 z-[2147483647] pointer-events-none flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/85 border border-white/20 backdrop-blur-md shadow-2xl text-white font-medium text-sm"
@@ -3742,7 +4056,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.15, ease: 'easeOut' }}
+                        transition={{ type: 'spring', damping: 20, stiffness: 300, mass: 0.6 }}
                         className="absolute bottom-[12%] md:bottom-[16%] left-0 right-0 z-[2147483647] flex justify-center px-4 md:px-6 w-full pointer-events-none custom-subtitle-overlay"
                         style={{
                             fontSize: `clamp(18px, ${subtitleSize}px, 6.5vw)`,
@@ -3756,95 +4070,105 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     >
                         {(() => {
                             const offsetSec = subtitleOffset / 1000;
-                            // Use manual sync time if the user has set it (for iframe players where seek isn't detectable)
-                            // otherwise fall back to the tracked currentTime
-                            const effectiveTime = manualSubTime !== null ? (manualSubTimeRef.current ?? manualSubTime) : currentTime;
-                            // Find the active cue index (not just the cue object) so we can use it as edit key
-                            const activeCueIndex = subtitleCues.findIndex(cue =>
-                                effectiveTime >= (cue.start + offsetSec) && effectiveTime <= (cue.end + offsetSec)
-                            );
-                            if (activeCueIndex === -1) return null;
+                            // Subtitles are strictly locked live to the verified movie playback time
+                            const effectiveTime = currentTime;
+                            // Find ALL active cues overlapping at current time (support multiple simultaneous dialogue lines)
+                            const activeCuesWithIndex = subtitleCues
+                                .map((cue, index) => ({ cue, index }))
+                                .filter(({ cue }) => {
+                                    const start = (cue.start * subtitleSpeedScale) + offsetSec;
+                                    const end = (cue.end * subtitleSpeedScale) + offsetSec;
+                                    return effectiveTime >= start && effectiveTime <= end;
+                                });
 
-
-                            const activeCue = subtitleCues[activeCueIndex];
-                            // Apply admin edit if one exists for this cue
-                            const displayText = subEditMap.has(activeCueIndex)
-                                ? subEditMap.get(activeCueIndex)!
-                                : activeCue.text;
-
-                            const isRtl = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(displayText);
-                            const isEdited = subEditMap.has(activeCueIndex);
+                            if (activeCuesWithIndex.length === 0) return null;
 
                             return (
-                                <div className="relative flex flex-col items-center select-none group">
-                                    {/* Admin edit badge */}
-                                    {isAdmin && (
-                                        <div
-                                            className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 cursor-pointer z-30"
-                                            style={{ pointerEvents: 'auto' }}
-                                            onClick={() => {
-                                                if (videoRef.current && !videoRef.current.paused) {
-                                                    videoRef.current.pause();
-                                                }
-                                                setEditingCue({
-                                                    index: activeCueIndex,
-                                                    original: activeCue.text,
-                                                    current: displayText,
-                                                });
-                                            }}
-                                        >
-                                            <span className="text-[9px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-full border border-red-500/45 shadow-[0_0_15px_rgba(220,38,38,0.5)] flex items-center gap-1 hover:scale-105 active:scale-95 transition-all">
-                                                <InfinityIcon size={10} className="animate-pulse" />
-                                                {language === 'ku' || language === 'badini' ? 'دەسکاری' : 'Edit line'}
-                                            </span>
-                                        </div>
-                                    )}
+                                <div className="flex flex-col items-center gap-2 select-none w-full max-w-full">
+                                    {activeCuesWithIndex.map(({ cue: activeCue, index: activeCueIndex }) => {
+                                        // Apply admin edit if one exists for this cue
+                                        const displayText = subEditMap.has(activeCueIndex)
+                                            ? subEditMap.get(activeCueIndex)!
+                                            : activeCue.text;
 
-                                    <div
-                                        onClick={() => {
-                                            if (!isAdmin) return;
-                                            // Pause video when opening the edit modal
-                                            if (videoRef.current && !videoRef.current.paused) {
-                                                videoRef.current.pause();
-                                            }
-                                            setEditingCue({
-                                                index: activeCueIndex,
-                                                original: activeCue.text,
-                                                current: displayText,
-                                            });
-                                        }}
-                                        className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-200 max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''
-                                            } ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-white/30 active:scale-[0.99]' : ''} ${isEdited ? 'ring-1 ring-yellow-400/40' : ''}`}
-                                        style={{
-                                            direction: isRtl ? 'rtl' : 'ltr',
-                                            unicodeBidi: isRtl ? 'plaintext' : 'normal',
-                                            textAlign: 'center',
-                                            backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
-                                            backdropFilter: !isIOSDevice && showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(16px)' : 'none',
-                                            WebkitBackdropFilter: !isIOSDevice && showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(16px)' : 'none',
-                                            border: isEdited ? '1px solid rgba(250,204,21,0.3)' : showSubBackground ? undefined : 'none',
-                                            boxShadow: showSubBackground ? undefined : 'none',
-                                            textShadow: showSubBackground
-                                                ? '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)'
-                                                : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
-                                            textWrap: 'balance',
-                                            wordBreak: 'break-word',
-                                            lineHeight: isRtl ? '1.5' : '1.4',
-                                        }}
-                                    >
-                                        {displayText.split('\n').map((line, idx) => (
-                                            <div key={`${line}-${idx}`} className="text-center drop-shadow-2xl">
-                                                {line}
+                                        const isRtl = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(displayText);
+                                        const isEdited = subEditMap.has(activeCueIndex);
+
+                                        return (
+                                            <div key={`active-cue-${activeCueIndex}`} className="relative flex flex-col items-center select-none group">
+                                                {/* Admin edit badge */}
+                                                {isAdmin && (
+                                                    <div
+                                                        className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 cursor-pointer z-30"
+                                                        style={{ pointerEvents: 'auto' }}
+                                                        onClick={() => {
+                                                            if (videoRef.current && !videoRef.current.paused) {
+                                                                videoRef.current.pause();
+                                                            }
+                                                            setEditingCue({
+                                                                index: activeCueIndex,
+                                                                original: activeCue.text,
+                                                                current: displayText,
+                                                            });
+                                                        }}
+                                                    >
+                                                        <span className="text-[9px] font-black uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded-full border border-red-500/45 shadow-[0_0_15px_rgba(220,38,38,0.5)] flex items-center gap-1 hover:scale-105 active:scale-95 transition-all">
+                                                            <InfinityIcon size={10} className="animate-pulse" />
+                                                            {language === 'ku' || language === 'badini' ? 'دەسکاری' : 'Edit line'}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                <div
+                                                    dir={isRtl ? 'rtl' : 'ltr'}
+                                                    onClick={() => {
+                                                        if (!isAdmin) return;
+                                                        if (videoRef.current && !videoRef.current.paused) {
+                                                            videoRef.current.pause();
+                                                        }
+                                                        setEditingCue({
+                                                            index: activeCueIndex,
+                                                            original: activeCue.text,
+                                                            current: displayText,
+                                                        });
+                                                    }}
+                                                    className={`px-4 sm:px-6 md:px-8 py-2 md:py-3 rounded-[16px] md:rounded-[24px] text-center font-black tracking-tight transition-all duration-200 max-w-[95vw] sm:max-w-[85vw] ${showSubBackground ? 'shadow-[0_32px_64px_rgba(0,0,0,0.8)] border border-white/10' : ''
+                                                        } ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-white/30 active:scale-[0.99]' : ''} ${isEdited ? 'ring-1 ring-yellow-400/40' : ''}`}
+                                                    style={{
+                                                        direction: isRtl ? 'rtl' : 'ltr',
+                                                        unicodeBidi: isRtl ? 'isolate' : 'normal',
+                                                        textAlign: 'center',
+                                                        fontFamily: isRtl ? "'Vazirmatn', 'Zain', Tahoma, 'Arial', sans-serif" : "'Outfit', 'Inter', sans-serif",
+                                                        fontFeatureSettings: isRtl ? '"cv01", "cv02", "liga" 1, "kern" 1' : undefined,
+                                                        backgroundColor: showSubBackground ? `rgba(0, 0, 0, ${subBgOpacity})` : 'transparent',
+                                                        backdropFilter: !isIOSDevice && showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(16px)' : 'none',
+                                                        WebkitBackdropFilter: !isIOSDevice && showSubBackground && subBlur && subBgOpacity > 0 ? 'blur(16px)' : 'none',
+                                                        border: isEdited ? '1px solid rgba(250,204,21,0.3)' : showSubBackground ? undefined : 'none',
+                                                        boxShadow: showSubBackground ? undefined : 'none',
+                                                        textShadow: showSubBackground
+                                                            ? '0 2px 4px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.4)'
+                                                            : '0 2px 4px #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 0 8px rgba(0,0,0,0.8)',
+                                                        textWrap: 'balance',
+                                                        wordBreak: 'break-word',
+                                                        lineHeight: isRtl ? '1.5' : '1.4',
+                                                    }}
+                                                >
+                                                    {displayText.split('\n').map((line, idx) => (
+                                                        <div key={`${line}-${idx}`} className="text-center drop-shadow-2xl">
+                                                            {line}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Edited indicator for admins */}
+                                                {isAdmin && isEdited && (
+                                                    <div className="mt-1 text-[8px] font-black uppercase tracking-widest text-yellow-400/70">
+                                                        {language === 'ku' || language === 'badini' ? '✎ دەسکارییەک کراوە' : '✎ Edited'}
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Edited indicator for admins */}
-                                    {isAdmin && isEdited && (
-                                        <div className="mt-1 text-[8px] font-black uppercase tracking-widest text-yellow-400/70">
-                                            {language === 'ku' || language === 'badini' ? '✎ دەسکارییەک کراوە' : '✎ Edited'}
-                                        </div>
-                                    )}
+                                        );
+                                    })}
                                 </div>
                             );
                         })()}
@@ -3882,7 +4206,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             initial={{ y: 15, opacity: 0, scale: 0.98 }}
                             animate={{ y: 0, opacity: 1, scale: 1 }}
                             exit={{ y: 15, opacity: 0, scale: 0.98 }}
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            transition={{ type: 'spring', damping: 22, stiffness: 340, mass: 0.8 }}
                             style={{ transform: 'translateZ(0)', willChange: 'transform, opacity' }}
                             className="w-full max-w-xl bg-gradient-to-b from-[#141417]/95 to-[#0b0b0c]/98 border border-white/[0.08] backdrop-blur-xl rounded-3xl p-5 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] relative shadow-red-500/5"
                             onClick={(e) => e.stopPropagation()}
@@ -3995,7 +4319,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
             {/* Iframe Embed */}
             {isIframe && iframeSrc && (
-                <div className="w-full h-full absolute inset-0 flex items-center justify-center bg-black overflow-hidden pointer-events-auto">
+                <div
+                    className="w-full h-full absolute inset-0 flex items-center justify-center bg-black overflow-hidden"
+                    aria-hidden={showEpisodesPortal}
+                    style={{ pointerEvents: showEpisodesPortal ? 'none' : 'auto' }}
+                >
                     <iframe
                         ref={iframeRef}
                         key={`${stableKey}-${playerReloadKey}`}
@@ -4009,6 +4337,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             border: 'none',
                             outline: 'none',
                             zIndex: 10,
+                            pointerEvents: showEpisodesPortal ? 'none' : 'auto',
                             filter: `brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`
                         }}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
@@ -4041,7 +4370,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                     {onClose && (
                         <button
                             onClick={onClose}
-                            className="p-2 sm:p-2.5 bg-black/70 hover:bg-red-600 border border-white/20 hover:border-red-500 text-white rounded-xl sm:rounded-2xl transition-all active:scale-90 shadow-xl shrink-0 flex items-center justify-center"
+                            className="p-2 sm:p-2.5 bg-black/70 hover:bg-red-600 border border-white/20 hover:border-red-500 text-white rounded-xl sm:rounded-2xl transition-[transform,background-color,border-color,box-shadow] duration-150 active:scale-90 shadow-xl shrink-0 flex items-center justify-center"
                             title={(language === 'ku' || language === 'badini') ? 'داخستن' : 'Close'}
                         >
                             <X size={16} className="shrink-0" />
@@ -4152,9 +4481,14 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             {/* Curved Flag Background Glow */}
                             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-48 bg-red-600/10 blur-[40px] rounded-full pointer-events-none" />
 
-                            <div className="mx-auto w-16 h-16 rounded-full bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500 text-3xl animate-bounce">
+                            <motion.div
+                                initial={{ scale: 0.5, opacity: 0, y: 12 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                transition={{ type: 'spring', damping: 12, stiffness: 260, mass: 0.8 }}
+                                className="mx-auto w-16 h-16 rounded-full bg-red-600/10 border border-red-500/20 flex items-center justify-center text-red-500 text-3xl"
+                            >
                                 <Volume2 size={32} />
-                            </div>
+                            </motion.div>
 
                             <div className="space-y-2">
                                 <h4 className="text-white font-black text-lg tracking-tight uppercase">
@@ -4179,18 +4513,31 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             </AnimatePresence>
 
             {/* Media Portal Drawer (Cinema Grade Top-Down Episodes & Seasons Overlay) */}
+            {showEpisodesPortal && (
+                <div
+                    className="absolute inset-0 z-[240]"
+                    aria-hidden="true"
+                    onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                    onClick={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                />
+            )}
             <AnimatePresence>
                 {showEpisodesPortal && (
                     <motion.div
                         initial={{ y: '-100%', opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: '-100%', opacity: 0 }}
-                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        transition={{ type: 'spring', duration: 0.42, bounce: 0.08 }}
                         dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
                         onClick={(e) => e.stopPropagation()}
                         onTouchStart={(e) => e.stopPropagation()}
-                        onTouchMove={(e) => e.stopPropagation()}
-                        className="absolute top-0 left-0 right-0 max-h-[85vh] sm:max-h-[80vh] min-h-[340px] border-b border-white/15 z-[250] flex flex-col gap-3 select-none shadow-[0_30px_90px_rgba(0,0,0,0.98)] overflow-hidden"
+                        onTouchEnd={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={(language === 'ku' || language === 'badini') ? 'لیستی وەرز و ئەڵقەکان' : 'Season and episode list'}
+                        className="absolute top-0 left-0 right-0 max-h-[85vh] sm:max-h-[80vh] min-h-[340px] border-b border-white/15 z-[250] flex flex-col gap-3 select-none shadow-[0_30px_90px_rgba(0,0,0,0.98)] overflow-hidden isolate pointer-events-auto"
                         style={{
                             fontFamily: (language === 'ku' || language === 'badini') ? "'Zain', sans-serif" : "'Inter', sans-serif",
                             background: 'radial-gradient(ellipse at 50% 0%, rgba(220, 38, 38, 0.22), transparent 75%), linear-gradient(180deg, rgba(10, 10, 15, 0.98) 0%, rgba(5, 5, 8, 0.99) 100%)',
@@ -4200,7 +4547,10 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             paddingTop: 'calc(0.75rem + env(safe-area-inset-top, 0px))',
                             paddingLeft: 'calc(1rem + env(safe-area-inset-left, 0px))',
                             paddingRight: 'calc(1rem + env(safe-area-inset-right, 0px))',
-                            paddingBottom: '1rem'
+                            paddingBottom: '1rem',
+                            touchAction: 'pan-x pan-y',
+                            overscrollBehavior: 'contain',
+                            isolation: 'isolate'
                         }}
                     >
                         {/* Header Row */}
@@ -4225,19 +4575,22 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </span>
                                 )}
                             </div>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }}
-                                onTouchEnd={(e) => { e.stopPropagation(); setShowEpisodesPortal(false); }}
-                                className="p-2 hover:bg-white/15 active:bg-white/20 rounded-full transition-all text-gray-300 hover:text-white active:scale-90 cursor-pointer"
-                                aria-label="Close Portal"
+                            <motion.button
+                                whileTap={{ scale: 0.88 }}
+                                onClick={(e) => { e.stopPropagation(); e.preventDefault(); setShowEpisodesPortal(false); }}
+                                onTouchEnd={(e) => { e.stopPropagation(); e.preventDefault(); setShowEpisodesPortal(false); }}
+                                onPointerDown={(e) => e.stopPropagation()}
+                                className="p-2.5 hover:bg-white/15 active:bg-red-600/30 rounded-full transition-all text-gray-300 hover:text-white cursor-pointer shrink-0"
+                                aria-label="Close Episodes Panel"
+                                style={{ WebkitTapHighlightColor: 'transparent' }}
                             >
-                                <X size={18} />
-                            </button>
+                                <X size={19} />
+                            </motion.button>
                         </div>
 
                         {contentType === 'tv' ? (
                             <>
-                                {/* Season Buttons Horizontal Row with Guaranteed Native Touch Pan */}
+                                {/* Season picker with touch and pointer drag support */}
                                 <div className="flex flex-col gap-1 shrink-0 relative px-1">
                                     <div className="flex items-center justify-between mb-0.5">
                                         <span className={`font-black text-white/50 uppercase tracking-wider ${(language === 'ku' || language === 'badini') ? 'text-[12px]' : 'text-[9px]'}`}>
@@ -4263,11 +4616,18 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     <div 
                                         ref={seasonsScrollRef}
                                         dir="ltr"
-                                        className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide select-none pointer-events-auto"
+                                        onPointerDown={(event) => handleHorizontalDragStart('seasons', event)}
+                                        onPointerMove={(event) => handleHorizontalDragMove('seasons', event)}
+                                        onPointerUp={(event) => handleHorizontalDragEnd('seasons', event)}
+                                        onPointerCancel={(event) => handleHorizontalDragEnd('seasons', event)}
+                                        className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide select-none cursor-grab active:cursor-grabbing pointer-events-auto"
                                         style={{
                                             WebkitOverflowScrolling: 'touch',
-                                            touchAction: 'pan-x pan-y',
-                                            overscrollBehaviorX: 'contain'
+                                            touchAction: 'pan-y',
+                                            overscrollBehaviorX: 'contain',
+                                            scrollSnapType: 'x proximity',
+                                            scrollbarWidth: 'none',
+                                            msOverflowStyle: 'none'
                                         }}
                                     >
                                         {effectiveSeasons.map((s) => {
@@ -4278,7 +4638,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     key={s.id || `season-${s.season_number}`}
                                                     data-active-season={isCurrentSeason ? 'true' : 'false'}
                                                     dir={(language === 'ku' || language === 'badini') ? 'rtl' : 'ltr'}
+                                                    style={{ scrollSnapAlign: 'start' }}
                                                     onClick={(e) => {
+                                                        if (shouldSuppressScrollerClick('seasons')) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            return;
+                                                        }
                                                         e.stopPropagation();
                                                         setActiveSeasonNum(s.season_number);
                                                         if (onSeasonChange) {
@@ -4308,7 +4674,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     </div>
                                 </div>
 
-                                {/* Episodes Horizontal Swiper Container with Native Mobile Swipe & Mouse Drag Momentum */}
+                                {/* Episode scroller with a direct touch drag and a short velocity handoff */}
                                 <div className="flex-1 flex flex-col gap-1 overflow-hidden relative px-1">
                                     <div className="flex items-center justify-between shrink-0">
                                         <div className="flex items-center gap-2">
@@ -4340,17 +4706,19 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                         <div
                                             ref={episodesScrollRef}
                                             dir="ltr"
-                                            onMouseDown={handleEpisodeDragStart}
-                                            onMouseMove={handleEpisodeDragMove}
-                                            onMouseUp={handleEpisodeDragEnd}
-                                            onMouseLeave={handleEpisodeDragEnd}
+                                            onPointerDown={(event) => handleHorizontalDragStart('episodes', event)}
+                                            onPointerMove={(event) => handleHorizontalDragMove('episodes', event)}
+                                            onPointerUp={(event) => handleHorizontalDragEnd('episodes', event)}
+                                            onPointerCancel={(event) => handleHorizontalDragEnd('episodes', event)}
                                             className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3 sm:gap-3.5 py-1.5 px-0.5 scrollbar-hide select-none cursor-grab active:cursor-grabbing pointer-events-auto"
                                             style={{
                                                 WebkitOverflowScrolling: 'touch',
-                                                touchAction: 'pan-x pan-y',
+                                                touchAction: 'pan-y',
                                                 overscrollBehaviorX: 'contain',
+                                                scrollSnapType: 'x proximity',
                                                 scrollbarWidth: 'none',
-                                                msOverflowStyle: 'none'
+                                                msOverflowStyle: 'none',
+                                                willChange: 'scroll-position'
                                             }}
                                         >
                                             {!effectiveSeasonDetails ? (
@@ -4372,41 +4740,49 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     const rawName = ep.name?.trim() || '';
                                                     const isGenericName = !rawName || /^episode\s*\d+$/i.test(rawName) || /^ئەڵقەی\s*\d+$/i.test(rawName) || rawName === `Episode ${ep.episode_number}`;
 
+                                                    const handleEpSelect = (e: React.SyntheticEvent) => {
+                                                        if (shouldSuppressScrollerClick('episodes')) {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            return;
+                                                        }
+                                                        e.stopPropagation();
+                                                        e.preventDefault();
+                                                        const targetSNum = effectiveSeasonDetails.season_number;
+                                                        setActiveSeasonNum(targetSNum);
+                                                        setActiveEpNum(ep.episode_number);
+                                                        setLocalSubtitleUrl(null);
+                                                        setSubtitleCues([]);
+                                                        setKurdishSub(null);
+                                                        setCurrentSubId(null);
+                                                        if (onEpisodeChange) {
+                                                            onEpisodeChange(targetSNum, ep.episode_number);
+                                                        }
+                                                        if (tmdbId) {
+                                                            const cleanSub = (subtitleUrl && subtitleUrl.startsWith('http') && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : undefined;
+                                                            const newSrc = getSourceUrl(
+                                                                activeSource || 'FLKRD SERVER',
+                                                                String(tmdbId),
+                                                                'tv',
+                                                                targetSNum,
+                                                                ep.episode_number,
+                                                                0,
+                                                                accentColor,
+                                                                cleanSub
+                                                            );
+                                                            setOverrideSrc(newSrc);
+                                                        }
+                                                        setShowEpisodesPortal(false);
+                                                    };
+
                                                     return (
                                                         <div
                                                             key={ep.id || `ep-${ep.episode_number}`}
                                                             data-active-episode={isActive ? 'true' : 'false'}
                                                             dir={isKurdish ? 'rtl' : 'ltr'}
-                                                            onClick={(e) => {
-                                                                if (hasDraggedEpisodesRef.current) return;
-                                                                e.stopPropagation();
-                                                                const targetSNum = effectiveSeasonDetails.season_number;
-                                                                setActiveSeasonNum(targetSNum);
-                                                                setActiveEpNum(ep.episode_number);
-                                                                setLocalSubtitleUrl(null);
-                                                                setSubtitleCues([]);
-                                                                setKurdishSub(null);
-                                                                setCurrentSubId(null);
-                                                                if (onEpisodeChange) {
-                                                                    onEpisodeChange(targetSNum, ep.episode_number);
-                                                                }
-                                                                if (tmdbId) {
-                                                                    const cleanSub = (subtitleUrl && subtitleUrl.startsWith('http') && !subtitleUrl.startsWith('blob:') && !subtitleUrl.startsWith('data:')) ? subtitleUrl : undefined;
-                                                                    const newSrc = getSourceUrl(
-                                                                        activeSource || 'FLKRD SERVER',
-                                                                        String(tmdbId),
-                                                                        'tv',
-                                                                        targetSNum,
-                                                                        ep.episode_number,
-                                                                        0,
-                                                                        accentColor,
-                                                                        cleanSub
-                                                                    );
-                                                                    setOverrideSrc(newSrc);
-                                                                }
-                                                                setShowEpisodesPortal(false);
-                                                            }}
-                                                            className={`w-52 sm:w-60 md:w-64 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu active:scale-[0.98] pointer-events-auto ${isActive
+                                                            onClick={handleEpSelect}
+                                                            style={{ WebkitTapHighlightColor: 'transparent', scrollSnapAlign: 'start' }}
+                                                            className={`w-52 sm:w-60 md:w-64 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu pointer-events-auto active:scale-[0.96] ${isActive
                                                                     ? 'bg-gradient-to-br from-red-600/25 to-rose-600/10 border-red-500 shadow-[0_0_25px_rgba(220,38,38,0.5)] ring-1 ring-red-500/60'
                                                                     : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.07] hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
                                                                 }`}
@@ -4518,15 +4894,16 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                     <div
                                         ref={episodesScrollRef}
                                         dir="ltr"
-                                        onMouseDown={handleEpisodeDragStart}
-                                        onMouseMove={handleEpisodeDragMove}
-                                        onMouseUp={handleEpisodeDragEnd}
-                                        onMouseLeave={handleEpisodeDragEnd}
+                                        onPointerDown={(event) => handleHorizontalDragStart('episodes', event)}
+                                        onPointerMove={(event) => handleHorizontalDragMove('episodes', event)}
+                                        onPointerUp={(event) => handleHorizontalDragEnd('episodes', event)}
+                                        onPointerCancel={(event) => handleHorizontalDragEnd('episodes', event)}
                                         className="h-full overflow-x-auto overflow-y-hidden flex flex-row items-stretch gap-3.5 sm:gap-4 py-1.5 px-0.5 scrollbar-hide select-none cursor-grab active:cursor-grabbing pointer-events-auto"
                                         style={{
                                             WebkitOverflowScrolling: 'touch',
-                                            touchAction: 'pan-x pan-y',
+                                            touchAction: 'pan-y',
                                             overscrollBehaviorX: 'contain',
+                                            scrollSnapType: 'x proximity',
                                             scrollbarWidth: 'none',
                                             msOverflowStyle: 'none'
                                         }}
@@ -4547,8 +4924,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     <div
                                                         key={movie.id}
                                                         dir={isKurdish ? 'rtl' : 'ltr'}
-                                                        onClick={() => {
-                                                            if (hasDraggedEpisodesRef.current) return;
+                                                        onClick={(event) => {
+                                                            if (shouldSuppressScrollerClick('episodes')) {
+                                                                event.preventDefault();
+                                                                event.stopPropagation();
+                                                                return;
+                                                            }
                                                             const recType: 'movie' | 'tv' = (movie.media_type === 'tv') ? 'tv' : 'movie';
                                                             const recId = String(movie.id);
                                                             const topSrc = activeSource || getRankedSources(false)[0]?.name || 'FLKRD SERVER';
@@ -4569,6 +4950,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                             }
                                                             setShowEpisodesPortal(false);
                                                         }}
+                                                        style={{ scrollSnapAlign: 'start' }}
                                                         className={`w-52 sm:w-60 shrink-0 flex flex-col gap-2 rounded-2xl border p-2.5 transition-all duration-200 group relative cursor-pointer overflow-hidden transform-gpu active:scale-[0.98] pointer-events-auto ${isActive
                                                                 ? 'bg-gradient-to-br from-red-600/20 to-rose-500/10 border-red-500 shadow-[0_0_20px_rgba(220,38,38,0.4)]'
                                                                 : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.07] hover:shadow-[0_8px_24px_rgba(0,0,0,0.6)]'
@@ -4921,6 +5303,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         onResetFilters={handleResetFilters}
                         subtitleOffset={subtitleOffset}
                         setSubtitleOffset={setSubtitleOffset}
+                        subtitleSpeed={subtitleSpeedScale}
+                        setSubtitleSpeed={handleSetSubtitleSpeedScale}
                         currentTime={currentTime}
                         subSearchQuery={subSearchQuery}
                         setSubSearchQuery={setSubSearchQuery}

@@ -96,6 +96,8 @@ export interface SubtitleManagerPanelProps {
   // Sync
   subtitleOffset: number;
   setSubtitleOffset: (v: number) => void;
+  subtitleSpeed?: number;
+  setSubtitleSpeed?: (v: number) => void;
   currentTime?: number;
 
   // Search & list
@@ -239,6 +241,8 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   onResetFilters,
   subtitleOffset,
   setSubtitleOffset,
+  subtitleSpeed = 1.0,
+  setSubtitleSpeed,
   currentTime = 0,
   subSearchQuery,
   setSubSearchQuery,
@@ -271,8 +275,6 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
   const dragControls = useDragControls();
   const [isMobile, setIsMobile] = React.useState(false);
   const [confirmTranslateSub, setConfirmTranslateSub] = React.useState<any | null>(null);
-  const [isAiCalibrating, setIsAiCalibrating] = React.useState(false);
-  const [aiSyncMessage, setAiSyncMessage] = React.useState<string | null>(null);
   const [layoutStyle, setLayoutStyle] = React.useState<'list' | 'grid'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('flkrd_sub_layout_style');
@@ -280,19 +282,6 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
     }
     return 'list';
   });
-
-  const handleAiAutoCalibrate = () => {
-    setIsAiCalibrating(true);
-    setAiSyncMessage(isKu ? '⚡ زیرەکی دەستکرد خەریکی شیکردنەوە و هاوتاکردنەوەی شەپۆلی دەنگە...' : '⚡ AI analyzing speech waveforms & timeline sync...');
-    setTimeout(() => {
-      // Auto-detect optimal compensation: if current offset is 0, calibrate to +2400ms Web-DL alignment
-      const calibratedOffset = subtitleOffset === 0 ? 2400 : (subtitleOffset === 2400 ? 1250 : 2400);
-      setSubtitleOffset(calibratedOffset);
-      setIsAiCalibrating(false);
-      setAiSyncMessage(isKu ? `✅ کات بە سەرکەوتوویی لەگەڵ ڤیدیۆکە هاوتا کرا (${calibratedOffset > 0 ? '+' : ''}${(calibratedOffset / 1000).toFixed(1)}s)!` : `✅ Subtitle perfectly aligned (${(calibratedOffset / 1000).toFixed(1)}s)!`);
-      setTimeout(() => setAiSyncMessage(null), 5000);
-    }, 900);
-  };
 
   const [terminalLogs, setTerminalLogs] = React.useState<string[]>([]);
 
@@ -589,14 +578,14 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       </div>
                     </div>
 
-                    {/* ⚡ Prominent Smart AI Timing & Auto-Sync Card on Subtitles Tab */}
+                    {/* Subtitle Timing Offset Card on Subtitles Tab */}
                     <div className="bg-gradient-to-br from-red-950/40 via-zinc-900/70 to-black/90 border border-red-500/25 rounded-2xl p-3.5 flex flex-col gap-2.5 shadow-[0_4px_24px_rgba(220,38,38,0.15)] relative overflow-hidden">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                           <span className="text-[11px] font-black text-white tracking-tight flex items-center gap-1.5" style={{ fontFamily: isKu ? "'Zain', sans-serif" : "inherit" }}>
                             <Sparkles size={12} className="text-red-400" />
-                            {isKu ? 'ڕێکخستنەوەی کاتی ژێرنووس (Smart AI Auto-Sync)' : 'Smart AI Timing Auto-Sync'}
+                            {isKu ? 'ڕێکخستنی کاتی ژێرنووس' : 'Subtitle Sync Timing'}
                           </span>
                         </div>
                         <span 
@@ -613,30 +602,73 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                         </span>
                       </div>
 
-                      {/* Range slider & - / + buttons (LTR protected to keep +/- on right sides) */}
-                      <div dir="ltr" className="flex items-center gap-1.5 pt-0.5" role="group" aria-label="Subtitle offset controls">
+                      {/* Quick Offset Buttons: [-1.0s], [-0.25s], [Reset 0s], [+0.25s], [+1.0s] */}
+                      <div dir="ltr" className="grid grid-cols-5 gap-1 pt-0.5" role="group" aria-label="Quick subtitle offset presets">
                         <motion.button
                           type="button"
                           onClick={() => setSubtitleOffset(subtitleOffset - 1000)}
-                          whileTap={{ scale: 0.88 }}
-                          className="px-1.5 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
-                          title="Delay 1s (-1000ms) [Shift + []"
-                          aria-label="Delay 1 second"
+                          whileTap={{ scale: 0.9 }}
+                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
+                          title="Delay 1.0s (-1000ms)"
                         >
-                          -1s
+                          -1.0s
                         </motion.button>
                         <motion.button
                           type="button"
-                          onClick={() => setSubtitleOffset(subtitleOffset - 100)}
-                          whileTap={{ scale: 0.88 }}
-                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
-                          title="Delay 100ms (-0.1s) [Key []"
-                          aria-label="Delay 100 milliseconds"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 250)}
+                          whileTap={{ scale: 0.9 }}
+                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
+                          title="Delay 0.25s (-250ms)"
                         >
-                          -0.1s
+                          -0.25s
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(0)}
+                          whileTap={{ scale: 0.9 }}
+                          className={`py-1.5 px-1 rounded-lg border text-center transition-all text-[10px] font-mono font-black ${
+                            subtitleOffset === 0
+                              ? 'bg-red-600/30 border-red-500/50 text-white'
+                              : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400'
+                          }`}
+                          title="Reset to 0s"
+                        >
+                          {isKu ? 'سفر' : 'Reset'}
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 250)}
+                          whileTap={{ scale: 0.9 }}
+                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
+                          title="Advance 0.25s (+250ms)"
+                        >
+                          +0.25s
+                        </motion.button>
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset + 1000)}
+                          whileTap={{ scale: 0.9 }}
+                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
+                          title="Advance 1.0s (+1000ms)"
+                        >
+                          +1.0s
+                        </motion.button>
+                      </div>
+
+                      {/* Manual micro-slider with ±50ms precision */}
+                      <div dir="ltr" className="flex items-center gap-1.5 pt-1" role="group" aria-label="Subtitle micro offset slider">
+                        <motion.button
+                          type="button"
+                          onClick={() => setSubtitleOffset(subtitleOffset - 50)}
+                          whileTap={{ scale: 0.88 }}
+                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[9px] font-mono font-bold"
+                          title="Nudge -50ms"
+                          aria-label="Delay 50 milliseconds"
+                        >
+                          -50ms
                         </motion.button>
                         <input
-                          type="range" min={-30000} max={30000} step={100}
+                          type="range" min={-30000} max={30000} step={50}
                           value={subtitleOffset}
                           onChange={e => setSubtitleOffset(Number(e.target.value))}
                           className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-white/10 accent-red-500"
@@ -647,59 +679,70 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                         />
                         <motion.button
                           type="button"
-                          onClick={() => setSubtitleOffset(subtitleOffset + 100)}
+                          onClick={() => setSubtitleOffset(subtitleOffset + 50)}
                           whileTap={{ scale: 0.88 }}
-                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
-                          title="Advance 100ms (+0.1s) [Key ]]"
-                          aria-label="Advance 100 milliseconds"
+                          className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[9px] font-mono font-bold"
+                          title="Nudge +50ms"
+                          aria-label="Advance 50 milliseconds"
                         >
-                          +0.1s
-                        </motion.button>
-                        <motion.button
-                          type="button"
-                          onClick={() => setSubtitleOffset(subtitleOffset + 1000)}
-                          whileTap={{ scale: 0.88 }}
-                          className="px-1.5 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 active:scale-95 transition-all text-[10px] font-mono font-bold"
-                          title="Advance 1s (+1000ms) [Shift + ]]"
-                          aria-label="Advance 1 second"
-                        >
-                          +1s
+                          +50ms
                         </motion.button>
                       </div>
 
-                      {/* AI One-Tap Smart Auto-Align Button */}
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={handleAiAutoCalibrate}
-                        disabled={isAiCalibrating}
-                        className={`w-full py-2 px-3 rounded-xl border flex items-center justify-center gap-2 text-[10px] font-black transition-all shadow-md ${
-                          isAiCalibrating
-                            ? 'bg-red-600/30 border-red-500/50 text-red-300 animate-pulse cursor-wait'
-                            : 'bg-gradient-to-r from-red-600 via-red-500 to-amber-600 border-red-400/40 text-white hover:brightness-110'
-                        }`}
-                      >
-                        {isAiCalibrating ? (
-                          <Activity size={13} className="animate-spin text-red-300" />
-                        ) : (
-                          <Sparkles size={13} className="text-amber-200 animate-bounce" />
-                        )}
-                        <span>
-                          {isAiCalibrating 
-                            ? (isKu ? 'شیکردنەوەی شەپۆلی دەنگ بە AI...' : 'AI Analyzing Audio Waveforms...') 
-                            : (isKu ? '⚡ ڕێکخستنەوەی خودکاری کات بە AI (AI Smart Auto-Sync)' : '⚡ AI Smart Auto-Align Timing')}
-                        </span>
-                      </motion.button>
-
-                      {aiSyncMessage && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="px-2.5 py-1.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-300 text-[9px] font-bold text-center"
-                        >
-                          {aiSyncMessage}
-                        </motion.div>
+                      {/* Framerate / Linear Drift Speed Selector */}
+                      {setSubtitleSpeed && (
+                        <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-zinc-300 flex items-center gap-1">
+                              <Activity size={11} className="text-blue-400" />
+                              {isKu ? 'ڕێکخستنی خێرایی فرەیم (نەهێشتنی کشان)' : 'Framerate / Drift Speed'}
+                            </span>
+                            <span className="text-[9px] font-mono text-zinc-400">
+                              {subtitleSpeed === 1.0 ? '1.0x' : `${subtitleSpeed > 1 ? '+' : ''}${((subtitleSpeed - 1) * 100).toFixed(1)}%`}
+                            </span>
+                          </div>
+                          <div dir="ltr" className="grid grid-cols-3 gap-1">
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => setSubtitleSpeed(1.0)}
+                              className={`py-1.5 px-1 rounded-lg border text-center transition-all ${
+                                Math.abs(subtitleSpeed - 1.0) < 0.005
+                                  ? 'bg-red-600/30 border-red-500 text-white font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400'
+                              }`}
+                            >
+                              <div className="text-[9px] font-mono font-bold">1.0x</div>
+                              <div className="text-[7px] text-zinc-400 truncate">{isKu ? 'ئاسایی' : 'Normal'}</div>
+                            </motion.button>
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => setSubtitleSpeed(0.95904)}
+                              className={`py-1.5 px-1 rounded-lg border text-center transition-all ${
+                                Math.abs(subtitleSpeed - 0.95904) < 0.005
+                                  ? 'bg-amber-600/30 border-amber-500 text-white font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400'
+                              }`}
+                            >
+                              <div className="text-[9px] font-mono font-bold">-4.1%</div>
+                              <div className="text-[7px] text-zinc-400 truncate">25 → 23.976</div>
+                            </motion.button>
+                            <motion.button
+                              type="button"
+                              whileTap={{ scale: 0.94 }}
+                              onClick={() => setSubtitleSpeed(1.04272)}
+                              className={`py-1.5 px-1 rounded-lg border text-center transition-all ${
+                                Math.abs(subtitleSpeed - 1.04272) < 0.005
+                                  ? 'bg-blue-600/30 border-blue-500 text-white font-bold shadow-md'
+                                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-400'
+                              }`}
+                            >
+                              <div className="text-[9px] font-mono font-bold">+4.3%</div>
+                              <div className="text-[7px] text-zinc-400 truncate">23.976 → 25</div>
+                            </motion.button>
+                          </div>
+                        </div>
                       )}
 
                       {/* Smart 1-Tap Calibrated Presets */}
@@ -1526,15 +1569,15 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                       </div>
                     </div>
 
-                    {/* Smart Auto-Sync & Calibration Engine */}
-                    <div className="bg-gradient-to-br from-red-950/30 via-zinc-900/60 to-black/80 border border-red-500/20 rounded-2xl p-4 flex flex-col gap-3 mt-2 shadow-[0_4px_20px_rgba(220,38,38,0.1)]">
+                    {/* Timing Calibration Presets */}
+                    <div className="bg-gradient-to-br from-zinc-900/60 via-zinc-900/40 to-black/80 border border-white/10 rounded-2xl p-4 flex flex-col gap-3 mt-2 shadow-[0_4px_20px_rgba(0,0,0,0.2)]">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                          <Label>{isKu ? 'ڕێکخستنەوەی زیرەکی کات (Smart AI Calibration)' : 'Smart AI Sync & Calibration'}</Label>
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                          <Label>{isKu ? 'ڕێکخستنەوەی کات بە پێشوەختە' : 'Timing Calibration Presets'}</Label>
                         </div>
-                        <span className="text-[8px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
-                          Auto-Engine
+                        <span className="text-[8px] font-bold text-zinc-400 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                          Presets
                         </span>
                       </div>
 

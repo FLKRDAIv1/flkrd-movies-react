@@ -146,7 +146,70 @@ export function cleanPersianToKurdish(text: string): string {
   for (const [pattern, replacement] of replacements) {
     cleaned = cleaned.replace(pattern, replacement);
   }
+
+  // Normalize Kurdish character variants & punctuation
+  cleaned = cleaned
+    .replace(/\u0643/g, 'ک') // Arabic kaf -> Kurdish kaf
+    .replace(/\u064A/g, 'ی') // Arabic yeh -> Kurdish yeh
+    .replace(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF])\s*\?/g, '$1 ؟') // Latin ? after Kurdish/Arabic -> Kurdish ؟
+    .replace(/\u200C+/g, '\u200C'); // Deduplicate zero-width non-joiners
+
   return cleaned;
+}
+
+export interface TagMaskResult {
+  maskedText: string;
+  tagMap: Map<string, string>;
+}
+
+/**
+ * Masks HTML formatting tags (<i>, <b>, <u>) and SSA tags ({\an8}, {\pos})
+ * so translation engines do not mangle or erase them.
+ */
+export function maskTags(text: string): TagMaskResult {
+  const tagMap = new Map<string, string>();
+  let counter = 0;
+  const maskedText = (text || '').replace(/(\{[^}]+\}|<\/?[a-zA-Z][^>]*>)/g, (match) => {
+    const token = `⟦T${counter++}⟧`;
+    tagMap.set(token, match);
+    return token;
+  });
+  return { maskedText, tagMap };
+}
+
+/**
+ * Restores masked HTML/SSA tags back to their original positions.
+ */
+export function unmaskTags(text: string, tagMap: Map<string, string>): string {
+  if (!text || !tagMap || tagMap.size === 0) return text || '';
+  let restored = text;
+  for (const [token, originalTag] of tagMap.entries()) {
+    const num = token.replace(/[^\d]/g, '');
+    const pattern = new RegExp(`⟦\\s*T\\s*${num}\\s*⟧|\\[\\[\\s*T\\s*${num}\\s*\\]\\]`, 'gi');
+    restored = restored.replace(pattern, originalTag);
+  }
+  return restored;
+}
+
+/**
+ * Sanitizes cue text: preserves valid VTT/SSA styling tags (<i>, <b>, <u>, {\an8})
+ * while stripping harmful script tags and unsupported <font> tags.
+ */
+export function sanitizeCueText(text: string, targetLang?: string): string {
+  if (!text) return '';
+  const stripped = text
+    .replace(/<font[^>]*>/gi, '')
+    .replace(/<\/font>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .trim();
+
+  const isKurdishTarget = targetLang ? ['ckb', 'ku', 'badini', 'sorani'].includes(targetLang) : false;
+  return isKurdishTarget ? cleanPersianToKurdish(stripped) : stripped;
 }
 
 export function stripAllHtmlTags(text: string, targetLang?: string): string {
@@ -194,7 +257,8 @@ export function parseSubtitleToCues(text: string, targetLang?: string): Subtitle
     const filteredLines = textLines.filter(
       line => !/^\s*\d+\s*$/.test(line) && !line.includes('-->') && line.trim() !== ''
     );
-    const textContent = stripAllHtmlTags(filteredLines.join('\n').trim(), targetLang);
+    // Sanitize cue text while preserving styling tags like <i>, <b>, <u>, {\an8}
+    const textContent = sanitizeCueText(filteredLines.join('\n').trim(), targetLang);
     if (textContent && textContent.trim()) {
       cues.push({ index, timestamp, text: textContent });
     }
@@ -233,6 +297,10 @@ async function translateWithGoogleAppsScript(chunkItems: string[], src: string, 
   const effectiveTgt = (tgt === 'ku' || tgt === 'ckb' || tgt === 'sorani') ? 'ckb' : (tgt === 'badini' ? 'ku' : tgt);
   const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(tgt);
 
+  // Mask HTML & SSA tags for safe preservation during translation
+  const maskedItems = chunkItems.map(item => maskTags(item));
+  const textPayload = maskedItems.map(m => m.maskedText);
+
   for (const gasUrl of gasEndpoints) {
     try {
       const controller = new AbortController();
@@ -242,8 +310,8 @@ async function translateWithGoogleAppsScript(chunkItems: string[], src: string, 
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
-          texts: chunkItems,
-          text: chunkItems,
+          texts: textPayload,
+          text: textPayload,
           source: effectiveSrc,
           target: effectiveTgt
         }),
@@ -254,10 +322,15 @@ async function translateWithGoogleAppsScript(chunkItems: string[], src: string, 
       if (res.ok) {
         const data = await res.json();
         const rawTranslations = data?.translations || data?.translation || (Array.isArray(data) ? data : null);
-        if (Array.isArray(rawTranslations) && rawTranslations.length === chunkItems.length) {
-          return rawTranslations.map((item: string, idx: number) => {
-            const cleaned = (item || '').trim();
-            return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
+        if (Array.isArray(rawTranslations)) {
+          // Strict per-cue index correlation: cue[N] is always assigned back to cue[N]
+          return chunkItems.map((orig, idx) => {
+            const rawItem = rawTranslations[idx];
+            if (rawItem && typeof rawItem === 'string' && rawItem.trim()) {
+              const unmasked = unmaskTags(rawItem.trim(), maskedItems[idx].tagMap);
+              return (isKurdishTarget ? cleanPersianToKurdish(unmasked) : unmasked) || orig;
+            }
+            return orig;
           });
         }
       }
@@ -269,7 +342,7 @@ async function translateWithGoogleAppsScript(chunkItems: string[], src: string, 
 }
 
 /**
- * Direct client-side Google GTX GET array translator (ultra-fast, direct browser-to-engine with zero CORS lag)
+ * Direct client-side Google GTX GET array translator with guaranteed 1-to-1 indexed cue mapping
  */
 async function translateArrayDirectClient(chunkItems: string[], src: string, tgt: string): Promise<string[] | null> {
   if (!chunkItems || chunkItems.length === 0) return null;
@@ -277,54 +350,30 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
   const effectiveTgt = (tgt === 'badini' || tgt === 'kmr') ? 'ku' : (tgt === 'ckb' || tgt === 'sorani' || tgt === 'ku') ? 'ckb' : tgt;
   const isKurdishTarget = ['ckb', 'ku', 'badini', 'sorani'].includes(tgt);
 
-  // 1. Try Delimiter-Based single-string fetch (Translates all cues in a chunk in ONE ultra-fast 120ms request)
-  try {
-    const delimiter = '\n\n:::FLKRD_CUE:::\n\n';
-    const joined = chunkItems.map(t => (t || '').replace(/\r\n/g, ' ').replace(/\n/g, ' ')).join(delimiter);
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(joined)}`;
-    
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4000);
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data[0] && Array.isArray(data[0])) {
-        const transStr = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('');
-        if (transStr) {
-          const splitRes = transStr.split(/[\r\n]*\s*:{1,4}\s*flkrd_cue\s*:{1,4}\s*[\r\n]*/i);
-          if (splitRes.length === chunkItems.length) {
-            return splitRes.map((item, idx) => {
-              const cleaned = item.trim();
-              return (isKurdishTarget ? cleanPersianToKurdish(cleaned) : cleaned) || chunkItems[idx];
-            });
-          }
-        }
-      }
-    }
-  } catch (e) {}
-
-  // 2. Fallback to individual items in small concurrent batches
   try {
     const BATCH_SIZE = 5;
-    const results: string[] = [];
+    const results: string[] = new Array(chunkItems.length);
 
     for (let i = 0; i < chunkItems.length; i += BATCH_SIZE) {
       const batch = chunkItems.slice(i, i + BATCH_SIZE);
-      const batchPromises = batch.map(async (item) => {
+      const batchPromises = batch.map(async (item, relIdx) => {
+        const absIdx = i + relIdx;
         if (!item || !item.trim()) return item || '';
         try {
-          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(item)}`;
+          const { maskedText, tagMap } = maskTags(item);
+          const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(effectiveSrc)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(maskedText)}`;
           const ctrl = new AbortController();
-          const t = setTimeout(() => ctrl.abort(), 3000);
+          const t = setTimeout(() => ctrl.abort(), 3500);
           const res = await fetch(url, { signal: ctrl.signal });
           clearTimeout(t);
           if (res.ok) {
             const data = await res.json();
             if (data && data[0] && Array.isArray(data[0])) {
               const trans = data[0].map((x: any) => (Array.isArray(x) ? (x[0] || '') : '')).join('').trim();
-              if (trans) return isKurdishTarget ? cleanPersianToKurdish(trans) : trans;
+              if (trans) {
+                const unmasked = unmaskTags(trans, tagMap);
+                return (isKurdishTarget ? cleanPersianToKurdish(unmasked) : unmasked) || item;
+              }
             }
           }
         } catch (e) {}
@@ -332,13 +381,15 @@ async function translateArrayDirectClient(chunkItems: string[], src: string, tgt
       });
 
       const translatedBatch = await Promise.all(batchPromises);
-      results.push(...translatedBatch);
+      for (let j = 0; j < translatedBatch.length; j++) {
+        results[i + j] = translatedBatch[j] || chunkItems[i + j];
+      }
     }
 
-    if (results.length === chunkItems.length) {
-      return results;
-    }
-  } catch (e) {}
+    return results;
+  } catch (e) {
+    return null;
+  }
   return null;
 }
 
@@ -463,7 +514,8 @@ async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: stri
   if (chunk.length === 1) {
     const singleText = chunk[0].text;
     try {
-      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(singleText)}`;
+      const { maskedText, tagMap } = maskTags(singleText);
+      const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceLang)}&tl=${encodeURIComponent(effectiveTgt)}&dt=t&q=${encodeURIComponent(maskedText)}`;
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 2500);
       const res = await fetch(gtxUrl, { signal: ctrl.signal });
@@ -472,7 +524,10 @@ async function translateChunkWithFallback(chunk: SubtitleCue[], sourceLang: stri
         const data = await res.json();
         if (data && data[0]) {
           const trans = data[0].map((x: any) => x[0]).join('');
-          if (trans && trans.trim()) return [trans];
+          if (trans && trans.trim()) {
+            const unmasked = unmaskTags(trans, tagMap);
+            return [unmasked];
+          }
         }
       }
     } catch (gErr) {}
@@ -587,9 +642,6 @@ function normalizeTimecode(tc: string, delimiter: '.' | ','): string {
 export function compileToVTT(cues: SubtitleCue[]): string {
   let vtt = 'WEBVTT\n\n';
 
-  vtt += `00:00:01.000 --> 00:00:04.000\nژێرنووسکراوە لەلایەن زانا فارۆقەوە\n\n`;
-  vtt += `00:00:04.500 --> 00:00:07.500\nPowered by FLKRD STUDIO\n\n`;
-
   cues.forEach((cue) => {
     let timestamp = cue.timestamp;
     const parts = timestamp.split('-->');
@@ -608,12 +660,6 @@ export function compileToVTT(cues: SubtitleCue[]): string {
 export function compileToSRT(cues: SubtitleCue[]): string {
   let srt = '';
   let index = 1;
-
-  // Custom intro credit Cue 1 (Zana Farooq translation watermark)
-  srt += `${index++}\n00:00:01,500 --> 00:00:05,500\nئەم بەرهەمە ژێرنووسکرایە لەلایەن زانا فارۆقەوە\n\n`;
-
-  // Custom intro credit Cue 2 (2 seconds later: FLKRD STUDIO watermark)
-  srt += `${index++}\n00:00:06,000 --> 00:00:10,000\n⚡ POWERED BY FLKRD STUDIO ⚡\n\n`;
 
   cues.forEach((cue) => {
     let timestamp = cue.timestamp;
@@ -702,7 +748,10 @@ export async function translateAndSavePipeline(
     if (signal?.aborted) throw new DOMException('Translation cancelled by user', 'AbortError');
     if (onProgress) onProgress(5, "Parsing dialogue cues...");
     
-    const cues = parseSubtitleToCues(text, apiTargetLang);
+    // Preserve the source dialogue exactly as supplied. Applying Kurdish cleanup here
+    // corrupts Persian source cues before the translation engine can interpret them.
+    // Kurdish cleanup happens only after a translated line has been returned.
+    const cues = parseSubtitleToCues(text);
     if (cues.length === 0) throw new Error("No subtitle cues found.");
 
     const targetName =
@@ -721,23 +770,7 @@ export async function translateAndSavePipeline(
         const mapped = Math.round(7 + p * 0.78);
         let partialUrl: string | undefined;
 
-        // Generate live base64 subtitle track every 15% progress so player can render subtitles live while translating
-        if (partialCues && (p - lastEmittedPct >= 15 || p >= 98)) {
-          lastEmittedPct = p;
-          try {
-            const partialSrt = compileToSRT(partialCues);
-            const bytes = new TextEncoder().encode(partialSrt);
-            const binString = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
-            partialUrl = `data:text/plain;base64,${btoa(binString)}`;
-          } catch (e) {
-            try {
-              const base64Srt = btoa(unescape(encodeURIComponent(compileToSRT(partialCues))));
-              partialUrl = `data:text/plain;base64,${base64Srt}`;
-            } catch (e2) {}
-          }
-        }
-
-        if (onProgress) onProgress(mapped, status, partialUrl);
+        if (onProgress) onProgress(mapped, status);
       },
       signal,
       pauseState
