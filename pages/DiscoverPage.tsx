@@ -202,9 +202,9 @@ const DiscoverPage: React.FC = () => {
         try {
           const { data, error } = await supabase
             .from('dubbed_movies')
-            .select('id, title, description, imageBase64, videoUrl, created_at, level')
+            .select('id, title, description, imageBase64, poster_path, videoUrl, created_at, level')
             .order('created_at', { ascending: false })
-            .limit(60);
+            .range(0, 499);
 
           if (!error && data && data.length > 0) {
             rawItems = data;

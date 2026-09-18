@@ -362,9 +362,9 @@ export const AdminPanelModal: React.FC = () => {
         try {
             const { data, error } = await supabase
                 .from('dubbed_movies')
-                .select('id, title, description, level, videoUrl, created_at, imdb_id, tmdb_id, imageBase64')
+                .select('id, title, description, level, videoUrl, created_at, imdb_id, tmdb_id, imageBase64, poster_path')
                 .order('created_at', { ascending: false })
-                .limit(100);
+                .range(0, 999);
             if (error) throw error;
             setArchiveContent(data || []);
         } catch (e) {

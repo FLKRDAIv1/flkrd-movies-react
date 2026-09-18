@@ -79,24 +79,29 @@ const DubbedMoviesPage: React.FC = () => {
     try {
       let rawItems: any[] = [];
 
-      // 1. Fetch from Supabase
+      // 1. Instant Cache Hydration from IndexedDB (0ms initial render)
+      try {
+        const cached = await db.getMovies();
+        if (cached && cached.length > 0 && rawItems.length === 0) {
+          rawItems = cached;
+        }
+      } catch (cacheErr) {}
+
+      // 2. Fetch ALL Dubbed Movies from Supabase (up to 1,000 items, bandwidth-optimized)
       try {
         const { data, error } = await supabase
           .from('dubbed_movies')
-          .select('id, title, kurdishTitle, description, kurdishOverview, imageBase64, bannerBase64, videoUrl, customStream, level, created_at')
+          .select('id, title, kurdishTitle, description, kurdishOverview, imageBase64, poster_path, videoUrl, customStream, level, created_at')
           .order('created_at', { ascending: false })
-          .limit(100);
+          .range(0, 999);
 
         if (!error && data && data.length > 0) {
           rawItems = data;
+          // Asynchronously persist to IndexedDB for instant offline/repeat loads
+          db.saveMovies(data).catch(() => {});
         }
       } catch (dbErr) {
-        // Silent fallback
-      }
-
-      // 2. Fallback to Local Database
-      if (rawItems.length === 0) {
-        rawItems = await db.getMovies();
+        console.warn('[DUBBED] Supabase fetch fallback:', dbErr);
       }
 
       // 3. Filter Banned Content & Format Items
