@@ -63,16 +63,44 @@ body.light-mode,
   backface-visibility: hidden;
 }
 
-/* Mobile & Touch Device Ultra-Smooth Performance Rules */
+/* Mobile & Touch Device Performance Rules */
 @media (hover: none) and (pointer: coarse) {
-  [class*="backdrop-blur"] {
+  .shadow-2xl, .shadow-xl {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  }
+}
+
+/* Reduced transparency accessibility override (preserves legibility on requested reduced-transparency) */
+@media (prefers-reduced-transparency: reduce) {
+  [class*="backdrop-blur"], .apple-glass, .apple-chrome, .apple-dialog, .apple-card {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
+    background-color: rgba(12, 12, 16, 0.98) !important;
   }
+  html.light-mode [class*="backdrop-blur"], 
+  html.light-mode .apple-glass, 
+  html.light-mode .apple-chrome, 
+  html.light-mode .apple-dialog, 
+  html.light-mode .apple-card {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+  }
+}
 
-  .shadow-2xl, .shadow-xl {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+/* Prevent iOS mobile Safari automatic viewport zooming on input focus */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
   }
+}
+
+/* Dynamic Viewport Units for mobile browsers with auto-hiding URL bars */
+.min-h-screen-dvh {
+  min-height: 100dvh;
+}
+.h-screen-dvh {
+  height: 100dvh;
 }
 
 /* Fast button touch response without 300ms tap delay on iOS/Android */

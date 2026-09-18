@@ -261,7 +261,7 @@ const MovieCard = memo(
                 loading="lazy"
                 decoding="async"
                 onLoad={() => setIsImgLoaded(true)}
-                className={`object-cover w-full h-full transition-transform duration-500 group-hover/card:scale-105 ${
+                className={`object-cover w-full h-full transition-[transform,opacity] duration-300 ease-out group-hover/card:scale-105 ${
                   isImgLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 onError={(e) => {

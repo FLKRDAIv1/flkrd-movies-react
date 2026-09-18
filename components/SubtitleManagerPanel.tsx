@@ -376,10 +376,10 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
           {/* Panel */}
           <motion.div
             ref={panelRef}
-            initial={{ y: isMobile ? '100%' : 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: isMobile ? '100%' : 20, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ y: isMobile ? '100%' : 16, scale: isMobile ? 1 : 0.96, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: isMobile ? '100%' : 12, scale: isMobile ? 1 : 0.96, opacity: 0, transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             drag={isMobile ? "y" : false}
             dragControls={dragControls}
             dragListener={false}

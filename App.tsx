@@ -1239,6 +1239,8 @@ const App: React.FC = () => {
                     position="top-center"
                     richColors
                     closeButton
+                    offset={20}
+                    mobileOffset={{ top: '80px' }}
                     theme={theme === 'light' ? 'light' : 'dark'}
                     toastOptions={{
                         style: {
