@@ -30,11 +30,14 @@ export default async function handler(req: Request): Promise<Response> {
     // Extract target sub-path after /api/flkrd-core
     let subPath = reqUrl.pathname.replace(/^\/api\/flkrd-core/, '');
     
-    // Check if path is passed via rewrite query
+    // Check if path is passed via rewrite query or x-matched-path header
+    const matchedPath = req.headers.get('x-matched-path') || '';
     const searchParams = new URLSearchParams(reqUrl.search);
     if ((!subPath || subPath === '/' || subPath === '') && searchParams.has('path')) {
       subPath = searchParams.get('path') || '';
       searchParams.delete('path');
+    } else if ((!subPath || subPath === '/' || subPath === '') && matchedPath) {
+      subPath = matchedPath.replace(/^\/api\/flkrd-core/, '');
     }
 
     if (!subPath.startsWith('/')) {
@@ -107,12 +110,14 @@ export default async function handler(req: Request): Promise<Response> {
       headers: responseHeaders,
     });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: 'Internal Security Gateway Error' }), {
+    return new Response(JSON.stringify({ error: 'Internal Security Gateway Error', details: error?.message }), {
       status: 502,
       headers: {
         'Content-Type': 'application/json',
         'Server': 'FLKRD-Shield',
-        'Access-Control-Allow-Origin': '*'
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, apikey, Prefer, Range, x-client-info, X-Requested-With',
       }
     });
   }

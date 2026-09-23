@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, X, MessageSquare, RefreshCcw, 
   Sparkles, ChevronRight, Tv, Check,
-  Globe, Maximize, Minimize
+  Globe, Maximize, Minimize, Clock
 } from 'lucide-react';
 import { EnhancedPlayerSource, getSourceDisplayName } from '../utils/playerSourceUtils';
 
@@ -18,6 +18,8 @@ interface PlayerActionHubProps {
   hasEpisodes?: boolean;
   activeSubtitleLabel?: string;
   subtitleCount?: number;
+  subtitleOffset?: number;
+  setSubtitleOffset?: (val: number | ((prev: number) => number)) => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   onClose?: () => void;
@@ -33,6 +35,8 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
   hasEpisodes = false,
   activeSubtitleLabel,
   subtitleCount = 0,
+  subtitleOffset = 0,
+  setSubtitleOffset,
   isFullscreen = false,
   onToggleFullscreen,
   onClose,
@@ -228,6 +232,69 @@ export const PlayerActionHub: React.FC<PlayerActionHubProps> = ({
                       </span>
                     )}
                   </button>
+                )}
+
+                {/* Direct Live Subtitle Timing Sync Widget */}
+                {setSubtitleOffset && (activeSubtitleLabel || subtitleCount > 0) && (
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-950/30 via-neutral-900/60 to-black/80 border border-red-500/20 flex flex-col gap-2 shadow-inner">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="font-black text-neutral-200 flex items-center gap-1.5">
+                        <Clock size={12} className="text-red-400 animate-pulse" />
+                        هاوکاتکردنی دەنگ و ژێرنووس
+                      </span>
+                      <span dir="ltr" className={`font-mono font-black text-[10px] px-2 py-0.5 rounded-full border ${
+                        subtitleOffset === 0 
+                          ? 'text-neutral-400 bg-white/5 border-white/10' 
+                          : subtitleOffset > 0 
+                          ? 'text-red-400 bg-red-500/10 border-red-500/30' 
+                          : 'text-blue-400 bg-blue-500/10 border-blue-500/30'
+                      }`}>
+                        {subtitleOffset > 0 ? '+' : ''}{(subtitleOffset / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+
+                    {/* Sync Buttons */}
+                    <div className="grid grid-cols-4 gap-1 text-[9px] font-bold" dir="ltr">
+                      <button 
+                        type="button"
+                        onClick={() => setSubtitleOffset(prev => prev - 500)}
+                        className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 border border-white/5 text-center active:scale-95 transition-all"
+                        title="پێشخستنی ژێرنووس (-0.5s)"
+                      >
+                        -0.5s پێش
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setSubtitleOffset(0)}
+                        className={`py-1.5 px-1 rounded-lg border text-center active:scale-95 transition-all ${
+                          subtitleOffset === 0 ? 'bg-white/15 border-white/20 text-white font-black' : 'bg-white/5 border-white/5 text-neutral-400'
+                        }`}
+                        title="سفرکردنەوە (0s)"
+                      >
+                        سفر
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setSubtitleOffset(prev => prev + 500)}
+                        className="py-1.5 px-1 rounded-lg bg-red-600/25 hover:bg-red-600/35 text-red-300 border border-red-500/30 text-center active:scale-95 transition-all font-black"
+                        title="دواخستنی ژێرنووس (+0.5s)"
+                      >
+                        +0.5s دوا
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setSubtitleOffset(prev => prev + 1000)}
+                        className="py-1.5 px-1 rounded-lg bg-red-600/25 hover:bg-red-600/35 text-red-300 border border-red-500/30 text-center active:scale-95 transition-all font-black"
+                        title="دواخستنی ژێرنووس (+1.0s)"
+                      >
+                        +1.0s دوا
+                      </button>
+                    </div>
+
+                    <div className="text-[8.5px] text-neutral-400 leading-snug text-right bg-black/40 p-1.5 rounded-lg border border-white/5">
+                      💡 ئەگەر ژێرنووس <span className="text-red-400 font-bold">پێش دەنگ</span> دەکەوێت: دوگمەی <span className="text-red-400 font-bold">+0.5s</span> یان <span className="text-red-400 font-bold">+1.0s</span> لێبدە بۆ دواخستنی.
+                    </div>
+                  </div>
                 )}
 
                 {/* 2. Relink / Server Switcher Button */}

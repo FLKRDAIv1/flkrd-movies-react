@@ -237,7 +237,10 @@ export const getSourceUrl = (
     }
 
     case 'FLKRD SERVER 3': { // 4. VidKing 4K
-      const vkParams = `&color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1${cleanSubUrl ? `&sub_file=${encodeURIComponent(cleanSubUrl)}&sub_label=Kurdish${subParam}` : ''}`;
+      // NOTE: vkParams must NOT have a leading & — the ? separator is added by the URL template
+      const vkColor = `color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1`;
+      const vkSubExtra = cleanSubUrl ? `&sub_file=${encodeURIComponent(cleanSubUrl)}&sub_label=Kurdish${subParam}` : '';
+      const vkParams = `${vkColor}${vkSubExtra}`;
       return isTv
         ? `https://www.vidking.net/embed/tv/${id}/${s}/${e}?${vkParams}&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
         : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
@@ -269,7 +272,7 @@ export const getSourceUrl = (
 
     case 'FLKRD SERVER 7': { // 8. 2Embed Ultra 4K (Brand New Universal Stream Engine)
       return isTv
-        ? `https://www.2embed.cc/embedtv/${id}&s=${s}&e=${e}`
+        ? `https://www.2embed.cc/embedtv/${id}?s=${s}&e=${e}`
         : `https://www.2embed.cc/embed/${id}`;
     }
 

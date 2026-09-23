@@ -602,6 +602,19 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                         </span>
                       </div>
 
+                      {/* Quick Sync Direction Headers */}
+                      <div className="flex items-center justify-between text-[8.5px] font-bold text-zinc-400 px-1">
+                        <span className="text-blue-400 flex items-center gap-0.5">
+                          {isKu ? '◂ پێشخستن (-)' : '◂ Advance (-)'}
+                        </span>
+                        <span className="text-zinc-500">
+                          {isKu ? 'سفرکردنەوە' : 'Reset'}
+                        </span>
+                        <span className="text-red-400 flex items-center gap-0.5">
+                          {isKu ? 'دواخستن (+) ▸' : 'Delay (+) ▸'}
+                        </span>
+                      </div>
+
                       {/* Quick Offset Buttons: [-1.0s], [-0.25s], [Reset 0s], [+0.25s], [+1.0s] */}
                       <div dir="ltr" className="grid grid-cols-5 gap-1 pt-0.5" role="group" aria-label="Quick subtitle offset presets">
                         <motion.button
@@ -609,7 +622,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           onClick={() => setSubtitleOffset(subtitleOffset - 1000)}
                           whileTap={{ scale: 0.9 }}
                           className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
-                          title="Delay 1.0s (-1000ms)"
+                          title={isKu ? "پێشخستنی ژێرنووس بە 1.0 چرکە (ئەگەر ژێرنووس دوای دەنگ کەوت)" : "Advance 1.0s (-1000ms)"}
                         >
                           -1.0s
                         </motion.button>
@@ -618,7 +631,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           onClick={() => setSubtitleOffset(subtitleOffset - 250)}
                           whileTap={{ scale: 0.9 }}
                           className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
-                          title="Delay 0.25s (-250ms)"
+                          title={isKu ? "پێشخستنی ژێرنووس بە 0.25 چرکە" : "Advance 0.25s (-250ms)"}
                         >
                           -0.25s
                         </motion.button>
@@ -639,8 +652,8 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           type="button"
                           onClick={() => setSubtitleOffset(subtitleOffset + 250)}
                           whileTap={{ scale: 0.9 }}
-                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
-                          title="Advance 0.25s (+250ms)"
+                          className="py-1.5 px-1 rounded-lg bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 text-center transition-all text-[10px] font-mono font-bold text-red-300"
+                          title={isKu ? "دواخستنی ژێرنووس بە 0.25 چرکە (ئەگەر ژێرنووس پێش دەنگ کەوت)" : "Delay 0.25s (+250ms)"}
                         >
                           +0.25s
                         </motion.button>
@@ -648,11 +661,20 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           type="button"
                           onClick={() => setSubtitleOffset(subtitleOffset + 1000)}
                           whileTap={{ scale: 0.9 }}
-                          className="py-1.5 px-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-center transition-all text-[10px] font-mono font-bold text-zinc-200"
-                          title="Advance 1.0s (+1000ms)"
+                          className="py-1.5 px-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-center transition-all text-[10px] font-mono font-bold text-red-200"
+                          title={isKu ? "دواخستنی ژێرنووس بە 1.0 چرکە (ئەگەر ژێرنووس پێش دەنگ کەوت)" : "Delay 1.0s (+1000ms)"}
                         >
                           +1.0s
                         </motion.button>
+                      </div>
+
+                      {/* Explicit Guidance for Early Subtitle (appearing before speech) */}
+                      <div className="p-2 rounded-xl bg-black/40 border border-white/5 text-[8.5px] leading-relaxed text-zinc-300">
+                        {isKu ? (
+                          <span>💡 <strong>چارەسەری زوو دەرکەوتنی ژێرنووس:</strong> ئەگەر ژێرنووس <strong>پێش دەنگی ئەکتەر</strong> دەردەکەوێت، دابگرە لەسەر دوگمەی <strong>[+0.25s]</strong> یان <strong>[+1.0s]</strong> بۆ دواخستنی تا لەگەڵ قسەکردنەکە دەگونجێت.</span>
+                        ) : (
+                          <span>💡 <strong>Early Subtitle Fix:</strong> If subtitle appears <strong>before</strong> the actor speaks, press <strong>[+0.25s]</strong> or <strong>[+1.0s]</strong> (Delay) to align with speech.</span>
+                        )}
                       </div>
 
                       {/* Manual micro-slider with ±50ms precision */}
@@ -1494,7 +1516,7 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           onClick={() => setSubtitleOffset(subtitleOffset - 500)}
                           whileTap={{ scale: 0.88 }}
                           className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 transition-colors"
-                          title="Delay 0.5s"
+                          title={isKu ? "پێشخستن (-0.5s)" : "Advance 0.5s"}
                         >
                           <Minus size={12} />
                         </motion.button>
@@ -1508,8 +1530,8 @@ export const SubtitleManagerPanel: React.FC<SubtitleManagerPanelProps> = ({
                           type="button"
                           onClick={() => setSubtitleOffset(subtitleOffset + 500)}
                           whileTap={{ scale: 0.88 }}
-                          className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white shrink-0 hover:bg-white/10 transition-colors"
-                          title="Advance 0.5s"
+                          className="w-8 h-8 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-300 shrink-0 hover:bg-red-600/30 transition-colors"
+                          title={isKu ? "دواخستن (+0.5s) - بۆ کاتێک ژێرنووس پێش دەنگ دەکەوێت" : "Delay 0.5s (when subtitle is early)"}
                         >
                           <Plus size={12} />
                         </motion.button>

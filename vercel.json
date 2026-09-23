@@ -82,7 +82,7 @@
     },
     {
       "source": "/api/flkrd-core/(.*)",
-      "destination": "/api/flkrd-core"
+      "destination": "/api/flkrd-core?path=$1"
     },
     {
       "source": "/((?!assets/|.*\\..*$).*)",

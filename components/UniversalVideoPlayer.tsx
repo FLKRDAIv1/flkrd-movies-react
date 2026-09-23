@@ -663,10 +663,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 setTimeout(() => {
                     const offsetSec = (next / 1000).toFixed(2);
                     const sign = next > 0 ? '+' : '';
+                    const kuDesc = next > 0 
+                        ? `دواخرا بۆ هاوکاتبوون لەگەڵ دەنگ` 
+                        : next < 0 
+                        ? `پێشخرا` 
+                        : `سفرکرایەوە بۆ سەرەتا`;
                     triggerSyncToast(
                         language === 'ku' || language === 'badini'
-                            ? `کاتی ژێرنووس: ${sign}${offsetSec}s (دەستکاری بەکارهێنەر)`
-                            : `Subtitle Delay: ${sign}${offsetSec}s (User Custom)`
+                            ? `⏱️ کاتی ژێرنووس: ${sign}${offsetSec}s (${kuDesc})`
+                            : `Subtitle Timing: ${sign}${offsetSec}s (${next > 0 ? 'Delayed for audio sync' : next < 0 ? 'Advanced' : 'Reset'})`
                     );
                 }, 0);
             }
@@ -749,6 +754,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     const lastTimeChangeTimestampRef = useRef<number>(performance.now());
     const [subtitleCues, setSubtitleCues] = useState<{ start: number, end: number, text: string }[]>([]);
     const [vttBlobUrl, setVttBlobUrl] = useState<string>('');
+    // iOS AVPlayer cannot load blob: URLs — needs a real same-origin HTTPS URL
+    const [vttInlineUrl, setVttInlineUrl] = useState<string>('');
     const [subSyncOpen, setSubSyncOpen] = useState(false);
     // manualTime lets users set the subtitle playhead manually (for iframe players where seek isn't detectable)
     const [manualSubTime, setManualSubTime] = useState<number | null>(null);
@@ -798,9 +805,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
             vttText += `${cue.text}\n\n`;
         });
 
+        // ── Blob URL (desktop browsers) ───────────────────────────────────
         const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         setVttBlobUrl(url);
+
+        // ── Same-origin HTTPS URL (iOS AVPlayer / Safari native fullscreen) ──
+        // iOS AVPlayer (AVFoundation) cannot load blob: URLs — they live in the
+        // JS heap and are inaccessible to the native media pipeline. We encode
+        // the entire VTT as base64url and pass it to /api/vtt-inline which
+        // serves it back as text/vtt from the same origin.
+        try {
+            // btoa only handles latin1 — we need to handle Arabic/Kurdish chars
+            const utf8Bytes = new TextEncoder().encode(vttText);
+            let binary = '';
+            utf8Bytes.forEach(b => { binary += String.fromCharCode(b); });
+            const base64 = btoa(binary)
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=/g, '');
+            // Only set if within URL length limits (~32KB base64 ≈ 24KB VTT)
+            if (base64.length < 32000) {
+                setVttInlineUrl(`/api/vtt-inline?d=${base64}&t=${Date.now()}`);
+            } else {
+                // Too large for a query-string — fall back to blob (won't work in
+                // iOS native fullscreen but custom overlay covers that case)
+                setVttInlineUrl('');
+            }
+        } catch (encErr) {
+            setVttInlineUrl('');
+        }
 
         return () => {
             URL.revokeObjectURL(url);
@@ -825,10 +859,17 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (tracks && tracks.length > 0) {
                     for (let i = 0; i < tracks.length; i++) {
                         const t = tracks[i];
+                        // Match by language code (ckb = Sorani, ku = Kurmanji) or label
                         if (t.label?.toLowerCase().includes('kurdish') || t.language === 'ku' || t.language === 'ckb') {
                             kurdishTrack = t;
+                        } else {
+                            // Disable all non-Kurdish tracks to prevent interference
+                            t.mode = 'disabled';
                         }
-                        t.mode = showSubtitles ? 'showing' : 'disabled';
+                    }
+                    // Set Kurdish track mode separately after loop
+                    if (kurdishTrack) {
+                        kurdishTrack.mode = showSubtitles ? 'showing' : 'disabled';
                     }
                 }
 
@@ -836,7 +877,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 if (showSubtitles && subtitleCues && subtitleCues.length > 0) {
                     if (!kurdishTrack) {
                         try {
-                            kurdishTrack = videoEl.addTextTrack('subtitles', 'Kurdish Sorani (Verified)', 'ku');
+                            // 'ckb' = Central Kurdish / Sorani — the BCP-47 code iOS AVPlayer recognises
+                            kurdishTrack = videoEl.addTextTrack('subtitles', 'Kurdish Sorani کوردی سۆرانی', 'ckb');
                             (kurdishTrack as any)._flkrdAdded = true;
                         } catch (e) {}
                     }
@@ -3540,11 +3582,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                 setIsIframe(!isDirect);
             }
 
-            // Safety timeout — hide loader after 3.5s regardless for fast responsive playback
+            // Safety timeout — hide loader after 1.2s regardless for fast responsive playback.
+            // handleIframeLoad fires first for fast servers; this is only a fallback for
+            // slow-starting iframes (ad networks, Cloudflare JS challenges, etc.).
             if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
             safetyTimerRef.current = setTimeout(() => {
                 setLoading(false);
-            }, 3500);
+            }, 1200);
         }
 
         if (isHls && !hlsError) {
@@ -4019,22 +4063,30 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                 return null;
                             }
                             if (!src) return null;
+                            // ── iOS AVPlayer: prefer the same-origin HTTPS URL ──
+                            // vttInlineUrl is a /api/vtt-inline?d=<base64> endpoint on our
+                            // own domain. AVFoundation CAN load same-origin HTTPS; it CANNOT
+                            // load blob: URLs. Fall back to blob for desktop Safari / Chrome.
+                            const iosSafari = typeof navigator !== 'undefined' &&
+                                /iPad|iPhone|iPod/.test(navigator.userAgent);
+                            const trackSrc = iosSafari && vttInlineUrl ? vttInlineUrl : src;
+
                             return (
                                 <track
-                                    key={src}
-                                    src={src}
+                                    key={trackSrc}
+                                    src={trackSrc}
                                     kind="subtitles"
-                                    srcLang="ku"
-                                    label="Kurdish Sorani (Verified)"
-                                    // crossOrigin REQUIRED for external URLs — without it browsers silently block track loading
+                                    srcLang="ckb"
+                                    label="Kurdish Sorani کوردی سۆرانی"
+                                    // crossOrigin REQUIRED — without it, browsers block cross-origin track loading
+                                    // On same-origin /api/vtt-inline URLs this is a no-op but still required
                                     crossOrigin="anonymous"
                                     default
                                     onLoad={(event) => {
-                                        // Browsers occasionally load a <track> after the
-                                        // initial player sync. Force it visible at the
-                                        // moment it becomes available, including native
-                                        // fullscreen on iOS/Safari.
-                                        event.currentTarget.track.mode = showSubtitles ? 'showing' : 'disabled';
+                                        // Force track visible immediately on load — required for iOS
+                                        // to honour the track when entering native fullscreen
+                                        const t = event.currentTarget.track;
+                                        t.mode = showSubtitles ? 'showing' : 'disabled';
                                         const tracks = videoRef.current?.textTracks;
                                         if (tracks) {
                                             for (let i = 0; i < tracks.length; i++) {
@@ -4513,6 +4565,8 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         hasEpisodes={contentType === 'tv'}
                         activeSubtitleLabel={localSubtitleUrl ? 'Custom Subtitle' : (subtitleUrl ? 'Active Subtitle' : undefined)}
                         subtitleCount={availableSubs.length}
+                        subtitleOffset={subtitleOffset}
+                        setSubtitleOffset={setSubtitleOffset}
                         isFullscreen={isFullscreen}
                         onToggleFullscreen={toggleFullscreen}
                         onClose={onClose}
@@ -5203,9 +5257,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             onClick={() => {
                                                 if (isDubbedMovie || contentType === 'dubbed' || s.name === 'FLKRD DUBBED SERVER') {
                                                     setOverrideSrc((s as any).url || src);
-                                                    setLoading(true);
+                                                    // Clear frozen cache so the dubbed URL is not stale
+                                                    frozenSrcRef.current = null;
+                                                    lastContentKeyRef.current = '';
                                                     if (setActiveSource) setActiveSource(s.name);
-                                                    setTimeout(() => setShowSourceSwitcher(false), 400);
+                                                    setTimeout(() => setShowSourceSwitcher(false), 250);
                                                     return;
                                                 }
                                                 const curSeason = season || activeSeasonNum || 1;
@@ -5221,9 +5277,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     localSubtitleUrl || subtitleUrl
                                                 );
                                                 setOverrideSrc(newUrl);
-                                                setLoading(true);
+                                                // Clear frozen cache immediately so the new URL takes effect
+                                                frozenSrcRef.current = null;
+                                                lastContentKeyRef.current = '';
+                                                // handleIframeLoad fires quickly — safety timer is the fallback
                                                 if (setActiveSource) setActiveSource(s.name);
-                                                setTimeout(() => setShowSourceSwitcher(false), 400);
+                                                setTimeout(() => setShowSourceSwitcher(false), 250);
                                             }}
                                             className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${isActive
                                                     ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10'

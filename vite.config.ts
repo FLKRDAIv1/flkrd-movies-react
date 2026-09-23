@@ -78,6 +78,7 @@ export default defineConfig(({ mode }) => {
                 req.url?.startsWith('/api/admin-auth') ||
                 req.url?.startsWith('/api/translate') ||
                 req.url?.startsWith('/api/subtitle') ||
+                req.url?.startsWith('/api/vtt-inline') ||
                 req.url?.startsWith('/api/mobileconfig') ||
                 req.url?.startsWith('/api/webclip')
               ) {
@@ -163,6 +164,12 @@ export default defineConfig(({ mode }) => {
                   }
                   if (urlObj.pathname === '/api/subtitle') {
                     const modulePath = path.resolve(__dirname, 'api/subtitle.js');
+                    const { default: handler } = await import(modulePath + '?t=' + Date.now());
+                    await handler(mockReq, mockRes);
+                    return;
+                  }
+                  if (urlObj.pathname === '/api/vtt-inline') {
+                    const modulePath = path.resolve(__dirname, 'api/vtt-inline.js');
                     const { default: handler } = await import(modulePath + '?t=' + Date.now());
                     await handler(mockReq, mockRes);
                     return;
