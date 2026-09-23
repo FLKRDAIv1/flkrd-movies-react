@@ -185,12 +185,12 @@ const HomePage: React.FC = () => {
     setLoadingDubbed(true);
     let rawItems = [];
     try {
-      // 1. Direct Supabase Fetch (Optimized with 30s Timeout & Cleanup)
+      // 1. Direct Supabase Fetch (Optimized lightweight columns)
       const dbFetchPromise = supabase
         .from('dubbed_movies')
-        .select('id, title, description, imageBase64, created_at, level')
+        .select('id, title, kurdishTitle, description, kurdishOverview, poster_path, backdrop_path, videoUrl, customStream, created_at, level')
         .order('created_at', { ascending: false })
-        .limit(12);
+        .limit(40);
 
       let timeoutId: any;
       const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => {
@@ -225,13 +225,13 @@ const HomePage: React.FC = () => {
           ...m,
           id: String(m.id).startsWith('custom_') ? m.id : `custom_${m.id}`,
           media_type: 'dubbed',
-          poster_path: m.imageBase64,
-          backdrop_path: m.bannerBase64 || m.imageBase64 || '',
-          title: m.title,
-          kurdishTitle: m.title,
-          overview: m.description,
-          kurdishOverview: m.description,
-          customStream: m.videoUrl,
+          poster_path: m.poster_path || (m.imageBase64 && m.imageBase64.startsWith('http') ? m.imageBase64 : '') || '/default-poster.svg',
+          backdrop_path: m.backdrop_path || (m.bannerBase64 && m.bannerBase64.startsWith('http') ? m.bannerBase64 : '') || m.poster_path || '/default-poster.svg',
+          title: m.title || m.kurdishTitle,
+          kurdishTitle: m.kurdishTitle || m.title,
+          overview: m.description || m.kurdishOverview || '',
+          kurdishOverview: m.kurdishOverview || m.description || '',
+          customStream: m.videoUrl || m.customStream || '',
           level: m.level || 'KING'
         }));
 
@@ -241,13 +241,16 @@ const HomePage: React.FC = () => {
           return dateB - dateA;
         });
 
-        setDubbedItems(formatted.slice(0, 10));
-        db.saveMovies(rawItems).catch(() => {});
+        setDubbedItems(formatted);
+        // Only persist full database sync to avoid clearing the 310 movies cache
+        if (rawItems.length >= 50) {
+          db.saveMovies(rawItems).catch(() => {});
+        }
       } else {
         // Fallback to indexedDB if everything else failed
         const localItems = await db.getMovies();
         if (localItems && localItems.length > 0) {
-          setDubbedItems(localItems.slice(0, 10));
+          setDubbedItems(localItems.slice(0, 40));
         }
       }
     } catch (e) {
@@ -398,6 +401,8 @@ const HomePage: React.FC = () => {
               items={dubbedItems} 
               loading={loadingDubbed}
               type="dubbed"
+              seeAllUrl="/dubbed"
+              seeAllText={(language === 'ku' || language === 'badini') ? 'هەمووی ببینە (٣١٠ فیلم)' : 'See All (310 Dubbed)'}
             />
           </div>
         )}

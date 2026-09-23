@@ -543,7 +543,12 @@ export const AdminPanelModal: React.FC = () => {
         setUploadProgress(20);
         setUploadStep('Broadcasting to global database...');
 
-        const finalImage = uploadData.imageBase64 || '/default-poster.svg';
+        // Strictly ensure only clean TMDB/HTTP URLs are stored in Supabase (never raw base64 data URIs)
+        const isBase64Image = uploadData.imageBase64 && uploadData.imageBase64.startsWith('data:');
+        const finalPoster = (!isBase64Image && uploadData.imageBase64?.trim()) ? uploadData.imageBase64.trim() : '/default-poster.svg';
+        
+        const isBase64Banner = uploadData.bannerBase64 && uploadData.bannerBase64.startsWith('data:');
+        const finalBanner = (!isBase64Banner && uploadData.bannerBase64?.trim()) ? uploadData.bannerBase64.trim() : finalPoster;
 
         try {
             // Generate a unique ID (custom_<uuid>) required by public.dubbed_movies primary key constraint
@@ -564,10 +569,10 @@ export const AdminPanelModal: React.FC = () => {
                         kurdishOverview: cleanDesc,
                         videoUrl: cleanVideo,
                         customStream: cleanVideo,
-                        imageBase64: finalImage,
-                        poster_path: finalImage,
-                        bannerBase64: uploadData.bannerBase64 || null,
-                        backdrop_path: uploadData.bannerBase64 || finalImage,
+                        imageBase64: finalPoster,
+                        poster_path: finalPoster,
+                        bannerBase64: finalBanner,
+                        backdrop_path: finalBanner,
                         level: uploadData.level || 'NEW',
                         media_type: 'dubbed',
                         imdb_id: uploadData.imdb_id ? uploadData.imdb_id.trim() : null,
@@ -612,17 +617,29 @@ export const AdminPanelModal: React.FC = () => {
 
         try {
             const dbId = nodeToEdit.id;
+            const isBase64Img = editData.imageBase64 && editData.imageBase64.startsWith('data:');
+            const cleanImage = (!isBase64Img && editData.imageBase64?.trim()) ? editData.imageBase64.trim() : (nodeToEdit.poster_path || '/default-poster.svg');
+
+            const isBase64Bnr = editData.bannerBase64 && editData.bannerBase64.startsWith('data:');
+            const cleanBanner = (!isBase64Bnr && editData.bannerBase64?.trim()) ? editData.bannerBase64.trim() : (nodeToEdit.backdrop_path || cleanImage);
+
             const { error } = await supabase
                 .from('dubbed_movies')
                 .update({
-                    title: editData.title,
-                    description: editData.description,
-                    videoUrl: editData.videoUrl,
-                    imageBase64: editData.imageBase64,
-                    bannerBase64: editData.bannerBase64,
+                    title: editData.title.trim(),
+                    kurdishTitle: editData.title.trim(),
+                    description: editData.description?.trim() || '',
+                    overview: editData.description?.trim() || '',
+                    kurdishOverview: editData.description?.trim() || '',
+                    videoUrl: editData.videoUrl.trim(),
+                    customStream: editData.videoUrl.trim(),
+                    imageBase64: cleanImage,
+                    poster_path: cleanImage,
+                    bannerBase64: cleanBanner,
+                    backdrop_path: cleanBanner,
                     level: editData.level,
                     imdb_id: editData.imdb_id ? editData.imdb_id.trim() : null,
-                    tmdb_id: editData.tmdb_id && !isNaN(Number(editData.tmdb_id)) ? parseInt(editData.tmdb_id, 10) : null
+                    tmdb_id: editData.tmdb_id && !isNaN(Number(editData.tmdb_id)) ? String(editData.tmdb_id).trim() : null
                 })
                 .eq('id', dbId);
 

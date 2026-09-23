@@ -91,7 +91,7 @@ const DubbedMoviesPage: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('dubbed_movies')
-          .select('id, title, kurdishTitle, description, kurdishOverview, imageBase64, poster_path, videoUrl, customStream, level, created_at')
+          .select('id, title, kurdishTitle, description, kurdishOverview, poster_path, backdrop_path, videoUrl, customStream, level, created_at, tmdb_id, imdb_id')
           .order('created_at', { ascending: false })
           .range(0, 999);
 
@@ -112,8 +112,8 @@ const DubbedMoviesPage: React.FC = () => {
           ...m,
           id: String(m.id).startsWith('custom_') ? m.id : `custom_${m.id}`,
           media_type: 'dubbed',
-          poster_path: m.imageBase64 || m.poster_path || '',
-          backdrop_path: m.bannerBase64 || m.imageBase64 || m.backdrop_path || '',
+          poster_path: m.poster_path || (m.imageBase64 && m.imageBase64.startsWith('http') ? m.imageBase64 : '') || '/default-poster.svg',
+          backdrop_path: m.backdrop_path || (m.bannerBase64 && m.bannerBase64.startsWith('http') ? m.bannerBase64 : '') || m.poster_path || '/default-poster.svg',
           title: m.title || m.kurdishTitle || 'Untitled Dubbed Movie',
           kurdishTitle: m.kurdishTitle || m.title,
           overview: m.description || m.kurdishOverview || m.overview || '',

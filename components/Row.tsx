@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Play, Loader2, Sparkles, Trash2 } from 'lucide-react';
+import { X, Plus, Check, Play, Loader2, Sparkles, Trash2, ChevronRight } from 'lucide-react';
 import { Content, WatchProgress, MyListItem } from '../types';
 import { fetchData, clearTMDBCache, getMediaType } from '../services/tmdbService';
 import { IMAGE_BASE_URL_POSTER } from '../constants';
@@ -17,14 +17,16 @@ import MovieListCard from './MovieListCard';
 interface RowProps {
   title: string;
   fetchUrl?: string;
-  type?: 'movie' | 'tv';
+  type?: 'movie' | 'tv' | 'dubbed';
   items?: (Content | WatchProgress | MyListItem)[];
   isProgressRow?: boolean;
   limit?: number;
   loading?: boolean;
+  seeAllUrl?: string;
+  seeAllText?: string;
 }
 
-const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, limit, loading: externalLoading }) => {
+const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, limit, loading: externalLoading, seeAllUrl, seeAllText }) => {
   const [content, setContent] = useState<(Content | WatchProgress | MyListItem)[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -267,6 +269,16 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 <span className="w-1 md:w-2 h-8 md:h-12 bg-brand rounded-full me-4 md:me-6 shadow-[0_0_15px_brand]" />
                 <span>{title}</span>
             </h2>
+            {seeAllUrl && (
+              <button
+                type="button"
+                onClick={() => navigate(seeAllUrl)}
+                className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-brand hover:text-red-400 transition-all py-1.5 px-3.5 rounded-full bg-brand/10 hover:bg-brand/20 border border-brand/25 cursor-pointer active:scale-95"
+              >
+                <span>{seeAllText || ((language === 'ku' || language === 'badini') ? 'هەمووی ببینە' : 'See All')}</span>
+                <ChevronRight size={14} className={(language === 'ku' || language === 'badini') ? 'rotate-180' : ''} />
+              </button>
+            )}
         </div>
       )}
       

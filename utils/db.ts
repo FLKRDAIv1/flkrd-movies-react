@@ -103,14 +103,18 @@ export const initDB = (): Promise<IDBDatabase | null> => {
 
 export const db = {
     async saveMovies(movies: any[]): Promise<void> {
+        if (!movies || movies.length === 0) return;
         const database = await initDB();
         if (useFallback || !database) {
-            fallbackStore[STORE_NAME] = {};
+            if (movies.length >= 50) {
+                fallbackStore[STORE_NAME] = {};
+            }
             movies.forEach(movie => {
                 fallbackStore[STORE_NAME][String(movie.id)] = movie;
             });
             try {
-                localStorage.setItem('flkrd_fallback_movies', JSON.stringify(movies));
+                const all = Object.values(fallbackStore[STORE_NAME]);
+                localStorage.setItem('flkrd_fallback_movies', JSON.stringify(all));
             } catch (e) {}
             return;
         }
@@ -119,8 +123,10 @@ export const db = {
             const transaction = database.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
 
-            // Clear existing to ensure sync
-            store.clear();
+            // Only clear existing store on full sync (>= 50 movies) to prevent wiping the 310 movies cache
+            if (movies.length >= 50) {
+                store.clear();
+            }
 
             movies.forEach(movie => {
                 store.put(movie);
