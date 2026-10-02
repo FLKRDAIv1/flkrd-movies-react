@@ -214,13 +214,16 @@ const IframeBlockedAutoSwitch: React.FC<{
 }> = ({ sources, activeSource, setActiveSource, setIframeBlocked }) => {
     const [countdown, setCountdown] = React.useState(5);
 
+    const currentIdx = (sources || []).findIndex(s => s.name === activeSource);
+    const nextSource = (currentIdx >= 0 && currentIdx < (sources || []).length - 1)
+        ? sources[currentIdx + 1]
+        : ((sources || []).find(s => s.name !== activeSource) || sources?.[0]);
+
     React.useEffect(() => {
         const interval = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
                     clearInterval(interval);
-                    // Switch to next available source
-                    const nextSource = sources.find(s => s.name !== activeSource);
                     if (nextSource && setActiveSource) {
                         setIframeBlocked(false);
                         setActiveSource(nextSource.name);
@@ -232,15 +235,27 @@ const IframeBlockedAutoSwitch: React.FC<{
         }, 1000);
         return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [nextSource, setActiveSource, setIframeBlocked]);
 
-    if (!sources || sources.length <= 1 || !setActiveSource) return null;
-    const nextSource = sources.find(s => s.name !== activeSource);
-    if (!nextSource) return null;
+    if (!sources || sources.length <= 1 || !setActiveSource || !nextSource) return null;
 
     return (
-        <div className="text-xs text-gray-500 animate-pulse">
-            Auto-switching to <span className="text-white font-semibold">{nextSource.name}</span> in {countdown}s…
+        <div className="flex flex-col items-center gap-2.5 mt-2">
+            <button
+                onClick={() => {
+                    if (nextSource && setActiveSource) {
+                        setIframeBlocked(false);
+                        setActiveSource(nextSource.name);
+                    }
+                }}
+                className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black text-xs shadow-xl shadow-red-600/30 transition-all flex items-center gap-2 cursor-pointer"
+            >
+                <span>سێرڤەری تر تاقی بکەرەوە (Switch Server)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <div className="text-xs text-gray-400 animate-pulse">
+                Auto-switching to <span className="text-white font-semibold">{nextSource.displayName || nextSource.name}</span> in {countdown}s…
+            </div>
         </div>
     );
 };
@@ -1306,10 +1321,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     // Doblaj & Multi-Language Audio States
     const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
 
-    // Synchronize overrideSrc whenever src changes from parent
+    // Synchronize overrideSrc and clear stale cache whenever src or activeSource changes from parent
     useEffect(() => {
         setOverrideSrc(null);
-    }, [src]);
+        setIframeBlocked(false);
+    }, [src, activeSource]);
 
     const [isScraping, setIsScraping] = useState(false);
     const [scrapingError, setScrapingError] = useState<string | null>(null);
@@ -3728,7 +3744,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
     useEffect(() => {
         frozenSrcRef.current = null;
         lastContentKeyRef.current = '';
-    }, [src, overrideSrc]);
+    }, [src, overrideSrc, activeSource]);
 
     // Active Ad & Popup Interceptor during cinema player session
     useEffect(() => {
@@ -4162,13 +4178,33 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             key={s.name}
                                             onClick={() => {
                                                 setIframeBlocked(false);
-                                                setActiveSource(s.name);
+                                                const curSeason = effectiveSeason || activeSeasonNum || season || 1;
+                                                const curEpisode = effectiveEpisode || activeEpNum || episode || 1;
+                                                const contentId = String(tmdbId || imdbId || '').replace(/^custom_/, '');
+                                                if (contentId) {
+                                                    const newUrl = getSourceUrl(
+                                                        s.name,
+                                                        contentId,
+                                                        contentType || 'movie',
+                                                        curSeason,
+                                                        curEpisode,
+                                                        0,
+                                                        accentColor,
+                                                        localSubtitleUrl || subtitleUrl
+                                                    );
+                                                    setOverrideSrc(newUrl);
+                                                }
+                                                frozenSrcRef.current = null;
+                                                lastContentKeyRef.current = '';
+                                                setPlayerReloadKey(prev => prev + 1);
+                                                setLoading(true);
+                                                if (setActiveSource) setActiveSource(s.name);
                                             }}
-                                            className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold transition-all flex items-center justify-between gap-2"
+                                            className="w-full py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-sm font-semibold transition-all flex items-center justify-between gap-2 cursor-pointer"
                                         >
                                             <span className="flex items-center gap-2">
                                                 <Activity className="w-3.5 h-3.5 text-green-400 animate-pulse" />
-                                                {s.name}
+                                                {s.displayName || s.name}
                                             </span>
                                             <ArrowRight className="w-4 h-4 text-gray-500" />
                                         </button>
@@ -4506,8 +4542,11 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             // @ts-ignore
                             webkit-playsinline="true"
                             // @ts-ignore
-                            x-webkit-airplay="deny"
                             onLoad={handleIframeLoad}
+                            onError={() => {
+                                console.warn('[PLAYER] Iframe load error detected, triggering failover.');
+                                setIframeBlocked(true);
+                            }}
                             title="FLKRD Universal Player"
                         />
                     </div>
@@ -4561,6 +4600,27 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         activeSource={activeSource || 'FLKRD SERVER'}
                         sources={sources && sources.length > 0 ? sources : getRankedSources()}
                         onSelectSource={(sourceName: string) => {
+                            const curSeason = effectiveSeason || activeSeasonNum || season || 1;
+                            const curEpisode = effectiveEpisode || activeEpNum || episode || 1;
+                            const contentId = String(tmdbId || imdbId || '').replace(/^custom_/, '');
+                            if (contentId) {
+                                const newUrl = getSourceUrl(
+                                    sourceName,
+                                    contentId,
+                                    contentType || 'movie',
+                                    curSeason,
+                                    curEpisode,
+                                    0,
+                                    accentColor,
+                                    localSubtitleUrl || subtitleUrl
+                                );
+                                setOverrideSrc(newUrl);
+                            }
+                            frozenSrcRef.current = null;
+                            lastContentKeyRef.current = '';
+                            setPlayerReloadKey(prev => prev + 1);
+                            setLoading(true);
+                            setIframeBlocked(false);
                             if (setActiveSource) {
                                 setActiveSource(sourceName);
                             }
@@ -5282,30 +5342,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                             onClick={() => {
                                                 if (isDubbedMovie || contentType === 'dubbed' || s.name === 'FLKRD DUBBED SERVER') {
                                                     setOverrideSrc((s as any).url || src);
-                                                    // Clear frozen cache so the dubbed URL is not stale
                                                     frozenSrcRef.current = null;
                                                     lastContentKeyRef.current = '';
+                                                    setPlayerReloadKey(prev => prev + 1);
+                                                    setLoading(true);
+                                                    setIframeBlocked(false);
                                                     if (setActiveSource) setActiveSource(s.name);
                                                     setTimeout(() => setShowSourceSwitcher(false), 250);
                                                     return;
                                                 }
-                                                const curSeason = season || activeSeasonNum || 1;
-                                                const curEpisode = episode || activeEpNum || 1;
-                                                const newUrl = getSourceUrl(
-                                                    s.name,
-                                                    String(tmdbId || ''),
-                                                    contentType || 'movie',
-                                                    curSeason,
-                                                    curEpisode,
-                                                    0,
-                                                    accentColor,
-                                                    localSubtitleUrl || subtitleUrl
-                                                );
-                                                setOverrideSrc(newUrl);
-                                                // Clear frozen cache immediately so the new URL takes effect
+                                                const curSeason = effectiveSeason || activeSeasonNum || season || 1;
+                                                const curEpisode = effectiveEpisode || activeEpNum || episode || 1;
+                                                const contentId = String(tmdbId || imdbId || '').replace(/^custom_/, '');
+                                                if (contentId) {
+                                                    const newUrl = getSourceUrl(
+                                                        s.name,
+                                                        contentId,
+                                                        contentType || 'movie',
+                                                        curSeason,
+                                                        curEpisode,
+                                                        0,
+                                                        accentColor,
+                                                        localSubtitleUrl || subtitleUrl
+                                                    );
+                                                    setOverrideSrc(newUrl);
+                                                }
                                                 frozenSrcRef.current = null;
                                                 lastContentKeyRef.current = '';
-                                                // handleIframeLoad fires quickly — safety timer is the fallback
+                                                setPlayerReloadKey(prev => prev + 1);
+                                                setLoading(true);
+                                                setIframeBlocked(false);
                                                 if (setActiveSource) setActiveSource(s.name);
                                                 setTimeout(() => setShowSourceSwitcher(false), 250);
                                             }}
