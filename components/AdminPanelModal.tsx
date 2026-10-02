@@ -10,6 +10,9 @@ import { useUI } from '../contexts/UIContext';
 import { useNotification, toast } from '../contexts/NotificationContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
+import { db as firestoreDb } from '../utils/firebaseClient';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { SOURCE_META } from '../utils/playerSourceUtils';
 import { compressImage } from '../utils/imageUtils';
 import { featuredBannerService, FeaturedBannerItem } from '../services/featuredBannerService';
 import { bannedService } from '../services/bannedService';
@@ -394,40 +397,91 @@ export const AdminPanelModal: React.FC = () => {
         }
     };
 
+    const DEFAULT_SERVER_TEMPLATES = [
+        { id: 'srv_1', server_name: 'FLKRD SERVER', priority: 500 },
+        { id: 'srv_2', server_name: 'FLKRD SERVER 1', priority: 480 },
+        { id: 'srv_3', server_name: 'FLKRD SERVER 2', priority: 460 },
+        { id: 'srv_4', server_name: 'FLKRD SERVER 3', priority: 440 },
+        { id: 'srv_5', server_name: 'FLKRD SERVER 4', priority: 420 },
+        { id: 'srv_6', server_name: 'FLKRD SERVER 5', priority: 400 },
+        { id: 'srv_7', server_name: 'FLKRD SERVER 6', priority: 380 },
+        { id: 'srv_8', server_name: 'FLKRD SERVER 7', priority: 360 },
+        { id: 'srv_9', server_name: 'FLKRD SERVER 8', priority: 340 },
+        { id: 'srv_10', server_name: 'FLKRD SERVER 9', priority: 320 },
+        { id: 'srv_11', server_name: 'FLKRD SERVER 10', priority: 300 },
+        { id: 'srv_12', server_name: 'FLKRD SERVER 11', priority: 280 },
+        { id: 'srv_13', server_name: 'FLKRD SERVER 12', priority: 260 },
+    ];
+
     const fetchServersList = async () => {
         setIsLoadingServers(true);
         try {
-            const { data, error } = await supabase
-                .from('server_config')
-                .select('*')
-                .order('priority', { ascending: false });
-            if (error) throw error;
-            if (data && data.length > 0) {
-                setServersList(data);
-            } else {
-                const defaultServers = [
-                    { server_name: 'FLKRD SERVER', priority: 500 },
-                    { server_name: 'FLKRD SERVER 1', priority: 480 },
-                    { server_name: 'FLKRD SERVER 2', priority: 460 },
-                    { server_name: 'FLKRD SERVER 3', priority: 440 },
-                    { server_name: 'FLKRD SERVER 4', priority: 420 },
-                    { server_name: 'FLKRD SERVER 6', priority: 150 },
-                    { server_name: 'FLKRD SERVER 7', priority: 140 },
-                ];
-                setServersList(defaultServers as any);
+            let loaded: any[] = [];
+
+            // 1. Try Supabase server_config (filter out subadmin rows)
+            try {
+                const { data, error } = await supabase
+                    .from('server_config')
+                    .select('*')
+                    .not('server_name', 'like', 'subadmin:%')
+                    .order('priority', { ascending: false });
+                if (!error && data && data.length > 0) {
+                    loaded = data;
+                }
+            } catch (sErr) {
+                console.warn('[SERVERS] Supabase fetch error:', sErr);
             }
+
+            // 2. Try Firestore fallback
+            if (loaded.length === 0) {
+                try {
+                    const snap = await getDoc(doc(firestoreDb, 'server_config', 'servers'));
+                    if (snap.exists()) {
+                        const sData = snap.data();
+                        if (Array.isArray(sData?.servers) && sData.servers.length > 0) {
+                            loaded = sData.servers;
+                        }
+                    }
+                } catch (fErr) {
+                    console.warn('[SERVERS] Firestore fetch error:', fErr);
+                }
+            }
+
+            // 3. Try LocalStorage fallback
+            if (loaded.length === 0) {
+                try {
+                    const raw = localStorage.getItem('playerSourceScores_v3') || localStorage.getItem('playerSourceScores');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        loaded = Object.entries(parsed).map(([server_name, priority], idx) => ({
+                            id: `srv_${idx + 1}`,
+                            server_name,
+                            priority: Number(priority)
+                        })).sort((a, b) => b.priority - a.priority);
+                    }
+                } catch (lErr) {}
+            }
+
+            // Merge any missing servers from the full 13 catalog
+            const existingNames = new Set(loaded.map(s => s.server_name));
+            const merged = [...loaded];
+            DEFAULT_SERVER_TEMPLATES.forEach(def => {
+                if (!existingNames.has(def.server_name)) {
+                    merged.push(def);
+                }
+            });
+
+            // Clean priority normalization from highest (500) downwards
+            const finalServers = (merged.length > 0 ? merged : DEFAULT_SERVER_TEMPLATES).map((server, idx) => ({
+                id: server.id || `srv_${idx + 1}`,
+                server_name: server.server_name,
+                priority: 500 - idx * 20
+            }));
+
+            setServersList(finalServers);
         } catch (err) {
-            console.error(err);
-            const defaultServers = [
-                { server_name: 'FLKRD SERVER', priority: 500 },
-                { server_name: 'FLKRD SERVER 1', priority: 480 },
-                { server_name: 'FLKRD SERVER 2', priority: 460 },
-                { server_name: 'FLKRD SERVER 3', priority: 440 },
-                { server_name: 'FLKRD SERVER 4', priority: 420 },
-                { server_name: 'FLKRD SERVER 6', priority: 150 },
-                { server_name: 'FLKRD SERVER 7', priority: 140 },
-            ];
-            setServersList(defaultServers as any);
+            console.error('Error fetching servers:', err);
+            setServersList(DEFAULT_SERVER_TEMPLATES);
         } finally {
             setIsLoadingServers(false);
         }
@@ -731,10 +785,21 @@ export const AdminPanelModal: React.FC = () => {
         if (nextIndex < 0 || nextIndex >= serversList.length) return;
 
         const updated = [...serversList];
-        const temp = updated[index];
-        updated[index] = updated[nextIndex];
-        updated[nextIndex] = temp;
-        setServersList(updated);
+        const [moved] = updated.splice(index, 1);
+        updated.splice(nextIndex, 0, moved);
+
+        // Instantly recalculate descending priority scores matching physical visual ranking
+        const withPriorities = updated.map((server, idx) => ({
+            ...server,
+            priority: 500 - idx * 20
+        }));
+        setServersList(withPriorities);
+    };
+
+    const handleResetServersToDefault = () => {
+        if (!window.confirm(isKurdish ? 'دڵنیایت دەتەوێت ڕیزبەندی بنەڕەتی سێرڤەرەکان بگەڕێنیتەوە؟' : 'Reset server priority order to original defaults?')) return;
+        setServersList(DEFAULT_SERVER_TEMPLATES);
+        toast.info(isKurdish ? 'ڕیزبەندی بنەڕەت دانرا، کلیك لە تۆمارکردن بکە بۆ جێبەجێکردن' : 'Defaults loaded. Click Save to persist.');
     };
 
     const handleSaveServerOrder = async () => {
@@ -745,24 +810,47 @@ export const AdminPanelModal: React.FC = () => {
                 const priority = 500 - index * 20;
                 scoresMap[server.server_name] = priority;
                 return {
-                    id: server.id,
+                    id: server.id || `srv_${index + 1}`,
                     server_name: server.server_name,
                     priority: priority
                 };
             });
 
-            // Persist scores map for instant reactivity in player source switcher
+            // 1. Persist scores map to BOTH LocalStorage keys for immediate synchronous resolution
             try {
+                localStorage.setItem('playerSourceScores_v3', JSON.stringify(scoresMap));
                 localStorage.setItem('playerSourceScores', JSON.stringify(scoresMap));
             } catch (e) {}
 
-            const { error } = await supabase
-                .from('server_config')
-                .upsert(updates);
+            // 2. Dual-sync to Firestore server_config/servers for cross-browser & mobile sync
+            try {
+                await setDoc(doc(firestoreDb, 'server_config', 'servers'), {
+                    servers: updates,
+                    scoresMap: scoresMap,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (fErr) {
+                console.warn('[SERVERS] Firestore server sync warning:', fErr);
+            }
 
-            if (error) console.warn('Supabase server_config sync warning:', error);
+            // 3. Dual-sync to Supabase server_config
+            try {
+                const { error } = await supabase
+                    .from('server_config')
+                    .upsert(updates);
+                if (error) console.warn('Supabase server_config sync warning:', error);
+            } catch (sErr) {}
 
-            addNotification({ type: 'success', title: 'سێرڤەرەکان ڕێکخران', message: 'ڕیزبەندی و پێشینەکاری سێرڤەرەکان بەسەرکەوتوویی جێبەجێ کران!' });
+            // 4. Dispatch reactive events across all active players and windows
+            window.dispatchEvent(new CustomEvent('player-sources-updated', { detail: scoresMap }));
+            window.dispatchEvent(new Event('storage'));
+
+            addNotification({
+                type: 'success',
+                title: isKurdish ? 'سێرڤەرەکان ڕێکخران' : 'Servers Re-ranked',
+                message: isKurdish ? 'ڕیزبەندی و پێشینەکاری سێرڤەرەکان بەسەرکەوتوویی جێبەجێ کران!' : 'Server priorities saved and activated globally across player!'
+            });
+            toast.success(isKurdish ? 'ڕیزبەندی نوێی سێرڤەرەکان تۆمارکرا!' : 'Server priorities successfully updated!');
             fetchServersList();
         } catch (err: any) {
             console.error(err);
@@ -1216,67 +1304,136 @@ export const AdminPanelModal: React.FC = () => {
 
                                         {/* 4. SERVERS CONFIG TAB */}
                                         {activeAdminTab === 'servers' && (
-                                            <div className="space-y-5 pb-4 text-right animate-fadeIn" style={{ direction: 'rtl' }}>
-                                                <div className="flex items-center justify-between flex-row-reverse">
+                                            <div className="space-y-5 pb-6 text-right animate-fadeIn" style={{ direction: 'rtl' }}>
+                                                {/* Header & Controls */}
+                                                <div className="bg-gradient-to-l from-red-950/30 via-neutral-900/60 to-black/80 border border-white/[0.08] p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
                                                     <div>
-                                                        <h3 className="text-sm font-black text-brand uppercase tracking-widest flex items-center gap-1.5 justify-end">
-                                                            ڕیزبەندی سێرڤەرەکان / Server Priorities
+                                                        <h3 className="text-base font-black text-white uppercase tracking-wider flex items-center gap-2 justify-end">
+                                                            <Server size={18} className="text-brand" />
+                                                            <span>ڕیزبەندی و کۆنترۆڵی سێرڤەرەکان (FLKRD Streaming Nodes)</span>
                                                         </h3>
-                                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-1">
-                                                            سێرڤەرەکان بەرەو سەرەوە یان خوارەوە ببە بۆ پێشینەکاری داگرتن.
+                                                        <p className="text-[11px] text-gray-400 font-medium mt-1">
+                                                            سێرڤەرەکان بە پێی خێرایی و پێشینە ڕێکبخە. سێرڤەری #1 وەک یەکەم سەرچاوەی پەخش لە پلەیەرەکەدا کار دەکات.
                                                         </p>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleSaveServerOrder}
-                                                        disabled={isSavingServers || serversList.length === 0}
-                                                        className="px-6 py-3 bg-brand hover:bg-red-750 disabled:opacity-50 text-white font-black uppercase text-xs rounded-2xl transition-all shadow-lg active:scale-95 shadow-brand/20"
-                                                    >
-                                                        {isSavingServers ? <RefreshCw size={14} className="animate-spin" /> : 'تۆمارکردن'}
-                                                    </button>
+                                                    <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleResetServersToDefault}
+                                                            disabled={isSavingServers}
+                                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white font-bold text-xs rounded-xl transition-all duration-300 border border-white/10 active:scale-95 flex items-center gap-1.5"
+                                                        >
+                                                            <RefreshCw size={13} />
+                                                            <span>بنەڕەت</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleSaveServerOrder}
+                                                            disabled={isSavingServers || serversList.length === 0}
+                                                            className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-brand hover:from-red-500 hover:to-red-700 disabled:opacity-50 text-white font-black text-xs uppercase rounded-xl transition-all shadow-lg active:scale-95 shadow-brand/25 flex items-center gap-2 border border-red-400/30"
+                                                        >
+                                                            {isSavingServers ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                                                            <span>{isSavingServers ? 'خەزنکردن...' : 'تۆمارکردنی گۆڕانکاری'}</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {isLoadingServers ? (
-                                                    <div className="py-20 flex justify-center"><RefreshCw className="animate-spin text-brand" /></div>
+                                                    <div className="py-20 flex flex-col items-center justify-center gap-3">
+                                                        <RefreshCw className="animate-spin text-brand" size={28} />
+                                                        <span className="text-xs text-gray-400 font-bold">بارکردنی گرێی سێرڤەرەکان...</span>
+                                                    </div>
                                                 ) : (
-                                                    <div className="space-y-2.5">
+                                                    <div className="space-y-3">
                                                         {serversList.map((server, index) => {
-                                                            let friendlyName = server.server_name;
-                                                            if (server.server_name === 'FLKRD SERVER') friendlyName = 'VidKing (Server 1)';
-                                                            else if (server.server_name === 'FLKRD SERVER 1') friendlyName = 'Videasy (Server 2)';
-                                                            else if (server.server_name === 'FLKRD SERVER 2') friendlyName = 'VidLink Pro (Server 3)';
-                                                            else if (server.server_name === 'FLKRD SERVER 3') friendlyName = 'VidSrc (Server 4)';
-                                                            else if (server.server_name === 'FLKRD SERVER 4') friendlyName = 'SuperEmbed (Server 5)';
-                                                            else if (server.server_name === 'FLKRD SERVER 6') friendlyName = 'VidSrc.pro (Server 6)';
-                                                            else if (server.server_name === 'FLKRD SERVER 7') friendlyName = 'VidSrc-embed.ru (Server 7)';
+                                                            const meta = SOURCE_META[server.server_name];
+                                                            const isTop3 = index < 3;
+                                                            const isPrimary = index === 0;
 
                                                             return (
-                                                                <div key={server.id || server.server_name || `srv-${index}`} className="flex items-center justify-between p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/[0.06] rounded-2xl transition-all duration-300 flex-row-reverse">
-                                                                    <div className="flex items-center gap-3 flex-row-reverse">
-                                                                        <span className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-black text-xs">
-                                                                            {index + 1}
-                                                                        </span>
-                                                                        <div className="text-right">
-                                                                            <p className="text-white font-black uppercase text-xs tracking-wide">{friendlyName}</p>
-                                                                            <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Priority Score: {server.priority}</p>
+                                                                <div 
+                                                                    key={server.id || server.server_name || `srv-${index}`} 
+                                                                    className={`flex items-center justify-between p-4 rounded-2xl transition-all duration-300 border flex-row-reverse relative overflow-hidden ${
+                                                                        isPrimary 
+                                                                            ? 'bg-gradient-to-r from-red-950/20 via-neutral-900/80 to-black/90 border-red-500/40 shadow-lg shadow-red-950/20' 
+                                                                            : isTop3 
+                                                                                ? 'bg-white/[0.03] hover:bg-white/[0.05] border-white/10 hover:border-white/20' 
+                                                                                : 'bg-white/[0.015] hover:bg-white/[0.03] border-white/[0.06]'
+                                                                    }`}
+                                                                >
+                                                                    {isPrimary && (
+                                                                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-brand shadow-[0_0_12px_rgba(229,9,20,0.8)]" />
+                                                                    )}
+
+                                                                    {/* Server Info Details */}
+                                                                    <div className="flex items-center gap-3.5 flex-row-reverse flex-1 min-w-0 pr-1">
+                                                                        {/* Rank Badge */}
+                                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-md ${
+                                                                            isPrimary 
+                                                                                ? 'bg-gradient-to-br from-amber-400 to-amber-600 text-black shadow-amber-500/20' 
+                                                                                : index === 1 
+                                                                                    ? 'bg-gradient-to-br from-cyan-400 to-blue-500 text-black shadow-cyan-500/20' 
+                                                                                    : index === 2 
+                                                                                        ? 'bg-gradient-to-br from-orange-400 to-amber-600 text-black shadow-orange-500/20' 
+                                                                                        : 'bg-white/5 border border-white/10 text-gray-300'
+                                                                        }`}>
+                                                                            #{index + 1}
+                                                                        </div>
+
+                                                                        <div className="text-right flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2 justify-end flex-wrap">
+                                                                                {/* Status Pill */}
+                                                                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center gap-1">
+                                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                                                                    <span>100% ONLINE</span>
+                                                                                </span>
+
+                                                                                {/* Quality Pill */}
+                                                                                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                                                                                    isTop3 
+                                                                                        ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                                                                                        : 'bg-white/5 border-white/10 text-gray-400'
+                                                                                }`}>
+                                                                                    {isTop3 ? '4K ULTRA HD' : '1080P HD'}
+                                                                                </span>
+
+                                                                                {/* Priority Badge */}
+                                                                                <span className="text-[9px] font-bold text-gray-400 px-2 py-0.5 rounded-md bg-black/40 border border-white/5 font-mono">
+                                                                                    SCORE: {server.priority}
+                                                                                </span>
+
+                                                                                {/* Title */}
+                                                                                <h4 className="text-white font-black text-xs sm:text-sm tracking-wide">
+                                                                                    {meta?.kurdishName || meta?.displayName || server.server_name}
+                                                                                </h4>
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-2 justify-end mt-1 text-[10px] text-gray-400">
+                                                                                <span>{meta?.kurdishDesc || meta?.description || 'گرێی هەوری پەخشی خێرا'}</span>
+                                                                                <span className="text-gray-600 font-mono text-[9px]">[{server.server_name}]</span>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="flex gap-2">
+
+                                                                    {/* Action Controls */}
+                                                                    <div className="flex items-center gap-1.5 shrink-0 pl-2">
                                                                         <button
                                                                             type="button"
                                                                             disabled={index === 0}
                                                                             onClick={() => moveServer(index, 'up')}
-                                                                            className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all duration-300 active:scale-90"
+                                                                            title="بەرەو سەرەوە"
+                                                                            className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all duration-300 active:scale-90 border border-white/5 hover:border-white/15"
                                                                         >
-                                                                            <ArrowUp size={14} />
+                                                                            <ArrowUp size={15} />
                                                                         </button>
                                                                         <button
                                                                             type="button"
                                                                             disabled={index === serversList.length - 1}
                                                                             onClick={() => moveServer(index, 'down')}
-                                                                            className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all duration-300 active:scale-90"
+                                                                            title="بەرەو خوارەوە"
+                                                                            className="p-2.5 bg-white/5 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 disabled:opacity-20 transition-all duration-300 active:scale-90 border border-white/5 hover:border-white/15"
                                                                         >
-                                                                            <ArrowDown size={14} />
+                                                                            <ArrowDown size={15} />
                                                                         </button>
                                                                     </div>
                                                                 </div>

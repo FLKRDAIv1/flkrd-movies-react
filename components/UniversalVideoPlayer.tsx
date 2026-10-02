@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, startTransition } from 'react';
+import React, { useEffect, useRef, useState, useCallback, startTransition, useMemo } from 'react';
 import { Shield, ShieldCheck, Activity, X, Search, ArrowRight, Sparkles, Subtitles, Download, Mic2, Globe, Volume2, Tv, Play, Maximize, Minimize, Cpu, Zap, Timer, RefreshCcw, Loader2, Infinity as InfinityIcon, Sun, Sliders, Languages, ChevronLeft, ChevronRight } from 'lucide-react';
 import Spinner from './Spinner';
 import { useQuantumAdBlocker } from '../hooks/useQuantumAdBlocker';
@@ -413,17 +413,36 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     const isDubbedMovie = contentType === 'dubbed' || (sources && sources.some(s => s.name?.includes('DUBBED')));
 
-    const effectiveSources = (sources && sources.length > 0)
-        ? sources
-        : (isDubbedMovie ? [
-            {
-                name: 'FLKRD DUBBED SERVER',
-                displayName: (language === 'ku' || language === 'badini') ? 'سێرڤەری دۆبلاژی کوردی' : 'Kurdish Dubbed Server',
-                description: (language === 'ku' || language === 'badini') ? 'پەخشی ڕاستەوخۆی سێرڤەری سۆپابەیس' : 'Supabase High-Speed Kurdish Stream',
-                badge: 'ku',
-                url: src
-            }
-        ] : getRankedSources(!!subtitleUrl));
+    const [playerSourcesVersion, setPlayerSourcesVersion] = useState(0);
+
+    // Live reactive listener: updates sources ranking instantly when changed in Admin Panel
+    useEffect(() => {
+        const handleSourcesUpdated = () => {
+            setPlayerSourcesVersion(v => v + 1);
+        };
+        window.addEventListener('player-sources-updated', handleSourcesUpdated);
+        window.addEventListener('storage', handleSourcesUpdated);
+        return () => {
+            window.removeEventListener('player-sources-updated', handleSourcesUpdated);
+            window.removeEventListener('storage', handleSourcesUpdated);
+        };
+    }, []);
+
+    const effectiveSources = useMemo(() => {
+        if (sources && sources.length > 0) return sources;
+        if (isDubbedMovie) {
+            return [
+                {
+                    name: 'FLKRD DUBBED SERVER',
+                    displayName: (language === 'ku' || language === 'badini') ? 'سێرڤەری دۆبلاژی کوردی' : 'Kurdish Dubbed Server',
+                    description: (language === 'ku' || language === 'badini') ? 'پەخشی ڕاستەوخۆی سێرڤەری سۆپابەیس' : 'Supabase High-Speed Kurdish Stream',
+                    badge: 'ku' as const,
+                    url: src
+                }
+            ];
+        }
+        return getRankedSources(!!subtitleUrl);
+    }, [sources, isDubbedMovie, language, src, subtitleUrl, playerSourcesVersion]);
 
     const effectiveSeasons = (seasons && seasons.length > 0) ? seasons : localSeasons;
     const effectiveSeasonDetails = currentSeasonDetails || localSeasonDetails;
@@ -5324,10 +5343,15 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                     </div>
 
                                                     <div className={`flex flex-col items-start ${isKurdishLang ? 'text-right' : 'text-left'}`}>
-                                                        {/* Real display name (VidKing, Videasy, etc.) */}
-                                                        <span className={`text-[12px] font-black uppercase tracking-wide ${isActive ? 'text-white' : 'text-gray-200'}`}>
-                                                            {isKurdishLang ? (SOURCE_META[s.name]?.kurdishName || SOURCE_META[s.name]?.displayName || s.name) : (SOURCE_META[s.name]?.displayName || s.name)}
-                                                        </span>
+                                                        {/* Real display name (VidSrc Ultra 4K, Videasy Pro 4K, etc.) */}
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <span className={`text-[12px] font-black uppercase tracking-wide ${isActive ? 'text-white' : 'text-gray-200'}`}>
+                                                                {isKurdishLang ? (SOURCE_META[s.name]?.kurdishName || SOURCE_META[s.name]?.displayName || s.name) : (SOURCE_META[s.name]?.displayName || s.name)}
+                                                            </span>
+                                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${idx < 3 ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
+                                                                {idx < 3 ? '4K UHD HDR' : '1080P HD'}
+                                                            </span>
+                                                        </div>
                                                         <span className="text-[10px] font-bold text-gray-400 tracking-tight">
                                                             {isKurdishLang ? (SOURCE_META[s.name]?.kurdishDesc || `گرێی ${idx + 1}`) : (SOURCE_META[s.name]?.description || `Node VK-${idx + 1}`)}
                                                         </span>
@@ -5347,6 +5371,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                                 : (isKurdishLang ? 'پەیوەستە' : 'Connected')
                                                             : statusText}
                                                     </div>
+                                                    <span className="text-[8px] font-mono text-gray-500">#{idx + 1} Priority</span>
                                                 </div>
                                             </div>
 

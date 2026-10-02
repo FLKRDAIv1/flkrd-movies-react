@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { supabase } from '../utils/supabaseClient';
+import { db as firestoreDb } from '../utils/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
 import { translateAndSavePipeline } from '../services/subtitleTranslationService';
 import { initSecurityShield, verifyServerSession } from '../utils/securityGuard';
 
@@ -1214,6 +1216,20 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
         } catch (fetchErr) {}
       }
 
+      // If still not found, check Firestore server_config/main
+      if (!subAdmins.length || !subAdmins.some((a: any) => a.email?.toLowerCase() === cleanEmail)) {
+        try {
+          const snap = await getDoc(doc(firestoreDb, 'server_config', 'main'));
+          if (snap.exists()) {
+            const fData = snap.data();
+            if (Array.isArray(fData?.sub_admins) && fData.sub_admins.length > 0) {
+              subAdmins = fData.sub_admins;
+              localStorage.setItem('flkrd_sub_admins', JSON.stringify(fData.sub_admins));
+            }
+          }
+        } catch (fErr) {}
+      }
+
       if (subAdmins.length > 0) {
         let passHash = '';
         if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -1236,6 +1252,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
           localStorage.setItem('flkrd_admin_session_token', fallbackToken);
           localStorage.setItem('flkrd_admin_email', cleanEmail);
           localStorage.setItem('flkrd_admin_login_at', Date.now().toString());
+          localStorage.setItem('flkrd_active_sub_admin', JSON.stringify(match));
           localStorage.setItem('isFlkrdAdmin', 'true');
           setCurrentAdminEmail(cleanEmail);
           setIsAdminState(true);

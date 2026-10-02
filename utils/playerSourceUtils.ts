@@ -117,9 +117,9 @@ const INITIAL_SOURCES: Omit<PlayerSource, 'score'>[] = [
 
 const getScores = (): { [key: string]: number } => {
   try {
-    const storedScores = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (storedScores) {
-      return JSON.parse(storedScores);
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY) || localStorage.getItem('playerSourceScores');
+    if (raw) {
+      return JSON.parse(raw);
     }
   } catch (error) {
     console.error("Failed to parse player source scores", error);
