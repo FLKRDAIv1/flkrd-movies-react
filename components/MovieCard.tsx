@@ -149,14 +149,19 @@ const MovieCard = memo(
             } catch {}
           }
 
-          // 2. Add to banned registry
+          // 2. Add to banned registry with correct media category
           await bannedService.banContent(
             cleanId,
-            mediaType === 'tv' ? 'tv' : 'movie'
+            effectiveMediaType === 'dubbed' ? 'dubbed' : (effectiveMediaType === 'tv' ? 'tv' : 'movie')
           );
 
-          addNotification({ type: 'success', title: 'Content Removed', message: `${item.title || item.name} removed successfully.` });
+          addNotification({ 
+            type: 'success', 
+            title: isKurdish ? 'فیلمەکە بلۆککرا' : 'Content Banned', 
+            message: `${item.title || item.name} ${isKurdish ? 'بە سەرکەوتوویی لە سیستم لابرا.' : 'removed successfully.'}` 
+          });
           window.dispatchEvent(new CustomEvent('banned-list-updated'));
+          window.dispatchEvent(new Event('storage'));
           if (onRemove) onRemove();
         } catch (err) {
           console.error('[CARD DELETE ERROR]', err);

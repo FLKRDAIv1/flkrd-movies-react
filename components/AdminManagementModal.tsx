@@ -10,6 +10,8 @@ import { useUI } from '../contexts/UIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
+import { db as firestoreDb } from '../utils/firebaseClient';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import Portal from './Portal';
 
 interface AdminManagementModalProps {
@@ -122,12 +124,12 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   useEffect(() => {
     let isMounted = true;
     const loadSubAdminsFromDb = async () => {
+      let fetchedSubAdmins: AdminUser[] = [];
       try {
         const { data: rows } = await supabase
           .from('server_config')
           .select('id, server_name, priority');
         if (rows && isMounted) {
-          const fetchedSubAdmins: AdminUser[] = [];
           for (const row of rows) {
             if (row.server_name && row.server_name.startsWith('subadmin:')) {
               try {
@@ -138,17 +140,37 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
               } catch {}
             }
           }
-          if (fetchedSubAdmins.length > 0) {
-            setAdmins([MASTER_OWNER, ...fetchedSubAdmins]);
-            localStorage.setItem('flkrd_sub_admins', JSON.stringify(fetchedSubAdmins));
-          }
         }
       } catch (e) {
-        console.warn('[ADMIN MODAL] Could not load sub-admins from db:', e);
-      } finally {
-        if (isMounted) {
-          setIsInitialLoadDone(true);
+        console.warn('[ADMIN MODAL] Could not load sub-admins from Supabase:', e);
+      }
+
+      // If Supabase was empty or offline, check Firestore server_config/main
+      if (fetchedSubAdmins.length === 0 && isMounted) {
+        try {
+          const snap = await getDoc(doc(firestoreDb, 'server_config', 'main'));
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data?.sub_admins)) {
+              data.sub_admins.forEach((admin: any) => {
+                if (admin?.email && admin.email.toLowerCase() !== MASTER_OWNER.email.toLowerCase()) {
+                  fetchedSubAdmins.push(admin);
+                }
+              });
+            }
+          }
+        } catch (fErr) {
+          console.warn('[ADMIN MODAL] Firestore fallback load failed:', fErr);
         }
+      }
+
+      if (fetchedSubAdmins.length > 0 && isMounted) {
+        setAdmins([MASTER_OWNER, ...fetchedSubAdmins]);
+        localStorage.setItem('flkrd_sub_admins', JSON.stringify(fetchedSubAdmins));
+      }
+
+      if (isMounted) {
+        setIsInitialLoadDone(true);
       }
     };
 
@@ -158,7 +180,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     return () => { isMounted = false; };
   }, [isOpen]);
 
-  // Sync Sub-Admins securely to Supabase & LocalStorage (Zero Plaintext Passwords!)
+  // Sync Sub-Admins securely to Supabase, Firestore & LocalStorage (Zero Plaintext Passwords!)
   useEffect(() => {
     if (!isInitialLoadDone) return; // Prevent overwriting database before initial fetch!
 
@@ -175,6 +197,14 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
           window.dispatchEvent(new CustomEvent('flkrd-subadmins-updated'));
         }
       } catch (e) {}
+
+      // Dual-sync to Firestore server_config/main for instant high-speed authorization
+      try {
+        const cfgRef = doc(firestoreDb, 'server_config', 'main');
+        await setDoc(cfgRef, { sub_admins: sanitizedList, updatedAt: new Date().toISOString() }, { merge: true });
+      } catch (fErr) {
+        console.warn('[ADMIN SYNC] Firestore sub-admins sync warning:', fErr);
+      }
 
       // Async push to Supabase server_config without plaintext passwords
       try {

@@ -159,8 +159,13 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
       }
 
       await bannedService.banContent(cleanId, mediaType);
-      addNotification({ type: 'success', title: 'NODE PURGED', message: 'Content removed globally.' });
+      addNotification({ 
+        type: 'success', 
+        title: isKurdish ? 'فیلمەکە بلۆککرا' : 'Content Banned', 
+        message: `${item.title || item.name} ${isKurdish ? 'بە سەرکەوتوویی لە سیستم لابرا.' : 'removed successfully.'}` 
+      });
       window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      window.dispatchEvent(new Event('storage'));
       if (onRemove) onRemove();
     } catch (err) {
       console.error('Moderation failure:', err);

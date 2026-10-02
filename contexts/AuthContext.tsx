@@ -19,7 +19,7 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth, db } from '../utils/firebaseClient';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -216,16 +216,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } else {
           try {
             const subStored = localStorage.getItem('flkrd_sub_admins');
+            let foundLocally = false;
             if (subStored) {
               const subs = JSON.parse(subStored);
               const matchedSub = subs.find((a: any) => a.email?.toLowerCase() === fbUser.email?.toLowerCase() && a.isActive);
               if (matchedSub) {
+                foundLocally = true;
                 localStorage.setItem('isFlkrdAdmin', 'true');
                 localStorage.setItem('flkrd_admin_email', matchedSub.email.toLowerCase());
+                localStorage.setItem('flkrd_active_sub_admin', JSON.stringify(matchedSub));
                 if (!localStorage.getItem('flkrd_admin_session_token')) {
                   localStorage.setItem('flkrd_admin_session_token', `flkrd_sub_${matchedSub.id}`);
                 }
               }
+            }
+
+            // If not found in local cache (e.g. new browser/device), fetch live from server_config
+            if (!foundLocally && fbUser.email) {
+              getDoc(doc(db, 'server_config', 'main')).then((snap) => {
+                if (snap.exists()) {
+                  const data = snap.data();
+                  const remoteSubs = data?.sub_admins;
+                  if (Array.isArray(remoteSubs)) {
+                    const matched = remoteSubs.find((a: any) => a.email?.toLowerCase() === fbUser.email?.toLowerCase() && a.isActive);
+                    if (matched) {
+                      localStorage.setItem('flkrd_sub_admins', JSON.stringify(remoteSubs));
+                      localStorage.setItem('isFlkrdAdmin', 'true');
+                      localStorage.setItem('flkrd_admin_email', matched.email.toLowerCase());
+                      localStorage.setItem('flkrd_active_sub_admin', JSON.stringify(matched));
+                      if (!localStorage.getItem('flkrd_admin_session_token')) {
+                        localStorage.setItem('flkrd_admin_session_token', `flkrd_sub_${matched.id}`);
+                      }
+                      window.dispatchEvent(new Event('storage'));
+                    }
+                  }
+                }
+              }).catch(() => {});
             }
           } catch (e) {}
         }
