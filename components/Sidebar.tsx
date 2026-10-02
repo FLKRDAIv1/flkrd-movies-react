@@ -246,6 +246,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
               <img
                 src="/flkrd-icon.png"
                 alt="F"
+                width={32}
+                height={32}
+                decoding="async"
                 className={`w-8 h-8 object-contain transition-all duration-200 shrink-0 ${
                   isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-75 absolute pointer-events-none'
                 }`}
@@ -255,6 +258,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
               <img
                 src="/flkrd-logo.png"
                 alt="FLKRD"
+                width={112}
+                height={28}
+                decoding="async"
                 className={`h-7 w-auto object-contain transition-all duration-200 ${
                   !isCollapsed ? 'opacity-100 scale-100' : 'opacity-0 scale-90 absolute pointer-events-none'
                 }`}
@@ -397,7 +403,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose }) => 
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 bg-white/[0.03]">
                 <div className="flex items-center gap-3">
-                  <img src="/flkrd-icon.png" alt="FLKRD" className="w-9 h-9 object-contain" />
+                  <img src="/flkrd-icon.png" alt="FLKRD" width={36} height={36} decoding="async" className="w-9 h-9 object-contain" />
                   <span className="text-sm font-black tracking-widest text-white uppercase">
                     FLKRD MOVIES
                   </span>

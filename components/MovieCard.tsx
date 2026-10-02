@@ -120,11 +120,21 @@ const MovieCard = memo(
         }
       };
 
+      const isOwnerOrAdmin = isAdmin || 
+        (typeof window !== 'undefined' && (
+          localStorage.getItem('isFlkrdAdmin') === 'true' ||
+          localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+        )) || 
+        user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
+
       const handleBan = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!isAdmin) return;
-        const confirmBan = window.confirm(`Ban/Delete "${item.title || item.name}" from FLKRD?`);
-        if (!confirmBan) return;
+        if (!isOwnerOrAdmin) return;
+        const isKurdish = language === 'ku' || language === 'badini';
+        const confirmMsg = isKurdish 
+          ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${item.title || item.name}» لە تەواوی سیستم؟` 
+          : `Are you sure you want to ban and block "${item.title || item.name}" from the app?`;
+        if (!window.confirm(confirmMsg)) return;
         try {
           const rawId = String(item.id);
           const cleanId = rawId.replace('custom_', '');
@@ -232,12 +242,13 @@ const MovieCard = memo(
               className ? className : 'w-full min-w-0'
             } overflow-hidden`}
           >
-            {/* Cinematic Poster Card */}
+            {/* Cinematic Apple-Design Poster Card */}
             <div
-              className={`relative aspect-[2/3] w-full rounded-xl md:rounded-2xl overflow-hidden border transition-[border-color,box-shadow] duration-200 ease-out bg-neutral-900 shadow-lg ${
+              style={{ aspectRatio: '2/3' }}
+              className={`relative card-poster-aspect w-full rounded-2xl md:rounded-[1.25rem] overflow-hidden apple-card-sheen transition-[border-color,box-shadow,transform] duration-200 ease-out bg-neutral-900 ${
                 isActiveState
-                  ? 'border-red-500/70 shadow-[0_12px_32px_rgba(229,9,20,0.3)] ring-1 ring-red-500/20'
-                  : 'border-white/5 hover:border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]'
+                  ? 'border-red-500/70 shadow-[0_12px_32px_rgba(229,9,20,0.35)] ring-1 ring-red-500/30'
+                  : 'border-white/10 hover:border-white/25 shadow-[0_8px_24px_rgba(0,0,0,0.4)]'
               }`}
             >
               {/* Image loader placeholder */}
@@ -271,42 +282,55 @@ const MovieCard = memo(
                 }}
               />
 
-              {/* Seamless Dark Gradient Overlay for legible bottom titles */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent pointer-events-none opacity-90 group-hover/card:opacity-100 transition-opacity" />
+              {/* Seamless Apple Dark Gradient Overlay for legible bottom titles */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent pointer-events-none opacity-90 group-hover/card:opacity-100 transition-opacity" />
 
-              {/* Top Badges (Sleek Glass Rating & Tags) */}
+              {/* Top Badges (Sleek Apple Glass Rating & Tags) */}
               <div className="absolute top-2 left-2 md:top-2.5 md:left-2.5 z-20 flex flex-wrap items-center gap-1.5 pointer-events-none" dir="ltr">
                 {rating > 0 && (
-                  <div className="flex items-center gap-1 bg-black/85 backdrop-blur-md text-amber-400 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md font-bold text-[9px] md:text-[10px] shadow-sm border border-white/10" dir="ltr">
-                    <Star size={9} className="fill-amber-400 text-amber-400 shrink-0" />
+                  <div className="flex items-center gap-1 bg-black/65 backdrop-blur-xl text-amber-400 px-2 py-0.5 rounded-full font-bold text-[8.5px] md:text-[9.5px] shadow-sm border border-white/15" dir="ltr">
+                    <Star size={8.5} className="fill-amber-400 text-amber-400 shrink-0" />
                     <span dir="ltr" className="font-mono font-bold leading-none">{Number(rating).toFixed(1)}</span>
                   </div>
                 )}
 
-                {item.level ? (
-                  <div
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-lg text-[8px] md:text-[9px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md ${
-                      item.level === 'KING'
-                        ? 'bg-amber-500/90 text-black border border-amber-400/50'
-                        : 'bg-red-600/90 text-white border border-red-500/50'
-                    }`}
-                  >
-                    {item.level === 'KING' && <Star size={8} fill="currentColor" />}
+                {item.level === 'KING' ? (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] md:text-[8.5px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-400/90 to-yellow-500/90 text-zinc-950 border border-amber-300/40 shadow-sm backdrop-blur-xl">
+                    <Star size={7.5} fill="currentColor" />
+                    <span>KING</span>
+                  </div>
+                ) : item.level && item.level !== 'NEW' ? (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] md:text-[8.5px] font-extrabold uppercase tracking-wider bg-red-600/80 text-white border border-white/20 shadow-sm backdrop-blur-xl">
                     <span>{item.level}</span>
                   </div>
-                ) : (
-                  effectiveMediaType === 'dubbed' && (
-                    <div className="flex items-center gap-1 bg-red-600/90 backdrop-blur-md text-white px-2 py-0.5 rounded-lg shadow-sm border border-red-500/40">
-                      <Mic2 size={9} className="text-white" />
-                      <span className="font-black text-[8px] md:text-[9px] uppercase">DUBBED</span>
-                    </div>
-                  )
-                )}
+                ) : effectiveMediaType === 'dubbed' ? (
+                  <div className="flex items-center gap-1 bg-black/60 backdrop-blur-xl text-white px-2 py-0.5 rounded-full shadow-sm border border-white/15">
+                    <Mic2 size={8} className="text-red-400" />
+                    <span className="font-bold text-[7.5px] md:text-[8px] uppercase tracking-wider">{isRtl ? 'دۆبلاژ' : 'DUBBED'}</span>
+                  </div>
+                ) : null}
               </div>
 
-              {/* Action Buttons (List Add / Remove / Share / Ban) - Cleanly visible on progress row & list page */}
+              {/* Admin Instant Ban Action Badge - Always Visible & Operable for Admins */}
+              {isOwnerOrAdmin && (
+                <button
+                  type="button"
+                  onClick={handleBan}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="absolute top-2 right-2 z-40 px-2 py-1 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white rounded-xl shadow-[0_4px_16px_rgba(220,38,38,0.7)] border border-red-400/80 backdrop-blur-xl transition-all cursor-pointer flex items-center gap-1 active:scale-90 pointer-events-auto"
+                  title={language === 'ku' || language === 'badini' ? 'بلۆککردن و سڕینەوەی فیلم (ئەدمین)' : 'Admin: Block & Ban Movie'}
+                  aria-label="Admin Ban Movie"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-white">
+                    {language === 'ku' || language === 'badini' ? 'بلۆک' : 'Ban'}
+                  </span>
+                </button>
+              )}
+
+              {/* Action Buttons (List Add / Remove / Share) - Cleanly visible on progress row & list page */}
               <div
-                className={`absolute top-2 right-2 md:top-3 md:right-3 flex flex-col gap-1 z-30 transition-all duration-200 ${
+                className={`absolute ${isOwnerOrAdmin ? 'top-10 right-2' : 'top-2 right-2 md:top-3 md:right-3'} flex flex-col gap-1 z-30 transition-all duration-200 ${
                   isMyListPage || isProgressRow
                     ? 'opacity-100 pointer-events-auto'
                     : 'opacity-0 md:group-hover/card:opacity-100 pointer-events-none md:group-hover/card:pointer-events-auto'
@@ -363,17 +387,6 @@ const MovieCard = memo(
                 >
                   <Share2 className="w-3.5 h-3.5" />
                 </button>
-
-                {isAdmin && (
-                  <button
-                    onClick={handleBan}
-                    onPointerDown={(e) => e.stopPropagation()}
-                    className="p-1.5 md:p-2 bg-red-950/80 hover:bg-red-700 active:bg-red-800 text-red-300 hover:text-white rounded-lg shadow-lg border border-red-700/50 active:scale-90 transition-all cursor-pointer"
-                    aria-label="Ban content from global registry"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
 
               {/* Bottom Progress Bar for Watch Progress */}
@@ -384,7 +397,7 @@ const MovieCard = memo(
               )}
 
               {/* Clean Integrated Title & Badges Overlay at Bottom */}
-              <div className="absolute bottom-0 inset-x-0 p-1.5 sm:p-2.5 md:p-3 z-20 flex flex-col justify-end pointer-events-none">
+              <div className="absolute bottom-0 inset-x-0 p-2 sm:p-2.5 md:p-3 z-20 flex flex-col justify-end pointer-events-none">
                 {/* Kurdish CC Badge */}
                 {!isCustom && (
                   <div className="mb-0.5 sm:mb-1">
@@ -393,23 +406,23 @@ const MovieCard = memo(
                 )}
 
                 <h4
-                  className={`text-[10.5px] sm:text-xs md:text-[13px] text-white font-bold line-clamp-1 sm:line-clamp-2 drop-shadow-md transition-colors group-hover/card:text-red-400 ${
+                  className={`text-[11px] sm:text-xs md:text-[13px] text-white font-bold line-clamp-1 sm:line-clamp-2 drop-shadow-sm transition-colors group-hover/card:text-red-400 ${
                     isRtl ? 'font-kurdish leading-tight font-bold text-right' : 'tracking-tight leading-tight text-left'
                   }`}
                 >
                   {title}
                 </h4>
 
-                <div className="flex items-center gap-1.5 mt-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold text-zinc-400">
+                <div className="flex items-center gap-1.5 mt-0.5 text-[8.5px] sm:text-[9px] md:text-[9.5px] font-medium text-zinc-400">
                   {year && <span>{year}</span>}
-                  {year && <span className="w-0.5 h-0.5 rounded-full bg-zinc-600" />}
+                  {year && <span className="w-1 h-1 rounded-full bg-zinc-600" />}
                   {effectiveMediaType === 'tv' && (item.season || item.episode) ? (
                     <span className="bg-red-600/90 text-white px-1.5 py-0.5 rounded font-black text-[7.5px] sm:text-[8px] md:text-[9px] tracking-tight">
                       {isRtl ? `وەرزی ${item.season || 1} • ئەڵقەی ${item.episode || 1}` : `S${item.season || 1}:E${item.episode || 1}`}
                     </span>
                   ) : (
-                    <span className="uppercase text-[7.5px] sm:text-[8px] md:text-[9px] font-bold text-zinc-500 tracking-wider">
-                      {effectiveMediaType === 'tv' ? (isRtl ? 'زنجیرە' : 'TV') : (isRtl ? 'فیلم' : 'Movie')}
+                    <span className="uppercase text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold text-zinc-500 tracking-wider">
+                      {effectiveMediaType === 'dubbed' ? (isRtl ? 'دۆبلاژکراو' : 'Dubbed') : (effectiveMediaType === 'tv' ? (isRtl ? 'زنجیرە' : 'TV') : (isRtl ? 'فیلم' : 'Movie'))}
                     </span>
                   )}
                 </div>
@@ -425,7 +438,21 @@ const MovieCard = memo(
         </>
       );
     }
-  )
+  ),
+  (prev, next) => {
+    return (
+      prev.item?.id === next.item?.id &&
+      prev.item?.poster_path === next.item?.poster_path &&
+      prev.item?.title === next.item?.title &&
+      prev.item?.name === next.item?.name &&
+      (prev.item as any)?.progress === (next.item as any)?.progress &&
+      prev.mediaType === next.mediaType &&
+      prev.type === next.type &&
+      prev.isProgressRow === next.isProgressRow &&
+      prev.isMyListPage === next.isMyListPage &&
+      prev.className === next.className
+    );
+  }
 );
 
 MovieCard.displayName = 'MovieCard';

@@ -374,6 +374,9 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
             <img 
               src="/flkrd-logo.png" 
               alt="FLKRD" 
+              width={112}
+              height={28}
+              decoding="async"
               className="h-7 w-auto object-contain" 
             />
             <span className={cn(
@@ -511,6 +514,9 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                    <img 
                      src="/flkrd-logo.png" 
                      alt="FLKRD" 
+                     width={128}
+                     height={32}
+                     decoding="async"
                      className="h-8 w-auto object-contain" 
                    />
                    <span className={cn(
@@ -845,7 +851,7 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-5 border-b border-border-color">
                 <div className="flex items-center gap-2">
-                  <img src="/flkrd-logo.png" alt="FLKRD" className="h-7 w-auto object-contain" />
+                  <img src="/flkrd-logo.png" alt="FLKRD" width={112} height={28} decoding="async" className="h-7 w-auto object-contain" />
                   <span className="text-base font-black italic uppercase tracking-tighter text-main-text">PORTAL</span>
                 </div>
                 <button
@@ -1019,6 +1025,10 @@ const Header: React.FC<{ scrolled: boolean }> = ({ scrolled }) => {
                                   : '/default-poster.svg'
                               }
                               alt="" 
+                              width={40}
+                              height={56}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/default-poster.svg';

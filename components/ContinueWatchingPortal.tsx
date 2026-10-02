@@ -221,6 +221,10 @@ const ContinueWatchingPortal: React.FC = () => {
                                       : `${IMAGE_BASE_URL_POSTER}${item.poster_path}`)
                                   : '/default-poster.svg'
                               }
+                              width={144}
+                              height={192}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
                               alt={item.title} 
                               onError={(e) => {
@@ -371,6 +375,10 @@ const ContinueWatchingPortal: React.FC = () => {
                           : `${IMAGE_BASE_URL_POSTER}${activeItem.poster_path}`)
                       : '/default-poster.svg'
                   }
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover opacity-50 transition-transform duration-500 group-hover:scale-110" 
                   alt="" 
                   onError={(e) => {

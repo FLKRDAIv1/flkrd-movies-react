@@ -66,6 +66,15 @@ class VisitorAnalyticsService {
       this.hasTrackedCurrentPage = false;
     }, 2000);
 
+    // Throttle remote database writes to stay 100% free under Firebase Spark 20,000 writes/day
+    const LAST_WRITE_KEY = 'flkrd_last_analytics_sync';
+    try {
+      const lastSync = Number(sessionStorage.getItem(LAST_WRITE_KEY) || '0');
+      // Only write to database once every 5 minutes per visitor session
+      if (Date.now() - lastSync < 5 * 60 * 1000) return;
+      sessionStorage.setItem(LAST_WRITE_KEY, String(Date.now()));
+    } catch {}
+
     const visitorId = getVisitorId();
     const sessionId = getSessionId();
     const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || window.innerWidth < 768);
@@ -81,9 +90,10 @@ class VisitorAnalyticsService {
       }
     } catch (e) {}
 
-    // Record in Supabase database
+    // Record in database
     try {
       await supabase.from('site_analytics').insert({
+        id: 'an_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         event_name: 'page_view',
         visitor_id: visitorId,
         visit_id: visitorId,
@@ -106,6 +116,17 @@ class VisitorAnalyticsService {
    * Retrieve REAL visitor analytics metrics
    */
   public async getAnalyticsStats(): Promise<AnalyticsStats> {
+    const STATS_CACHE_KEY = 'flkrd_analytics_stats_cache';
+    try {
+      const cached = sessionStorage.getItem(STATS_CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+          return parsed.data;
+        }
+      }
+    } catch {}
+
     let totalViews = 0;
     let productionViews = 0;
     let localViews = 0;
@@ -115,10 +136,10 @@ class VisitorAnalyticsService {
     let deviceBreakdown = { mobile: 0, desktop: 0 };
 
     try {
-      // 1. Fetch total count from Supabase
+      // 1. Fetch count from database
       const { count: totalCount, data: allData, error } = await supabase
         .from('site_analytics')
-        .select('*', { count: 'exact' });
+        .select('*');
 
       if (!error && allData) {
         totalViews = totalCount || allData.length;
@@ -169,7 +190,7 @@ class VisitorAnalyticsService {
     if (uniqueVisitors === 0) uniqueVisitors = Math.max(1, Math.floor(totalViews * 0.7));
     if (activeUsers5Min === 0) activeUsers5Min = 1;
 
-    return {
+    const result: AnalyticsStats = {
       totalViews,
       productionViews,
       localViews,
@@ -179,6 +200,12 @@ class VisitorAnalyticsService {
       deviceBreakdown,
       lastUpdated: new Date().toLocaleTimeString()
     };
+
+    try {
+      sessionStorage.setItem(STATS_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), data: result }));
+    } catch {}
+
+    return result;
   }
 }
 

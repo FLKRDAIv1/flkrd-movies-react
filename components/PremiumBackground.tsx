@@ -16,6 +16,20 @@ export const PremiumBackground: React.FC = () => {
         let particles: any[] = [];
         let animationFrameId: number = 0;
         let isRunning = true;
+        let lastFrameTime = 0;
+        const targetFps = 30;
+        const frameInterval = 1000 / targetFps;
+        let isScrolling = false;
+        let scrollTimeout: any = null;
+
+        const onScroll = () => {
+            isScrolling = true;
+            if (scrollTimeout) clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                isScrolling = false;
+            }, 150);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -26,20 +40,21 @@ export const PremiumBackground: React.FC = () => {
         const init = () => {
             particles = [];
             const isMobile = window.innerWidth < 768;
+            // Drastically reduced particle counts to eliminate GPU memory and heat overhead
             const count = isMobile
-                ? (theme === 'premium-particles-galaxy' ? 60 : 40)
-                : (theme === 'premium-particles-galaxy' ? 350 : 200);
+                ? (theme === 'premium-particles-galaxy' ? 24 : 16)
+                : (theme === 'premium-particles-galaxy' ? 45 : 25);
             
             for (let i = 0; i < count; i++) {
                 if (theme === 'premium-particles-galaxy') {
                     particles.push({
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
-                        z: Math.random() * canvas.width, // Star depth
-                        size: 0.1 + Math.random() * 1.5,
-                        opacity: 0.1 + Math.random() * 0.8,
+                        z: Math.random() * canvas.width,
+                        size: 0.1 + Math.random() * 1.4,
+                        opacity: 0.15 + Math.random() * 0.7,
                         twinkle: Math.random() * Math.PI,
-                        speed: 0.2 + Math.random() * 0.5,
+                        speed: 0.3 + Math.random() * 0.6,
                         color: Math.random() > 0.8 ? '#a5f3fc' : Math.random() > 0.9 ? '#fecaca' : '#ffffff'
                     });
                 } else if (theme === 'premium-particles-moon') {
@@ -48,7 +63,7 @@ export const PremiumBackground: React.FC = () => {
                         y: Math.random() * canvas.height,
                         radius: Math.random() * 1.2,
                         alpha: Math.random(),
-                        twinkleSpeed: 0.01 + Math.random() * 0.03,
+                        twinkleSpeed: 0.01 + Math.random() * 0.02,
                         vx: (Math.random() - 0.5) * 0.05,
                         vy: (Math.random() - 0.5) * 0.05,
                     });
@@ -56,10 +71,10 @@ export const PremiumBackground: React.FC = () => {
                     particles.push({
                         x: Math.random() * canvas.width,
                         y: Math.random() * canvas.height,
-                        size: 1 + Math.random() * 3,
-                        vx: (Math.random() - 0.5) * 0.3,
-                        vy: -0.2 - Math.random() * 0.8,
-                        alpha: 0.2 + Math.random() * 0.8,
+                        size: 1 + Math.random() * 2.5,
+                        vx: (Math.random() - 0.5) * 0.2,
+                        vy: -0.2 - Math.random() * 0.6,
+                        alpha: 0.2 + Math.random() * 0.7,
                         oscillation: Math.random() * Math.PI,
                         oscillationSpeed: 0.02 + Math.random() * 0.03
                     });
@@ -72,23 +87,31 @@ export const PremiumBackground: React.FC = () => {
         };
 
         resize();
-        window.addEventListener('resize', resize);
+        window.addEventListener('resize', resize, { passive: true });
 
-        const draw = () => {
+        const draw = (currentTime: number) => {
             if (!isRunning) return;
-            
-            // If tab is in background, pause computations
+
+            // Strict visibility check: stop looping when tab is hidden
             if (document.visibilityState !== 'visible') {
-                animationFrameId = requestAnimationFrame(draw);
+                animationFrameId = 0;
                 return;
             }
+
+            animationFrameId = requestAnimationFrame(draw);
+
+            // Skip rendering while user is aggressively scrolling or if not enough time elapsed (30fps cap)
+            if (isScrolling) return;
+
+            const elapsed = currentTime - lastFrameTime;
+            if (elapsed < frameInterval) return;
+            lastFrameTime = currentTime - (elapsed % frameInterval);
 
             // Draw Background Base
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (theme === 'premium-particles-galaxy') {
-                // Nebula Layers
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
                 
@@ -100,7 +123,7 @@ export const PremiumBackground: React.FC = () => {
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 particles.forEach(p => {
-                    p.z -= p.speed;
+                    p.z -= p.speed * (elapsed / 16.6);
                     if (p.z <= 0) p.z = canvas.width;
 
                     const sx = (p.x - centerX) * (canvas.width / p.z) + centerX;
@@ -121,14 +144,13 @@ export const PremiumBackground: React.FC = () => {
                 ctx.globalAlpha = 1;
 
             } else if (theme === 'premium-particles-moon') {
-                 // Responsive Moon
                  const moonX = canvas.width * (canvas.width < 768 ? 0.5 : 0.85);
                  const moonY = canvas.height * (canvas.width < 768 ? 0.15 : 0.2);
                  const moonRadius = canvas.width < 768 ? 50 : 70;
 
                  // Atmospheric Glow
-                 const moonGlow = ctx.createRadialGradient(moonX, moonY, moonRadius, moonX, moonY, moonRadius * 4);
-                 moonGlow.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+                 const moonGlow = ctx.createRadialGradient(moonX, moonY, moonRadius, moonX, moonY, moonRadius * 3);
+                 moonGlow.addColorStop(0, 'rgba(255, 255, 255, 0.04)');
                  moonGlow.addColorStop(1, 'transparent');
                  ctx.fillStyle = moonGlow;
                  ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -209,20 +231,21 @@ export const PremiumBackground: React.FC = () => {
                 });
                 ctx.globalAlpha = 1;
             }
-
-            animationFrameId = requestAnimationFrame(draw);
         };
 
-        draw();
+        animationFrameId = requestAnimationFrame(draw);
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 if (!animationFrameId) {
-                    draw();
+                    lastFrameTime = performance.now();
+                    animationFrameId = requestAnimationFrame(draw);
                 }
             } else {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = 0;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = 0;
+                }
             }
         };
 
@@ -230,9 +253,11 @@ export const PremiumBackground: React.FC = () => {
 
         return () => {
             isRunning = false;
+            window.removeEventListener('scroll', onScroll);
+            if (scrollTimeout) clearTimeout(scrollTimeout);
             window.removeEventListener('resize', resize);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
-            cancelAnimationFrame(animationFrameId);
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
         };
     }, [theme, accentColor, isPerformanceMode]);
 

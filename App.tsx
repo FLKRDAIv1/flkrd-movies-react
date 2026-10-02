@@ -636,9 +636,9 @@ const ProfileBackgroundVideo: React.FC<{ theme: string }> = ({ theme }) => {
                 const retry = () => {
                     vid.play().catch(() => {});
                 };
-                document.addEventListener('touchstart', retry, { once: true });
+                document.addEventListener('touchstart', retry, { once: true, passive: true });
                 document.addEventListener('click', retry, { once: true });
-                document.addEventListener('touchend', retry, { once: true });
+                document.addEventListener('touchend', retry, { once: true, passive: true });
             });
         };
 

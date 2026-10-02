@@ -153,6 +153,23 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
       window.dispatchEvent(new Event('watchProgressUpdated'));
   };
 
+  const handleItemRemove = useCallback((removed: any) => {
+    if (!removed) return;
+    const removedCleanId = String(removed.id).replace('custom_', '');
+    const removedType = (removed as any).type || (removed as any).media_type || type;
+    setContent(prev => prev.filter(i => {
+      const iCleanId = String(i.id).replace('custom_', '');
+      const iType = (i as any).type || (i as any).media_type || type;
+      if (iCleanId === removedCleanId) {
+        if (iType && removedType) {
+          return String(iType) !== String(removedType);
+        }
+        return false;
+      }
+      return true;
+    }));
+  }, [type]);
+
   const handleBan = async (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
     const cleanId = String(item.id).replace('custom_', '');
@@ -294,22 +311,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                 item={item}
                 type={mediaType as 'movie' | 'tv' | 'dubbed'}
                 isProgressRow={isProgressRow}
-                onRemove={(removed) => {
-                  if (!removed) return;
-                  const removedCleanId = String(removed.id).replace('custom_', '');
-                  const removedType = (removed as any).type || (removed as any).media_type || type;
-                  setContent(prev => prev.filter(i => {
-                    const iCleanId = String(i.id).replace('custom_', '');
-                    const iType = (i as any).type || (i as any).media_type || type;
-                    if (iCleanId === removedCleanId) {
-                      if (iType && removedType) {
-                        return String(iType) !== String(removedType);
-                      }
-                      return false;
-                    }
-                    return true;
-                  }));
-                }}
+                onRemove={handleItemRemove}
               />
             );
           })}
@@ -336,22 +338,7 @@ const Row: React.FC<RowProps> = ({ title, fetchUrl, type, items, isProgressRow, 
                       mediaType={mediaType as 'movie' | 'tv' | 'dubbed'}
                       isProgressRow={isProgressRow}
                       className="w-full"
-                      onRemove={(removed) => {
-                        if (!removed) return;
-                        const removedCleanId = String(removed.id).replace('custom_', '');
-                        const removedType = (removed as any).type || (removed as any).media_type || type;
-                        setContent(prev => prev.filter(i => {
-                          const iCleanId = String(i.id).replace('custom_', '');
-                          const iType = (i as any).type || (i as any).media_type || type;
-                          if (iCleanId === removedCleanId) {
-                            if (iType && removedType) {
-                              return String(iType) !== String(removedType);
-                            }
-                            return false;
-                          }
-                          return true;
-                        }));
-                      }}
+                      onRemove={handleItemRemove}
                     />
                   </div>
                 );

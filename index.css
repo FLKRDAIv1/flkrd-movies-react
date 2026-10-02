@@ -188,18 +188,54 @@ html.light-mode .apple-chrome {
 .apple-dialog,
 .apple-card {
   background: rgba(16, 16, 18, 0.88) !important;
-  backdrop-filter: blur(28px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 35px 80px -15px rgba(0, 0, 0, 0.85), 
-              0 0 0 1px rgba(255, 255, 255, 0.06) inset !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 32px 70px -15px rgba(0, 0, 0, 0.85), 
+              0 0 0 1px rgba(255, 255, 255, 0.05) inset !important;
 }
 html.light-mode .apple-dialog,
 html.light-mode .apple-card {
   background: rgba(255, 255, 255, 0.94) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
-  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.12), 
-              0 0 0 1px rgba(0, 0, 0, 0.04) inset !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.1), 
+              0 0 0 1px rgba(0, 0, 0, 0.03) inset !important;
+}
+
+/* Apple Fluid Material Pills & Segmented Controls */
+.apple-pill {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 9999px;
+  transition: all 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
+}
+.apple-pill:active {
+  transform: scale(0.96) translateZ(0);
+}
+html.light-mode .apple-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Apple Modal / Sheet Spring Reveal (Never scale(0), critically damped settle) */
+.apple-modal-enter {
+  animation: apple-modal-reveal 260ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) forwards;
+}
+@keyframes apple-modal-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Touch Device False Hover Gating */
@@ -379,11 +415,29 @@ img {
   image-rendering: -webkit-optimize-contrast;
 }
 
-/* ── Custom Scrollbar ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
-::-webkit-scrollbar-thumb { background: var(--brand-red); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #ff1f1f; }
+/* ── Apple macOS Clean Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: background 150ms ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.38);
+}
+html.light-mode ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+}
+html.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.32);
+}
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -1362,4 +1416,79 @@ a,
 
 .tv-focus-target:focus-visible {
   box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.8), 0 0 25px rgba(229, 9, 20, 0.5) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   Apple Design Standard Poster & Card Aesthetics
+   ═══════════════════════════════════════════════ */
+
+/* Guaranteed fluid aspect ratios across all browsers & WebKit engines */
+.aspect-\[2\/3\],
+[class*="aspect-[2/3]"],
+.card-poster-aspect {
+  aspect-ratio: 2 / 3 !important;
+}
+
+.aspect-\[16\/9\],
+[class*="aspect-[16/9]"],
+.aspect-video {
+  aspect-ratio: 16 / 9 !important;
+}
+
+.aspect-\[3\/4\],
+[class*="aspect-[3/4]"] {
+  aspect-ratio: 3 / 4 !important;
+}
+
+.aspect-\[16\/10\],
+[class*="aspect-[16/10]"] {
+  aspect-ratio: 16 / 10 !important;
+}
+
+/* Apple Fluid Card Physicality */
+.apple-card-sheen {
+  position: relative;
+  isolation: isolate;
+  background: rgba(22, 22, 26, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+
+.apple-card-sheen:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.1s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .apple-card-sheen:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 0 20px rgba(229, 9, 20, 0.2);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Apple Custom Conic Stepped Loader for Dubbed Page
+   ═══════════════════════════════════════════════ */
+.loader {
+  width: 50px;
+  --b: 8px; 
+  aspect-ratio: 1;
+  border-radius: 50%;
+  padding: 1px;
+  background: conic-gradient(#0000 10%, #f03355) content-box;
+  -webkit-mask:
+    repeating-conic-gradient(#0000 0deg, #000 1deg 20deg, #0000 21deg 36deg),
+    radial-gradient(farthest-side, #0000 calc(100% - var(--b) - 1px), #000 calc(100% - var(--b)));
+  -webkit-mask-composite: destination-in;
+          mask-composite: intersect;
+  animation: l4 1s infinite steps(10);
+}
+
+@keyframes l4 {
+  to {
+    transform: rotate(1turn);
+  }
 }

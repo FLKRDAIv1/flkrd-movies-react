@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Users, Film, X, Star, Sparkles, Mic2, Heart, Check, Plus } from 'lucide-react';
+import { Play, Users, Film, X, Star, Sparkles, Mic2, Heart, Check, Plus, Info, MessageSquare, BookOpen, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { IMAGE_BASE_URL, IMAGE_BASE_URL_POSTER, IMAGE_BASE_URL_LOGO, API_KEY } from '../constants';
 import { fetchData, isForbidden, getMediaType } from '../services/tmdbService';
+import { bannedService } from '../services/bannedService';
+import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import KurdishCCBadge from './KurdishCCBadge';
 import { BorderBeam } from './ui/border-beam';
 import MovieStageAccordion from './MovieStageAccordion';
@@ -15,8 +19,6 @@ import Portal from './Portal';
 import { usePlayer } from '../contexts/PlayerContext';
 import { getSourceUrl, getRankedSources, getDubbedSources, extractEmbedSrc } from '../utils/playerSourceUtils';
 
-
-
 interface ListMoviePreviewDrawerProps {
   item: any;
   isOpen: boolean;
@@ -24,8 +26,8 @@ interface ListMoviePreviewDrawerProps {
 }
 
 /**
- * Ultra-Premium Full Screen 60FPS Framer Motion Movie Preview Modal
- * Rendered via Portal at body root with double-guaranteed touch/click close handlers & mobile swipe-down-to-dismiss.
+ * Ultra-Premium Apple Design 60FPS Movie Preview Sheet
+ * Rendered via Portal at body root with instant spring physics & zero-lag tabbed rendering.
  */
 export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   item,
@@ -36,8 +38,15 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   const { language, t } = useTranslation();
   const { addNotification } = useNotification();
   const { setActiveVideo, setIsPaused, setIsPipActive } = usePlayer();
+  const { isAdmin } = useUI();
+  const { user } = useAuth();
   const isRtl = language === 'ku' || language === 'badini';
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const isOwnerOrAdmin = isAdmin || 
+    (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true') ||
+    user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' ||
+    (typeof window !== 'undefined' && localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com');
 
   const [activeItem, setActiveItem] = useState<any>(item);
   const [cast, setCast] = useState<any[]>([]);
@@ -45,9 +54,11 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
   const [logoPath, setLogoPath] = useState<string | null>(null);
   const [loadingExtra, setLoadingExtra] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'comments'>('details');
 
   useEffect(() => {
     setActiveItem(item);
+    setActiveTab('details');
   }, [item]);
 
   // Scroll drawer to top whenever active movie changes
@@ -209,7 +220,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
     };
   }, [isOpen]);
 
-  if (!isOpen || !targetItem || isForbidden(targetItem, language)) return null;
+  if (!isOpen || !targetItem) return null;
 
   const title = isRtl && targetItem.kurdishTitle ? targetItem.kurdishTitle : targetItem.title || targetItem.name || '';
   const backdrop = targetItem.bannerBase64 || targetItem.backdrop_path || targetItem.poster_path || targetItem.imageBase64 || '';
@@ -271,6 +282,55 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
     navigate(`/watch-party?id=${cleanId}&type=${mediaType}`);
   };
 
+  const handleNavigateFullDetails = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleClose();
+    if (mediaType === 'dubbed' || isCustom) {
+      navigate(`/dubbed-details/${cleanId}`);
+    } else {
+      navigate(`/details/${mediaType === 'tv' ? 'tv' : 'movie'}/${cleanId}`);
+    }
+  };
+
+  const handleAdminBan = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isOwnerOrAdmin) return;
+    const confirmMsg = isRtl
+      ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${title}» لە تەواوی وێبسایتدا؟`
+      : `Are you sure you want to ban and block "${title}" from the entire app?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const rawId = String(targetItem.id);
+      const cleanTargetId = rawId.replace('custom_', '');
+      const isCustomItem = rawId.startsWith('custom_') || targetItem.isCustom;
+
+      if (isCustomItem) {
+        await supabase.from('dubbed_movies').delete().or(`id.eq.${rawId},id.eq.${cleanTargetId}`);
+        try {
+          await db.deleteMovie(rawId);
+          await db.deleteMovie(cleanTargetId);
+        } catch {}
+      }
+
+      await bannedService.banContent(cleanTargetId, mediaType === 'tv' ? 'tv' : 'movie');
+      addNotification({
+        type: 'success',
+        title: isRtl ? 'ناوەڕۆک بلۆک کرا' : 'Content Banned',
+        message: isRtl ? `«${title}» بە سەرکەوتوویی لە وێبسایت بلۆک کرا و سڕایەوە.` : `"${title}" has been permanently banned and removed.`
+      });
+      window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      handleClose();
+    } catch (err) {
+      console.error('[BAN ERROR]', err);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to ban content.'
+      });
+    }
+  };
+
   return (
     <Portal id="movie-preview-portal">
       <AnimatePresence mode="wait">
@@ -292,15 +352,17 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               initial={{ opacity: 0, scale: 0.97, y: 35 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97, y: 35 }}
-              transition={{ type: 'spring', bounce: 0, duration: 0.38 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
               onClick={(e) => e.stopPropagation()}
-              className={`relative z-10 w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c12]/90 border border-white/15 rounded-t-[36px] sm:rounded-[36px] shadow-[0_30px_100px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
+              className={`relative z-10 w-full max-w-3xl h-[88vh] max-h-[88dvh] sm:h-auto sm:max-h-[88vh] bg-[#0c0c12]/95 border border-white/15 rounded-t-[36px] sm:rounded-[36px] shadow-[0_30px_100px_rgba(0,0,0,0.95)] flex flex-col overflow-y-auto overflow-x-hidden backdrop-blur-3xl pointer-events-auto overscroll-contain scroll-smooth ${
                 isRtl ? 'text-right' : 'text-left'
               }`}
               style={{
                 boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.2), 0 35px 90px -15px rgba(0, 0, 0, 0.95)',
                 WebkitOverflowScrolling: 'touch',
                 touchAction: 'pan-y',
+                willChange: 'transform, opacity',
+                transform: 'translateZ(0)',
               }}
               dir={isRtl ? 'rtl' : 'ltr'}
             >
@@ -308,12 +370,12 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
               <div 
                 onClick={handleClose}
                 style={{ touchAction: 'manipulation' }}
-                className="w-11 h-1 bg-white/35 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0 cursor-pointer transition-all"
+                className="w-11 h-1.5 bg-white/35 hover:bg-white/60 active:scale-95 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0 cursor-pointer transition-all"
                 title="Tap to close"
               />
 
               {/* Header Hero Backdrop Area */}
-              <div className="relative w-full h-60 sm:h-84 flex-shrink-0 bg-neutral-950 overflow-hidden">
+              <div className="relative w-full h-60 sm:h-80 flex-shrink-0 bg-neutral-950 overflow-hidden">
                 {backdrop ? (
                   <img
                     src={
@@ -322,6 +384,10 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                         : `${IMAGE_BASE_URL}${backdrop}`
                     }
                     alt={title}
+                    width={780}
+                    height={336}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -330,7 +396,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                   </div>
                 )}
                 {/* Apple Directional Shadow Mask */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c12] via-[#0c0c12]/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c12] via-[#0c0c12]/50 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent" />
 
                 {/* Circular Frosted Glass Close Button */}
@@ -341,7 +407,7 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                   transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                   onClick={handleClose}
                   style={{ touchAction: 'manipulation' }}
-                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 w-9 h-9 rounded-full bg-black/50 hover:bg-white/20 text-white border border-white/20 backdrop-blur-2xl shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
+                  className={`absolute top-4 ${isRtl ? 'left-4' : 'right-4'} z-50 w-9 h-9 rounded-full bg-black/60 hover:bg-white/20 text-white border border-white/20 backdrop-blur-2xl shadow-xl cursor-pointer pointer-events-auto flex items-center justify-center group`}
                   aria-label="Close"
                 >
                   <X className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
@@ -371,6 +437,10 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     <img
                       src={`${IMAGE_BASE_URL_LOGO}${logoPath}`}
                       alt={title}
+                      width={320}
+                      height={64}
+                      loading="lazy"
+                      decoding="async"
                       className="h-10 sm:h-16 w-auto max-w-[240px] sm:max-w-[320px] object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.8)] my-1"
                     />
                   ) : (
@@ -383,14 +453,14 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
 
               {/* Content Body */}
               <div className="p-4 sm:p-6 flex flex-col gap-5 flex-1">
-                {/* Action Buttons Row */}
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Action Buttons Row with Apple Design */}
+                <div className="flex flex-wrap items-center gap-2.5">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.96 }}
                     transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handlePlay}
-                    className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-white font-black text-sm rounded-2xl shadow-[0_8px_25px_rgba(229,9,20,0.45)] cursor-pointer select-none"
+                    className="flex-1 min-w-[130px] flex items-center justify-center gap-2 px-6 py-3.5 bg-brand hover:bg-brand/90 text-white font-black text-sm rounded-2xl shadow-[0_8px_25px_rgba(229,9,20,0.45)] cursor-pointer select-none active:scale-[0.96]"
                     style={{
                       boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.3), 0 8px 25px rgba(229,9,20,0.45)'
                     }}
@@ -405,8 +475,22 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.96 }}
                     transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+                    onClick={handleNavigateFullDetails}
+                    className="flex items-center gap-2 px-4 sm:px-5 py-3.5 bg-white/[0.08] hover:bg-white/[0.14] text-white border border-white/15 font-bold text-xs rounded-2xl backdrop-blur-2xl cursor-pointer select-none active:scale-[0.96]"
+                    title={isRtl ? 'بینینی لاپەڕەی تەواوی فیلم' : 'View Full Details Page'}
+                  >
+                    <Info className="w-4 h-4 text-brand" />
+                    <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
+                      {isRtl ? 'تەواوی زانیاری' : 'Details'}
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handleToggleMyList}
-                    className={`flex items-center gap-2 px-5 py-3.5 rounded-2xl text-xs font-bold border transition-colors cursor-pointer select-none ${
+                    className={`flex items-center gap-2 px-4 sm:px-5 py-3.5 rounded-2xl text-xs font-bold border transition-colors cursor-pointer select-none active:scale-[0.96] ${
                       isAdded
                         ? 'bg-brand text-white border-brand'
                         : 'bg-white/[0.06] hover:bg-white/[0.12] text-white border-white/15 backdrop-blur-2xl'
@@ -423,30 +507,75 @@ export const ListMoviePreviewDrawer: React.FC<ListMoviePreviewDrawerProps> = ({
                     whileTap={{ scale: 0.96 }}
                     transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
                     onClick={handleCoop}
-                    className="flex items-center gap-2 px-5 py-3.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-bold text-xs rounded-2xl backdrop-blur-2xl cursor-pointer select-none"
+                    className="flex items-center gap-2 px-4 sm:px-5 py-3.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 font-bold text-xs rounded-2xl backdrop-blur-2xl cursor-pointer select-none active:scale-[0.96]"
                   >
                     <Users className="w-4 h-4" />
                     <span className={isRtl ? 'font-kurdish' : 'uppercase tracking-wider'}>
-                      Co-Op Watch
+                      Co-Op
                     </span>
                   </motion.button>
+
+                  {isOwnerOrAdmin && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.96 }}
+                      transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+                      onClick={handleAdminBan}
+                      className="flex items-center gap-2 px-4 sm:px-5 py-3.5 bg-red-600/30 hover:bg-red-600/50 text-red-300 border border-red-500/50 font-black text-xs rounded-2xl backdrop-blur-2xl cursor-pointer select-none active:scale-[0.96] shadow-[0_4px_16px_rgba(220,38,38,0.35)]"
+                      title={isRtl ? 'بلۆککردن و سڕینەوەی فیلم (ئەدمین)' : 'Admin: Ban & Block Content'}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                      <span className="font-black uppercase tracking-wider">
+                        {isRtl ? 'بلۆککردنی فیلم' : 'Ban Movie'}
+                      </span>
+                    </motion.button>
+                  )}
                 </div>
 
-                {/* Interactive Stage-by-Stage Card Splitting Accordion */}
-                <div className="pt-2">
-                  <MovieStageAccordion
-                    item={targetItem}
-                    cast={cast}
-                    similar={similar}
-                    isRtl={isRtl}
-                    onSelectMovie={(newMovie) => setActiveItem(newMovie)}
-                  />
+                {/* Apple Segmented Control for 60FPS Zero-Lag Tabs */}
+                <div className="flex items-center p-1 bg-white/[0.05] border border-white/10 rounded-2xl backdrop-blur-xl">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('details')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                      activeTab === 'details'
+                        ? 'bg-white/15 text-white shadow-sm border border-white/15'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>{isRtl ? 'زانیاری و قۆناغەکان' : 'Details & Stages'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('comments')}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer select-none ${
+                      activeTab === 'comments'
+                        ? 'bg-white/15 text-white shadow-sm border border-white/15'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>{isRtl ? 'سەرنج و بۆچوونەکان' : 'Comments & Discussion'}</span>
+                  </button>
                 </div>
 
-                {/* Comment & Discussion Section in Preview Drawer */}
-                <div className="pt-2 pb-6">
-                  <CommentSection movieId={targetItem?.id || cleanId} mediaType={isCustom ? 'dubbed' : (mediaType === 'tv' ? 'tv' : 'movie')} />
-                </div>
+                {/* Interactive Stage-by-Stage Card Splitting Accordion or Comments */}
+                {activeTab === 'details' ? (
+                  <div className="pt-1">
+                    <MovieStageAccordion
+                      item={targetItem}
+                      cast={cast}
+                      similar={similar}
+                      isRtl={isRtl}
+                      onSelectMovie={(newMovie) => setActiveItem(newMovie)}
+                    />
+                  </div>
+                ) : (
+                  <div className="pt-1 pb-6">
+                    <CommentSection movieId={targetItem?.id || cleanId} mediaType={isCustom ? 'dubbed' : (mediaType === 'tv' ? 'tv' : 'movie')} />
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

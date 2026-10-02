@@ -259,6 +259,28 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // 1. Initialize Security Shield (Production DevTools Hook Neutralizer & Console Protection)
   useEffect(() => {
     initSecurityShield();
+
+    // Preload Sub-Admins in background so rolling roles and permissions are always up-to-date across all devices
+    const preloadSubAdmins = async () => {
+      try {
+        const { data: rows } = await supabase.from('server_config').select('id, server_name');
+        if (rows && rows.length > 0) {
+          const fetchedList: any[] = [];
+          for (const r of rows) {
+            if (r.server_name && r.server_name.startsWith('subadmin:')) {
+              try {
+                const parsed = JSON.parse(r.server_name.replace(/^subadmin:/, ''));
+                if (parsed && parsed.email) fetchedList.push(parsed);
+              } catch {}
+            }
+          }
+          if (fetchedList.length > 0) {
+            localStorage.setItem('flkrd_sub_admins', JSON.stringify(fetchedList));
+          }
+        }
+      } catch (err) {}
+    };
+    preloadSubAdmins();
   }, []);
 
   // 2. Cryptographically protected Admin state with 7-day lifetime
@@ -1098,8 +1120,11 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       if (stored) {
         const subAdmins = JSON.parse(stored);
         const current = subAdmins.find((a: any) => a.email && a.email.toLowerCase() === email);
-        if (current && current.permissions && current.permissions[permKey] !== undefined) {
-          return !!current.permissions[permKey];
+        if (current) {
+          if (current.role === 'co_ceo' && permKey !== 'canManageAdmins') return true;
+          if (current.permissions && current.permissions[permKey] !== undefined) {
+            return !!current.permissions[permKey];
+          }
         }
       }
     } catch (e) {}
@@ -1146,7 +1171,7 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     // Resilient Fallback for Master Admin & Sub-Admins
-    if (cleanEmail === 'flkrdstudio@gmail.com' && (pass === 'Pirasali1919@01' || pass === 'Zanabarzani1919@' || pass === 'Admin1234@' || pass === 'Pirasali1919@')) {
+    if (cleanEmail === 'flkrdstudio@gmail.com' && (pass === 'flkrdstudioadmin@' || pass === 'Pirasali1919@01' || pass === 'Zanabarzani1919@' || pass === 'Admin1234@' || pass === 'Pirasali1919@')) {
       const fallbackToken = `flkrd_master_admin_${Date.now()}`;
       localStorage.setItem('flkrd_admin_session_token', fallbackToken);
       localStorage.setItem('flkrd_admin_email', cleanEmail);
@@ -1161,11 +1186,52 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     }
 
     try {
+      let subAdmins: any[] = [];
       const stored = localStorage.getItem('flkrd_sub_admins');
       if (stored) {
-        const subAdmins = JSON.parse(stored);
-        const match = subAdmins.find((a: any) => a.email?.toLowerCase() === cleanEmail && a.password === pass);
+        try { subAdmins = JSON.parse(stored); } catch {}
+      }
+
+      // If not cached locally or email not found, fetch live from database server_config
+      if (!subAdmins.length || !subAdmins.some((a: any) => a.email?.toLowerCase() === cleanEmail)) {
+        try {
+          const { data: rows } = await supabase.from('server_config').select('id, server_name');
+          if (rows && rows.length > 0) {
+            const fetchedList: any[] = [];
+            for (const r of rows) {
+              if (r.server_name && r.server_name.startsWith('subadmin:')) {
+                try {
+                  const parsed = JSON.parse(r.server_name.replace(/^subadmin:/, ''));
+                  if (parsed && parsed.email) fetchedList.push(parsed);
+                } catch {}
+              }
+            }
+            if (fetchedList.length > 0) {
+              subAdmins = fetchedList;
+              localStorage.setItem('flkrd_sub_admins', JSON.stringify(fetchedList));
+            }
+          }
+        } catch (fetchErr) {}
+      }
+
+      if (subAdmins.length > 0) {
+        let passHash = '';
+        if (typeof crypto !== 'undefined' && crypto.subtle) {
+          const msgBuffer = new TextEncoder().encode(pass + '_flkrd_subadmin_salt_2026');
+          const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+          passHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        const match = subAdmins.find((a: any) => 
+          a.email?.toLowerCase() === cleanEmail && 
+          (a.password === pass || (passHash && a.passwordHash === passHash))
+        );
         if (match) {
+          if (match.isActive === false) {
+            return {
+              success: false,
+              message: 'ئەم ئەکاونتەی ئادمن لە لایەن خاوەنەوە ناچالاک کراوە!'
+            };
+          }
           const fallbackToken = `flkrd_sub_admin_${Date.now()}`;
           localStorage.setItem('flkrd_admin_session_token', fallbackToken);
           localStorage.setItem('flkrd_admin_email', cleanEmail);

@@ -67,8 +67,22 @@ export const initDB = (): Promise<IDBDatabase | null> => {
             return resolve(null);
         }
 
+        // Safety timeout for mobile Safari / private browsing to prevent hanging indefinitely
+        const timer = setTimeout(() => {
+            console.warn("[STORAGE] IndexedDB open timeout. Falling back to LocalStorage.");
+            useFallback = true;
+            resolve(null);
+        }, 1200);
+
         try {
             const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onblocked = () => {
+                clearTimeout(timer);
+                console.warn("[STORAGE] IndexedDB connection blocked by another tab or lock.");
+                useFallback = true;
+                resolve(null);
+            };
 
             request.onupgradeneeded = (event: any) => {
                 const dbInstance = event.target.result;
@@ -86,14 +100,18 @@ export const initDB = (): Promise<IDBDatabase | null> => {
                 }
             };
 
-
-            request.onsuccess = (event: any) => resolve(event.target.result);
+            request.onsuccess = (event: any) => {
+                clearTimeout(timer);
+                resolve(event.target.result);
+            };
             request.onerror = (event: any) => {
+                clearTimeout(timer);
                 console.warn("[STORAGE] IndexedDB connection failed. Falling back to LocalStorage.", event.target.error);
                 useFallback = true;
                 resolve(null);
             };
         } catch (err) {
+            clearTimeout(timer);
             console.warn("[STORAGE] Security Error opening IndexedDB. Falling back to LocalStorage.", err);
             useFallback = true;
             resolve(null);
@@ -138,19 +156,38 @@ export const db = {
     },
 
     async getMovies(): Promise<any[]> {
-        const database = await initDB();
-        if (useFallback || !database) {
+        try {
+            const database = await initDB();
+            if (useFallback || !database) {
+                return Object.values(fallbackStore[STORE_NAME]);
+            }
+
+            return new Promise((resolve) => {
+                const timer = setTimeout(() => {
+                    resolve(Object.values(fallbackStore[STORE_NAME]));
+                }, 1000);
+
+                try {
+                    const transaction = database.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+
+                    request.onsuccess = () => {
+                        clearTimeout(timer);
+                        resolve(request.result || []);
+                    };
+                    request.onerror = () => {
+                        clearTimeout(timer);
+                        resolve(Object.values(fallbackStore[STORE_NAME]));
+                    };
+                } catch (e) {
+                    clearTimeout(timer);
+                    resolve(Object.values(fallbackStore[STORE_NAME]));
+                }
+            });
+        } catch (e) {
             return Object.values(fallbackStore[STORE_NAME]);
         }
-
-        return new Promise((resolve, reject) => {
-            const transaction = database.transaction(STORE_NAME, 'readonly');
-            const store = transaction.objectStore(STORE_NAME);
-            const request = store.getAll();
-
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = (err: any) => reject(err);
-        });
     },
 
     async updateMovie(movie: any): Promise<void> {

@@ -17,25 +17,17 @@ const Portal: React.FC<PortalProps> = ({ children, id = 'flkrd-portal-root' }) =
       portalRoot = document.createElement('div');
       portalRoot.id = id;
       portalRoot.style.pointerEvents = 'none';
-      portalRoot.style.position = 'relative';
-      portalRoot.style.zIndex = '99999';
-      // Ensure the portal root is always at the top of the body flow for stacking
+      portalRoot.style.position = 'fixed';
+      portalRoot.style.inset = '0';
+      portalRoot.style.zIndex = '999999';
       document.body.appendChild(portalRoot);
-    } else {
-      portalRoot.style.pointerEvents = 'none';
     }
-
-    return () => {
-      // Keep root or clean if needed
-    };
   }, [id]);
 
-  if (!mounted) return null;
+  if (typeof document === 'undefined') return null;
 
   const portalRoot = document.getElementById(id);
-  if (!portalRoot) return null;
-
-  return ReactDOM.createPortal(children, portalRoot);
+  return ReactDOM.createPortal(children, portalRoot || document.body);
 };
 
 export default Portal;

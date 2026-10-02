@@ -254,8 +254,8 @@ const OnboardingTour: React.FC = () => {
     if (!isActive || isNavigating) return;
 
     updateHighlight();
-    window.addEventListener('resize', updateHighlight);
-    window.addEventListener('scroll', updateHighlight, true);
+    window.addEventListener('resize', updateHighlight, { passive: true });
+    window.addEventListener('scroll', updateHighlight, { capture: true, passive: true });
 
     // Watch for late renders
     observerRef.current = new MutationObserver(() => {

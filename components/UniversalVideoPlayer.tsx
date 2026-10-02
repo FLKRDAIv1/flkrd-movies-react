@@ -1286,6 +1286,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
 
     // Doblaj & Multi-Language Audio States
     const [overrideSrc, setOverrideSrc] = useState<string | null>(null);
+
+    // Synchronize overrideSrc whenever src changes from parent
+    useEffect(() => {
+        setOverrideSrc(null);
+    }, [src]);
+
     const [isScraping, setIsScraping] = useState(false);
     const [scrapingError, setScrapingError] = useState<string | null>(null);
     const [kurdishDub, setKurdishDub] = useState<any | null>(null);
@@ -3837,7 +3843,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                         className="absolute inset-0 w-full h-full border-none"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
                         allowFullScreen={true}
-                        referrerPolicy="no-referrer-when-downgrade"
+                        referrerPolicy="origin"
                         // @ts-ignore
                         scrolling="no"
                         title="FLKRD Universal Player PiP"
@@ -4474,7 +4480,7 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                             }}
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen *; display-capture; storage-access; camera; microphone; xr-spatial-tracking"
                             allowFullScreen={true}
-                            referrerPolicy="no-referrer-when-downgrade"
+                            referrerPolicy="origin"
                             // @ts-ignore
                             scrolling="no"
                             // iOS Safari: prevent native video player takeover
@@ -5284,36 +5290,13 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = React.memo(({
                                                 if (setActiveSource) setActiveSource(s.name);
                                                 setTimeout(() => setShowSourceSwitcher(false), 250);
                                             }}
-                                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${isActive
-                                                    ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10'
-                                                    : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
+                                            className={`w-full p-4 rounded-2xl flex flex-col gap-2.5 transition-all duration-200 border group relative overflow-hidden backdrop-blur-xl text-left select-none ${isActive
+                                                    ? 'bg-white/[0.08] border-red-500/40 border-t-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.4)] ring-1 ring-red-500/20'
+                                                    : 'bg-white/[0.03] border-white/5 border-t-white/10 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(0,0,0,0.2)]'
                                                 }`}
                                         >
                                             {isActive && (
-                                                <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
-                                                    <div
-                                                        className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
-                                                        style={{
-                                                            background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
-                                                            animation: 'neon-border-spin 3s linear infinite',
-                                                        }}
-                                                    />
-                                                    <div
-                                                        className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
-                                                        style={{
-                                                            background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
-                                                            backdropFilter: 'blur(16px)',
-                                                            WebkitBackdropFilter: 'blur(16px)',
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
-
-                                            {isActive && (
-                                                <motion.div
-                                                    layoutId="active-accent-line-univ-fs"
-                                                    className="absolute left-0 top-3 bottom-3 w-[3px] bg-red-600 rounded-full shadow-[0_0_12px_#ef4444] z-10"
-                                                />
+                                                <div className="absolute left-0 top-3 bottom-3 w-1 bg-red-500 rounded-r-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
                                             )}
 
                                             <div className="flex items-center justify-between w-full relative z-10">

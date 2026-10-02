@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { AdminUser, AdminPermission } from '../types';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { supabase } from '../utils/supabaseClient';
 import Portal from './Portal';
@@ -71,10 +72,23 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   language = 'ku'
 }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const { currentAdminEmail } = useUI();
   const isKurdish = language === 'ku' || language === 'badini';
 
-  const isSuperOwner = (currentAdminEmail || localStorage.getItem('flkrd_admin_email') || '').toLowerCase() === MASTER_OWNER.email.toLowerCase();
+  const activeEmail = (
+    user?.email ||
+    currentAdminEmail ||
+    (typeof window !== 'undefined' ? localStorage.getItem('flkrd_admin_email') : '') ||
+    ''
+  ).toLowerCase().trim();
+
+  const isSuperOwner = 
+    activeEmail === 'flkrdstudio@gmail.com' ||
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('isFlkrdAdmin') === 'true' ||
+      localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+    ));
 
   const [admins, setAdmins] = useState<AdminUser[]>(() => {
     try {
@@ -102,8 +116,52 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const [isInitialLoadDone, setIsInitialLoadDone] = useState(false);
+
+  // Initial load of subadmins from database when modal opens
+  useEffect(() => {
+    let isMounted = true;
+    const loadSubAdminsFromDb = async () => {
+      try {
+        const { data: rows } = await supabase
+          .from('server_config')
+          .select('id, server_name, priority');
+        if (rows && isMounted) {
+          const fetchedSubAdmins: AdminUser[] = [];
+          for (const row of rows) {
+            if (row.server_name && row.server_name.startsWith('subadmin:')) {
+              try {
+                const parsed = JSON.parse(row.server_name.replace(/^subadmin:/, ''));
+                if (parsed && parsed.email && parsed.email.toLowerCase() !== MASTER_OWNER.email.toLowerCase()) {
+                  fetchedSubAdmins.push(parsed);
+                }
+              } catch {}
+            }
+          }
+          if (fetchedSubAdmins.length > 0) {
+            setAdmins([MASTER_OWNER, ...fetchedSubAdmins]);
+            localStorage.setItem('flkrd_sub_admins', JSON.stringify(fetchedSubAdmins));
+          }
+        }
+      } catch (e) {
+        console.warn('[ADMIN MODAL] Could not load sub-admins from db:', e);
+      } finally {
+        if (isMounted) {
+          setIsInitialLoadDone(true);
+        }
+      }
+    };
+
+    if (isOpen) {
+      loadSubAdminsFromDb();
+    }
+    return () => { isMounted = false; };
+  }, [isOpen]);
+
   // Sync Sub-Admins securely to Supabase & LocalStorage (Zero Plaintext Passwords!)
   useEffect(() => {
+    if (!isInitialLoadDone) return; // Prevent overwriting database before initial fetch!
+
     const syncSubAdmins = async () => {
       const subAdminsOnly = admins.filter(a => a.id !== MASTER_OWNER.id);
       const sanitizedList: any[] = [];
@@ -174,7 +232,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
     };
 
     syncSubAdmins();
-  }, [admins]);
+  }, [admins, isInitialLoadDone]);
 
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
@@ -283,6 +341,47 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
   const handleToggleActive = (adminId: string) => {
     if (adminId === MASTER_OWNER.id) return;
     setAdmins(prev => prev.map(a => a.id === adminId ? { ...a, isActive: !a.isActive } : a));
+  };
+
+  const handleSelectRole = (newRole: 'co_ceo' | 'manager' | 'editor' | 'moderator') => {
+    setRole(newRole);
+    if (newRole === 'co_ceo') {
+      setPermissions({
+        canManageMovies: true,
+        canManageSubtitles: true,
+        canSendBroadcasts: true,
+        canViewAnalytics: true,
+        canClearSystemCache: true,
+        canManageAdmins: false,
+      });
+    } else if (newRole === 'manager') {
+      setPermissions({
+        canManageMovies: true,
+        canManageSubtitles: true,
+        canSendBroadcasts: true,
+        canViewAnalytics: true,
+        canClearSystemCache: false,
+        canManageAdmins: false,
+      });
+    } else if (newRole === 'editor') {
+      setPermissions({
+        canManageMovies: true,
+        canManageSubtitles: true,
+        canSendBroadcasts: false,
+        canViewAnalytics: false,
+        canClearSystemCache: false,
+        canManageAdmins: false,
+      });
+    } else if (newRole === 'moderator') {
+      setPermissions({
+        canManageMovies: true,
+        canManageSubtitles: false,
+        canSendBroadcasts: false,
+        canViewAnalytics: false,
+        canClearSystemCache: false,
+        canManageAdmins: false,
+      });
+    }
   };
 
   if (!isOpen) return null;
@@ -519,7 +618,7 @@ export const AdminManagementModal: React.FC<AdminManagementModalProps> = ({
                         <button
                           key={item.id}
                           type="button"
-                          onClick={() => setRole(item.id as any)}
+                          onClick={() => handleSelectRole(item.id as any)}
                           className={`p-3 rounded-2xl border text-[10px] font-black uppercase tracking-wider transition-all text-center ${
                             role === item.id 
                               ? 'bg-red-600/20 border-red-500 text-white shadow-lg shadow-red-600/10' 

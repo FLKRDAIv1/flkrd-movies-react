@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Star, Mic2, Share2, Zap, Activity, Calendar, Monitor, Clock, Film,
-    ArrowLeft, Check, Plus, Users, Sparkles, X, Home, Play
+    ArrowLeft, Check, Plus, Users, Sparkles, X, Home, Play, Trash2
 } from 'lucide-react';
 import { Content, WatchProgress } from '../types';
 import { fetchData, getMediaType } from '../services/tmdbService';
@@ -13,6 +13,7 @@ import { SkeletonDetailPage } from '../components/Skeleton';
 import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
@@ -20,6 +21,7 @@ import { useLocalUser } from '../hooks/useLocalUser';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import Portal from '../components/Portal';
 import CommentSection from '../components/CommentSection';
+import MovieStageAccordion from '../components/MovieStageAccordion';
 import { extractEmbedSrc, getDubbedSources } from '../utils/playerSourceUtils';
 
 const DubbedDetailPage: React.FC = () => {
@@ -27,10 +29,17 @@ const DubbedDetailPage: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { t, language } = useTranslation();
-    const { theme, accentColor } = useUI();
+    const { theme, accentColor, isAdmin } = useUI();
+    const { user } = useAuth();
     const { addNotification } = useNotification();
     const { localUserId } = useLocalUser();
-    const [isCreatingTicket, setIsCreatingTicket] = useState(false);
+    const isOwnerOrAdmin = isAdmin || 
+      (typeof window !== 'undefined' && (
+        localStorage.getItem('isFlkrdAdmin') === 'true' ||
+        localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+      )) || 
+      user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
+    const [isCreatingTicket] = useState(false);
 
     const [content, setContent] = useState<Content | null>(null);
     const [loading, setLoading] = useState(!location.state?.customData);
@@ -346,7 +355,7 @@ const DubbedDetailPage: React.FC = () => {
 
         const timeoutId = setTimeout(() => {
             if (isMounted) setLoading(false);
-        }, 10000);
+        }, 3500);
 
         const loadContent = async () => {
             if (!id) return;
@@ -522,6 +531,42 @@ const DubbedDetailPage: React.FC = () => {
         }
     };
 
+    const handleAdminBanDubbedMovie = async () => {
+        if (!content || !isOwnerOrAdmin) return;
+        const confirmMsg = isRtl
+            ? `ئایا دڵنیایت لە سڕینەوە و بلۆککردنی «${content.title}»؟ ئەم فیلمە دەستبەجێ لە وێبسایت لادەبرێت.`
+            : `Are you sure you want to delete and ban "${content.title}"?`;
+        if (!window.confirm(confirmMsg)) return;
+
+        try {
+            const rawId = String(id || content.id);
+            const cleanId = rawId.replace('custom_', '');
+            const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
+
+            await supabase.from('dubbed_movies').delete().or(`id.eq.${dbId},id.eq.${cleanId}`);
+            try {
+                await db.deleteMovie(dbId);
+                await db.deleteMovie(cleanId);
+            } catch {}
+
+            await bannedService.banContent(cleanId, 'dubbed');
+            addNotification({
+                type: 'success',
+                title: isRtl ? 'فیلمەکە سڕایەوە' : 'Movie Removed',
+                message: isRtl ? 'فیلمەکە بە سەرکەوتوویی بلۆک کرا و سڕایەوە.' : 'Content banned and deleted.'
+            });
+            window.dispatchEvent(new CustomEvent('banned-list-updated'));
+            navigate('/dubbed');
+        } catch (err) {
+            console.error('[BAN ERROR]', err);
+            addNotification({
+                type: 'error',
+                title: 'Error',
+                message: 'Failed to ban content.'
+            });
+        }
+    };
+
     const handleCreateWatchParty = async () => {
         if (!localUserId) return;
         setIsCreatingTicket(true);
@@ -571,10 +616,36 @@ const DubbedDetailPage: React.FC = () => {
         }
     };
 
-    if (loading && !dubbedData && !content) return <SkeletonDetailPage />;
+    if (loading && !dubbedData && !content) {
+        return (
+            <div className="min-h-screen bg-main-bg flex flex-col items-center justify-center gap-5 p-6 select-none" dir={isRtl ? 'rtl' : 'ltr'}>
+                <div className="loader" />
+                <p className="text-xs font-black uppercase tracking-[0.25em] text-white/60 animate-pulse">
+                    {isRtl ? 'زانیاری فیلمی دۆبلاژکراو ئامادە دەکرێت...' : 'Loading Dubbed Movie...'}
+                </p>
+            </div>
+        );
+    }
 
-    const isReady = !!(activeEmbedUrl || dubbedData || content);
-    if (!isReady) return <SkeletonDetailPage />;
+    if (!dubbedData && !content) {
+        return (
+            <div className="min-h-screen bg-main-bg flex flex-col items-center justify-center gap-5 p-6 text-center select-none" dir={isRtl ? 'rtl' : 'ltr'}>
+                <Film size={48} className="text-zinc-500 mb-2" />
+                <h2 className="text-xl font-bold text-white">
+                    {isRtl ? 'فیلمەکە نەدۆزرایەوە یان لادراوە' : 'Movie Not Found'}
+                </h2>
+                <p className="text-xs text-zinc-400 max-w-sm">
+                    {isRtl ? 'تکایە بگەڕێوە بۆ بەشی فیلمە دۆبلاژکراوەکان و فیلمێکی تر هەڵبژێرە.' : 'Please return to dubbed movies to choose another title.'}
+                </p>
+                <button
+                    onClick={() => navigate('/dubbed')}
+                    className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all active:scale-95 cursor-pointer mt-2"
+                >
+                    {isRtl ? 'گەڕانەوە بۆ فیلمە دۆبلاژکراوەکان' : 'Back to Dubbed Movies'}
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-main-bg text-[var(--text-primary)] overflow-x-hidden pb-52 md:pb-40 transition-colors duration-500" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -593,12 +664,12 @@ const DubbedDetailPage: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-b from-[var(--bg-primary)]/80 via-[var(--bg-primary)]/90 to-[var(--bg-primary)]"></div>
             </div>
 
-            {/* Top Navigation Bar */}
+            {/* Top Navigation Bar with Apple Frosted Glass */}
             <div className="relative z-20 pt-16 md:pt-20 px-4 md:px-12 max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div className="flex flex-wrap items-center gap-2">
                     <button
                         onClick={handleBack}
-                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                        className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/[0.14] text-white border border-white/15 backdrop-blur-2xl px-4 py-2.5 rounded-2xl active:scale-[0.96] transition-all font-black uppercase tracking-wider text-[10px] md:text-xs shadow-md cursor-pointer select-none"
                     >
                         <ArrowLeft size={16} className={isRtl ? 'rotate-180' : ''} />
                         {isRtl ? 'گەڕانەوە' : 'Back'}
@@ -606,7 +677,7 @@ const DubbedDetailPage: React.FC = () => {
 
                     <button
                         onClick={() => navigate('/dubbed')}
-                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                        className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/[0.14] text-white border border-white/15 backdrop-blur-2xl px-4 py-2.5 rounded-2xl active:scale-[0.96] transition-all font-black uppercase tracking-wider text-[10px] md:text-xs shadow-md cursor-pointer select-none"
                     >
                         <Film size={15} />
                         {isRtl ? 'فیلمی دۆبلاژکراو' : 'Dubbed Movies'}
@@ -614,7 +685,7 @@ const DubbedDetailPage: React.FC = () => {
 
                     <button
                         onClick={() => navigate('/')}
-                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-[var(--brand-red)] hover:text-white active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                        className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/[0.14] text-white border border-white/15 backdrop-blur-2xl px-4 py-2.5 rounded-2xl active:scale-[0.96] transition-all font-black uppercase tracking-wider text-[10px] md:text-xs shadow-md cursor-pointer select-none"
                     >
                         <Home size={15} />
                         {isRtl ? 'سەرەکی' : 'Home'}
@@ -624,7 +695,7 @@ const DubbedDetailPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={handleShare}
-                        className="flex items-center gap-2 bg-box-bg/90 backdrop-blur-2xl border border-border-color px-4 py-2.5 rounded-2xl text-main-text hover:bg-white/20 active:scale-95 transition-all font-black uppercase tracking-widest text-[10px] md:text-xs shadow-xl"
+                        className="flex items-center gap-2 bg-white/[0.07] hover:bg-white/[0.14] text-white border border-white/15 backdrop-blur-2xl px-4 py-2.5 rounded-2xl active:scale-[0.96] transition-all font-black uppercase tracking-wider text-[10px] md:text-xs shadow-md cursor-pointer select-none"
                     >
                         <Share2 size={15} />
                         {isRtl ? 'هاوبەشکردن' : 'Share'}
@@ -635,11 +706,16 @@ const DubbedDetailPage: React.FC = () => {
             {/* Main Cinematic Hero Banner */}
             <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto mb-16">
                 <div className="flex flex-col lg:flex-row items-center lg:items-end gap-8 lg:gap-14 pt-4 pb-8">
-                    {/* Glowing Movie Poster */}
-                    <div className="w-48 sm:w-64 lg:w-80 flex-shrink-0 aspect-[2/3] rounded-[2.5rem] overflow-hidden border-2 border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.8)] relative group bg-neutral-950">
+                    {/* Glowing Movie Poster with Physical 2:3 Aspect Lock */}
+                    <div 
+                        style={{ aspectRatio: '2/3' }}
+                        className="w-48 sm:w-64 lg:w-80 flex-shrink-0 card-poster-aspect rounded-[2.5rem] overflow-hidden border border-white/15 shadow-[0_25px_60px_rgba(0,0,0,0.85)] relative group bg-neutral-950"
+                    >
                         <img 
                             src={posterUrl} 
                             alt={displayTitle} 
+                            width={342}
+                            height={513}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                             onError={(e) => {
                                 (e.target as HTMLImageElement).src = '/flkrd-icon.webp';
@@ -671,29 +747,32 @@ const DubbedDetailPage: React.FC = () => {
                             )}
 
                             {content?.vote_average && (
-                                <div className="bg-box-bg border border-border-color text-yellow-500 text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                                <div className="bg-white/[0.06] border border-white/15 text-yellow-400 text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xl">
                                     <Star size={13} fill="currentColor" />
                                     {content.vote_average.toFixed(1)}
                                 </div>
                             )}
 
-                            <div className="bg-box-bg border border-border-color text-sec-text text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5">
+                            <div className="bg-white/[0.06] border border-white/15 text-zinc-300 text-[10px] md:text-[11px] font-black px-3.5 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-xl">
                                 <Calendar size={13} />
                                 {dubbedData?.created_at ? new Date(dubbedData.created_at).getFullYear() : (content?.release_date?.split('-')[0] || '2026')}
                             </div>
                         </div>
 
                         {/* Title */}
-                        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-[1000] tracking-tight leading-none text-main-text drop-shadow-2xl">
+                        <h1 className="text-3xl sm:text-5xl lg:text-7xl font-[1000] tracking-tight leading-none text-white drop-shadow-2xl">
                             {displayTitle}
                         </h1>
 
-                        {/* Action Buttons Row */}
+                        {/* Action Buttons Row with Apple Design */}
                         <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-4 w-full">
                             {/* Primary Play Button */}
                             <button
                                 onClick={handleOpenPlayer}
-                                className="flex-1 sm:flex-initial min-w-[200px] flex items-center justify-center gap-3 px-8 py-4 bg-[var(--brand-red)] hover:bg-red-700 text-white font-[1000] text-sm md:text-base rounded-2xl shadow-[0_10px_35px_rgba(229,9,20,0.5)] active:scale-95 transition-all cursor-pointer uppercase tracking-wider"
+                                className="flex-1 sm:flex-initial min-w-[200px] flex items-center justify-center gap-3 px-8 py-4 bg-[var(--brand-red)] hover:bg-red-700 text-white font-[1000] text-sm md:text-base rounded-2xl shadow-[0_10px_35px_rgba(229,9,20,0.5)] active:scale-[0.96] transition-all cursor-pointer uppercase tracking-wider"
+                                style={{
+                                    boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,0.3), 0 10px 35px rgba(229,9,20,0.5)'
+                                }}
                             >
                                 <Play fill="currentColor" size={20} />
                                 <span>{isRtl ? 'سەیرکردنی فیلم' : 'Play Movie'}</span>
@@ -703,7 +782,7 @@ const DubbedDetailPage: React.FC = () => {
                             <button
                                 onClick={handleCreateWatchParty}
                                 disabled={isCreatingTicket}
-                                className="flex items-center justify-center gap-2 px-5 py-4 bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 font-bold text-xs md:text-sm rounded-2xl backdrop-blur-md active:scale-95 transition-all cursor-pointer uppercase tracking-wider"
+                                className="flex items-center justify-center gap-2 px-6 py-4 bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/40 text-orange-400 font-bold text-xs md:text-sm rounded-2xl backdrop-blur-2xl active:scale-[0.96] transition-all cursor-pointer uppercase tracking-wider"
                             >
                                 {isCreatingTicket ? (
                                     <div className="w-4 h-4 rounded-full border-2 border-t-transparent border-orange-400 animate-spin" />
@@ -716,42 +795,43 @@ const DubbedDetailPage: React.FC = () => {
                             {/* My List Button */}
                             <button
                                 onClick={handleToggleMyList}
-                                className={`flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-xs md:text-sm font-bold border backdrop-blur-md active:scale-95 transition-all cursor-pointer ${
+                                className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl text-xs md:text-sm font-bold border backdrop-blur-2xl active:scale-[0.96] transition-all cursor-pointer ${
                                     isAdded 
                                         ? 'bg-[var(--brand-red)] text-white border-[var(--brand-red)]' 
-                                        : 'bg-box-bg/80 hover:bg-box-bg border-border-color text-main-text'
+                                        : 'bg-white/[0.08] hover:bg-white/[0.14] border-white/15 text-white'
                                 }`}
                             >
                                 {isAdded ? <Check size={16} /> : <Plus size={16} />}
                                 <span>{isAdded ? (isRtl ? 'لە لیستەکەم دایە' : 'In My List') : (isRtl ? 'لیستی من' : 'My List')}</span>
                             </button>
+
+                            {/* Admin Ban Button */}
+                            {isOwnerOrAdmin && (
+                                <button
+                                    onClick={handleAdminBanDubbedMovie}
+                                    className="flex items-center justify-center gap-2 px-6 py-4 bg-red-600/30 hover:bg-red-600 border border-red-500/50 text-white font-bold text-xs md:text-sm rounded-2xl backdrop-blur-2xl active:scale-[0.96] transition-all cursor-pointer uppercase tracking-wider shadow-xl"
+                                >
+                                    <Trash2 size={16} />
+                                    <span>{isRtl ? 'بلۆککردنی فیلم (ئەدمین)' : 'BAN MOVIE'}</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Synopsis / Story Details */}
+            {/* Interactive Apple-Design 5-Stage Accordion (Story, Cast, Audio/Dubbing Specs, Stages) */}
             <div className="relative z-10 px-4 md:px-12 max-w-7xl mx-auto mb-16">
-                <div className="bg-box-bg/90 backdrop-blur-2xl border border-border-color p-6 md:p-10 rounded-3xl md:rounded-[3rem] shadow-2xl">
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-border-color">
-                        <div className="flex items-center gap-3">
-                            <div className="w-1.5 h-5 rounded-full" style={{ backgroundColor: accentColor || 'var(--brand-red)' }} />
-                            <h3 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-sec-text">
-                                {isRtl ? 'چیرۆکی فیلم' : 'SYNOPSIS'}
-                            </h3>
-                        </div>
-                        <div className="flex items-center gap-4 text-sec-text text-xs font-bold">
-                            <div className="flex items-center gap-1.5">
-                                <Monitor size={14} style={{ color: accentColor || 'var(--brand-red)' }} />
-                                <span>{dubbedSources.length > 0 ? `${dubbedSources.length} Servers Online` : 'Direct Node'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <p className="text-main-text text-base md:text-xl leading-relaxed font-bold opacity-90 text-right">
-                        {displayOverview}
-                    </p>
-                </div>
+                <MovieStageAccordion
+                    item={{
+                        ...dubbedData,
+                        overview: displayOverview,
+                        title: displayTitle,
+                        kurdishTitle: dubbedData?.kurdishTitle || displayTitle,
+                    }}
+                    cast={cast}
+                    isRtl={isRtl}
+                />
             </div>
 
             {/* Actors / Cast Grid */}
@@ -768,10 +848,13 @@ const DubbedDetailPage: React.FC = () => {
                         {cast.map(person => (
                             <div 
                                 key={person.id} 
-                                className="group cursor-pointer flex flex-col items-center text-center" 
+                                className="group cursor-pointer flex flex-col items-center text-center active:scale-[0.96] transition-transform select-none" 
                                 onClick={() => setSelectedActorId(person.id)}
                             >
-                                <div className="w-full aspect-[3/4] rounded-2xl overflow-hidden mb-2.5 border border-border-color shadow-lg bg-neutral-900">
+                                <div 
+                                    style={{ aspectRatio: '3/4' }}
+                                    className="w-full aspect-[3/4] rounded-2xl overflow-hidden mb-2.5 border border-white/10 shadow-lg bg-neutral-900 group-hover:border-brand/50 transition-colors"
+                                >
                                     <img 
                                         src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.webp'} 
                                         alt={person.name} 
@@ -780,8 +863,8 @@ const DubbedDetailPage: React.FC = () => {
                                         loading="lazy"
                                     />
                                 </div>
-                                <p className="text-[11px] md:text-xs font-black uppercase truncate w-full text-main-text">{person.name}</p>
-                                <p className="text-[9px] font-bold text-sec-text truncate w-full">{person.character || ''}</p>
+                                <p className="text-[11px] md:text-xs font-black uppercase truncate w-full text-white">{person.name}</p>
+                                <p className="text-[9px] font-bold text-zinc-400 truncate w-full">{person.character || ''}</p>
                             </div>
                         ))}
                     </div>
@@ -881,7 +964,10 @@ const DubbedDetailPage: React.FC = () => {
                                 <>
                                     {/* Left Column: Image */}
                                     <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
-                                        <div className="w-48 md:w-full aspect-[3/4] rounded-2xl overflow-hidden border border-border-color shadow-2xl relative bg-box-bg mx-auto">
+                                        <div 
+                                            style={{ aspectRatio: '3/4' }}
+                                            className="w-48 md:w-full aspect-[3/4] rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto"
+                                        >
                                             <img 
                                                 src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.webp'} 
                                                 alt={actorDetails.name}
@@ -937,7 +1023,10 @@ const DubbedDetailPage: React.FC = () => {
                                                                     navigate(`/details/${getMediaType(movie)}/${movie.id}`);
                                                                 }}
                                                             >
-                                                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-border-color">
+                                                                <div 
+                                                                    style={{ aspectRatio: '2/3' }}
+                                                                    className="aspect-[2/3] card-poster-aspect rounded-xl overflow-hidden relative border border-white/10"
+                                                                >
                                                                     <img 
                                                                         src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
                                                                         alt={movie.title || movie.name}

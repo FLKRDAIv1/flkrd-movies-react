@@ -38,3 +38,5 @@ public/*.dmg
 public/*.apk
 src-tauri/target/
 .env*
+scripts/migration/
+brag-output*/

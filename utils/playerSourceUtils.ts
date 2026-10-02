@@ -10,55 +10,55 @@ export interface EnhancedPlayerSource extends PlayerSource {
   url?: string;
 }
 
-const LOCAL_STORAGE_KEY = 'playerSourceScores';
+const LOCAL_STORAGE_KEY = 'playerSourceScores_v3';
 
 /** Real display names and Kurdish Sorani translations for each FLKRD SERVER slot */
 export const SOURCE_META: Record<string, { 
   displayName: string; 
-  description: string;
-  kurdishName: string;
-  kurdishDesc: string;
+  description: string; 
+  kurdishName: string; 
+  kurdishDesc: string; 
 }> = {
   'FLKRD SERVER': { 
-    displayName: 'RiveStream 4K Ultra', 
+    displayName: 'VidSrc Ultra 4K', 
     description: 'Primary Direct 4K Stream · Modern Interface & Zero Lag',
-    kurdishName: 'ڕایڤ ستریم (RiveStream 4K Ultra)',
+    kurdishName: 'ڤید سۆرس ئاڵترا (VidSrc Ultra 4K)',
     kurdishDesc: 'سێرڤەری سەرەکی 4K خێرا و کارا'
   },
   'FLKRD SERVER 1': { 
-    displayName: 'VidLove 4K Pro', 
-    description: 'Direct Clean 4K Player · Zero Buffering & Direct Download',
-    kurdishName: 'ڤید لۆڤ پرۆ (VidLove 4K Pro)',
-    kurdishDesc: 'پەخشی 4K و سفڕ ڕیکلام · خێرایی بەرز لەگەڵ داگرتن'
+    displayName: 'Videasy Pro 4K', 
+    description: 'Direct Clean 4K Player · Zero Buffering & Adaptive HDR',
+    kurdishName: 'ڤید ئیزی پرۆ (Videasy Pro 4K)',
+    kurdishDesc: 'پەخشی 4K و سفڕ ڕیکلام · ژێرنووسی خێرا و جێگیر'
   },
   'FLKRD SERVER 2': { 
-    displayName: 'VidLink Pro 4K', 
-    description: 'Ultra-Fast 4K HDR Player · Instant Load',
-    kurdishName: 'ڤید لینک پرۆ (VidLink Pro 4K)',
-    kurdishDesc: 'خێراترین پەخشی 4K بەبێ چاوەڕوانی'
+    displayName: 'VidSrc Cloud 4K', 
+    description: 'Universal Direct Streaming · Instant Multi-Host Load',
+    kurdishName: 'ڤید سۆرس کلاود (VidSrc Cloud 4K)',
+    kurdishDesc: 'خێرایی زۆر بەرز و کوالێتی 4K UHD بەبێ پچڕان'
   },
   'FLKRD SERVER 3': { 
-    displayName: 'VidKing 4K', 
-    description: 'Universal Direct Streaming · 4K UHD',
-    kurdishName: 'ڤید کینگ (VidKing 4K)',
-    kurdishDesc: 'خێرایی زۆر بەرز و کوالێتی 4K UHD'
+    displayName: 'RiveStream Ultra 4K', 
+    description: 'Ultra-Fast 4K HDR Player · Instant Load',
+    kurdishName: 'ڕایڤ ستریم ئاڵترا (RiveStream Ultra 4K)',
+    kurdishDesc: 'پەخشی خێرای هەوری بەبێ چاوەڕوانی'
   },
   'FLKRD SERVER 4': { 
-    displayName: 'Videasy HD', 
-    description: 'Smart Adaptive Multi-Bitrate · HD 1080p',
-    kurdishName: 'ڤید ئیزی (Videasy HD)',
-    kurdishDesc: 'پەخشی زیرەک و ڕێکخراو · HD 1080p'
+    displayName: 'SuperEmbed Multi-Server', 
+    description: 'Multi-Source Mirror Backup Stream · All Titles',
+    kurdishName: 'سوپەر ئیمبێد (SuperEmbed Multi-Server)',
+    kurdishDesc: 'سێرڤەری فرە-سەرچاوەی بەهێز بۆ هەموو فیلم و زنجیرەکان'
   },
   'FLKRD SERVER 5': { 
-    displayName: 'NontonGo Direct', 
-    description: 'Cloud HLS High-Speed Video Player',
-    kurdishName: 'نۆنتۆن گۆ (NontonGo Direct)',
-    kurdishDesc: 'پەخشی خێرای هەوری بەبێ پچڕان'
+    displayName: 'AutoEmbed VIP', 
+    description: 'Ultra-Fast Multi-Cloud Failover',
+    kurdishName: 'ئۆتۆ ئیمبێد (AutoEmbed VIP)',
+    kurdishDesc: 'سێرڤەری فرە-هەور بەبێ پچڕان'
   },
   'FLKRD SERVER 6': { 
-    displayName: 'VidSrc VIP', 
+    displayName: 'VidSrc Prime', 
     description: 'Deep Global Archive · HD 1080p LiteSpeed',
-    kurdishName: 'ڤید سۆرس ڤی ئای پی (VidSrc VIP)',
+    kurdishName: 'ڤید سۆرس پڕایم (VidSrc Prime)',
     kurdishDesc: 'ئەرشیفی گەورەی فیلم و زنجیرەکان'
   },
   'FLKRD SERVER 7': { 
@@ -68,28 +68,28 @@ export const SOURCE_META: Record<string, {
     kurdishDesc: 'سێرڤەری نوێ و جیاواز · لێدانی فرە-کەناڵ'
   },
   'FLKRD SERVER 8': { 
-    displayName: 'RiveStream Multi-Host', 
-    description: 'Multi-Server Aggregator Engine · 1080p/4K Failover',
-    kurdishName: 'ڕایڤ ئاگریگەیتەر (Rive Aggregator)',
-    kurdishDesc: 'سێرڤەری فرە-سەرچاوەی زیرەک'
+    displayName: 'SmashyStream Cloud', 
+    description: 'Fast Multi-Server Stream Node',
+    kurdishName: 'سماشی ستریم (SmashyStream Cloud)',
+    kurdishDesc: 'سێرڤەری خێرای هەوری بە کوالێتی بەرز'
   },
   'FLKRD SERVER 9': { 
-    displayName: 'RiveStream Torrent 4K', 
-    description: 'Torrent-Backed High Bitrate 4K Stream',
-    kurdishName: 'ڕایڤ تۆڕێنت (Rive Torrent 4K)',
-    kurdishDesc: 'پەخشی کوالێتی بەرز بە تۆڕێنت'
+    displayName: 'VidSrc In Global', 
+    description: 'Global Fast CDN Stream Engine',
+    kurdishName: 'ڤید سۆرس ئین (VidSrc In Global)',
+    kurdishDesc: 'پەخشی جیهانی خێرا لەسەر تۆڕی CDN'
   },
   'FLKRD SERVER 10': { 
-    displayName: 'AutoEmbed VIP', 
-    description: 'Ultra-Fast Multi-Cloud Failover',
-    kurdishName: 'ئۆتۆ ئیمبێد (AutoEmbed VIP)',
-    kurdishDesc: 'سێرڤەری فرە-هەور بەبێ پچڕان'
+    displayName: 'RiveStream Mirror', 
+    description: 'Secondary Cloud Backup Stream',
+    kurdishName: 'ڕایڤ ستریم مێرەر (RiveStream Mirror)',
+    kurdishDesc: 'سێرڤەری یەدەگی هەوری'
   },
   'FLKRD SERVER 11': { 
-    displayName: 'SuperEmbed', 
-    description: 'Multi-Source Mirror Backup Stream',
-    kurdishName: 'سوپەر ئیمبێد (SuperEmbed)',
-    kurdishDesc: 'سێرڤەری فرە-سەرچاوەی یەدەگ'
+    displayName: 'VidLink Pro Fallback', 
+    description: 'High-Definition Backup Stream',
+    kurdishName: 'ڤید لینک یەدەگ (VidLink Pro Fallback)',
+    kurdishDesc: 'سێرڤەری یەدەگ'
   },
   'FLKRD SERVER 12': { 
     displayName: 'RiveStream Downloader', 
@@ -125,19 +125,19 @@ const getScores = (): { [key: string]: number } => {
     console.error("Failed to parse player source scores", error);
   }
   return {
-    'FLKRD SERVER':    990,
-    'FLKRD SERVER 1':  950,
-    'FLKRD SERVER 2':  900,
-    'FLKRD SERVER 3':  850,
-    'FLKRD SERVER 4':  800,
-    'FLKRD SERVER 5':  750,
-    'FLKRD SERVER 6':  700,
-    'FLKRD SERVER 7':  650,
-    'FLKRD SERVER 8':  600,
-    'FLKRD SERVER 9':  550,
-    'FLKRD SERVER 10': 500,
-    'FLKRD SERVER 11': 450,
-    'FLKRD SERVER 12': 400,
+    'FLKRD SERVER':    1000,
+    'FLKRD SERVER 1':  960,
+    'FLKRD SERVER 2':  920,
+    'FLKRD SERVER 3':  880,
+    'FLKRD SERVER 4':  840,
+    'FLKRD SERVER 5':  800,
+    'FLKRD SERVER 6':  760,
+    'FLKRD SERVER 7':  720,
+    'FLKRD SERVER 8':  680,
+    'FLKRD SERVER 9':  640,
+    'FLKRD SERVER 10': 600,
+    'FLKRD SERVER 11': 560,
+    'FLKRD SERVER 12': 500,
   };
 };
 
@@ -204,6 +204,7 @@ export const getSourceUrl = (
   const isTv = type === 'tv';
   const isAnime = type === 'anime';
   const playerColor = accentColor?.replace('#', '') || 'e50914';
+  const cleanId = String(id || '').replace(/^custom_/, '');
   
   // Strictly sanitize subtitleUrl: only allow public http/https URLs (never local blob: or data: URIs)
   const isCleanHttpSub = subtitleUrl && 
@@ -216,114 +217,108 @@ export const getSourceUrl = (
   const e = episode || 1;
 
   switch (name) {
-    case 'FLKRD SERVER': { // 1. RiveStream 4K Ultra (Default Primary #1)
+    case 'FLKRD SERVER': { // 1. VidSrc Ultra 4K (Primary Rock-Solid Embed #1)
       return isTv
-        ? `https://rivestream.ru/embed?type=tv&id=${id}&season=${s}&episode=${e}`
-        : `https://rivestream.ru/embed?type=movie&id=${id}`;
+        ? `https://vidsrc.to/embed/tv/${cleanId}/${s}/${e}`
+        : `https://vidsrc.to/embed/movie/${cleanId}`;
     }
 
-    case 'FLKRD SERVER 1': { // 2. VidLove 4K Pro (Primary Rock-Solid 100% Working Stream)
-      const vlParams = `?autoplay=true&nextbutton=true&download=true&primarycolor=${playerColor}&secondarycolor=c49de8`;
-      return isTv
-        ? `https://player.vidlove.cc/embed/tv/${id}/${s}/${e}${vlParams}`
-        : `https://player.vidlove.cc/embed/movie/${id}${vlParams}`;
-    }
-
-    case 'FLKRD SERVER 2': { // 3. VidLink Pro 4K
-      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startTime=${Math.floor(progress)}` : ''}${cleanSubUrl ? `&subtitles=${encodeURIComponent(cleanSubUrl)}&subLabel=Kurdish` : ''}`;
-      return isTv
-        ? `https://vidlink.pro/tv/${id}/${s}/${e}${vlParams}`
-        : `https://vidlink.pro/movie/${id}${vlParams}`;
-    }
-
-    case 'FLKRD SERVER 3': { // 4. VidKing 4K
-      // NOTE: vkParams must NOT have a leading & — the ? separator is added by the URL template
-      const vkColor = `color=${playerColor}&autoplay=1&playsinline=1&subtitles=1&sub=1`;
-      const vkSubExtra = cleanSubUrl ? `&sub_file=${encodeURIComponent(cleanSubUrl)}&sub_label=Kurdish${subParam}` : '';
-      const vkParams = `${vkColor}${vkSubExtra}`;
-      return isTv
-        ? `https://www.vidking.net/embed/tv/${id}/${s}/${e}?${vkParams}&nextEpisode=true&episodeSelector=true${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`
-        : `https://www.vidking.net/embed/movie/${id}?${vkParams}${progress > 10 ? `&start=${Math.floor(progress)}` : ''}`;
-    }
-
-    case 'FLKRD SERVER 4': { // 5. Videasy HD
-      const veParams = `?color=${playerColor}&overlay=true${progress > 5 ? `&progress=${Math.floor(progress)}` : ''}`;
+    case 'FLKRD SERVER 1': { // 2. Videasy Pro 4K (Ultra Fast, Zero Buffering, Custom Color & Subs)
+      const veParams = `?color=${playerColor}&overlay=true${progress > 5 ? `&progress=${Math.floor(progress)}` : ''}${cleanSubUrl ? `&sub=${encodeURIComponent(cleanSubUrl)}` : ''}`;
       if (isAnime) {
         return e
-          ? `https://player.videasy.to/anime/${id}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
-          : `https://player.videasy.to/anime/${id}${veParams}`;
+          ? `https://player.videasy.to/anime/${cleanId}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
+          : `https://player.videasy.to/anime/${cleanId}${veParams}`;
       }
       return isTv
-        ? `https://player.videasy.to/tv/${id}/${s}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
-        : `https://player.videasy.to/movie/${id}${veParams}`;
+        ? `https://player.videasy.to/tv/${cleanId}/${s}/${e}${veParams}&nextEpisode=true&episodeSelector=true&autoplayNextEpisode=true`
+        : `https://player.videasy.to/movie/${cleanId}${veParams}`;
     }
 
-    case 'FLKRD SERVER 5': { // 6. NontonGo Direct (Brand New Cloud HLS Stream Engine)
+    case 'FLKRD SERVER 2': { // 3. VidSrc Cloud 4K (Direct Universal Stream Engine)
       return isTv
-        ? `https://www.nontongo.win/embed/tv/${id}/${s}/${e}`
-        : `https://www.nontongo.win/embed/movie/${id}`;
+        ? `https://vidsrc.me/embed/tv?tmdb=${cleanId}&season=${s}&episode=${e}`
+        : `https://vidsrc.me/embed/movie?tmdb=${cleanId}`;
     }
 
-    case 'FLKRD SERVER 6': { // 7. VidSrc VIP (vidsrc.in)
+    case 'FLKRD SERVER 3': { // 4. RiveStream Ultra 4K (Instant Cloud Playback)
       return isTv
-        ? `https://vidsrc.in/embed/tv/${id}/${s}/${e}`
-        : `https://vidsrc.in/embed/movie/${id}`;
+        ? `https://rivestream.live/embed?type=tv&id=${cleanId}&season=${s}&episode=${e}`
+        : `https://rivestream.live/embed?type=movie&id=${cleanId}`;
     }
 
-    case 'FLKRD SERVER 7': { // 8. 2Embed Ultra 4K (Brand New Universal Stream Engine)
-      return isTv
-        ? `https://www.2embed.cc/embedtv/${id}?s=${s}&e=${e}`
-        : `https://www.2embed.cc/embed/${id}`;
-    }
-
-    case 'FLKRD SERVER 8': { // 9. RiveStream Aggregator (Multi-Host VIP)
-      return isTv
-        ? `https://rivestream.ru/embed/agg?type=tv&id=${id}&season=${s}&episode=${e}`
-        : `https://rivestream.ru/embed/agg?type=movie&id=${id}`;
-    }
-
-    case 'FLKRD SERVER 9': { // 10. RiveStream Torrent Engine (Ultra 4K Stream)
-      return isTv
-        ? `https://rivestream.ru/embed/torrent?type=tv&id=${id}&season=${s}&episode=${e}`
-        : `https://rivestream.ru/embed/torrent?type=movie&id=${id}`;
-    }
-
-    case 'FLKRD SERVER 10': { // 11. AutoEmbed VIP
-      return isTv
-        ? `https://autoembed.co/tv/tmdb/${id}-${s}-${e}`
-        : `https://autoembed.co/movie/tmdb/${id}`;
-    }
-
-    case 'FLKRD SERVER 11': { // 12. SuperEmbed Multi-Mirror
-      const isImdb = id.startsWith('tt');
+    case 'FLKRD SERVER 4': { // 5. SuperEmbed Multi-Mirror 4K
+      const isImdb = cleanId.startsWith('tt');
       const tmdbParam = isImdb ? '' : '&tmdb=1';
       const seParams = cleanSubUrl ? `&subtitle=${encodeURIComponent(cleanSubUrl)}&sub=${encodeURIComponent(cleanSubUrl)}` : '';
       return isTv
-        ? `https://multiembed.mov/?video_id=${id}${tmdbParam}&s=${s}&e=${e}${seParams}`
-        : `https://multiembed.mov/?video_id=${id}${tmdbParam}${seParams}`;
+        ? `https://multiembed.mov/?video_id=${cleanId}${tmdbParam}&s=${s}&e=${e}${seParams}`
+        : `https://multiembed.mov/?video_id=${cleanId}${tmdbParam}${seParams}`;
+    }
+
+    case 'FLKRD SERVER 5': { // 6. AutoEmbed VIP (Cloud Failover)
+      return isTv
+        ? `https://autoembed.co/tv/tmdb/${cleanId}-${s}-${e}`
+        : `https://autoembed.co/movie/tmdb/${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 6': { // 7. VidSrc Prime (vidsrc.pm)
+      return isTv
+        ? `https://vidsrc.pm/embed/tv/${cleanId}/${s}/${e}`
+        : `https://vidsrc.pm/embed/movie/${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 7': { // 8. 2Embed Ultra 4K
+      return isTv
+        ? `https://www.2embed.cc/embedtv/${cleanId}?s=${s}&e=${e}`
+        : `https://www.2embed.cc/embed/${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 8': { // 9. SmashyStream Cloud
+      return isTv
+        ? `https://smashystream.xyz/tv/${cleanId}/${s}/${e}`
+        : `https://smashystream.xyz/movie/${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 9': { // 10. VidSrc In (Global CDN)
+      return isTv
+        ? `https://vidsrc.in/embed/tv/${cleanId}/${s}/${e}`
+        : `https://vidsrc.in/embed/movie/${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 10': { // 11. RiveStream Mirror Backup
+      return isTv
+        ? `https://rivestream.ru/embed?type=tv&id=${cleanId}&season=${s}&episode=${e}`
+        : `https://rivestream.ru/embed?type=movie&id=${cleanId}`;
+    }
+
+    case 'FLKRD SERVER 11': { // 12. VidLink Pro Fallback
+      const vlParams = `?primaryColor=${playerColor}&secondaryColor=a2a2a2&iconColor=eefdec&playerIcon=default&title=true&poster=true&autoplay=false&nextbutton=true${progress > 10 ? `&startTime=${Math.floor(progress)}` : ''}${cleanSubUrl ? `&subtitles=${encodeURIComponent(cleanSubUrl)}&subLabel=Kurdish` : ''}`;
+      return isTv
+        ? `https://vidlink.pro/tv/${cleanId}/${s}/${e}${vlParams}`
+        : `https://vidlink.pro/movie/${cleanId}${vlParams}`;
     }
 
     case 'FLKRD SERVER 12': { // 13. RiveStream Direct Downloader
       return isTv
-        ? `https://rivestream.ru/download?type=tv&id=${id}&season=${s}&episode=${e}`
-        : `https://rivestream.ru/download?type=movie&id=${id}`;
+        ? `https://rivestream.ru/download?type=tv&id=${cleanId}&season=${s}&episode=${e}`
+        : `https://rivestream.ru/download?type=movie&id=${cleanId}`;
     }
 
     default: {
       return isTv
-        ? `https://rivestream.ru/embed?type=tv&id=${id}&season=${s}&episode=${e}`
-        : `https://rivestream.ru/embed?type=movie&id=${id}`;
+        ? `https://vidsrc.to/embed/tv/${cleanId}/${s}/${e}`
+        : `https://vidsrc.to/embed/movie/${cleanId}`;
     }
   }
 };
-
 /**
  * Universal Bypass Sandbox configuration for iframe video providers.
- * Spoofs and enables all essential web APIs, media keys, presentation, and downloads
+ * Enables all essential web APIs, media keys, presentation, and downloads
  * while preventing background ad redirects.
  */
 export const getSourceSandboxConfig = (_name?: string): string => {
-  return "allow-scripts allow-same-origin allow-forms allow-presentation allow-encrypted-media allow-downloads allow-pointer-lock allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation";
+  return "allow-scripts allow-same-origin allow-forms allow-presentation allow-encrypted-media allow-downloads allow-pointer-lock allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-popups";
 };
 
 /**
@@ -376,6 +371,21 @@ export const extractEmbedSrc = (source: string): string => {
 
   if (finalUrl.startsWith('//')) {
     finalUrl = 'https:' + finalUrl;
+  }
+
+  // Direct Media Check (.m3u8, .mp4, .webm, etc.) — must run first before provider rewrites
+  const isDirectMedia = (
+    finalUrl.toLowerCase().includes('.m3u8') ||
+    finalUrl.toLowerCase().includes('.mp4') ||
+    finalUrl.toLowerCase().includes('.webm') ||
+    finalUrl.toLowerCase().includes('.m4v') ||
+    finalUrl.toLowerCase().includes('.mkv') ||
+    finalUrl.toLowerCase().includes('/storage/v1/object/public/') ||
+    finalUrl.toLowerCase().includes('shortbox')
+  );
+
+  if (isDirectMedia) {
+    return finalUrl;
   }
 
   // Google Drive Embed
@@ -461,21 +471,6 @@ export const extractEmbedSrc = (source: string): string => {
   // DoodStream Embed
   if (finalUrl.includes('doodstream.com/d/') || finalUrl.includes('dood.to/d/') || finalUrl.includes('dood.ws/d/')) {
     finalUrl = finalUrl.replace('/d/', '/e/');
-  }
-
-  // Direct Media Check (.m3u8, .mp4, .webm, etc.)
-  const isDirectMedia = (
-    finalUrl.toLowerCase().includes('.m3u8') ||
-    finalUrl.toLowerCase().includes('.mp4') ||
-    finalUrl.toLowerCase().includes('.webm') ||
-    finalUrl.toLowerCase().includes('.m4v') ||
-    finalUrl.toLowerCase().includes('.mkv') ||
-    finalUrl.toLowerCase().includes('/storage/v1/object/public/') ||
-    finalUrl.toLowerCase().includes('shortbox')
-  );
-
-  if (isDirectMedia) {
-    return finalUrl;
   }
 
   // Autoplay parameters for generic iframe embeds

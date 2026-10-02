@@ -6,7 +6,7 @@ import {
   Clapperboard, Layers, Info, Sparkles, User, Film,
   Star, Calendar, Tv, Zap, Clock, Activity, ListChecks,
   ChevronRight, PlayCircle, Link as LinkIcon, Send, Facebook, ArrowRight,
-  ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2, Cpu, Loader2, Lock, LockOpen
+  ChevronDown, MapPin, UserCheck, CheckCheck, ListMinus, Shield, Award, ArrowLeft, RefreshCcw, Timer, CheckCircle, Download, ChevronLeft, VolumeX, Volume2, Cpu, Loader2, Lock, LockOpen, Trash2
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, SeasonDetails, Episode, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds, getMediaType } from '../services/tmdbService';
@@ -16,6 +16,7 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig, SOURCE_META } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
 import { usePlayer } from '../contexts/PlayerContext';
@@ -78,9 +79,44 @@ const TVDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(!location.state?.customData);
   const [isPlayerLoading, setIsPlayerLoading] = useState(true);
 
+  const { user } = useAuth();
   const isAdmin = useMemo(() => {
-    return uiIsAdmin || (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true');
-  }, [uiIsAdmin]);
+    return uiIsAdmin || 
+      (typeof window !== 'undefined' && (
+        localStorage.getItem('isFlkrdAdmin') === 'true' ||
+        localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+      )) || 
+      user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
+  }, [uiIsAdmin, user]);
+
+  const handleAdminBanShow = async () => {
+    if (!content || !isAdmin) return;
+    const isKurdish = language === 'ku' || language === 'badini';
+    const showTitle = content.name || content.title || 'Series';
+    const confirmMsg = isKurdish
+      ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${showTitle}»؟ ئەم زنجیرەیە چیتر لە ماڵپەڕدا دەرناکەوێت.`
+      : `Are you sure you want to ban and block "${showTitle}" from the platform?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const cleanId = String(content.id).replace('custom_', '');
+      await bannedService.banContent(cleanId, 'tv');
+      addNotification({
+        type: 'success',
+        title: isKurdish ? 'زنجیرەکە بلۆک کرا' : 'Series Banned',
+        message: isKurdish ? 'زنجیرەکە بە سەرکەوتوویی لە تەواوی سیستم بلۆک کرا.' : 'Series was banned globally.'
+      });
+      window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      navigate('/');
+    } catch (err) {
+      console.error('[BAN ERROR]', err);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Could not complete ban action.'
+      });
+    }
+  };
   const { activeVideo, setActiveVideo, isPipActive, setIsPipActive, pipTime, setPipTime, setIsPaused } = usePlayer();
   const isPlayingRef = useRef(false);
   const playerModalRef = useRef<HTMLDivElement>(null);
@@ -916,35 +952,20 @@ const TVDetailPage: React.FC = () => {
                             onClick={() => { 
                               if (isActive) return;
                               setActiveSource(s.name); 
+                              setPlayerKey(prev => prev + 1);
                               setIsPlayerLoading(true); 
                               setTimeout(() => {
                                 setShowSourceSwitcher(false); 
-                              }, 800);
+                              }, 250);
                             }} 
-                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
+                            className={`w-full p-4 rounded-2xl flex flex-col gap-2.5 transition-all duration-200 border group relative overflow-hidden backdrop-blur-xl text-left select-none ${
                               isActive 
-                                ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
-                                : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
+                                ? 'bg-white/[0.08] border-red-500/40 border-t-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.4)] ring-1 ring-red-500/20' 
+                                : 'bg-white/[0.03] border-white/5 border-t-white/10 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(0,0,0,0.2)]'
                             }`}
                           >
                             {isActive && (
-                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
-                                <div 
-                                  className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
-                                  style={{
-                                    background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
-                                    animation: 'neon-border-spin 3s linear infinite',
-                                  }}
-                                />
-                                <div 
-                                  className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
-                                  style={{
-                                    background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                  }}
-                                />
-                              </div>
+                              <div className="absolute left-0 top-3 bottom-3 w-1 bg-red-500 rounded-r-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
                             )}
 
 
@@ -1131,6 +1152,17 @@ const TVDetailPage: React.FC = () => {
               )}
               <span className="relative">{(language === 'ku' || language === 'badini') ? 'تەماشاکردنی هاوبەش' : 'CO-WATCH PARTY'}</span>
             </button>
+
+            {/* Admin Ban Button */}
+            {isAdmin && (
+              <button
+                onClick={handleAdminBanShow}
+                className="group relative px-6 md:px-8 py-4 md:py-5 rounded-xl md:rounded-[1.5rem] font-[1000] uppercase italic tracking-tighter text-base md:text-lg flex items-center gap-2.5 transition-all active:scale-95 overflow-hidden border border-red-500/50 bg-red-600/25 hover:bg-red-600 text-white shadow-xl cursor-pointer"
+              >
+                <Trash2 size={20} className="text-red-400 group-hover:text-white" />
+                <span className="relative">{(language === 'ku' || language === 'badini') ? 'بلۆککردن (ئەدمین)' : 'BAN SHOW'}</span>
+              </button>
+            )}
           </div>
         </div>
         {!isPlayerModalOpen && (
@@ -1259,8 +1291,11 @@ const TVDetailPage: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8">
                   {cast.map(person => (
-                    <div key={person.id} className="group cursor-pointer" onClick={() => setSelectedActorId(person.id)}>
-                      <div className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative">
+                    <div key={person.id} className="group cursor-pointer select-none active:scale-[0.96] transition-transform" onClick={() => setSelectedActorId(person.id)}>
+                      <div 
+                        style={{ aspectRatio: '3/4' }}
+                        className="aspect-[3/4] rounded-xl md:rounded-[2rem] overflow-hidden mb-3 border border-border-color shadow-2xl relative"
+                      >
                         <img 
                           src={person.profile_path ? `${IMAGE_BASE_URL_PROFILE}${person.profile_path}` : '/flkrd-icon.webp'} 
                           alt={person.name} 
@@ -1347,10 +1382,13 @@ const TVDetailPage: React.FC = () => {
                 <>
                   {/* Left Column: Image */}
                   <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
-                    <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
+                    <div 
+                      style={{ aspectRatio: '3/4' }}
+                      className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto"
+                    >
                       <img 
                         src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.webp'} 
-                        alt={actorDetails.name}
+                        alt={actorDetails.name} 
                         className="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
                       />
@@ -1405,13 +1443,16 @@ const TVDetailPage: React.FC = () => {
                             .map((movie: any) => (
                               <div 
                                 key={movie.id} 
-                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all select-none active:scale-[0.96]"
                                 onClick={() => {
                                   setSelectedActorId(null);
                                   navigate(`/details/${getMediaType(movie)}/${movie.id}`);
                                 }}
                               >
-                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-white/5">
+                                <div 
+                                  style={{ aspectRatio: '2/3' }}
+                                  className="aspect-[2/3] card-poster-aspect rounded-xl overflow-hidden relative border border-white/5"
+                                >
                                   <img 
                                     src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
                                     alt={movie.title || movie.name}

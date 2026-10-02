@@ -6,6 +6,7 @@ import { MyListItem } from '../types';
 import { useTranslation } from '../contexts/LanguageContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { bannedService } from '../services/bannedService';
 import { supabase } from '../utils/supabaseClient';
 import { db } from '../utils/db';
@@ -128,14 +129,26 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
     }
   };
 
+  const { user } = useAuth();
+  const isOwnerOrAdmin = isAdmin || 
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('isFlkrdAdmin') === 'true' ||
+      localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+    )) || 
+    user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
+
   const handleBan = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isAdmin) return;
+    if (!isOwnerOrAdmin) return;
     const cleanId = String(item.id).replace('custom_', '');
     const rawId = String(item.id);
     const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
 
-    if (!window.confirm(`TERMINATE NODE ${cleanId}? [GLOBAL DELETE]`)) return;
+    const isKurdish = language === 'ku' || language === 'badini';
+    const confirmMsg = isKurdish 
+      ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${item.title || item.name}» لە تەواوی سیستم؟` 
+      : `Are you sure you want to ban and block "${item.title || item.name}" from the app?`;
+    if (!window.confirm(confirmMsg)) return;
     try {
       if (isCustom || mediaType === 'dubbed' || rawId.startsWith('custom_')) {
         await supabase.from('dubbed_movies').delete().or(`id.eq.${dbId},id.eq.${cleanId}`);
@@ -362,16 +375,19 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
             </button>
 
             {/* Admin ban button */}
-            {isAdmin && (
+            {isOwnerOrAdmin && (
               <button
                 onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); handleBan(e as any); }}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold border bg-red-900/60 hover:bg-red-700/80 text-red-300 hover:text-white border-red-700/50 backdrop-blur-md transition-colors cursor-pointer active:scale-95 shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-black border bg-red-600 hover:bg-red-500 active:bg-red-700 text-white border-red-400/80 backdrop-blur-md transition-all cursor-pointer active:scale-95 shrink-0 shadow-[0_4px_16px_rgba(220,38,38,0.45)]"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                title={language === 'ku' || language === 'badini' ? 'بلۆککردنی ئەم فلیمە (ئەدمین)' : 'Ban & Block Content (Admin)'}
                 aria-label="Ban content globally"
               >
-                <Trash2 className="w-3 h-3 shrink-0" />
-                <span className="hidden sm:inline uppercase tracking-wider">Ban</span>
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="inline uppercase tracking-wider font-black">
+                  {language === 'ku' || language === 'badini' ? 'بلۆک' : 'Ban'}
+                </span>
               </button>
             )}
           </div>
@@ -385,6 +401,18 @@ export const MovieListCard: React.FC<MovieListCardProps> = React.memo(({ item, t
         onClose={() => setIsPreviewOpen(false)}
       />
     </motion.div>
+  );
+}, (prev, next) => {
+  return (
+    prev.item?.id === next.item?.id &&
+    prev.item?.poster_path === next.item?.poster_path &&
+    prev.item?.title === next.item?.title &&
+    prev.item?.name === next.item?.name &&
+    (prev.item as any)?.progress === (next.item as any)?.progress &&
+    prev.type === next.type &&
+    prev.isProgressRow === next.isProgressRow &&
+    prev.isMyListPage === next.isMyListPage &&
+    prev.className === next.className
   );
 });
 

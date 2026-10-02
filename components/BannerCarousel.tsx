@@ -240,6 +240,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
                   : (currentItem.backdrop_path ? `${IMAGE_BASE_URL.replace('w1280', 'w1280')}${currentItem.backdrop_path}` : '')
               }
               alt={currentItem.title || currentItem.name || ''}
+              width={780}
+              height={1170}
+              fetchPriority="high"
+              decoding="async"
               className="w-full h-full object-cover object-top transition-transform duration-700 ease-out scale-105"
             />
 
@@ -270,6 +274,10 @@ const HeroBanner: React.FC<HeroBannerProps> = ({ onActiveItemChange }) => {
                         : `${IMAGE_BASE_URL_LOGO}${currentItem.logo}`
                     }
                     alt={currentItem.title || currentItem.name || 'Movie Logo'}
+                    width={260}
+                    height={80}
+                    loading="lazy"
+                    decoding="async"
                     className={`max-h-16 sm:max-h-20 w-auto max-w-[260px] object-contain ${
                       isLight ? 'drop-shadow-[0_2px_10px_rgba(0,0,0,0.15)]' : 'drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]'
                     }`}

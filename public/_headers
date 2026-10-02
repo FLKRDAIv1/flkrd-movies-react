@@ -11,4 +11,11 @@
 /fkurdmovie.mobileconfig
   Content-Type: application/x-apple-aspen-config; charset=utf-8
   Content-Disposition: attachment; filename="FLKRD_MOVIES.mobileconfig"
+/
   Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate

@@ -61,6 +61,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onDis
         <img
           src={image}
           alt=""
+          width={48}
+          height={48}
+          loading="lazy"
+          decoding="async"
           className="w-12 h-12 rounded-xl object-cover ring-1 ring-white/15 flex-shrink-0 shadow-md group-hover:scale-105 transition-transform duration-300"
         />
       )}

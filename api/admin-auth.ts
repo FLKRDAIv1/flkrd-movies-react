@@ -18,9 +18,12 @@ interface AdminAuthResponse {
 // Secret key for HMAC token signing (server-side only, never exposed to client)
 const JWT_SECRET = process.env.FLKRD_ADMIN_SECRET || 'flkrd_quantum_security_master_key_2026_x89_sign';
 
-// Master Admin Password Hash (SHA-256 with salt) for Pirasali1919@01
+// Master Admin Password Hashes (SHA-256 with salt) for flkrdstudioadmin@ and Pirasali1919@01
 const MASTER_EMAIL = 'flkrdstudio@gmail.com';
-const MASTER_HASH = crypto.createHmac('sha256', JWT_SECRET).update('Pirasali1919@01').digest('hex');
+const MASTER_HASHES = [
+  crypto.createHmac('sha256', JWT_SECRET).update('flkrdstudioadmin@').digest('hex'),
+  crypto.createHmac('sha256', JWT_SECRET).update('Pirasali1919@01').digest('hex')
+];
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ofddaeofptotnxeoxfko.supabase.co';
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mZGRhZW9mcHRvdG54ZW94ZmtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NDk1NDIsImV4cCI6MjEwMDMyNTU0Mn0.Y502Vk2zlev9d4Hbkjt6VniV_xFXjl41YW4EE26wCNc';
@@ -149,27 +152,53 @@ function verifySessionToken(token: string): { valid: boolean; payload?: any; err
   }
 }
 
-// Fetch Sub-Admins from Supabase server_config securely
+// Fetch Sub-Admins from Firestore / Supabase server_config securely
 async function fetchSubAdminsFromSupabase(): Promise<any[]> {
   try {
+    // 1. Query Cloud Firestore flkrd-studio first (instant Spark tier response, zero quota issues)
+    try {
+      const fRes = await fetch('https://firestore.googleapis.com/v1/projects/flkrd-studio/databases/(default)/documents/server_config');
+      if (fRes.ok) {
+        const data = await fRes.json();
+        const rows = (data.documents || []).map((d: any) => ({
+          id: d.fields?.id?.integerValue || d.fields?.id?.stringValue,
+          server_name: d.fields?.server_name?.stringValue,
+          priority: d.fields?.priority?.integerValue
+        }));
+        const subAdmins: any[] = [];
+        for (const row of rows) {
+          if (row.server_name && row.server_name.startsWith('subadmin:')) {
+            try {
+              const parsed = JSON.parse(row.server_name.replace(/^subadmin:/, ''));
+              subAdmins.push(parsed);
+            } catch {}
+          }
+        }
+        if (subAdmins.length > 0) return subAdmins;
+      }
+    } catch {}
+
+    // 2. Secondary fallback to Supabase
     const res = await fetch(`${SUPABASE_URL}/rest/v1/server_config?select=id,server_name,priority`, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`
       }
     });
-    if (!res.ok) return [];
-    const rows: any[] = await res.json();
-    const subAdmins: any[] = [];
-    for (const row of rows) {
-      if (row.server_name && row.server_name.startsWith('subadmin:')) {
-        try {
-          const parsed = JSON.parse(row.server_name.replace(/^subadmin:/, ''));
-          subAdmins.push(parsed);
-        } catch {}
+    if (res.ok) {
+      const rows = await res.json();
+      const subAdmins: any[] = [];
+      for (const row of rows) {
+        if (row.server_name && row.server_name.startsWith('subadmin:')) {
+          try {
+            const parsed = JSON.parse(row.server_name.replace(/^subadmin:/, ''));
+            subAdmins.push(parsed);
+          } catch {}
+        }
       }
+      return subAdmins;
     }
-    return subAdmins;
+    return [];
   } catch (e) {
     return [];
   }
@@ -247,11 +276,13 @@ export default async function handler(req: AdminAuthRequest, res: AdminAuthRespo
     // Check Master Admin Credentials
     if (cleanEmail === MASTER_EMAIL) {
       const providedHash = crypto.createHmac('sha256', JWT_SECRET).update(password).digest('hex');
-
       const hashBuffer = Buffer.from(providedHash);
-      const masterBuffer = Buffer.from(MASTER_HASH);
+      const isMatch = MASTER_HASHES.some(masterHash => {
+        const masterBuffer = Buffer.from(masterHash);
+        return hashBuffer.length === masterBuffer.length && crypto.timingSafeEqual(hashBuffer, masterBuffer);
+      });
 
-      if (hashBuffer.length === masterBuffer.length && crypto.timingSafeEqual(hashBuffer, masterBuffer)) {
+      if (isMatch) {
         recordSuccessfulAttempt(ip);
         const token = createSessionToken(cleanEmail, 'owner');
 

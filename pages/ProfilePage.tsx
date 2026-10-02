@@ -15,6 +15,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { SkeletonProfile } from '../components/Skeleton';
 import AnimatedThemeToggler from '../components/ui/animated-theme-toggler';
 import { useAuth } from '../contexts/AuthContext';
+import { getAuthErrorMessage } from '../utils/authErrors';
 import { fetchData } from '../services/tmdbService';
 import { requests, IMAGE_BASE_URL, API_KEY } from '../constants';
 import { supabase } from '../utils/supabaseClient';
@@ -24,13 +25,14 @@ import VisitorAnalyticsModal from '../components/VisitorAnalyticsModal';
 import { AdminManagementModal } from '../components/AdminManagementModal';
 import { AdminBroadcastModal } from '../components/AdminBroadcastModal';
 import AdminPanelModal from '../components/AdminPanelModal';
+import { AdminBannedModal } from '../components/AdminBannedModal';
 
 const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language, setLanguage } = useTranslation();
     const { theme, toggleTheme, accentColor, setIsSettingsOpen, isAdminModalOpen, setIsAdminModalOpen, loginAsAdmin, isAdmin, setIsAdmin, hasPermission } = useUI();
     const { addNotification } = useNotification();
-    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle } = useAuth();
+    const { user, signIn, signUp, signOut, resetPassword, loading: authLoading, isPasswordRecovery, updatePassword, signInWithGoogle, recoveryEmail, recoveryError, isEmailVerified, sendVerificationEmail, isEmailVerificationSuccess, isEmailVerificationFailed, clearVerificationState } = useAuth();
     const avatarInputRef = useRef<HTMLInputElement>(null);
 
     // Tab state: 'history' | 'preferences' | 'admin'
@@ -59,6 +61,7 @@ const ProfilePage: React.FC = () => {
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
     const [showBroadcastModal, setShowBroadcastModal] = useState(false);
     const [showAdminModal, setShowAdminModal] = useState(false);
+    const [showBannedModal, setShowBannedModal] = useState(false);
 
     // Watch Progress History
     const [historyList, setHistoryList] = useState<any[]>(() => {
@@ -98,6 +101,57 @@ const ProfilePage: React.FC = () => {
     const isStoredAdmin = typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true';
     const isMasterAdmin = isAdmin || isStoredAdmin || user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
 
+    const subAdminData = useMemo(() => {
+        try {
+            const raw = localStorage.getItem('flkrd_active_sub_admin');
+            return raw ? JSON.parse(raw) : null;
+        } catch { return null; }
+    }, []);
+
+    const displayEmail = useMemo(() => {
+        if (user?.email) return user.email;
+        if (subAdminData?.email) return subAdminData.email;
+        if (typeof window !== 'undefined') {
+            const adminEmail = localStorage.getItem('flkrd_admin_email');
+            if (adminEmail) return adminEmail;
+        }
+        return 'member@flkrd.stream';
+    }, [user, subAdminData]);
+
+    const adminRoleInfo = useMemo(() => {
+        if (!isMasterAdmin) return null;
+        const role = subAdminData?.role;
+        const isRtl = language === 'ku' || language === 'badini';
+        if (role === 'co_ceo') {
+            return {
+                title: isRtl ? 'جێگری سەرۆک (Co-CEO)' : 'Executive Co-CEO',
+                badgeColor: 'bg-amber-500/15 border-amber-500/30 text-amber-300'
+            };
+        }
+        if (role === 'manager') {
+            return {
+                title: isRtl ? 'بەڕێوەبەری گشتی (Manager)' : 'General Manager',
+                badgeColor: 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+            };
+        }
+        if (role === 'editor') {
+            return {
+                title: isRtl ? 'سەرپەرشتیاری ناوەڕۆک (Editor)' : 'Content Editor',
+                badgeColor: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+            };
+        }
+        if (role === 'moderator') {
+            return {
+                title: isRtl ? 'سەرپەرشتیار (Moderator)' : 'System Moderator',
+                badgeColor: 'bg-purple-500/15 border-purple-500/30 text-purple-300'
+            };
+        }
+        return {
+            title: isRtl ? 'بەڕێوەبەری سەرەکی (CEO)' : 'Master Administrator (CEO)',
+            badgeColor: 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+        };
+    }, [isMasterAdmin, subAdminData, language]);
+
     // Load avatar from IndexedDB, LocalStorage or user metadata on mount / user change
     useEffect(() => {
         const loadAvatar = async () => {
@@ -118,11 +172,13 @@ const ProfilePage: React.FC = () => {
             setTempUserName(user.user_metadata.user_name);
         } else if (user?.email) {
             setTempUserName(user.email.split('@')[0]);
+        } else if (subAdminData?.username) {
+            setTempUserName(subAdminData.username);
         } else if (isMasterAdmin) {
             const adminEmail = typeof window !== 'undefined' ? (localStorage.getItem('flkrd_admin_email') || 'flkrdstudio@gmail.com') : 'flkrdstudio@gmail.com';
             setTempUserName(adminEmail === 'flkrdstudio@gmail.com' ? 'Zana Barzani (CEO)' : adminEmail.split('@')[0]);
         }
-    }, [user, isAdmin, isStoredAdmin, isMasterAdmin]);
+    }, [user, isAdmin, isStoredAdmin, isMasterAdmin, subAdminData]);
 
     // Override body background so the profile ambient video background is visible
     useEffect(() => {
@@ -150,7 +206,7 @@ const ProfilePage: React.FC = () => {
     const stats = {
         memberSince: user?.created_at ? new Date(user.created_at).getFullYear().toString() : '2026',
         watchedCount: historyList.length,
-        rank: isMasterAdmin ? (language === 'ku' || language === 'badini' ? 'بەڕێوەبەری سەرەکی' : 'Master Administrator') : t('userRank')
+        rank: isMasterAdmin ? (adminRoleInfo?.title || (language === 'ku' || language === 'badini' ? 'بەڕێوەبەری سەرەکی' : 'Master Administrator')) : t('userRank')
     };
 
     useEffect(() => {
@@ -216,68 +272,141 @@ const ProfilePage: React.FC = () => {
 
         const { error } = await signIn(cleanEmail, password);
         setFormSubmitting(false);
+        const isRTL = language === 'ku' || language === 'badini';
         if (error) {
-            addNotification({ type: 'error', title: 'Login Failed', message: error.message });
+            const errTrans = getAuthErrorMessage(error, language);
+            addNotification({ type: 'error', title: errTrans.title, message: errTrans.message });
         } else {
-            addNotification({ type: 'success', title: 'Welcome Back', message: 'Successfully signed in.' });
+            addNotification({ 
+                type: 'success', 
+                title: isRTL ? 'بەخێربێیتەوە' : 'Welcome Back', 
+                message: isRTL ? 'بە سەرکەوتوویی چوویتە ژوورەوە.' : 'Successfully signed in.' 
+            });
         }
     };
 
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
+        const isRTL = language === 'ku' || language === 'badini';
         if (!email || !password || !regUserName) {
-            addNotification({ type: 'error', title: 'Error', message: 'Please fill in all fields' });
+            addNotification({ 
+                type: 'error', 
+                title: isRTL ? 'زانیاری ناتەواوە' : 'Error', 
+                message: isRTL ? 'تکایە هەموو خانەکان پڕبکەرەوە.' : 'Please fill in all fields' 
+            });
             return;
         }
         if (password !== confirmPassword) {
-            addNotification({ type: 'error', title: 'Error', message: 'Passwords do not match' });
+            addNotification({ 
+                type: 'error', 
+                title: isRTL ? 'پاسوۆردەکان وەک یەک نین' : 'Error', 
+                message: isRTL ? 'دڵنیابەرەوە هەردوو پاسوۆردەکە وەک یەکن.' : 'Passwords do not match' 
+            });
             return;
         }
         setFormSubmitting(true);
         const { error } = await signUp(email, password, regUserName);
         setFormSubmitting(false);
         if (error) {
-            addNotification({ type: 'error', title: 'Registration Failed', message: error.message });
+            const errTrans = getAuthErrorMessage(error, language);
+            addNotification({ type: 'error', title: errTrans.title, message: errTrans.message });
         } else {
-            addNotification({ type: 'success', title: 'Account Created', message: 'Please check your email for confirmation link.' });
-            setAuthScreen('login');
+            addNotification({ 
+                type: 'success', 
+                title: isRTL ? 'پیرۆزە! هەژمار دروستکرا' : 'Account Created', 
+                message: isRTL 
+                    ? 'هەژمارەکەت دروستکرا و ئیمەیڵی پشتڕاستکردنەوە نێردرا. تکایە سەیری Inbox و بوخچەی سپام (Spam/Junk) بکە.' 
+                    : 'Account created! A confirmation email has been sent. Please check your inbox or Spam/Junk folder.' 
+            });
         }
     };
 
     const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        const isRTL = language === 'ku' || language === 'badini';
         if (!email) {
-            addNotification({ type: 'error', title: 'Error', message: 'Please enter your email' });
+            addNotification({ 
+                type: 'error', 
+                title: isRTL ? 'ئیمەیڵ پێویستە' : 'Error', 
+                message: isRTL ? 'تکایە سەرەتا ئیمەیڵەکەت بنووسە.' : 'Please enter your email' 
+            });
             return;
         }
         setFormSubmitting(true);
         const { error } = await resetPassword(email);
         setFormSubmitting(false);
         if (error) {
-            addNotification({ type: 'error', title: 'Reset Failed', message: error.message });
+            const errTrans = getAuthErrorMessage(error, language);
+            addNotification({ type: 'error', title: errTrans.title, message: errTrans.message });
         } else {
-            addNotification({ type: 'success', title: 'Email Sent', message: 'Check your email for the reset link.' });
+            addNotification({ 
+                type: 'success', 
+                title: isRTL ? 'بەستەری نوێکردنەوە نێردرا' : 'Reset Link Sent', 
+                message: isRTL 
+                    ? 'بەستەری دانانەوەی پاسوۆرد نێردرا بۆ ئیمەیڵەکەت. تکایە پشکنین بۆ هەردوو Inbox و بوخچەی سپام (Spam/Junk) بکە.' 
+                    : 'A password reset link was sent. Check your inbox and Spam/Junk folder.' 
+            });
             setAuthScreen('login');
+        }
+    };
+
+    const handleResendVerification = async () => {
+        const isRTL = language === 'ku' || language === 'badini';
+        addNotification({
+            type: 'info',
+            title: isRTL ? 'ناردنی ئیمەیڵ...' : 'Sending Email...',
+            message: isRTL ? 'ئیمەیڵی پشتڕاستکردنەوە ئامادە دەکرێت...' : 'Preparing verification link...'
+        });
+        const { error } = await sendVerificationEmail();
+        if (error) {
+            const errTrans = getAuthErrorMessage(error, language);
+            addNotification({ type: 'error', title: errTrans.title, message: errTrans.message });
+        } else {
+            addNotification({
+                type: 'success',
+                title: isRTL ? 'ئیمەیڵ نێردرا' : 'Verification Sent',
+                message: isRTL 
+                    ? 'بەستەری پشتڕاستکردنەوە نێردرا بۆ ئیمەیڵەکەت. تکایە پشکنین بۆ Inbox و بوخچەی سپام (Spam/Junk) بکە.' 
+                    : 'A verification link has been sent to your email. Please check your inbox or Spam/Junk folder.'
+            });
         }
     };
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
         e.preventDefault();
+        const isRTL = language === 'ku' || language === 'badini';
         if (!newPassword || newPassword.length < 6) {
-            addNotification({ type: 'error', title: 'Too short', message: 'Password must be at least 6 characters.' });
+            addNotification({ 
+                type: 'error', 
+                title: isRTL ? 'پاسوۆرد کورتە' : 'Too short', 
+                message: isRTL ? 'پێویستە پاسوۆرد لانیکەم ٦ پیت یان ژمارە بێت.' : 'Password must be at least 6 characters.' 
+            });
             return;
         }
         if (newPassword !== newPasswordConfirm) {
-            addNotification({ type: 'error', title: 'Mismatch', message: 'Passwords do not match.' });
+            addNotification({ 
+                type: 'error', 
+                title: isRTL ? 'پاسوۆردەکان وەک یەک نین' : 'Mismatch', 
+                message: isRTL ? 'تکایە دڵنیابەرەوە لەوەی هەردوو پاسوۆردەکە وەک یەکن.' : 'Passwords do not match.' 
+            });
             return;
         }
         setFormSubmitting(true);
         const { error } = await updatePassword(newPassword);
         setFormSubmitting(false);
         if (error) {
-            addNotification({ type: 'error', title: 'Update Failed', message: error.message });
+            const errTrans = getAuthErrorMessage(error, language);
+            addNotification({ 
+                type: 'error', 
+                title: errTrans.title, 
+                message: errTrans.message 
+            });
         } else {
-            addNotification({ type: 'success', title: 'Password Updated!', message: 'You can now sign in with your new password.' });
+            addNotification({ 
+                type: 'success', 
+                title: isRTL ? 'پاسوۆرد نوێکرایەوە!' : 'Password Updated!', 
+                message: isRTL ? 'پاسوۆردەکەت بە سەرکەوتوویی نوێکرایەوە. ئێستا دەتوانیت بە پاسوۆردی نوێ بچیتە ژوورەوە.' : 'You can now sign in with your new password.' 
+            });
             setNewPassword('');
             setNewPasswordConfirm('');
             navigate('/profile', { replace: true });
@@ -430,14 +559,29 @@ const ProfilePage: React.FC = () => {
     };
 
     const handleOAuth = async (provider: 'google' | 'apple') => {
+        const isRTL = language === 'ku' || language === 'badini';
         if (provider === 'google') {
-            addNotification({ type: 'info', title: 'Google Auth', message: 'Redirecting to Google sign-in...' });
             const { error } = await signInWithGoogle();
             if (error) {
-                addNotification({ type: 'error', title: 'Google Auth Failed', message: error.message || 'Could not sign in with Google.' });
+                if (error.code === 'auth/cancelled') {
+                    // User closed popup window without completing sign in
+                    return;
+                }
+                const errTrans = getAuthErrorMessage(error, language);
+                addNotification({ type: 'error', title: errTrans.title, message: errTrans.message });
+            } else {
+                addNotification({ 
+                    type: 'success', 
+                    title: isRTL ? 'بەخێربێیت' : 'Welcome', 
+                    message: isRTL ? 'بە سەرکەوتوویی لە ڕێگەی گووگڵەوە چوویتە ژوورەوە.' : 'Signed in with Google successfully.' 
+                });
             }
         } else {
-            addNotification({ type: 'info', title: 'Apple Auth', message: 'Apple sign-in coming soon.' });
+            addNotification({ 
+                type: 'info', 
+                title: isRTL ? 'چوونەژوورەوەی ئەپڵ' : 'Apple Auth', 
+                message: isRTL ? 'چوونەژوورەوە بە ئەپڵ بەمزووانە بەردەست دەبێت.' : 'Apple sign-in coming soon.' 
+            });
         }
     };
 
@@ -493,6 +637,89 @@ const ProfilePage: React.FC = () => {
 
     if (loading || authLoading) return <SkeletonProfile />;
 
+    // ─── EMAIL VERIFICATION CONFIRMATION SCREEN ───────────────────────────────────────
+    if (isEmailVerificationSuccess || isEmailVerificationFailed) {
+        const isRTL = language === 'ku' || language === 'badini';
+        const AUTH_VIDEO_DARK  = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260319_055001_8e16d972-3b2b-441c-86ad-2901a54682f9.mp4';
+        const AUTH_VIDEO_LIGHT = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260324_151826_c7218672-6e92-402c-9e45-f1e0f454bdc4.mp4';
+        const authVideo = theme === 'dark' ? AUTH_VIDEO_DARK : AUTH_VIDEO_LIGHT;
+
+        return (
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-20 bg-black">
+                <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                    <video
+                        key={authVideo}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        disablePictureInPicture
+                        className="w-full h-full object-cover opacity-85 scale-105 transform-gpu transition-opacity duration-1000"
+                        src={authVideo}
+                    />
+                    <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+                </div>
+                <motion.div
+                    initial={{ opacity: 0, y: 30, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="w-full max-w-[420px] bg-black/45 backdrop-blur-[35px] backdrop-saturate-[1.8] border border-white/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.7),inset_0_1px_2px_rgba(255,255,255,0.3)] relative z-10 text-center"
+                >
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
+                    
+                    {isEmailVerificationSuccess ? (
+                        <>
+                            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-800 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-900/40">
+                                <CheckCircle2 size={32} className="text-white" />
+                            </div>
+                            <h2 className="text-2xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
+                                {isRTL ? 'ئیمەیڵەکەت پشتڕاستکرایەوە!' : 'Email Verified!'}
+                            </h2>
+                            <p className="text-xs text-gray-300 leading-relaxed font-bold mb-6">
+                                {isRTL 
+                                    ? 'سوپاس، هەژمارەکەت لە FLKRD MOVIES بە سەرکەوتوویی پشتڕاستکرایەوە. ئێستا دەتوانیت لە تەواوی خزمەتگوزارییەکان سوودمەند بیت.' 
+                                    : 'Thank you! Your FLKRD MOVIES account has been successfully verified. Enjoy the full cinematic experience.'}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    clearVerificationState();
+                                    navigate('/profile');
+                                }}
+                                className="w-full py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:brightness-110 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg active:scale-98"
+                            >
+                                {isRTL ? 'بەردەوامبە بۆ پرۆفایل' : 'Continue to Profile'}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-red-900 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-900/40">
+                                <KeyRound size={28} className="text-white" />
+                            </div>
+                            <h2 className="text-2xl font-[1000] uppercase italic tracking-tighter text-white mb-2">
+                                {isRTL ? 'بەستەر بەسەرچووە' : 'Link Expired'}
+                            </h2>
+                            <p className="text-xs text-gray-300 leading-relaxed font-bold mb-6">
+                                {isRTL 
+                                    ? 'بەستەری پشتڕاستکردنەوەکە کۆن بووە یان پێشتر بەکارهاتووە. دەتوانیت لە ناو پرۆفایلەکەتەوە دووبارە داوای بەستەری نوێ بکەیتەوە.' 
+                                    : 'This verification link has expired or has already been used. You can request a new one from your profile.'}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    clearVerificationState();
+                                    navigate('/profile');
+                                }}
+                                className="w-full py-4 bg-gradient-to-r from-[var(--brand-red)] to-red-700 hover:brightness-110 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg active:scale-98"
+                            >
+                                {isRTL ? 'گەڕانەوە بۆ پرۆفایل' : 'Back to Profile'}
+                            </button>
+                        </>
+                    )}
+                </motion.div>
+            </div>
+        );
+    }
+
     // ─── PASSWORD RECOVERY SCREEN — shown when user clicks the reset link in email ─────
     if (isPasswordRecovery) {
         const isRTL = language === 'ku' || language === 'badini';
@@ -521,50 +748,78 @@ const ProfilePage: React.FC = () => {
                     className="w-full max-w-[420px] bg-black/40 backdrop-blur-[35px] backdrop-saturate-[1.8] border border-white/25 rounded-[2.5rem] p-8 md:p-10 shadow-[0_30px_90px_rgba(0,0,0,0.6),inset_0_1px_2px_rgba(255,255,255,0.3)] relative z-10"
                 >
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-1 bg-gradient-to-r from-transparent via-[var(--brand-red)] to-transparent rounded-full" />
-                    <div className="text-center mb-8">
+                    <div className="text-center mb-6">
                         <div className="w-16 h-16 bg-gradient-to-br from-[var(--brand-red)] to-red-900 rounded-[1.5rem] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-900/40">
                             <KeyRound size={28} className="text-white" />
                         </div>
                         <h2 className="text-2xl font-[1000] uppercase italic tracking-tighter text-white mb-1">
                             {isRTL ? 'پاسوۆردی نوێ' : 'New Password'}
                         </h2>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                        {recoveryEmail && (
+                            <p className="text-xs text-red-400 font-bold tracking-wide mb-1">
+                                {recoveryEmail}
+                            </p>
+                        )}
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                             {isRTL ? 'پاسوۆردی نوێت دیاری بکە' : 'Choose a strong new password'}
                         </p>
                     </div>
-                    <form onSubmit={handleUpdatePassword} className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
-                                {isRTL ? 'پاسوۆردی نوێ' : 'New Password'}
-                            </label>
-                            <input
-                                type="password" required minLength={6}
-                                value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                                placeholder={isRTL ? 'پاسوۆردی نوێ بنووسە' : 'Enter new password (min 6 chars)'}
-                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
-                            />
+
+                    {recoveryError ? (
+                        <div className="space-y-4 text-center">
+                            <div className="p-4 bg-red-950/60 border border-red-500/40 rounded-2xl text-red-200 text-xs font-bold leading-relaxed">
+                                {isRTL
+                                    ? 'بەستەری نوێکردنەوەی پاسوۆرد بەسەرچووە یان پێشتر بەکارهاتووە. تکایە دووبارە داوای بەستەرێکی نوێ بکەرەوە.'
+                                    : 'This password reset link has expired or has already been used. Please request a new link.'}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (typeof window !== 'undefined' && window.history?.replaceState) {
+                                        window.history.replaceState({}, document.title, '/profile');
+                                    }
+                                    window.location.href = '/profile';
+                                }}
+                                className="w-full py-3.5 bg-gradient-to-r from-[var(--brand-red)] to-red-700 hover:brightness-110 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all shadow-lg active:scale-98"
+                            >
+                                {isRTL ? 'داوای بەستەری نوێ بکە' : 'Request New Reset Link'}
+                            </button>
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
-                                {isRTL ? 'پشتڕاستکردنەوە' : 'Confirm Password'}
-                            </label>
-                            <input
-                                type="password" required
-                                value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)}
-                                placeholder={isRTL ? 'پاسوۆرد دووبارە بنووسە' : 'Confirm your new password'}
-                                className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
-                            />
-                        </div>
-                        <button
-                            type="submit" disabled={formSubmitting}
-                            className="w-full mt-2 py-4 bg-gradient-to-r from-[var(--brand-red)] to-red-700 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 hover:opacity-90 active:scale-98"
-                        >
-                            {formSubmitting
-                                ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                                : <><Check size={14} />{isRTL ? 'تازەکردنەوەی پاسوۆرد' : 'Update Password'}</>
-                            }
-                        </button>
-                    </form>
+                    ) : (
+                        <form onSubmit={handleUpdatePassword} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                    {isRTL ? 'پاسوۆردی نوێ' : 'New Password'}
+                                </label>
+                                <input
+                                    type="password" required minLength={6}
+                                    value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                                    placeholder={isRTL ? 'پاسوۆردی نوێ بنووسە' : 'Enter new password (min 6 chars)'}
+                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase tracking-widest text-gray-400 block px-1">
+                                    {isRTL ? 'پشتڕاستکردنەوە' : 'Confirm Password'}
+                                </label>
+                                <input
+                                    type="password" required
+                                    value={newPasswordConfirm} onChange={e => setNewPasswordConfirm(e.target.value)}
+                                    placeholder={isRTL ? 'پاسوۆرد دووبارە بنووسە' : 'Confirm your new password'}
+                                    className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-3.5 px-4 text-xs font-bold text-white outline-none focus:border-[var(--brand-red)]/40 focus:bg-white/[0.05] transition-all"
+                                />
+                            </div>
+                            <button
+                                type="submit" disabled={formSubmitting}
+                                className="w-full mt-2 py-4 bg-gradient-to-r from-[var(--brand-red)] to-red-700 text-white font-black uppercase text-xs tracking-widest rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/30 hover:opacity-90 active:scale-98"
+                            >
+                                {formSubmitting
+                                    ? <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    : <><Check size={14} />{isRTL ? 'تازەکردنەوەی پاسوۆرد' : 'Update Password'}</>
+                                }
+                            </button>
+                        </form>
+                    )}
                 </motion.div>
             </div>
         );
@@ -684,6 +939,13 @@ const ProfilePage: React.FC = () => {
                                             />
                                             {isRTL ? 'بمھێڵەوە' : 'Remember me'}
                                         </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAuthScreen('reset')}
+                                            className="text-[10px] font-bold text-gray-400 hover:text-white transition-colors cursor-pointer"
+                                        >
+                                            {isRTL ? 'پاسوۆردت بیرچووە؟' : 'Forgot password?'}
+                                        </button>
                                     </div>
 
                                     <button 
@@ -813,12 +1075,14 @@ const ProfilePage: React.FC = () => {
                         </AnimatePresence>
                     </div>
 
-                    {/* Socials Divider */}
-                    {authScreen === 'login' && (
+                    {/* Socials Divider (Login & Signup) */}
+                    {(authScreen === 'login' || authScreen === 'signup') && (
                         <div className="space-y-3 mt-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-px bg-white/20 flex-1" />
-                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-300 drop-shadow-sm">Or continue with</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-gray-300 drop-shadow-sm">
+                                    {isRTL ? 'یان بەردەوامبە لەگەڵ' : 'Or continue with'}
+                                </span>
                                 <div className="h-px bg-white/20 flex-1" />
                             </div>
 
@@ -826,7 +1090,7 @@ const ProfilePage: React.FC = () => {
                                 <button 
                                     type="button"
                                     onClick={() => handleOAuth('google')}
-                                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all text-white active:scale-95 shadow-lg cursor-pointer"
+                                    className="w-full flex items-center justify-center gap-2.5 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white/20 hover:border-white/40 transition-all text-white active:scale-95 shadow-lg cursor-pointer"
                                 >
                                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
                                     Google
@@ -1032,21 +1296,37 @@ const ProfilePage: React.FC = () => {
 
                                 <p className="text-xs text-zinc-400 font-medium flex items-center justify-center sm:justify-start gap-1.5">
                                     <Mail size={13} className="text-zinc-500" />
-                                    <span>{user?.email || 'member@flkrd.stream'}</span>
+                                    <span>{displayEmail}</span>
                                 </p>
 
-                                {/* Badge */}
-                                <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                                {/* Badge & Verification Status */}
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                                     {isMasterAdmin ? (
-                                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-400 shadow-sm">
-                                            <Crown size={12} className="text-amber-400" />
-                                            <span>{language === 'ku' || language === 'badini' ? 'بەڕێوەبەری سەرەکی' : 'Master Administrator'}</span>
+                                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${adminRoleInfo?.badgeColor || 'bg-amber-500/15 border-amber-500/30 text-amber-400'}`}>
+                                            <Crown size={12} />
+                                            <span>{adminRoleInfo?.title}</span>
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-500/15 border border-red-500/30 text-red-500 shadow-sm">
                                             <Film size={12} />
                                             <span>{language === 'ku' || language === 'badini' ? 'ئەندامی تایبەت' : 'VIP Cinephile'}</span>
                                         </span>
+                                    )}
+                                    {isEmailVerified || isMasterAdmin ? (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shadow-sm" title="Email Verified">
+                                            <CheckCircle2 size={11} />
+                                            <span>{language === 'ku' || language === 'badini' ? 'پشتڕاستکراوە' : 'Verified'}</span>
+                                        </span>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={handleResendVerification}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25 active:scale-95 transition-all cursor-pointer shadow-sm"
+                                            title="Click to resend confirmation email"
+                                        >
+                                            <Mail size={11} />
+                                            <span>{language === 'ku' || language === 'badini' ? 'پشتڕاستکردنەوە بنێرە' : 'Confirm Email'}</span>
+                                        </button>
                                     )}
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                                         <CheckCircle2 size={11} />
@@ -1627,6 +1907,31 @@ const ProfilePage: React.FC = () => {
                                         <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </div>
+
+                                {/* 6. Banned Content Control */}
+                                <div
+                                    onClick={() => setShowBannedModal(true)}
+                                    className="p-6 rounded-3xl border border-rose-500/30 hover:border-rose-500/60 bg-gradient-to-br from-rose-950/30 via-zinc-950 to-black backdrop-blur-2xl cursor-pointer shadow-xl relative overflow-hidden group transition-all"
+                                >
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-lg shadow-rose-600/40">
+                                            <Trash2 size={20} />
+                                        </div>
+                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                            MODERATION
+                                        </span>
+                                    </div>
+                                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                                        {isRtl ? 'فیلمە بلۆککراوەکان' : 'Banned Content Control'}
+                                    </h3>
+                                    <p className="text-[11px] text-zinc-400 font-medium mb-4">
+                                        {isRtl ? 'بینین و گەڕاندنەوەی فیلم و ئەنیمەیشنە بلۆککراوەکان' : 'Manage, review and unban blocked movies & series'}
+                                    </p>
+                                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-rose-400 group-hover:text-white pt-2 border-t border-white/5">
+                                        <span>{isRtl ? 'بینینی لیست' : 'View Registry'}</span>
+                                        <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     )}
@@ -1651,6 +1956,10 @@ const ProfilePage: React.FC = () => {
             <AdminPanelModal 
                 isOpen={isAdminModalOpen} 
                 onClose={() => setIsAdminModalOpen(false)} 
+            />
+            <AdminBannedModal 
+                isOpen={showBannedModal} 
+                onClose={() => setShowBannedModal(false)} 
             />
         </div>
     );

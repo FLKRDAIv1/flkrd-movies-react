@@ -57,6 +57,8 @@ const WeeklySpotlight: React.FC<{ fetchUrl: string }> = ({ fetchUrl }) => {
           src={item.backdrop_path?.startsWith('data:') ? item.backdrop_path : (item.backdrop_path ? `${IMAGE_BASE_URL}${item.backdrop_path}` : 'https://raw.githubusercontent.com/flkrd/cdn/main/default-banner.webp')}
           width={1280}
           height={720}
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
           alt={item.title || item.name || "Weekly Spotlight Movie Backdrop"}
         />
@@ -185,12 +187,12 @@ const HomePage: React.FC = () => {
     setLoadingDubbed(true);
     let rawItems = [];
     try {
-      // 1. Direct Supabase Fetch (Optimized lightweight columns)
+      // 1. Direct Supabase Fetch (Optimized lightweight columns, fetch entire catalog up to 500)
       const dbFetchPromise = supabase
         .from('dubbed_movies')
         .select('id, title, kurdishTitle, description, kurdishOverview, poster_path, backdrop_path, videoUrl, customStream, created_at, level')
         .order('created_at', { ascending: false })
-        .limit(40);
+        .range(0, 499);
 
       let timeoutId: any;
       const timeoutPromise = new Promise<{ data: null, error: any }>((resolve) => {
@@ -242,15 +244,15 @@ const HomePage: React.FC = () => {
         });
 
         setDubbedItems(formatted);
-        // Only persist full database sync to avoid clearing the 310 movies cache
-        if (rawItems.length >= 50) {
+        // Persist full database sync to IndexedDB for instant repeat/offline visits
+        if (rawItems.length >= 20) {
           db.saveMovies(rawItems).catch(() => {});
         }
       } else {
         // Fallback to indexedDB if everything else failed
         const localItems = await db.getMovies();
         if (localItems && localItems.length > 0) {
-          setDubbedItems(localItems.slice(0, 40));
+          setDubbedItems(localItems);
         }
       }
     } catch (e) {

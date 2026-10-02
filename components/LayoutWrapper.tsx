@@ -63,27 +63,27 @@ export const LayoutWrapper: React.FC<LayoutWrapperProps> = ({
         isRtl ? 'rtl font-kurdish' : 'ltr'
       } ${className}`}
     >
-      {/* ── 1. Screen-Perimeter Glowing Neon Border Beam (Cyan-to-Red Outline Matching Reference Image) ── */}
+      {/* ── 1. Screen-Perimeter Glowing Neon Border Beam (Active only during initial load/route transition) ── */}
       <AnimatePresence>
-        {(isLoading || showPageLoadBeam) && (
+        {isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
-            animate={{ opacity: isLoading ? 1 : 0.25 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
           >
-            <ScreenPerimeterBorderBeam duration={8} borderWidth={3.5} glow={true} />
+            <ScreenPerimeterBorderBeam duration={6} borderWidth={3} glow={false} />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ── 2. Multi-Layered Atmospheric Depth & Vignette (Dark Theater Room Ambiance) ── */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden transform-gpu">
+      {/* ── 2. Multi-Layered Atmospheric Depth & Vignette (Dark Theater Room Ambiance - Zero GPU blur cost) ── */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         {/* Radial Ambient Red/Purple Theater Glow at Top Header */}
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(229,9,20,0.15),transparent_70%)] blur-3xl opacity-80" />
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[radial-gradient(ellipse_at_top,rgba(229,9,20,0.12),transparent_70%)] opacity-80" />
 
         {/* Secondary Cosmic Ambiance Glow */}
-        <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(156,64,255,0.08),transparent_60%)] blur-3xl opacity-60" />
+        <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(156,64,255,0.06),transparent_60%)] opacity-60" />
 
         {/* Outer Dark Theater Vignette Border */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_40%,rgba(5,5,5,0.85)_100%)]" />

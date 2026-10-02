@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Info, Star, Sparkles, ChevronLeft, ChevronRight, Mic2, Film } from 'lucide-react';
+import { Play, Info, Star, Sparkles, ChevronLeft, ChevronRight, Mic2, Film, Trash2 } from 'lucide-react';
 import { Content } from '../types';
 import { IMAGE_BASE_URL } from '../constants';
 import { useTranslation } from '../contexts/LanguageContext';
+import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotification } from '../contexts/NotificationContext';
+import { bannedService } from '../services/bannedService';
+import { supabase } from '../utils/supabaseClient';
+import { db } from '../utils/db';
 import { BorderBeam } from './ui/border-beam';
 import { ListMoviePreviewDrawer } from './ListMoviePreviewDrawer';
 
@@ -72,9 +78,58 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
   const navigate = useNavigate();
   const { language, t } = useTranslation();
 
+  const { isAdmin } = useUI();
+  const { user } = useAuth();
+  const { addNotification } = useNotification();
+  const isOwnerOrAdmin = isAdmin || 
+    (typeof window !== 'undefined' && localStorage.getItem('isFlkrdAdmin') === 'true') ||
+    user?.email?.toLowerCase() === 'flkrdstudio@gmail.com' ||
+    (typeof window !== 'undefined' && localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com');
+
   const isRtl = language === 'ku' || language === 'badini';
   const totalItems = items.length;
   const currentItem = items[currentIndex] || null;
+
+  const handleAdminBanHero = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentItem || !isOwnerOrAdmin) return;
+    const itemTitle = currentItem.title || currentItem.name || 'Hero Movie';
+    const confirmMsg = isRtl
+      ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${itemTitle}» لە تەواوی سیستم؟`
+      : `Are you sure you want to ban and block "${itemTitle}" from the entire app?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const rawId = String(currentItem.id);
+      const cleanId = rawId.replace('custom_', '');
+      const isCustomItem = rawId.startsWith('custom_') || currentItem.isCustom;
+
+      if (isCustomItem) {
+        await supabase.from('dubbed_movies').delete().or(`id.eq.${rawId},id.eq.${cleanId}`);
+        try {
+          await db.deleteMovie(rawId);
+          await db.deleteMovie(cleanId);
+        } catch {}
+      }
+
+      const mediaType = isCustomItem ? 'dubbed' : (currentItem.media_type === 'tv' || 'first_air_date' in currentItem ? 'tv' : 'movie');
+      await bannedService.banContent(cleanId, mediaType as any);
+      addNotification({
+        type: 'success',
+        title: isRtl ? 'فیلمەکە بلۆک کرا' : 'Content Banned',
+        message: isRtl ? `«${itemTitle}» بە سەرکەوتوویی لە وێبسایت بلۆک کرا و سڕایەوە.` : `"${itemTitle}" has been banned and removed.`
+      });
+      window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      handleNext();
+    } catch (err) {
+      console.error('[BAN HERO ERROR]', err);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to ban content.'
+      });
+    }
+  };
 
   // Active item change callback
   useEffect(() => {
@@ -164,7 +219,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
             <img
               src={backdropSrc}
               alt={title}
+              width={1920}
+              height={1080}
               loading="eager"
+              fetchPriority="high"
               decoding="async"
               className="w-full h-full object-cover object-center transform-gpu scale-105 transition-transform duration-1000 ease-out group-hover/hero:scale-100"
             />
@@ -239,6 +297,10 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                   <img
                     src={logoSrc}
                     alt={title}
+                    width={440}
+                    height={128}
+                    loading="lazy"
+                    decoding="async"
                     className="max-h-24 sm:max-h-32 max-w-[280px] sm:max-w-[440px] object-contain drop-shadow-[0_12px_30px_rgba(0,0,0,0.95)]"
                   />
                 ) : (
@@ -289,6 +351,22 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
                       {t('details') || 'Details'}
                     </span>
                   </motion.button>
+
+                  {isOwnerOrAdmin && (
+                    <motion.button
+                      whileHover={{ scale: 1.03, y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: 'spring', duration: 0.3, bounce: 0.1 }}
+                      onClick={handleAdminBanHero}
+                      className="flex items-center gap-2.5 px-6 py-4 bg-red-600/30 hover:bg-red-600/60 text-red-200 border border-red-500/60 font-black rounded-2xl backdrop-blur-md cursor-pointer transform-gpu shadow-[0_4px_20px_rgba(220,38,38,0.4)] apple-press"
+                      title={isRtl ? 'بلۆککردنی ئەم فیلمەی بانەر (ئەدمین)' : 'Ban This Featured Content (Admin)'}
+                    >
+                      <Trash2 className="w-5 h-5 text-red-400" />
+                      <span className={isRtl ? 'font-kurdish text-base font-bold' : 'uppercase tracking-widest text-xs font-black'}>
+                        {isRtl ? 'بلۆککردن' : 'Ban Movie'}
+                      </span>
+                    </motion.button>
+                  )}
                 </div>
               </div>
             </motion.div>

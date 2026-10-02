@@ -6,7 +6,7 @@ import {
   Layers, Info, Clapperboard, Calendar, PlayCircle,
   Clock, Globe, ShieldCheck, Zap, User, ArrowRight,
   Download, MessageSquare, Maximize, Activity, List, LayoutGrid,
-  ChevronLeft, ChevronRight, Link as LinkIcon, Send, Facebook, AlertTriangle, RefreshCcw, ArrowLeft, Shield, MapPin, Award, Timer, TrendingUp, Volume2, VolumeX, Cpu, Loader2, Lock, LockOpen
+  ChevronLeft, ChevronRight, Link as LinkIcon, Send, Facebook, AlertTriangle, RefreshCcw, ArrowLeft, Shield, MapPin, Award, Timer, TrendingUp, Volume2, VolumeX, Cpu, Loader2, Lock, LockOpen, Trash2
 } from 'lucide-react';
 import { Content, CastMember, MyListItem, WatchProgress } from '../types';
 import { fetchData, isForbidden, fetchExternalIds, getMediaType } from '../services/tmdbService';
@@ -17,6 +17,7 @@ import Spinner from '../components/Spinner';
 import { useTranslation } from '../contexts/LanguageContext';
 import Portal from '../components/Portal';
 import { useUI } from '../contexts/UIContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { getRankedSources, getSourceUrl, getSourceSandboxConfig, SOURCE_META } from '../utils/playerSourceUtils';
 import UniversalVideoPlayer from '../components/UniversalVideoPlayer';
@@ -65,7 +66,14 @@ const DetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useTranslation();
   const { theme, accentColor, isAdmin: uiIsAdmin } = useUI();
+  const { user } = useAuth();
   const { addNotification } = useNotification();
+  const isOwnerOrAdmin = uiIsAdmin || 
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('isFlkrdAdmin') === 'true' ||
+      localStorage.getItem('flkrd_admin_email')?.toLowerCase() === 'flkrdstudio@gmail.com'
+    )) || 
+    user?.email?.toLowerCase() === 'flkrdstudio@gmail.com';
   const location = useLocation();
   const [content, setContent] = useState<any>(location.state?.customData || null);
   const [loading, setLoading] = useState(!location.state?.customData);
@@ -750,6 +758,42 @@ const DetailPage: React.FC = () => {
     }
   };
 
+  const handleAdminBanMovie = async () => {
+    if (!content || !isOwnerOrAdmin) return;
+    const isKurdish = language === 'ku' || language === 'badini';
+    const movieTitle = content.title || content.name || 'Movie';
+    const confirmMsg = isKurdish
+      ? `ئایا دڵنیایت لە بلۆککردن و سڕینەوەی «${movieTitle}»؟ ئەم فیلمە چیتر لە ماڵپەڕدا دەرناکەوێت.`
+      : `Are you sure you want to ban and block "${movieTitle}" from the entire platform?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const cleanId = String(content.id).replace('custom_', '');
+      const rawId = String(content.id);
+      const dbId = rawId.startsWith('custom_') ? rawId : `custom_${rawId}`;
+
+      if (rawId.startsWith('custom_')) {
+        await supabase.from('dubbed_movies').delete().or(`id.eq.${dbId},id.eq.${cleanId}`);
+      }
+
+      await bannedService.banContent(cleanId, 'movie');
+      addNotification({
+        type: 'success',
+        title: isKurdish ? 'فیلمەکە بلۆک کرا' : 'Content Banned',
+        message: isKurdish ? 'فیلمەکە بە سەرکەوتوویی لە تەواوی سیستم بلۆک کرا.' : 'Movie was removed and banned globally.'
+      });
+      window.dispatchEvent(new CustomEvent('banned-list-updated'));
+      navigate('/');
+    } catch (err) {
+      console.error('[BAN ERROR]', err);
+      addNotification({
+        type: 'error',
+        title: 'Error',
+        message: 'Could not complete ban action.'
+      });
+    }
+  };
+
   const handleToggleMyList = () => {
     if (!content) return;
     try {
@@ -899,35 +943,20 @@ const DetailPage: React.FC = () => {
                             onClick={() => { 
                               if (isActive) return;
                               setActiveSource(s.name); 
+                              setPlayerKey(prev => prev + 1);
                               setIsPlayerLoading(true); 
                               setTimeout(() => {
                                 setShowSourceSwitcher(false); 
-                              }, 800);
+                              }, 250);
                             }} 
-                            className={`w-full p-4.5 rounded-[24px] flex flex-col gap-3 transition-all duration-300 border group relative overflow-hidden backdrop-blur-md text-left ${
+                            className={`w-full p-4 rounded-2xl flex flex-col gap-2.5 transition-all duration-200 border group relative overflow-hidden backdrop-blur-xl text-left select-none ${
                               isActive 
-                                ? 'border-red-500/40 shadow-[0_12px_30px_rgba(239,68,68,0.12)] ring-1 ring-red-500/10' 
-                                : 'bg-neutral-950/45 border-white/5 hover:border-white/15 hover:bg-neutral-900/60 hover:shadow-[0_8px_20px_rgba(255,255,255,0.01)]'
+                                ? 'bg-white/[0.08] border-red-500/40 border-t-white/30 shadow-[0_8px_24px_rgba(0,0,0,0.4)] ring-1 ring-red-500/20' 
+                                : 'bg-white/[0.03] border-white/5 border-t-white/10 hover:border-white/15 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(0,0,0,0.2)]'
                             }`}
                           >
                             {isActive && (
-                              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden rounded-[24px]">
-                                <div 
-                                  className="absolute top-1/2 left-1/2 w-[250%] h-[250%] origin-center"
-                                  style={{
-                                    background: 'conic-gradient(from 0deg, transparent 30%, #ef4444, #f43f5e, transparent 70%)',
-                                    animation: 'neon-border-spin 3s linear infinite',
-                                  }}
-                                />
-                                <div 
-                                  className="absolute inset-[1.5px] rounded-[22.5px] z-1 pointer-events-none"
-                                  style={{
-                                    background: `radial-gradient(circle at 50% 0%, rgba(var(--brand-red-rgb), 0.15), transparent 85%), rgba(10, 10, 10, 0.9)`,
-                                    backdropFilter: 'blur(16px)',
-                                    WebkitBackdropFilter: 'blur(16px)',
-                                  }}
-                                />
-                              </div>
+                              <div className="absolute left-0 top-3 bottom-3 w-1 bg-red-500 rounded-r-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
                             )}
 
 
@@ -1245,6 +1274,20 @@ const DetailPage: React.FC = () => {
                   : ((language === 'ku' || language === 'badini') ? 'ئاهەنگی تەماشا' : 'CO-WATCH')}
               </span>
             </LiquidButton>
+
+            {/* Admin Direct Ban Button */}
+            {isOwnerOrAdmin && (
+              <LiquidButton
+                variant="default"
+                onClick={handleAdminBanMovie}
+                className="flex items-center gap-2.5 font-[1000] py-4 px-8 md:py-5 md:px-10 rounded-xl md:rounded-[1.5rem] shadow-2xl border border-red-500/50 bg-red-600/25 hover:bg-red-600 text-white transition-all duration-300 active:scale-95 cursor-pointer"
+              >
+                <Trash2 size={20} className="text-red-400 group-hover:text-white" />
+                <span className="text-sm md:text-xl uppercase italic tracking-tighter">
+                  {(language === 'ku' || language === 'badini') ? 'بلۆککردنی فیلم' : 'BAN MOVIE'}
+                </span>
+              </LiquidButton>
+            )}
           </div>
         </div>
       </div>
@@ -1321,7 +1364,10 @@ const DetailPage: React.FC = () => {
                 <>
                   {/* Left Column: Image */}
                   <div className="w-full md:w-80 shrink-0 flex flex-col gap-6 text-center md:text-start">
-                    <div className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto">
+                    <div 
+                      style={{ aspectRatio: '3/4' }}
+                      className="w-48 md:w-full aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative bg-neutral-900 mx-auto"
+                    >
                       <img 
                         src={actorDetails.profile_path ? `${IMAGE_BASE_URL_PROFILE}${actorDetails.profile_path}` : '/flkrd-icon.webp'} 
                           onError={(e) => { (e.target as HTMLImageElement).src = '/flkrd-icon.webp'; }}
@@ -1379,13 +1425,16 @@ const DetailPage: React.FC = () => {
                             .map((movie: any, idx: number) => (
                               <div 
                                 key={`${movie.id}-${movie.media_type || 'media'}-${idx}`} 
-                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all"
+                                className="group/work cursor-pointer bg-white/[0.02] border border-white/5 p-2 rounded-2xl flex flex-col gap-2 hover:bg-white/[0.05] hover:border-white/10 transition-all select-none active:scale-[0.96]"
                                 onClick={() => {
                                   setSelectedActorId(null);
                                   navigate(`/details/${getMediaType(movie)}/${movie.id}`);
                                 }}
                               >
-                                <div className="aspect-[2/3] rounded-xl overflow-hidden relative border border-white/5">
+                                <div 
+                                  style={{ aspectRatio: '2/3' }}
+                                  className="aspect-[2/3] card-poster-aspect rounded-xl overflow-hidden relative border border-white/5"
+                                >
                                   <img 
                                     src={`${IMAGE_BASE_URL_POSTER}${movie.poster_path}`} 
                                     alt={movie.title || movie.name}
