@@ -33,6 +33,7 @@ const FIRESTORE_PROJECT_ID = 'flkrd-studio';
 const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents`;
 
 const firestoreMemoryCache: Record<string, { timestamp: number; data: any[] }> = {};
+const firestoreRateLimitedUntil: Record<string, number> = {};
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes persistent cache to stay 100% free
 
 function toFirestoreValue(val: any): any {
@@ -182,24 +183,47 @@ async function fetchFromFirestoreFallback(urlStr: string, init?: RequestInit): P
       } catch {}
     }
 
+    // If rate-limited recently (e.g. 429), use stale cache or fallback immediately
+    if (Date.now() < (firestoreRateLimitedUntil[tableName] || 0)) {
+      if (!rows) {
+        rows = firestoreMemoryCache[tableName]?.data || [];
+      }
+    }
+
     if (!rows) {
       // Fetch all docs for this collection from Firestore REST
       let allDocs: any[] = [];
       let nextPageToken = '';
-      do {
-        const queryUrl = `${FIRESTORE_BASE}/${tableName}?pageSize=300${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
-        const fRes = await fetch(queryUrl);
-        if (!fRes.ok) break;
-        const data = await fRes.json();
-        if (data.documents) {
-          allDocs = allDocs.concat(data.documents);
-        }
-        nextPageToken = data.nextPageToken || '';
-      } while (nextPageToken && allDocs.length < 1500);
+      try {
+        do {
+          const queryUrl = `${FIRESTORE_BASE}/${tableName}?pageSize=300${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
+          const fRes = await fetch(queryUrl);
+          if (fRes.status === 429 || fRes.status === 403) {
+            firestoreRateLimitedUntil[tableName] = Date.now() + 180000; // 3 minute cooldown
+            console.warn(`[FIRESTORE] 429/Quota limit on ${tableName}, using offline cache mode.`);
+            break;
+          }
+          if (!fRes.ok) break;
+          const data = await fRes.json();
+          if (data.documents) {
+            allDocs = allDocs.concat(data.documents);
+          }
+          nextPageToken = data.nextPageToken || '';
+        } while (nextPageToken && allDocs.length < 1500);
+      } catch (netErr) {
+        // Network or CORS block: cooldown
+        firestoreRateLimitedUntil[tableName] = Date.now() + 60000;
+      }
 
-      rows = allDocs.map(parseFirestoreDoc);
+      if (allDocs.length > 0) {
+        rows = allDocs.map(parseFirestoreDoc);
+      } else {
+        // Use previous cache if available
+        rows = firestoreMemoryCache[tableName]?.data || [];
+      }
+
       firestoreMemoryCache[tableName] = { timestamp: now, data: rows };
-      if (typeof localStorage !== 'undefined') {
+      if (typeof localStorage !== 'undefined' && rows.length > 0) {
         try {
           localStorage.setItem('flkrd_fc_' + tableName, JSON.stringify({ timestamp: now, data: rows }));
         } catch {}

@@ -48,7 +48,7 @@ const AnalyticsPanel: React.FC = () => {
 
     useEffect(() => {
         loadAnalytics();
-        const interval = setInterval(loadAnalytics, 5000);
+        const interval = setInterval(loadAnalytics, 60000);
         return () => clearInterval(interval);
     }, []);
 
@@ -1352,7 +1352,7 @@ export const AdminPanelModal: React.FC = () => {
 
                                                             return (
                                                                 <div 
-                                                                    key={server.id || server.server_name || `srv-${index}`} 
+                                                                    key={`srv-node-${server.server_name}-${index}`} 
                                                                     className={`flex items-center justify-between p-4 rounded-2xl transition-all duration-300 border flex-row-reverse relative overflow-hidden ${
                                                                         isPrimary 
                                                                             ? 'bg-gradient-to-r from-red-950/20 via-neutral-900/80 to-black/90 border-red-500/40 shadow-lg shadow-red-950/20' 

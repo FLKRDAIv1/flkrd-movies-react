@@ -3,7 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 class BannedService {
     private bannedIds: Set<string> = new Set();
     private lastFetch: number = 0;
-    private CACHE_TTL = 60000; // 1 minute
+    private CACHE_TTL = 300000; // 5 minutes cache to prevent quota limits
     private initPromise: Promise<Set<string>> | null = null;
 
     constructor() {
@@ -81,6 +81,7 @@ class BannedService {
                 }
                 return this.bannedIds;
             } catch (err) {
+                this.lastFetch = now;
                 console.warn("[BANNED SERVICE] Signal degraded, using cached registry:", err);
                 return this.bannedIds;
             } finally {
